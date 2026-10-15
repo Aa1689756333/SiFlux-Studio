@@ -130,30 +130,21 @@ func (a *DesktopApp) RuntimeConfig() DesktopRuntimeConfig {
 	return DesktopRuntimeConfig{BaseURL: runtime.BaseURL(), LaunchToken: runtime.LaunchToken(), UIBootstrapToken: runtime.UIBootstrapToken()}
 }
 
-func (a *DesktopApp) OpenBeefTVGitHub() error {
+func (a *DesktopApp) OpenSiFluxGitHub() error {
 	ctx, err := a.dialogContext()
 	if err != nil {
 		return err
 	}
-	wailsruntime.BrowserOpenURL(ctx, "https://github.com/glanderness/BeefTV")
+	wailsruntime.BrowserOpenURL(ctx, "https://github.com/Aa1689756333/SiFlux-Studio")
 	return nil
 }
 
-func (a *DesktopApp) OpenBeefTVWebsite() error {
+func (a *DesktopApp) OpenSiFluxWebsite() error {
 	ctx, err := a.dialogContext()
 	if err != nil {
 		return err
 	}
-	wailsruntime.BrowserOpenURL(ctx, "https://beeftv.app/")
-	return nil
-}
-
-func (a *DesktopApp) OpenBeefTVX() error {
-	ctx, err := a.dialogContext()
-	if err != nil {
-		return err
-	}
-	wailsruntime.BrowserOpenURL(ctx, "https://x.com/beefnoode")
+	wailsruntime.BrowserOpenURL(ctx, "https://siflux.cn")
 	return nil
 }
 

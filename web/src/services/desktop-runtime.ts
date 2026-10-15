@@ -42,9 +42,8 @@ export type DesktopRuntimeBinding = {
     DownloadUpdate?: () => Promise<DesktopUpdateState>;
     InstallUpdate?: () => Promise<void>;
     ConfirmUpdateStartup?: () => Promise<void>;
-    OpenBeefTVX?: () => Promise<void>;
-    OpenBeefTVWebsite?: () => Promise<void>;
-    OpenBeefTVGitHub?: () => Promise<void>;
+    OpenSiFluxWebsite?: () => Promise<void>;
+    OpenSiFluxGitHub?: () => Promise<void>;
 };
 
 export type DesktopStorageUsage = { dataDir: string; usedBytes: number; freeBytes: number; previousDir?: string; previousBytes?: number };
