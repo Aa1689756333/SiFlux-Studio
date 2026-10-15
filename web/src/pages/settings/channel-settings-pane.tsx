@@ -10,7 +10,7 @@ import { mergeFetchedChannelModelProfiles } from "@/lib/channel-model-catalog";
 import { seedancePortraitModel } from "@/lib/seedance-portrait";
 import { ensureModelProfilesWithUiDefaults } from "@/lib/model-protocols";
 import { fetchChannelModels, type ChannelModelFetchResult } from "@/services/api/image";
-import { channelHasGenerationCredential, channelHasManagedBeefAPICredential, createModelChannel, defaultBaseUrlForApiFormat, filterModelsByCapability, isBuiltinBeefAPIChannel, modelOptionsFromChannels, normalizeConfigSnapshot, useConfigStore, type AiConfig, type ModelChannel } from "@/stores/use-config-store";
+import { channelHasGenerationCredential, channelHasManagedBeefAPICredential, createModelChannel, defaultBaseUrlForApiFormat, filterModelsByCapability, isBuiltinBeefAPIChannel, isBuiltinRelayChannel, modelOptionsFromChannels, normalizeConfigSnapshot, useConfigStore, type AiConfig, type ModelChannel } from "@/stores/use-config-store";
 import { ChannelModelSettings } from "./channel-model-settings";
 import { ModelServiceEditor } from "./model-service-editor";
 import { currentModelConnectionReceipt, useModelConnectionTests } from "@/stores/use-model-connection-tests";
@@ -366,8 +366,12 @@ export function ChannelSettingsPane({ onOpenDiagnostics, onOpenModels, onOpenRun
                     {userChannels.map((channel) => {
                         const editing = editingChannelId === channel.id;
                         const builtinBeefAPI = isBuiltinBeefAPIChannel(channel);
+                        const onboardingTarget = builtinBeefAPI || isBuiltinRelayChannel(channel) ? "official-channel" : undefined;
+                        // The relay ships with the app and the backend re-adds it on every
+                        // read, so offering deletion would only hide it until the next load.
+                        const pinnedPreset = builtinBeefAPI || isBuiltinRelayChannel(channel);
                         return (
-                            <section key={channel.id} data-onboarding={builtinBeefAPI ? "official-channel" : undefined} aria-labelledby={`channel-${channel.id}-title`} className="settings-channel p-2.5 sm:p-3">
+                            <section key={channel.id} data-onboarding={onboardingTarget} aria-labelledby={`channel-${channel.id}-title`} className="settings-channel p-2.5 sm:p-3">
                                 <div className="mb-2.5 flex flex-wrap items-start justify-between gap-2.5">
                                     <div className="min-w-0 flex-1 basis-52">
                                         <h3 id={`channel-${channel.id}-title`} className="flex items-center gap-2 text-sm font-semibold">
@@ -424,7 +428,7 @@ export function ChannelSettingsPane({ onOpenDiagnostics, onOpenModels, onOpenRun
                                         >
                                             编辑
                                         </Button>
-                                        {!builtinBeefAPI ? (
+                                        {!pinnedPreset ? (
                                             <Popconfirm title="删除个人模型渠道？" description="该渠道关联的模型选择会同时移除。" okText="删除" cancelText="取消" okButtonProps={{ danger: true }} onOpenChange={recordChannelDeleteConfirmOpen} onConfirm={() => deleteChannel(channel.id)}>
                                                     <Button
                                                         title="删除渠道"
@@ -657,13 +661,13 @@ export function shouldRefreshBeefAPICatalog(previous: string | undefined, next: 
 export function mergeManagedBeefAPICatalog(current: AiConfig, server: AiConfig, adoptAuthorizedAssistant = false): AiConfig {
     const serverBeef = server.channels.find((channel) => channel.id === "beefapi");
     let found = false;
-    const channels = current.channels.map((channel) => {
-        if (channel.id !== "beefapi") return channel;
+    const channels = current.channels.flatMap((channel) => {
+        if (channel.id !== "beefapi") return [channel];
         found = true;
-        if (!serverBeef) {
-            return { ...channel, models: [], modelProfiles: [], apiKey: "", secretKey: "", credentialRef: undefined, hasApiKey: false, hasSecretKey: false };
-        }
-        return {
+        // The hosted BeefAPI channel is retired, so a copy kept in local state
+        // must not linger as an empty row next to the pinned relay.
+        if (!serverBeef) return [];
+        return [{
             ...channel,
             models: [...(serverBeef.models || [])],
             modelProfiles: (serverBeef.modelProfiles || []).map((item) => ({ ...item })),
@@ -673,7 +677,7 @@ export function mergeManagedBeefAPICatalog(current: AiConfig, server: AiConfig, 
             hasApiKey: serverBeef.hasApiKey,
             hasSecretKey: serverBeef.hasSecretKey,
             baseUrl: serverBeef.baseUrl || channel.baseUrl,
-        };
+        }];
     });
     if (serverBeef && !found) {
         channels.unshift({

@@ -2,25 +2,37 @@ package providerpreset
 
 import "testing"
 
-func TestBeefAPIPresetIsPinnedWithoutFreezingRemoteModelCatalog(t *testing.T) {
-	preset := BeefAPI()
-	if preset.ID != "beefapi" {
-		t.Fatalf("preset id = %q", preset.ID)
+func TestBuiltinRelayPresetIsPinnedWithoutFreezingRemoteModelCatalog(t *testing.T) {
+	preset, ok := BuiltinPreset("siflux")
+	if !ok {
+		t.Fatal("builtin relay preset missing")
 	}
-	if preset.DisplayName != "BeefTV" || preset.BaseURL != "https://beeftv.app" {
-		t.Fatalf("unexpected BeefAPI identity: %#v", preset)
+	if preset.DisplayName != "SiFlux 中转站" || preset.BaseURL != "https://api.siflux.cn/v1" {
+		t.Fatalf("unexpected relay identity: %#v", preset)
+	}
+	if preset.CatalogProtocol != "openai" {
+		t.Fatalf("relay preset must speak the OpenAI-compatible catalog protocol: %#v", preset)
 	}
 	if !preset.Pinned || preset.PresetVersion < 1 {
 		t.Fatalf("preset must be pinned and versioned: %#v", preset)
 	}
 
 	if len(preset.Models) != 0 {
-		t.Fatalf("remote BeefAPI catalog must be fetched, got %d hard-coded models", len(preset.Models))
+		t.Fatalf("remote relay catalog must be fetched, got %d hard-coded models", len(preset.Models))
+	}
+}
+
+func TestBuiltinPresetsNeverKeepTheRetiredManagedChannel(t *testing.T) {
+	if _, ok := BuiltinPreset("beefapi"); ok {
+		t.Fatal("retired managed BeefAPI channel must not ship as a builtin preset")
 	}
 }
 
 func TestCatalogValidationRejectsUnsafeOrAmbiguousPresets(t *testing.T) {
-	valid := BeefAPI()
+	valid, ok := BuiltinPreset("siflux")
+	if !ok {
+		t.Fatal("builtin relay preset missing")
+	}
 	valid.Models = []ModelProfile{{Model: "test", Capability: "text", Protocol: "chat-completion", CapabilityConfig: []byte(`{"version":1,"text":{"streaming":true}}`)}}
 	tests := []struct {
 		name   string

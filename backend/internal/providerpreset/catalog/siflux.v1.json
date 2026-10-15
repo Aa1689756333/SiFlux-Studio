@@ -1,0 +1,9 @@
+{
+  "id": "siflux",
+  "displayName": "SiFlux 中转站",
+  "baseUrl": "https://api.siflux.cn/v1",
+  "catalogProtocol": "openai",
+  "presetVersion": 1,
+  "pinned": true,
+  "models": []
+}

@@ -636,6 +636,15 @@ export function configuredModelMatchesCapability(config: AiConfig, model: string
 
 export const MANAGED_BEEFAPI_CREDENTIAL_REF = "beefapi-enterprise";
 
+// The pinned channel the workspace ships with. It used to be the hosted BeefAPI
+// connection; it is now an ordinary OpenAI-compatible channel, so only the
+// identity lives here and every credential path stays key-based.
+export const BUILTIN_RELAY_CHANNEL_ID = "siflux";
+
+export function isBuiltinRelayChannel(channel: Pick<ModelChannel, "id" | "pinned">) {
+    return channel.id === BUILTIN_RELAY_CHANNEL_ID && channel.pinned === true;
+}
+
 export function isBuiltinBeefAPIChannel(channel: Pick<ModelChannel, "id" | "pinned">) {
     return channel.id === "beefapi" && channel.pinned === true;
 }

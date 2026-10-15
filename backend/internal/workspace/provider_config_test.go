@@ -13,11 +13,11 @@ import (
 	"time"
 )
 
-func TestProviderConfigMigratesLegacyBeefAPIStateWithoutLosingLocalChoices(t *testing.T) {
+func TestProviderConfigRepairsBuiltinPresetStateWithoutLosingLocalChoices(t *testing.T) {
 	dir := t.TempDir()
 	legacy := `{
-        "channels":[{"id":"beefapi","name":"BeefAPI old","baseUrl":"https://old.invalid","apiKey":"local-secret","headers":[{"name":"X-Site","value":"desktop"}],"enabled":false,"models":["legacy-model"],"modelProfiles":[{"model":"seedance-2.0-fast","protocol":"newapi-channel-1","capability":"video"}]}],
-        "imageModel":"beefapi::gpt-image-2","videoModel":"beefapi::seedance-2.0-fast","textModel":"beefapi::gpt-5.6-sol","audioModel":"beefapi::minimax-music-v3.0"
+        "channels":[{"id":"siflux","name":"Relay old","baseUrl":"https://old.invalid","apiKey":"local-secret","headers":[{"name":"X-Site","value":"desktop"}],"enabled":false,"models":["legacy-model"],"modelProfiles":[{"model":"seedance-2.0-fast","protocol":"newapi-channel-1","capability":"video"}]}],
+        "imageModel":"siflux::gpt-image-2","videoModel":"siflux::seedance-2.0-fast","textModel":"siflux::gpt-5.6-sol","audioModel":"siflux::minimax-music-v3.0"
     }`
 	if err := os.WriteFile(filepath.Join(dir, LocalProviderConfigFile), []byte(legacy), 0o600); err != nil {
 		t.Fatal(err)
@@ -34,8 +34,8 @@ func TestProviderConfigMigratesLegacyBeefAPIStateWithoutLosingLocalChoices(t *te
 	if health != ConfigHealthMigrated {
 		t.Fatalf("health = %q", health)
 	}
-	channel := requireEffectiveChannel(t, effective, "beefapi")
-	if channel["name"] != "BeefTV" || channel["baseUrl"] != "https://beeftv.app" {
+	channel := requireEffectiveChannel(t, effective, "siflux")
+	if channel["name"] != "SiFlux 中转站" || channel["baseUrl"] != "https://api.siflux.cn/v1" {
 		t.Fatal("preset-owned identity was not repaired")
 	}
 	if channel["apiKey"] != "local-secret" || channel["enabled"] != false {
@@ -54,8 +54,8 @@ func TestProviderConfigMigratesLegacyBeefAPIStateWithoutLosingLocalChoices(t *te
 		t.Fatalf("fetched model catalog was not preserved: %#v", models)
 	}
 	for key, want := range map[string]string{
-		"imageModel": "beefapi::gpt-image-2", "videoModel": "beefapi::seedance-2.0-fast",
-		"textModel": "beefapi::gpt-5.6-sol", "audioModel": "beefapi::minimax-music-v3.0",
+		"imageModel": "siflux::gpt-image-2", "videoModel": "siflux::seedance-2.0-fast",
+		"textModel": "siflux::gpt-5.6-sol", "audioModel": "siflux::minimax-music-v3.0",
 	} {
 		if effective.Config[key] != want {
 			t.Fatalf("%s = %#v", key, effective.Config[key])
@@ -63,7 +63,7 @@ func TestProviderConfigMigratesLegacyBeefAPIStateWithoutLosingLocalChoices(t *te
 	}
 }
 
-func TestProviderConfigSeedsBeefAPIWhenLocalStateIsMissing(t *testing.T) {
+func TestProviderConfigSeedsBuiltinRelayWhenLocalStateIsMissing(t *testing.T) {
 	store, err := NewProviderConfig(t.TempDir())
 	if err != nil {
 		t.Fatal(err)
@@ -75,7 +75,7 @@ func TestProviderConfigSeedsBeefAPIWhenLocalStateIsMissing(t *testing.T) {
 	if health != ConfigHealthDefault {
 		t.Fatalf("health = %q", health)
 	}
-	channel := requireEffectiveChannel(t, effective, "beefapi")
+	channel := requireEffectiveChannel(t, effective, "siflux")
 	if channel["apiKey"] != "" || channel["enabled"] != true {
 		t.Fatal("unexpected seeded local state")
 	}

@@ -13,7 +13,7 @@ import (
 	"github.com/gin-gonic/gin"
 )
 
-func TestWorkspaceModelConfigReturnsBuiltinBeefAPIAndPersistenceMetadata(t *testing.T) {
+func TestWorkspaceModelConfigReturnsBuiltinRelayAndPersistenceMetadata(t *testing.T) {
 	router, _ := newModelConfigTestRouter(t)
 	recorder := httptest.NewRecorder()
 	router.ServeHTTP(recorder, httptest.NewRequest(http.MethodGet, "/api/workspace/model-config", nil))
@@ -26,8 +26,8 @@ func TestWorkspaceModelConfigReturnsBuiltinBeefAPIAndPersistenceMetadata(t *test
 	}
 	config, _ := data["config"].(map[string]any)
 	channels, _ := config["channels"].([]any)
-	if len(channels) != 1 || channels[0].(map[string]any)["id"] != "beefapi" {
-		t.Fatalf("builtin BeefAPI missing: %#v", channels)
+	if len(channels) != 1 || channels[0].(map[string]any)["id"] != "siflux" {
+		t.Fatalf("builtin relay missing: %#v", channels)
 	}
 	if models, _ := channels[0].(map[string]any)["models"].([]any); len(models) != 0 {
 		t.Fatalf("model catalog must remain dynamic: %#v", models)
@@ -91,6 +91,10 @@ func newModelConfigTestRouter(t *testing.T) (*gin.Engine, *workspace.ProviderCon
 
 func putModelConfig(t *testing.T, router *gin.Engine, expectedRevision int64, apiKey string) *httptest.ResponseRecorder {
 	t.Helper()
+	// The managed-credential redaction guard is keyed on the BeefAPI channel id,
+	// so the fixture keeps that identity even though it is no longer a builtin
+	// preset. The pinned relay is an ordinary channel: its key is served to the
+	// local frontend because the browser calls the relay directly.
 	body, err := json.Marshal(map[string]any{
 		"expectedRevision": expectedRevision,
 		"config":           map[string]any{"channels": []any{map[string]any{"id": "beefapi", "apiKey": apiKey, "enabled": true}}},

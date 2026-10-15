@@ -30,6 +30,7 @@ type DesktopApp struct {
 	migrating       bool
 	migrationCancel context.CancelFunc
 	closing         bool
+	relayPending    *relayImport
 	storageRoot     string
 	dataDir         string
 	wailsCtx        context.Context
@@ -295,7 +296,19 @@ func (h desktopAssetHandler) ServeHTTP(w http.ResponseWriter, r *http.Request) {
 		runtime.Handler().ServeHTTP(w, request)
 		return
 	}
-	if r.Method != http.MethodGet || r.URL.Path != "/__desktop/runtime-config" {
+	if r.Method != http.MethodGet {
+		http.NotFound(w, r)
+		return
+	}
+	if r.URL.Path == "/__desktop/relay-import" {
+		// A protocol launch arrives before the window exists, so the frontend reads
+		// the queued link here as well as listening for the event.
+		w.Header().Set("Content-Type", "application/json; charset=utf-8")
+		w.Header().Set("Cache-Control", "no-store")
+		_ = json.NewEncoder(w).Encode(h.app.takeRelayImport())
+		return
+	}
+	if r.URL.Path != "/__desktop/runtime-config" {
 		http.NotFound(w, r)
 		return
 	}

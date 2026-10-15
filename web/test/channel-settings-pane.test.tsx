@@ -99,3 +99,20 @@ test("BeefAPI catalog merge keeps manual providers and user-owned BeefAPI fields
     expect(manual?.models).toEqual(["local-image"]);
     expect(merged.imageModel).toBe("manual::local-image");
 });
+
+test("a retired hosted channel does not survive the catalog merge", () => {
+    const current = {
+        ...defaultConfig,
+        channels: [
+            createModelChannel({ id: "beefapi", name: "BeefTV", pinned: true, credentialRef: "beefapi-enterprise", hasApiKey: true, models: ["legacy-image"] }),
+            createModelChannel({ id: "siflux", name: "SiFlux 中转站", pinned: true, baseUrl: "https://api.siflux.cn/v1", apiKey: "relay-key" }),
+        ],
+    };
+    const server = {
+        ...defaultConfig,
+        channels: [createModelChannel({ id: "siflux", name: "SiFlux 中转站", pinned: true, baseUrl: "https://api.siflux.cn/v1", hasApiKey: true })],
+    };
+    const merged = mergeManagedBeefAPICatalog(current, server);
+    expect(merged.channels.map((channel) => channel.id)).toEqual(["siflux"]);
+    expect(merged.channels[0].apiKey).toBe("relay-key");
+});

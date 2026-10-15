@@ -16,10 +16,17 @@ import { currentModelConnectionReceipt, useModelConnectionTests } from "@/stores
 import "./model-service-editor.css";
 import { getTransportFailureKind } from "@/services/api/request";
 
+// A channel can exist without a usable connection: the pinned relay ships with an
+// empty key. Such a channel must open on the connection step, otherwise there is
+// nowhere to paste the credential.
+function connectionReady(channel: ModelChannel) {
+    return !serviceConnectionError(channel) && !validateChannelHeaders(channel.headers);
+}
+
 export function ModelServiceEditor({ initial, onClose, onSave }: { initial?: ModelChannel; onClose: () => void; onSave: (channel: ModelChannel) => Promise<void> }) {
     const [draft, setDraft] = useState<ModelChannel>(() => initial ? structuredClone(initial) : { ...createModelChannel(), name: "", baseUrl: "" });
     const [presetId, setPresetId] = useState<ModelServicePresetId>(() => initial ? servicePresetFor(initial) : "compatible");
-    const [step, setStep] = useState(initial ? 1 : 0);
+    const [step, setStep] = useState(() => (initial && connectionReady(initial) ? 1 : 0));
     const [advanced, setAdvanced] = useState(false);
     const [catalog, setCatalog] = useState<ChannelModelCatalogItem[]>(() => (initial?.models || []).map((id) => ({ id })));
     const [catalogRead, setCatalogRead] = useState(false);

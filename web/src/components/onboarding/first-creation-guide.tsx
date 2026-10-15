@@ -4,12 +4,12 @@ import { Button } from "antd";
 import { AppModal } from "@/components/ui/product/app-modal";
 import { Check, ChevronDown, ChevronLeft, ChevronRight, Copy, GripVertical, HelpCircle, X } from "lucide-react";
 import { useOnboardingStore, onboardingSteps } from "@/stores/use-onboarding-store";
-import { channelHasGenerationCredential, filterModelsByCapability, isBuiltinBeefAPIChannel, modelOptionsFromChannels, useConfigStore } from "@/stores/use-config-store";
+import { channelHasGenerationCredential, filterModelsByCapability, isBuiltinRelayChannel, modelOptionsFromChannels, useConfigStore } from "@/stores/use-config-store";
 import { useCanvasStore } from "@/stores/canvas/use-canvas-store";
 import "./first-creation-guide.css";
 
 const lessons = [
-    { title: "连接算力", description: "点击连接，在浏览器确认授权。" },
+    { title: "连接算力", description: "在模型配置填入中转站 API Key，并拉取模型。" },
     { title: "新建项目", description: "点击侧栏「新建项目」，打开一张新画布。" },
     { title: "添加图片", description: "点击添加按钮，选择「图片」。" },
     { title: "生成图片", description: "选中图片节点，输入描述并生成。" },
@@ -46,7 +46,7 @@ export function FirstCreationGuide() {
     const project = projects.find((item) => item.id === guide.projectId);
     const node = project?.nodes.find((item) => item.id === guide.nodeId);
     const result = project?.nodes.find((item) => item.type === "image" && item.metadata?.content && (item.id === guide.nodeId || item.metadata?.generatedFromNodeId === guide.nodeId) && (item.metadata?.resultOrigin === "generated" || Boolean(item.metadata?.taskId)));
-    const official = config.channels.find(isBuiltinBeefAPIChannel);
+    const official = config.channels.find(isBuiltinRelayChannel);
     const connected = Boolean(official && channelHasGenerationCredential(official) && filterModelsByCapability(modelOptionsFromChannels([official]), "image", [official]).length);
     const ready = step === "official" ? connected : step === "project" ? Boolean(project) : step === "node" ? Boolean(node) : step === "generate" ? Boolean(result) : step === "assets" ? pathname === "/assets" && new URLSearchParams(search).get("tab") === "history" && Boolean(result) : guide.visitedLibrary && Boolean(project) && pathname === `/canvas/${project?.id}`;
 

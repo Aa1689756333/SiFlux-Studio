@@ -3,6 +3,7 @@ package workspace
 import (
 	"encoding/json"
 	"fmt"
+	"net/url"
 	"strings"
 
 	"infinite-canvas/backend/internal/providerpreset"
@@ -77,6 +78,7 @@ func mergeBuiltinProviderPresets(config map[string]any) (map[string]any, error) 
 			order = append(order, id)
 		}
 	}
+	order = retireLegacyManagedChannel(channels, order)
 
 	for _, preset := range providerpreset.BuiltinChannels() {
 		local := channels[preset.ID]
@@ -98,6 +100,41 @@ func mergeBuiltinProviderPresets(config map[string]any) (map[string]any, error) 
 	}
 	result["channels"] = mergedChannels
 	return result, nil
+}
+
+// The builtin preset moved from the hosted BeefAPI channel to the SiFlux relay.
+// A stored copy of the retired production channel would otherwise resurface as a
+// stale row in the channel list, so drop it once: its credential was issued by
+// the retired origin and cannot serve the relay. Channels still pointing at the
+// legacy enterprise origin are left alone, because the managed-credential lookup
+// keeps serving pre-brand manual credentials.
+const (
+	retiredManagedChannelID  = "beefapi"
+	retiredManagedOriginHost = "beeftv.app"
+)
+
+func retireLegacyManagedChannel(channels map[string]map[string]any, order []string) []string {
+	channel, ok := channels[retiredManagedChannelID]
+	if !ok || !isRetiredManagedChannel(channel) {
+		return order
+	}
+	delete(channels, retiredManagedChannelID)
+	next := make([]string, 0, len(order))
+	for _, id := range order {
+		if id != retiredManagedChannelID {
+			next = append(next, id)
+		}
+	}
+	return next
+}
+
+func isRetiredManagedChannel(channel map[string]any) bool {
+	base, _ := channel["baseUrl"].(string)
+	parsed, err := url.Parse(strings.TrimSpace(base))
+	if err != nil {
+		return false
+	}
+	return parsed.Scheme == "https" && strings.EqualFold(parsed.Hostname(), retiredManagedOriginHost)
 }
 
 func overlayHostedBeefAPIMediaProfiles(channel map[string]any) map[string]any {
@@ -228,15 +265,6 @@ func presetChannelMap(preset providerpreset.ChannelPreset, local map[string]any)
 	for _, key := range []string{"apiKey", "secretKey", "headers", "enabled"} {
 		if value, ok := local[key]; ok {
 			result[key] = value
-		}
-	}
-	if preset.ID == "beefapi" {
-		base, _ := local["baseUrl"].(string)
-		if base == "https://enterprise.beefapi.com" || base == "https://beeftv.app" {
-			result["baseUrl"] = base
-		} else if key, _ := local["apiKey"].(string); base == "" && key != "" {
-			// Pre-brand manual credentials without an origin were issued by BeefAPI.
-			result["baseUrl"] = "https://enterprise.beefapi.com"
 		}
 	}
 	return result, nil

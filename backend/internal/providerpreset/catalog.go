@@ -40,13 +40,13 @@ func BuiltinChannels() []ChannelPreset {
 	return result
 }
 
-func BeefAPI() ChannelPreset {
+func BuiltinPreset(id string) (ChannelPreset, bool) {
 	for _, preset := range builtins {
-		if preset.ID == "beefapi" {
-			return preset.Clone()
+		if preset.ID == id {
+			return preset.Clone(), true
 		}
 	}
-	panic("BeefAPI preset missing")
+	return ChannelPreset{}, false
 }
 
 func (preset ChannelPreset) Model(name string) (ModelProfile, bool) {

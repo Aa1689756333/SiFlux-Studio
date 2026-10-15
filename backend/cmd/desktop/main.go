@@ -35,6 +35,7 @@ func main() {
 		log.Fatal(err)
 	}
 	app := newDesktopApp(dataDir)
+	app.acceptRelayLink(relayLinkFromArgs(os.Args[1:]))
 	if err := configureDesktopTemp(dataDir); err != nil {
 		log.Fatal(err)
 	}
@@ -46,10 +47,22 @@ func main() {
 	}
 	_ = os.Remove(startupErrorPath)
 
+	if err := registerURLScheme(); err != nil {
+		// The application stays usable without the protocol: the relay's
+		// configuration page also documents manual entry.
+		log.Printf("注册一键配置协议失败: %v", err)
+	}
 	err = wails.Run(&options.App{
-		Title:  "BeefTV",
+		Title:  "SiFlux Studio",
 		Width:  1440,
 		Height: 960,
+		SingleInstanceLock: &options.SingleInstanceLock{
+			UniqueId: "siflux-studio-desktop",
+			OnSecondInstanceLaunch: func(data options.SecondInstanceData) {
+				// A second launch is how a protocol link reaches a running window.
+				app.acceptRelayLink(relayLinkFromArgs(data.Args))
+			},
+		},
 		Mac: &mac.Options{
 			// WKWebView disables element fullscreen by default, including the
 			// video player's fullscreen control.
