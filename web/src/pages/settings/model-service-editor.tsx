@@ -23,12 +23,12 @@ function connectionReady(channel: ModelChannel) {
     return !serviceConnectionError(channel) && !validateChannelHeaders(channel.headers);
 }
 
-export function ModelServiceEditor({ initial, onClose, onSave }: { initial?: ModelChannel; onClose: () => void; onSave: (channel: ModelChannel) => Promise<void> }) {
-    const [draft, setDraft] = useState<ModelChannel>(() => initial ? structuredClone(initial) : { ...createModelChannel(), name: "", baseUrl: "" });
-    const [presetId, setPresetId] = useState<ModelServicePresetId>(() => initial ? servicePresetFor(initial) : "compatible");
-    const [step, setStep] = useState(() => (initial && connectionReady(initial) ? 1 : 0));
+export function ModelServiceEditor({ initial, onClose, onSave }: { initial: ModelChannel; onClose: () => void; onSave: (channel: ModelChannel) => Promise<void> }) {
+    const [draft, setDraft] = useState<ModelChannel>(() => structuredClone(initial));
+    const [presetId, setPresetId] = useState<ModelServicePresetId>(() => servicePresetFor(initial));
+    const [step, setStep] = useState(() => (connectionReady(initial) ? 1 : 0));
     const [advanced, setAdvanced] = useState(false);
-    const [catalog, setCatalog] = useState<ChannelModelCatalogItem[]>(() => (initial?.models || []).map((id) => ({ id })));
+    const [catalog, setCatalog] = useState<ChannelModelCatalogItem[]>(() => (initial.models || []).map((id) => ({ id })));
     const [catalogRead, setCatalogRead] = useState(false);
     const [protocols, setProtocols] = useState<ModelProtocolDefinition[]>([]);
     const [protocolLoading, setProtocolLoading] = useState(true);
@@ -153,7 +153,7 @@ export function ModelServiceEditor({ initial, onClose, onSave }: { initial?: Mod
 
     return <AppModal open centered width={1000} flush footer={null} title={null} closable={!saving} keyboard={!saving} mask={{ closable: false }} onCancel={() => { catalogRequest.current?.abort(); onClose(); }} rootClassName="model-service-modal">
         <div className="model-service-header">
-            <h2>{initial ? `管理 ${initial.name}` : "连接你的模型服务"}</h2>
+            <h2>{`管理 ${initial.name}`}</h2>
             <ol className="model-service-steps" aria-label="接入步骤">
                 <li aria-current={step === 0 ? "step" : undefined}><span>{step > 0 ? <Check size={13} /> : "1"}</span>连接服务</li>
                 <li aria-current={step === 1 ? "step" : undefined}><span>2</span>选择模型</li>
@@ -163,7 +163,7 @@ export function ModelServiceEditor({ initial, onClose, onSave }: { initial?: Mod
             {step === 0 ? <div className="model-service-connection">
                 <aside className="model-service-providers" aria-label="选择服务商">
                     <p className="model-service-label">选择服务商</p>
-                    {MODEL_SERVICE_PRESETS.map((preset) => <button key={preset.id} type="button" disabled={busy || Boolean(initial)} aria-pressed={presetId === preset.id} className="model-service-provider" onClick={() => choosePreset(preset.id)}>
+                    {MODEL_SERVICE_PRESETS.map((preset) => <button key={preset.id} type="button" disabled={busy} aria-pressed={presetId === preset.id} className="model-service-provider" onClick={() => choosePreset(preset.id)}>
                         <ModelLogo icon={preset.icon} size={24} />
                         <span><strong>{preset.name}</strong><small>{preset.subtitle}</small></span>
                         {presetId === preset.id && <Check size={15} />}

@@ -40,7 +40,7 @@ export function ChannelSettingsPane({ onOpenDiagnostics, onOpenModels, onOpenRun
     const persistence = useSyncExternalStore(subscribeModelConfigPersistence, getModelConfigPersistenceState, getModelConfigPersistenceState);
     const [loadingChannelIds, setLoadingChannelIds] = useState<string[]>([]);
     const [editingChannelId, setEditingChannelId] = useState<string | null>(null);
-    const [serviceEditor, setServiceEditor] = useState<ModelChannel | null | undefined>(undefined);
+    const [serviceEditor, setServiceEditor] = useState<ModelChannel | undefined>(undefined);
     const [beefConnection, setBeefConnection] = useState<BeefAPIConnectionSummary | null>(null);
     const [beefBusy, setBeefBusy] = useState(false);
     const appliedConnectionState = useRef<string | undefined>(undefined);
@@ -562,7 +562,7 @@ export function ChannelSettingsPane({ onOpenDiagnostics, onOpenModels, onOpenRun
                     }
                 />
             )}
-            {serviceEditor !== undefined && <ModelServiceEditor initial={serviceEditor || undefined} onClose={() => setServiceEditor(undefined)} onSave={saveService} />}
+            {serviceEditor !== undefined && <ModelServiceEditor initial={serviceEditor} onClose={() => setServiceEditor(undefined)} onSave={saveService} />}
         </Form>
     );
 }
