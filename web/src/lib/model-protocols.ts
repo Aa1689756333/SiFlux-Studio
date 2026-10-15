@@ -57,6 +57,34 @@ export function protocolForModelCatalog(_endpointTypes: string[] = []): ModelPro
     // plugin or an explicit model configuration must supply it.
     return undefined;
 }
+
+/**
+ * 自有中转站的目录可以决定文本协议：它声明的端点类型就是我们对上游的调用契约。
+ *
+ * 顺序遵循中转站返回的数组——数组本身就是它的优先级声明，将来在中转站调整顺序，
+ * 客户端跟着变，不必发版。数组缺失或为空时返回 undefined，保持原有行为
+ * （文本协议默认 chat-completion，等价于「chat 优先」）。
+ */
+const RELAY_CATALOG_TEXT_PROTOCOLS: Record<string, ModelProtocol> = {
+    openai: "chat-completion",
+    "chat.completions": "chat-completion",
+    "chat-completions": "chat-completion",
+    "openai-response": "openai-response",
+    "openai-response-compact": "openai-response",
+    responses: "openai-response",
+    anthropic: "claude-api",
+    messages: "claude-api",
+};
+
+export function protocolForRelayCatalog(endpointTypes: string[] = [], capability?: ProtocolCapability): ModelProtocol | undefined {
+    // 图像/视频/音频的协议仍由预设或用户配置决定，端点类型不足以推断。
+    if (capability && capability !== "text") return undefined;
+    for (const value of endpointTypes) {
+        const protocol = RELAY_CATALOG_TEXT_PROTOCOLS[value.trim().toLowerCase()];
+        if (protocol) return protocol;
+    }
+    return undefined;
+}
 export function protocolForBeefAPICatalog(endpointTypes: string[] = []): ModelProtocol | undefined {
     // Only explicit wire contracts map to host protocol IDs; generic "openai"
     // metadata cannot replace a user's configured protocol.

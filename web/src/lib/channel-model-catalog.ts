@@ -1,6 +1,6 @@
 import { defaultModelCapabilityConfig, sanitizeServerVideoCapability, type ModelCapabilityConfig, type VideoCapabilityConfig } from "@/lib/model-capabilities";
-import { modelProtocolCapability, protocolForModelCatalog, protocolForBeefAPICatalog, type ModelProtocol } from "@/lib/model-protocols";
-import type { ModelChannel } from "@/stores/use-config-store";
+import { modelProtocolCapability, protocolForModelCatalog, protocolForBeefAPICatalog, protocolForRelayCatalog, type ModelProtocol } from "@/lib/model-protocols";
+import { isBuiltinRelayChannel, type ModelChannel } from "@/stores/use-config-store";
 import { isBeefAPIEndpoint } from "@/lib/beefapi-video-contracts";
 import { beefAPIImageContract } from "@/lib/beefapi-image-contracts";
 import { sanitizeVideoPriceQuote, seedancePortraitModel, type VideoPriceQuote } from "@/lib/seedance-portrait";
@@ -144,7 +144,12 @@ export function mergeFetchedChannelModelProfiles(channel: ModelChannel, catalog:
     for (const item of catalog) {
         const existing = existingByModel.get(item.id);
         const mapped = catalogModelMapping(item, { providerNameFallback: isBeefAPICatalogChannel(channel) });
-        const inferredProtocol = mapped.protocol || (isBeefAPICatalogChannel(channel) ? protocolForBeefAPICatalog(item.supportedEndpointTypes) : protocolForModelCatalog(item.supportedEndpointTypes));
+        // 通用第三方渠道不猜协议（由插件或用户配置给出）；只有自有中转站的目录可以按端点类型定协议。
+        const inferredProtocol = mapped.protocol || (isBeefAPICatalogChannel(channel)
+            ? protocolForBeefAPICatalog(item.supportedEndpointTypes)
+            : isBuiltinRelayChannel(channel)
+              ? protocolForRelayCatalog(item.supportedEndpointTypes, mapped.capability || item.modelType)
+              : protocolForModelCatalog(item.supportedEndpointTypes));
         const catalogVideo = isBeefAPICatalogChannel(channel) ? sanitizeServerVideoCapability(item.videoCapabilities) : null;
         // BeefAPI may advertise generic OpenAI endpoints without modelType.
         // Its explicit video contract still identifies the profile and its quote.
