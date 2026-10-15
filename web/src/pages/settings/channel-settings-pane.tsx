@@ -40,7 +40,6 @@ export function ChannelSettingsPane({ onOpenDiagnostics, onOpenModels, onOpenRun
     const persistence = useSyncExternalStore(subscribeModelConfigPersistence, getModelConfigPersistenceState, getModelConfigPersistenceState);
     const [loadingChannelIds, setLoadingChannelIds] = useState<string[]>([]);
     const [editingChannelId, setEditingChannelId] = useState<string | null>(null);
-    const [newChannelId, setNewChannelId] = useState<string | null>(null);
     const [serviceEditor, setServiceEditor] = useState<ModelChannel | null | undefined>(undefined);
     const [beefConnection, setBeefConnection] = useState<BeefAPIConnectionSummary | null>(null);
     const [beefBusy, setBeefBusy] = useState(false);
@@ -173,10 +172,6 @@ export function ChannelSettingsPane({ onOpenDiagnostics, onOpenModels, onOpenRun
         updateChannel(channel.id, { apiFormat, interfaceType: undefined, baseUrl });
     };
 
-    const addChannel = () => {
-        setServiceEditor(null);
-    };
-
     const saveService = async (channel: ModelChannel) => {
         cancelCatalog(channel.id);
         const latest = useConfigStore.getState().config;
@@ -192,7 +187,6 @@ export function ChannelSettingsPane({ onOpenDiagnostics, onOpenModels, onOpenRun
 
     const closeChannelEditor = () => {
         setEditingChannelId(null);
-        setNewChannelId(null);
     };
 
     const deleteChannel = async (id: string) => {
@@ -333,9 +327,6 @@ export function ChannelSettingsPane({ onOpenDiagnostics, onOpenModels, onOpenRun
                     <Button className="h-10 flex-1 sm:h-8 sm:flex-none" icon={<RefreshCw className="size-4" />} loading={loadingChannelIds.includes("all")} disabled={loadingChannelIds.some((id) => id !== "all")} onClick={() => void refreshAllModels()}>
                         拉取全部渠道模型
                     </Button>
-                    <Button type="primary" className="h-10 flex-1 sm:h-8 sm:flex-none" icon={<Plus className="size-4" />} onClick={addChannel}>
-                        添加模型服务
-                    </Button>
                     </div>
                 )}
             />
@@ -420,7 +411,6 @@ export function ChannelSettingsPane({ onOpenDiagnostics, onOpenModels, onOpenRun
                                             onClick={() => {
                                                 cancelCatalog(channel.id);
                                                 if (!builtinBeefAPI) { setServiceEditor(channel); return; }
-                                                setNewChannelId(null);
                                                 setEditingChannelId(channel.id);
                                             }}
                                         >
@@ -444,7 +434,7 @@ export function ChannelSettingsPane({ onOpenDiagnostics, onOpenModels, onOpenRun
                                 {editing && (
                                     <ModelEditorModal
                                         open
-                                        title={channel.id === newChannelId ? "新增自定义渠道" : "编辑自定义渠道"}
+                                        title="编辑自定义渠道"
                                         subtitle={channel.name}
                                         onClose={closeChannelEditor}
                                         footer={
@@ -564,10 +554,10 @@ export function ChannelSettingsPane({ onOpenDiagnostics, onOpenModels, onOpenRun
                 <WorkspaceState
                     icon="settings"
                     compact
-                    title="连接你的第一个模型服务"
+                    title="连接 SiFlux 中转站"
                     action={
-                        <Button icon={<Plus className="size-4" />} onClick={addChannel}>
-                            添加模型服务
+                        <Button href="https://siflux.cn" target="_blank" rel="noopener noreferrer">
+                            打开中转站页面
                         </Button>
                     }
                 />
