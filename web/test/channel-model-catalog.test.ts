@@ -10,7 +10,7 @@ import { canvasThemes } from "../src/lib/canvas-theme";
 import { mergeFetchedChannelModelProfiles, type ChannelModelCatalogItem } from "../src/lib/channel-model-catalog";
 import { defaultModelCapabilityConfig, pluginWorkflowCapabilityConfig } from "../src/lib/model-capabilities";
 import { ChannelModelSettings } from "../src/pages/settings/channel-model-settings";
-import { applyFetchedChannelModelCatalog } from "../src/pages/settings/channel-settings-pane";
+import { applyFetchedChannelModelCatalog } from "../src/lib/channel-config";
 import { fetchChannelModels } from "../src/services/api/image";
 import { disconnectBeefAPIConnection } from "../src/services/api/beefapi-connection";
 import { getActiveUserScope, setActiveUserScope } from "../src/lib/user-scope";

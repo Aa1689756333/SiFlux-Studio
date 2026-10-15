@@ -1,5 +1,6 @@
 import { expect, test } from "bun:test";
-import { BeefAPIConnectionActions, mergeManagedBeefAPICatalog, modelConfigChannelPresentation, modelConfigChannelStatusLabel, shouldRefreshBeefAPICatalog, withChannels } from "../src/pages/settings/channel-settings-pane";
+import { BeefAPIConnectionActions, mergeManagedBeefAPICatalog, modelConfigChannelPresentation, modelConfigChannelStatusLabel, shouldRefreshBeefAPICatalog } from "../src/pages/settings/channel-settings-pane";
+import { withChannels } from "../src/lib/channel-config";
 import { renderToStaticMarkup } from "react-dom/server";
 import { createModelChannel, defaultConfig } from "../src/stores/use-config-store";
 

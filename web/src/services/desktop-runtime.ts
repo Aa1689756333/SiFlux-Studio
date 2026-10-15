@@ -65,6 +65,34 @@ export function getDesktopAppBinding(): DesktopRuntimeBinding | undefined {
 
 let nativeFetch: typeof fetch | undefined;
 
+/**
+ * 桌面判定：macOS 的 Wails 用 wails: 方案，Windows 的 WebView2 服务在
+ * http://wails.localhost 并注入 Go 绑定（参见 services/api/custom-channel-relay.ts）。
+ */
+export function isDesktopRuntime() {
+    return Boolean(getDesktopAppBinding()) || window.location?.protocol === "wails:";
+}
+
+export type DesktopRelayImport = { name: string; baseUrl: string; apiKey: string };
+
+/**
+ * 取走待确认的一键导入。后端取一次即清空，所以轮询是安全的；
+ * 非桌面环境（开发模式的浏览器）没有这个路由，直接返回 undefined。
+ */
+export async function takePendingRelayImport(): Promise<DesktopRelayImport | undefined> {
+    if (!isDesktopRuntime()) return undefined;
+    const response = await fetch("/__desktop/relay-import", { cache: "no-store" });
+    if (!response.ok) return undefined;
+    const candidate: unknown = await response.json();
+    if (!candidate || typeof candidate !== "object") return undefined;
+    const payload = candidate as Partial<DesktopRelayImport>;
+    if (typeof payload.baseUrl !== "string" || typeof payload.apiKey !== "string") return undefined;
+    const baseUrl = payload.baseUrl.trim();
+    const apiKey = payload.apiKey.trim();
+    if (!baseUrl || !apiKey) return undefined;
+    return { name: typeof payload.name === "string" ? payload.name : "", baseUrl, apiKey };
+}
+
 function isDesktopRuntimeConfig(value: unknown): value is DesktopRuntimeConfig {
     if (!value || typeof value !== "object") return false;
     const candidate = value as Partial<DesktopRuntimeConfig>;
