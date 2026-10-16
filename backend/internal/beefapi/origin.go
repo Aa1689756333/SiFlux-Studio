@@ -17,7 +17,7 @@ const (
 	CredentialRef    = "beefapi-enterprise"
 	ChannelID        = "beefapi"
 	TestOriginEnv    = "SIFLUX_ENTERPRISE_TEST_ORIGIN"
-	WalletPath       = "/console/topup"
+	WalletPath       = "/wallet"
 )
 
 // CanonicalOrigin pins every managed-channel request to this project's own relay.

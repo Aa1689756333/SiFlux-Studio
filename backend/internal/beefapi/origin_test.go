@@ -62,17 +62,17 @@ func TestCanonicalOriginRejectsLookalikePreviewHosts(t *testing.T) {
 
 func TestWalletURLIsConsoleTopup(t *testing.T) {
 	origin := "http://enterprise.localhost:35184"
-	if WalletURL(origin) != origin+"/console/topup" {
+	if WalletURL(origin) != origin+"/wallet" {
 		t.Fatalf("wallet = %q", WalletURL(origin))
 	}
-	if _, err := ValidateWalletURL(origin, origin+"/console/topup"); err != nil {
+	if _, err := ValidateWalletURL(origin, origin+"/wallet"); err != nil {
 		t.Fatal(err)
 	}
 	if _, err := ValidateWalletURL(origin, origin+"/"); err == nil {
 		t.Fatal("home page must not be a wallet URL")
 	}
-	if _, err := ValidateWalletURL(origin, origin+"/wallet"); err == nil {
-		t.Fatal("speculative /wallet must be rejected")
+	if _, err := ValidateWalletURL(origin, origin+"/topup"); err == nil {
+		t.Fatal("speculative /topup must be rejected")
 	}
 }
 

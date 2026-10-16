@@ -263,7 +263,7 @@ func TestConnectionHappyPathSavesBeforeAckAndHidesKey(t *testing.T) {
 	if connected.Account == nil || connected.Account.ID.String() != "42" || connected.TokenID != "9001" || !connected.HasCredential {
 		t.Fatalf("connected = %#v", connected)
 	}
-	if !strings.HasSuffix(connected.WalletURL, "/console/topup") {
+	if !strings.HasSuffix(connected.WalletURL, "/wallet") {
 		t.Fatalf("wallet = %q", connected.WalletURL)
 	}
 	if strings.Contains(mustJSON(t, connected), "ent-secret-key") {
@@ -572,7 +572,7 @@ func TestOpenWalletUsesConsoleTopup(t *testing.T) {
 	if err := svc.OpenWallet(); err != nil {
 		t.Fatal(err)
 	}
-	if len(fake.opened) != 1 || !strings.HasSuffix(fake.opened[0], "/console/topup") || !strings.Contains(fake.opened[0], PreviewLocalHost) {
+	if len(fake.opened) != 1 || !strings.HasSuffix(fake.opened[0], "/wallet") || !strings.Contains(fake.opened[0], PreviewLocalHost) {
 		t.Fatalf("opened = %#v", fake.opened)
 	}
 }
