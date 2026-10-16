@@ -32,9 +32,25 @@ export type ChannelModelCatalogItem = {
 
 type ChannelModelProfile = NonNullable<ModelChannel["modelProfiles"]>[number];
 
+// A standard OpenAI-compatible relay (new-api) names its extension fields in
+// snake_case (supported_endpoint_types, display_name, model_type, ...) while this
+// host's own relay shipped camelCase. Reading only camelCase silently turned every
+// extension field into undefined, which emptied the protocol picker and blocked
+// saving the channel. Fill a camelCase alias for any snake_case key; an explicitly
+// present camelCase value always wins.
+function withCamelCaseAliases(record: Record<string, unknown>): Record<string, unknown> {
+    const normalized: Record<string, unknown> = { ...record };
+    for (const [key, value] of Object.entries(record)) {
+        if (!key.includes("_")) continue;
+        const camelKey = key.replace(/_([a-z0-9])/g, (_match, letter) => letter.toUpperCase());
+        if (normalized[camelKey] === undefined) normalized[camelKey] = value;
+    }
+    return normalized;
+}
+
 export function sanitizeChannelModelCatalogItem(value: unknown): ChannelModelCatalogItem | null {
     if (!value || typeof value !== "object") return null;
-    const record = value as Record<string, unknown>;
+    const record = withCamelCaseAliases(value as Record<string, unknown>);
     const id = stringValue(record.id);
     if (!id) return null;
     const modelType = stringValue(record.modelType).toLowerCase();
