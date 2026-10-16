@@ -397,7 +397,7 @@ func usage() {
   siflux mcp serve [--read-only]
 
 连接哪个工作区：不设 SIFLUX_BASE_URL 时自动连正在运行的 SiFlux 桌面应用，端口是动态的。
-SIFLUX_DATA_DIR 可以指向非默认数据目录。Windows 从用户目录下 .beeftv/runtime 读取对应
+SIFLUX_DATA_DIR 可以指向非默认数据目录。Windows 从用户目录下 .siflux/runtime 读取对应
 工作区的运行信息，其他平台读取数据目录里的 runtime.json。升级后请重新打开 SiFlux。
 
 凭据：在 SiFlux 的设置里新建一个客户端，把它给出的 SIFLUX_CLIENT_ID 与 SIFLUX_CLIENT_TOKEN

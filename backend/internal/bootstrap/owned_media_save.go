@@ -76,7 +76,7 @@ func writeOwnedFileAtomically(dest string, body io.Reader, src *os.File) (return
 		return err
 	}
 	directory := filepath.Dir(dest)
-	temporary, err := os.CreateTemp(directory, ".beeftv-save-*")
+	temporary, err := os.CreateTemp(directory, ".siflux-save-*")
 	if err != nil {
 		return errors.New("无法写入所选位置")
 	}

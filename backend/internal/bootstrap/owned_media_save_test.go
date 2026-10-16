@@ -154,8 +154,8 @@ func TestWriteOwnedArtifactRejectsOversizedPayload(t *testing.T) {
 func TestReplaceFileLeavesAdjacentOldFileAlone(t *testing.T) {
 	dir := t.TempDir()
 	dest := filepath.Join(dir, "keep.bin")
-	adjacent := dest + ".beeftv-old"
-	tmp := filepath.Join(dir, ".beeftv-save-x")
+	adjacent := dest + ".siflux-old"
+	tmp := filepath.Join(dir, ".siflux-save-x")
 	if err := os.WriteFile(dest, []byte("ORIGINAL"), 0o600); err != nil {
 		t.Fatal(err)
 	}
@@ -187,7 +187,7 @@ func TestReplaceFileLeavesAdjacentOldFileAlone(t *testing.T) {
 func TestReplaceFileFailurePreservesOriginalAndAdjacentOld(t *testing.T) {
 	dir := t.TempDir()
 	dest := filepath.Join(dir, "keep.bin")
-	adjacent := dest + ".beeftv-old"
+	adjacent := dest + ".siflux-old"
 	if err := os.Mkdir(dest, 0o700); err != nil {
 		t.Fatal(err)
 	}
@@ -219,7 +219,7 @@ func assertNoSaveTemps(t *testing.T, dir string) {
 		t.Fatal(err)
 	}
 	for _, entry := range entries {
-		if strings.HasPrefix(entry.Name(), ".beeftv-save-") {
+		if strings.HasPrefix(entry.Name(), ".siflux-save-") {
 			t.Fatalf("leftover temp %s", entry.Name())
 		}
 	}

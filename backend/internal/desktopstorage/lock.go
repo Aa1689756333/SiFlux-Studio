@@ -13,7 +13,7 @@ func Lock(path string) (*os.File, error) {
 	if err != nil {
 		return nil, err
 	}
-	return LockFile(filepath.Join(filepath.Dir(path), "."+filepath.Base(path)+".beeftv-lock"))
+	return LockFile(filepath.Join(filepath.Dir(path), "."+filepath.Base(path)+".siflux-lock"))
 }
 
 // LockFile lets the host place a lock outside Windows AppData virtualization.

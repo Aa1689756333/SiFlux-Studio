@@ -469,7 +469,7 @@ func (e *Engine) updatesRoot() (string, error) {
 		if err != nil {
 			cache = os.TempDir()
 		}
-		root = filepath.Join(cache, "BeefTV", "updates")
+		root = filepath.Join(cache, "SiFlux", "updates")
 	}
 	if err := os.MkdirAll(root, 0o700); err != nil {
 		return "", err

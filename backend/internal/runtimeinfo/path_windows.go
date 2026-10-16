@@ -29,5 +29,5 @@ func descriptorLocation(dataDir string) (string, string, error) {
 	// paths. Use one shared location outside AppData, never a legacy fallback.
 	digest := sha256.Sum256([]byte(strings.ToLower(filepath.Clean(abs))))
 	dataDirHash := hex.EncodeToString(digest[:])
-	return filepath.Join(home, ".beeftv", "runtime", dataDirHash+".json"), dataDirHash, nil
+	return filepath.Join(home, ".siflux", "runtime", dataDirHash+".json"), dataDirHash, nil
 }

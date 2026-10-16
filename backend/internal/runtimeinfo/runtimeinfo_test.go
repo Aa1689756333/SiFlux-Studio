@@ -12,7 +12,7 @@ func TestMain(m *testing.M) {
 	if runtime.GOOS != "windows" {
 		os.Exit(m.Run())
 	}
-	home, err := os.MkdirTemp("", "beeftv-runtime-home-")
+	home, err := os.MkdirTemp("", "siflux-runtime-home-")
 	if err != nil {
 		panic(err)
 	}

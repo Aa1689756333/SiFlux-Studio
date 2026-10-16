@@ -159,7 +159,7 @@ def exercise(source, candidate, version, directory, rollback=False):
         wait_ready(port, token, version)
         verify_product_rows(db)
         identity = hashlib.sha256(os.path.normpath(str(data)).lower().encode()).hexdigest()
-        runtime_path = Path(os.environ['USERPROFILE'])/'.beeftv'/'runtime'/(identity+'.json')
+        runtime_path = Path(os.environ['USERPROFILE'])/'.siflux'/'runtime'/(identity+'.json')
         runtime = json.loads(runtime_path.read_text(encoding='utf-8'))
         if runtime['version'] != version or runtime['baseUrl'] != f'http://127.0.0.1:{port}/api':
             raise RuntimeError('Wrong application version started')
