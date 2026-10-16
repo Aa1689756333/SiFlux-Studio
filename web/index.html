@@ -5,8 +5,18 @@
         <meta name="viewport" content="width=device-width, initial-scale=1.0" />
         <meta name="description" content="AI 影视与短剧创作工作台" />
         <link rel="icon" href="/siflux-mark.svg" type="image/svg+xml" />
+        <link rel="preload" href="/fonts/inter-latin-wght-normal.woff2" as="font" type="font/woff2" crossorigin />
         <title>正在加载</title>
         <style>
+            /* Loaded here, not only from the app bundle: this first paint happens before
+               any app CSS or font request, and the path is stable (public/ is not hashed). */
+            @font-face {
+                font-family: "Inter Variable";
+                font-style: normal;
+                font-weight: 100 900;
+                font-display: block;
+                src: url("/fonts/inter-latin-wght-normal.woff2") format("woff2-variations");
+            }
             html,
             body {
                 margin: 0;

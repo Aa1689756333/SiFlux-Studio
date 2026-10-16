@@ -2950,7 +2950,7 @@
     .beeftv-loading-logo {
         display: block;
         font-family: var(--font-sans);
-        font-size: clamp(20px, 3vw, 28px);
+        font-size: clamp(20px, 3.4vw, 30px);
         font-weight: 750;
         letter-spacing: -0.4px;
         background: linear-gradient(105deg, #c9c9c9 0%, #e4e4e4 43%, #fff 49%, #fff 52%, #e4e4e4 58%, #c9c9c9 100%);
