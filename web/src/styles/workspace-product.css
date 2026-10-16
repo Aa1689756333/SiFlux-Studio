@@ -590,10 +590,11 @@
 .app-user-workspace.app-product-workspace .app-workspace-sidebar-nav { background: var(--user-surface-muted) !important; }
 .app-user-workspace.app-product-workspace .app-workspace-sidebar { border-right: 1px solid var(--user-border); }
 .app-user-workspace.app-product-workspace .app-workspace-sidebar-brand-row { min-height: 89px; padding: 20px 20px 8px 24px; }
-.app-user-workspace.app-product-workspace .app-workspace-sidebar-brand-button { min-height: 52px; padding: 0 8px; color: var(--user-ink); }
+.app-user-workspace.app-product-workspace .app-workspace-sidebar-brand-button { min-height: 52px; padding: 0 8px; color: var(--user-ink); display: flex; justify-content: center; text-align: center; }
+.app-user-workspace.app-product-workspace .app-workspace-sidebar-brand-button > span { justify-content: center; width: 100%; }
 .app-user-workspace.app-product-workspace .app-workspace-brand-mark { width: 36px; height: 36px; border: 0; border-radius: 10px; color: var(--user-ink) !important; background: var(--user-ink); }
 .app-user-workspace.app-product-workspace .app-workspace-brand-mark svg { color:var(--user-page-bg); }
-.app-user-workspace.app-product-workspace .app-workspace-brand-wordmark { color: var(--user-ink); font-size: 20px; font-style: italic; font-weight: 780; letter-spacing: -.055em; }
+.app-user-workspace.app-product-workspace .app-workspace-brand-wordmark { color: var(--user-ink); font-size: 24px; font-style: italic; font-weight: 780; letter-spacing: 0.06em; }
 .app-user-workspace.app-product-workspace .app-workspace-sidebar-collapse-button { color: var(--user-ink-soft); }
 .app-user-workspace.app-product-workspace .app-workspace-sidebar-collapse-button:hover { background:var(--user-surface-hover);color:var(--user-ink); }
 .app-user-workspace.app-product-workspace .app-workspace-sidebar-scroll-area { gap: 16px; padding: 10px 18px 18px; }
@@ -1233,7 +1234,7 @@
 .app-user-workspace.app-product-workspace .app-workspace-brand-wordmark {
     overflow: visible !important;
     padding: 1px 2px 2px 0;
-    text-overflow: clip !important; letter-spacing: 0.03em; }
+    text-overflow: clip !important; letter-spacing: 0.06em; }
 .app-user-workspace.app-product-workspace .app-workspace-nav-link[data-nav-id="new"],
 .app-user-workspace.app-product-workspace .app-workspace-nav-link[data-nav-id="new"] :is(.app-workspace-nav-title, .app-workspace-nav-icon, svg) {
     color: var(--user-action-foreground) !important;
