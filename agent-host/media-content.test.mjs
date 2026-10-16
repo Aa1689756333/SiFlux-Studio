@@ -25,7 +25,7 @@ test('official images and bounded native media keep source evidence', () => {
   const request = adaptMediaRequest(transcript(text), model);
   expect(request.messages.map(m => m.role)).toEqual(['assistant', 'tool', 'tool', 'user', 'assistant']);
   expect(request.messages[3].content.at(-1).image_url.url).toStartWith('data:audio/wav;base64,');
-  expect(request.messages[1].content).not.toContain('BEEFTV_MEDIA_PART_V1:');
+  expect(request.messages[1].content).not.toContain('SIFLUX_MEDIA_PART_V1:');
   expect(adaptMediaRequest(request, model)).toEqual(request);
 });
 test('unsupported routes, tampered media and untrusted tool markers fail closed', () => {

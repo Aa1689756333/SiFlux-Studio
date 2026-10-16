@@ -294,7 +294,7 @@ func isLoopbackRequest(r *http.Request) bool {
 
 // allowedOrigins 允许显式配置的正式前端 Origin（例如 Wails 宿主页面）。
 func allowedOrigins() []string {
-	raw := strings.TrimSpace(os.Getenv("BEEFTV_ALLOWED_ORIGINS"))
+	raw := strings.TrimSpace(os.Getenv("SIFLUX_ALLOWED_ORIGINS"))
 	if raw == "" {
 		return nil
 	}

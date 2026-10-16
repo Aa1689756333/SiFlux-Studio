@@ -80,8 +80,8 @@ func newAssistantTestEnv(t *testing.T, host func(env *assistantTestEnv) http.Han
 		t.Fatal(err)
 	}
 	env := &assistantTestEnv{service: service, canvasID: canvasID, hostHits: map[string]int{}}
-	t.Setenv("BEEFTV_AGENT_HOST_TOKEN", assistantTestHostToken)
-	t.Setenv("BEEFTV_AGENT_HOST_URL", "http://127.0.0.1:18500")
+	t.Setenv("SIFLUX_AGENT_HOST_TOKEN", assistantTestHostToken)
+	t.Setenv("SIFLUX_AGENT_HOST_URL", "http://127.0.0.1:18500")
 
 	ui := newUISessionStore()
 	env.uiToken = ui.issue(owner.ID).Token
@@ -133,10 +133,10 @@ func (e *assistantTestEnv) opsRaw(op, opID, turnID, params string) (int, string)
 // 显式注入的供应商：让状态解析不依赖真实渠道配置，测试只验证路由与契约。
 func useEnvProvider(t *testing.T, protocol string) {
 	t.Helper()
-	t.Setenv("BEEFTV_AGENT_API_KEY", "test-key")
-	t.Setenv("BEEFTV_AGENT_BASE_URL", "https://relay.example.com/v1")
-	t.Setenv("BEEFTV_AGENT_MODEL", "MiniMax-M3")
-	t.Setenv("BEEFTV_AGENT_PROTOCOL", protocol)
+	t.Setenv("SIFLUX_AGENT_API_KEY", "test-key")
+	t.Setenv("SIFLUX_AGENT_BASE_URL", "https://relay.example.com/v1")
+	t.Setenv("SIFLUX_AGENT_MODEL", "MiniMax-M3")
+	t.Setenv("SIFLUX_AGENT_PROTOCOL", protocol)
 }
 
 func (e *assistantTestEnv) call(t *testing.T, method, path, body string) *httptest.ResponseRecorder {
@@ -222,7 +222,7 @@ func TestAssistantStatusReportsResolvedModelAndReasons(t *testing.T) {
 	}
 
 	// 模型/凭据没解析出来时，宿主是否健康都不影响结论。
-	for _, key := range []string{"BEEFTV_AGENT_API_KEY", "BEEFTV_AGENT_BASE_URL", "BEEFTV_AGENT_MODEL", "BEEFTV_AGENT_PROTOCOL"} {
+	for _, key := range []string{"SIFLUX_AGENT_API_KEY", "SIFLUX_AGENT_BASE_URL", "SIFLUX_AGENT_MODEL", "SIFLUX_AGENT_PROTOCOL"} {
 		t.Setenv(key, "")
 	}
 	data = decodeEnvelope(t, env.call(t, http.MethodGet, "/assistant/status", ""))
@@ -449,7 +449,7 @@ func TestAssistantStatusBusyOldModelAfterProviderChange(t *testing.T) {
 	})
 	env.assistantHost.TestingUseOwnedEndpoint(env.assistantHost.Endpoint(), assistantTestNonce, running.Fingerprint())
 	useEnvProvider(t, "chat-completion")
-	t.Setenv("BEEFTV_AGENT_MODEL", "MiniMax-M3")
+	t.Setenv("SIFLUX_AGENT_MODEL", "MiniMax-M3")
 
 	data := decodeEnvelope(t, env.call(t, http.MethodGet, "/assistant/status", ""))
 	if available, _ := data["available"].(bool); available {
@@ -482,7 +482,7 @@ func TestAssistantStatusUncertainHealthDoesNotRelaunchOnFingerprintChange(t *tes
 	owned := env.assistantHost.Endpoint()
 	env.assistantHost.TestingUseOwnedEndpoint(owned, assistantTestNonce, running.Fingerprint())
 	useEnvProvider(t, "chat-completion")
-	t.Setenv("BEEFTV_AGENT_MODEL", "MiniMax-M3")
+	t.Setenv("SIFLUX_AGENT_MODEL", "MiniMax-M3")
 
 	data := decodeEnvelope(t, env.callWithTimeout(t, 300*time.Millisecond, http.MethodGet, "/assistant/status", ""))
 	if env.assistantHost.Endpoint() != owned || !env.assistantHost.Running() {
@@ -557,7 +557,7 @@ func TestAssistantStatusAndProxyIgnoreForeignHostURL(t *testing.T) {
 	t.Cleanup(foreign.Close)
 
 	env := newAssistantTestEnv(t, nil)
-	t.Setenv("BEEFTV_AGENT_HOST_URL", foreign.URL)
+	t.Setenv("SIFLUX_AGENT_HOST_URL", foreign.URL)
 	useEnvProvider(t, "chat-completion")
 
 	status := decodeEnvelope(t, env.call(t, http.MethodGet, "/assistant/status", ""))

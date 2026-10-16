@@ -12,9 +12,9 @@ import (
 // The real pi host fetches /ops before it listens for health. Status polling
 // must not conceal a failed first launch by starting a replacement child.
 func TestAssistantFirstLaunchCanReadRuntimeOperations(t *testing.T) {
-	node := os.Getenv("BEEFTV_TEST_NODE")
+	node := os.Getenv("SIFLUX_TEST_NODE")
 	if node == "" {
-		t.Skip("BEEFTV_TEST_NODE is required for the real host startup regression")
+		t.Skip("SIFLUX_TEST_NODE is required for the real host startup regression")
 	}
 	entry, err := filepath.Abs("../../../agent-host/server.mjs")
 	if err != nil {
@@ -39,7 +39,7 @@ func TestAssistantFirstLaunchCanReadRuntimeOperations(t *testing.T) {
 				"modelProfiles": []any{map[string]any{"model": "fixture-model", "capability": "text", "protocol": "chat-completion"}}},
 		}},
 	})
-	t.Setenv("BEEFTV_AGENT_MAX_REQUESTS", "0")
+	t.Setenv("SIFLUX_AGENT_MAX_REQUESTS", "0")
 	r, err := Open(t.Context(), Config{Profile: ProfileDesktop, DataDir: dataDir, ListenAddr: "127.0.0.1:0", LaunchToken: "startup-fixture", AutoMigrate: true})
 	if err != nil {
 		t.Fatal(err)

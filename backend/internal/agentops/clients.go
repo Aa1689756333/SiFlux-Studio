@@ -297,7 +297,7 @@ func HostTokenMatches(dataDir, presented string) bool {
 	if presented == "" {
 		return false
 	}
-	expected := strings.TrimSpace(os.Getenv("BEEFTV_AGENT_HOST_TOKEN"))
+	expected := strings.TrimSpace(os.Getenv("SIFLUX_AGENT_HOST_TOKEN"))
 	if expected == "" {
 		if strings.TrimSpace(dataDir) == "" {
 			return false

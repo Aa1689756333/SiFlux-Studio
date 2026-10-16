@@ -176,7 +176,7 @@ describe("供应商定义", () => {
         const registration = providerRegistration({ api: "anthropic-messages", baseUrl: "https://enterprise.example.com",
             modelId: "claude-fable-5", maxTokens: 4096, contextWindow: 200000 });
 
-        expect(registration.apiKey).toBe("$BEEFTV_AGENT_API_KEY");
+        expect(registration.apiKey).toBe("$SIFLUX_AGENT_API_KEY");
         expect(registration.api).toBe("anthropic-messages");
         expect(registration.baseUrl).toBe("https://enterprise.example.com");
         expect(registration.models).toEqual([{ id: "claude-fable-5", name: "claude-fable-5", reasoning: true,
@@ -192,13 +192,13 @@ describe("供应商定义", () => {
         // Durable 的官方 registry 工厂可以使用；供应商与模型仍只登记 Go 下发的配置。
         expect(serverSource).toContain("const models = createModels(); const provider = modelRuntime.getProvider(PROVIDER_ID)");
         expect(serverSource).toContain("getModelRef: () => ({ provider: PROVIDER_ID, modelId: MODEL_ID })");
-        expect(serverSource).toContain("BEEFTV_AGENT_API");
+        expect(serverSource).toContain("SIFLUX_AGENT_API");
     });
 
     test("缺少模型或密钥时宿主仍然监听，只在 /health 里说明原因", () => {
         // 以前这里是 process.exit(2)：宿主静默退出，界面只会看到「助手不可用」。
-        expect(serverSource).toContain("BEEFTV_AGENT_HOST_TOKEN: HOST_TOKEN");
-        expect(serverSource).not.toContain("BEEFTV_AGENT_API_KEY: API_KEY");
+        expect(serverSource).toContain("SIFLUX_AGENT_HOST_TOKEN: HOST_TOKEN");
+        expect(serverSource).not.toContain("SIFLUX_AGENT_API_KEY: API_KEY");
         expect(serverSource).toContain("ok: !providerReason");
     });
 });

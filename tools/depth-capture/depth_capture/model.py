@@ -22,7 +22,7 @@ VDA_SMALL_SHA256 = "13379300b739e659f076a59d52e9801bd8d38c541a7e71f73bbca4dcfb01
 
 
 def default_runtime_dir() -> Path:
-    configured = os.environ.get("BEEFTV_DEPTH_RUNTIME")
+    configured = os.environ.get("SIFLUX_DEPTH_RUNTIME")
     # Keep the runtime beside this project so it survives /tmp cleanup and
     # can be reused by the local app on every launch.
     project_cache = Path(__file__).resolve().parents[1] / ".cache" / "runtime"
@@ -63,7 +63,7 @@ def _download_checkpoint(checkpoint: Path) -> None:
 
 
 def ensure_vda_runtime(runtime_dir: Path) -> tuple[Path, Path]:
-    configured_source = os.environ.get("BEEFTV_VDA_SOURCE")
+    configured_source = os.environ.get("SIFLUX_VDA_SOURCE")
     repo_dir = Path(configured_source).expanduser() if configured_source else runtime_dir / "Video-Depth-Anything"
     checkpoint = runtime_dir / "checkpoints" / "video_depth_anything_vits.pth"
     runtime_dir.mkdir(parents=True, exist_ok=True)

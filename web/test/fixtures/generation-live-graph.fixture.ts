@@ -22,7 +22,7 @@ mock.module("@/pages/canvas/canvas-image-generation-executor", () => ({ executeI
 mock.module("@/pages/canvas/canvas-media-generation-executors", () => ({ executeVideoGeneration: async (input: any) => { dispatched.push(input); }, executeAudioGeneration: async () => {} }));
 mock.module("@/pages/canvas/canvas-text-generation-executor", () => ({ executeTextGeneration: async () => {} }));
 
-const { useCanvasGenerationExecutor } = await import(process.env.BEEFTV_EXECUTOR_MODULE || "@/pages/canvas/use-canvas-generation-executor");
+const { useCanvasGenerationExecutor } = await import(process.env.SIFLUX_EXECUTOR_MODULE || "@/pages/canvas/use-canvas-generation-executor");
 const node = (id: string) => ({ id, type: "image", title: id, position: { x: 0, y: 0 }, width: 100, height: 100, metadata: { status: "success", content: "old:" + id, storageKey: "old:" + id, taskId: "old-task:" + id, prompt: "coffee", lastGenerationRequestFingerprint: "repeat" } });
 const frozenNodes = [node("image"), node("text")];
 const nodesRef = { current: structuredClone(frozenNodes) };

@@ -1,6 +1,6 @@
 // 宿主系统提示词：只由产品显式提供，不发现宿主机或工作区中的资源。
 // Durable 会话把 SYSTEM_PROMPT 作为 instructions 直接装配，不再经过旧 SDK 的 DefaultResourceLoader。
-export const MARKER = 'BEEFTV_CANVAS_AGENT_V1';
+export const MARKER = 'SIFLUX_CANVAS_AGENT_V1';
 export const SYSTEM_PROMPT = [
   MARKER,
   '你是 BeefTV 画布创作助手，运行在产品内置会话里。',

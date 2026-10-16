@@ -42,22 +42,22 @@ VIAddVersionKey "LegalCopyright" "BeefTV"
 !insertmacro MUI_LANGUAGE "English"
 !insertmacro MUI_LANGUAGE "SimpChinese"
 
-LangString BEEFTV_DIR_FOREIGN ${LANG_ENGLISH} "This folder already holds other files and is not a BeefTV installation. Choose an empty folder or the current BeefTV location."
-LangString BEEFTV_DIR_FOREIGN ${LANG_SIMPCHINESE} "这个文件夹里已有其他文件，不是 BeefTV 安装位置。请选择一个空文件夹，或当前的 BeefTV 安装位置。"
-LangString BEEFTV_DIR_WRITE ${LANG_ENGLISH} "BeefTV cannot write here. Administrator rights are required, so choose another folder."
-LangString BEEFTV_DIR_WRITE ${LANG_SIMPCHINESE} "需要管理员权限，请选择其他文件夹。"
-LangString BEEFTV_BUSY ${LANG_ENGLISH} "Another BeefTV installer or uninstaller is running. Close it and try again."
-LangString BEEFTV_BUSY ${LANG_SIMPCHINESE} "另一个 BeefTV 安装或卸载程序正在运行。请先关闭它，再试一次。"
-LangString BEEFTV_CLOSE ${LANG_ENGLISH} "Please close BeefTV and its CLI, then choose Retry."
-LangString BEEFTV_CLOSE ${LANG_SIMPCHINESE} "请退出 BeefTV 及其命令行程序，然后点击“重试”。"
-LangString BEEFTV_RETRY ${LANG_ENGLISH} "Windows could not move this application folder (error $MoveError):$\r$\n$MoveFrom$\r$\n$\r$\nClose programs or terminal windows using it, then choose Retry. Cancel stops this installation.$\r$\nLog: $InstallLog"
-LangString BEEFTV_RETRY ${LANG_SIMPCHINESE} "Windows 无法移动以下程序文件夹（错误 $MoveError）：$\r$\n$MoveFrom$\r$\n$\r$\n请关闭正在使用它的程序或终端窗口，然后点击“重试”。点击“取消”将停止安装。$\r$\n安装日志：$InstallLog"
-LangString BEEFTV_PRESERVED ${LANG_ENGLISH} "Installation stopped. The previous application is still at $INSTDIR. Your projects are preserved.$\r$\nLog: $InstallLog"
-LangString BEEFTV_PRESERVED ${LANG_SIMPCHINESE} "安装已停止，原程序仍保留在 $INSTDIR，项目不会被删除。$\r$\n安装日志：$InstallLog"
-LangString BEEFTV_STOPPED ${LANG_ENGLISH} "Installation stopped. Your projects are preserved.$\r$\nLog: $InstallLog"
-LangString BEEFTV_STOPPED ${LANG_SIMPCHINESE} "安装已停止，项目不会被删除。$\r$\n安装日志：$InstallLog"
-LangString BEEFTV_RESTORE_FAILED ${LANG_ENGLISH} "Windows could not restore the previous application. It is preserved at:$\r$\n$BackupDir$\r$\nDo not delete this folder. Contact support with this log:$\r$\n$InstallLog"
-LangString BEEFTV_RESTORE_FAILED ${LANG_SIMPCHINESE} "Windows 未能恢复原程序，原文件保留在：$\r$\n$BackupDir$\r$\n请不要删除此文件夹，并将安装日志发给客服：$\r$\n$InstallLog"
+LangString SIFLUX_DIR_FOREIGN ${LANG_ENGLISH} "This folder already holds other files and is not a BeefTV installation. Choose an empty folder or the current BeefTV location."
+LangString SIFLUX_DIR_FOREIGN ${LANG_SIMPCHINESE} "这个文件夹里已有其他文件，不是 BeefTV 安装位置。请选择一个空文件夹，或当前的 BeefTV 安装位置。"
+LangString SIFLUX_DIR_WRITE ${LANG_ENGLISH} "BeefTV cannot write here. Administrator rights are required, so choose another folder."
+LangString SIFLUX_DIR_WRITE ${LANG_SIMPCHINESE} "需要管理员权限，请选择其他文件夹。"
+LangString SIFLUX_BUSY ${LANG_ENGLISH} "Another BeefTV installer or uninstaller is running. Close it and try again."
+LangString SIFLUX_BUSY ${LANG_SIMPCHINESE} "另一个 BeefTV 安装或卸载程序正在运行。请先关闭它，再试一次。"
+LangString SIFLUX_CLOSE ${LANG_ENGLISH} "Please close BeefTV and its CLI, then choose Retry."
+LangString SIFLUX_CLOSE ${LANG_SIMPCHINESE} "请退出 BeefTV 及其命令行程序，然后点击“重试”。"
+LangString SIFLUX_RETRY ${LANG_ENGLISH} "Windows could not move this application folder (error $MoveError):$\r$\n$MoveFrom$\r$\n$\r$\nClose programs or terminal windows using it, then choose Retry. Cancel stops this installation.$\r$\nLog: $InstallLog"
+LangString SIFLUX_RETRY ${LANG_SIMPCHINESE} "Windows 无法移动以下程序文件夹（错误 $MoveError）：$\r$\n$MoveFrom$\r$\n$\r$\n请关闭正在使用它的程序或终端窗口，然后点击“重试”。点击“取消”将停止安装。$\r$\n安装日志：$InstallLog"
+LangString SIFLUX_PRESERVED ${LANG_ENGLISH} "Installation stopped. The previous application is still at $INSTDIR. Your projects are preserved.$\r$\nLog: $InstallLog"
+LangString SIFLUX_PRESERVED ${LANG_SIMPCHINESE} "安装已停止，原程序仍保留在 $INSTDIR，项目不会被删除。$\r$\n安装日志：$InstallLog"
+LangString SIFLUX_STOPPED ${LANG_ENGLISH} "Installation stopped. Your projects are preserved.$\r$\nLog: $InstallLog"
+LangString SIFLUX_STOPPED ${LANG_SIMPCHINESE} "安装已停止，项目不会被删除。$\r$\n安装日志：$InstallLog"
+LangString SIFLUX_RESTORE_FAILED ${LANG_ENGLISH} "Windows could not restore the previous application. It is preserved at:$\r$\n$BackupDir$\r$\nDo not delete this folder. Contact support with this log:$\r$\n$InstallLog"
+LangString SIFLUX_RESTORE_FAILED ${LANG_SIMPCHINESE} "Windows 未能恢复原程序，原文件保留在：$\r$\n$BackupDir$\r$\n请不要删除此文件夹，并将安装日志发给客服：$\r$\n$InstallLog"
 
 # Keep the handle until process exit. Installation and uninstallation must not
 # race while moving folders or updating the per-user registration.
@@ -68,7 +68,7 @@ Function ${PREFIX}AcquireInstallerLock
   StrCpy $InstallerMutex $0
   ${If} $0 == 0
   ${OrIf} $1 == 183
-    MessageBox MB_OK|MB_ICONEXCLAMATION "$(BEEFTV_BUSY)" /SD IDOK
+    MessageBox MB_OK|MB_ICONEXCLAMATION "$(SIFLUX_BUSY)" /SD IDOK
     SetErrorLevel 2
     Abort
   ${EndIf}
@@ -110,7 +110,7 @@ Function MoveInstallFolder
       Goto move_attempt
     ${EndIf}
   ${EndIf}
-  MessageBox MB_RETRYCANCEL|MB_ICONEXCLAMATION "$(BEEFTV_RETRY)" /SD IDCANCEL IDRETRY move_retry
+  MessageBox MB_RETRYCANCEL|MB_ICONEXCLAMATION "$(SIFLUX_RETRY)" /SD IDCANCEL IDRETRY move_retry
   StrCpy $0 0
 FunctionEnd
 
@@ -197,9 +197,9 @@ FunctionEnd
 
 Function ShowInstallDirError
   ${If} $0 == 2
-    MessageBox MB_OK|MB_ICONSTOP "$(BEEFTV_DIR_FOREIGN)" /SD IDOK
+    MessageBox MB_OK|MB_ICONSTOP "$(SIFLUX_DIR_FOREIGN)" /SD IDOK
   ${ElseIf} $0 == 3
-    MessageBox MB_OK|MB_ICONSTOP "$(BEEFTV_DIR_WRITE)" /SD IDOK
+    MessageBox MB_OK|MB_ICONSTOP "$(SIFLUX_DIR_WRITE)" /SD IDOK
   ${EndIf}
 FunctionEnd
 
@@ -262,7 +262,7 @@ Function ${PREFIX}RequireClosed
     Sleep 500
     Goto check_closed_${PREFIX}
   ${EndIf}
-  MessageBox MB_RETRYCANCEL|MB_ICONEXCLAMATION "$(BEEFTV_CLOSE)" /SD IDCANCEL IDRETRY retry_closed_${PREFIX}
+  MessageBox MB_RETRYCANCEL|MB_ICONEXCLAMATION "$(SIFLUX_CLOSE)" /SD IDCANCEL IDRETRY retry_closed_${PREFIX}
   SetErrorLevel 2
   Abort
 FunctionEnd
@@ -325,7 +325,7 @@ Function .onInit
     ClearErrors
     GetTempFileName $InstallLog "$TEMP"
     ${If} ${Errors}
-      MessageBox MB_OK|MB_ICONSTOP "$(BEEFTV_DIR_WRITE)" /SD IDOK
+      MessageBox MB_OK|MB_ICONSTOP "$(SIFLUX_DIR_WRITE)" /SD IDOK
       SetErrorLevel 1
       Abort
     ${EndIf}
@@ -386,7 +386,7 @@ Section "BeefTV (required)" SEC_APP
   prepare_failed:
   StrCpy $LogLine 'could not prepare installation beside "$INSTDIR"'
   Call WriteInstallLog
-  MessageBox MB_OK|MB_ICONSTOP "$(BEEFTV_STOPPED)" /SD IDOK
+  MessageBox MB_OK|MB_ICONSTOP "$(SIFLUX_STOPPED)" /SD IDOK
   SetErrorLevel 1
   Abort
   backup_existing:
@@ -456,16 +456,16 @@ Section "BeefTV (required)" SEC_APP
     ${If} $0 == 0
       # Preserve BOTH trees when rollback is blocked; never delete the only
       # working old application or obscure its exact recovery location.
-      MessageBox MB_OK|MB_ICONSTOP "$(BEEFTV_RESTORE_FAILED)" /SD IDOK
+      MessageBox MB_OK|MB_ICONSTOP "$(SIFLUX_RESTORE_FAILED)" /SD IDOK
       SetErrorLevel 1
       Abort
     ${EndIf}
   ${EndIf}
   install_failed:
   ${If} ${FileExists} "$INSTDIR\*.*"
-    MessageBox MB_OK|MB_ICONSTOP "$(BEEFTV_PRESERVED)" /SD IDOK
+    MessageBox MB_OK|MB_ICONSTOP "$(SIFLUX_PRESERVED)" /SD IDOK
   ${Else}
-    MessageBox MB_OK|MB_ICONSTOP "$(BEEFTV_STOPPED)" /SD IDOK
+    MessageBox MB_OK|MB_ICONSTOP "$(SIFLUX_STOPPED)" /SD IDOK
   ${EndIf}
   SetErrorLevel 1
   Abort

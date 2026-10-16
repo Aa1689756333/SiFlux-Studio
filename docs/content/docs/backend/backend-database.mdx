@@ -62,7 +62,7 @@ Agent 宿主在安装仓库锁定的依赖后，可从仓库根目录执行 `bun
 
 ### Lucas 统一候选测试入口
 
-待测远端分支为 `codex/pr41-sr-repair-20260930`。从干净的独立 checkout 拉取该分支并记录完整 commit；不要把其他会话的未提交修改覆盖到候选。上面的 Go 命令可先验证合成数据迁移和 CLI/MCP 合同。前端可在已有依赖和 FFmpeg/Chromium 环境执行 `BEEFTV_NATIVE_FFMPEG_TEST=1 BEEFTV_BROWSER_WORKER_TEST=1 bun run test`（工作目录 `web`），启用真实媒体和浏览器 Worker 用例；缺少工具不得记作通过。
+待测远端分支为 `codex/pr41-sr-repair-20260930`。从干净的独立 checkout 拉取该分支并记录完整 commit；不要把其他会话的未提交修改覆盖到候选。上面的 Go 命令可先验证合成数据迁移和 CLI/MCP 合同。前端可在已有依赖和 FFmpeg/Chromium 环境执行 `SIFLUX_NATIVE_FFMPEG_TEST=1 SIFLUX_BROWSER_WORKER_TEST=1 bun run test`（工作目录 `web`），启用真实媒体和浏览器 Worker 用例；缺少工具不得记作通过。
 
 人工桌面验收须另行取得按候选 commit 构建的完整包。先关闭所有使用源工作区的程序，复制整个工作区到备份目录，再从备份复制一个测试目录；保留未打开过的备份。启动候选时显式设置 `CANVAS_DESKTOP_DATA_DIR` 为测试目录的绝对路径，核对启动日志及工作区内容后再操作。不得省略此变量而误用默认工作区。Windows PowerShell 示例（路径必须替换为实际独立目录）：
 

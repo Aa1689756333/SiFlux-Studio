@@ -58,7 +58,7 @@ jobs:
       - name: Select bundled Node runtime
         shell: bash
         run: |
-          node -e 'const fs=require("fs"),p=require("path"); const bin=p.dirname(process.execPath); fs.appendFileSync(process.env.GITHUB_ENV, `BEEFTV_NODE_RUNTIME=${process.platform==="win32"?bin:p.dirname(bin)}\n`);'
+          node -e 'const fs=require("fs"),p=require("path"); const bin=p.dirname(process.execPath); fs.appendFileSync(process.env.GITHUB_ENV, `SIFLUX_NODE_RUNTIME=${process.platform==="win32"?bin:p.dirname(bin)}\n`);'
       - name: Linux desktop dependencies
         if: runner.os == 'Linux'
         run: |
@@ -90,9 +90,9 @@ jobs:
       - name: Build Unix desktop
         if: runner.os != 'Windows'
         env:
-          BEEFTV_SKIP_LOCAL_VERIFY: '1'
-          BEEFTV_WAILS_PLATFORM: ${{ matrix.target }}
-          BEEFTV_UPDATER_PUBLIC_KEY: ${{ vars.BEEFTV_UPDATER_PUBLIC_KEY }}
+          SIFLUX_SKIP_LOCAL_VERIFY: '1'
+          SIFLUX_WAILS_PLATFORM: ${{ matrix.target }}
+          SIFLUX_UPDATER_PUBLIC_KEY: ${{ vars.SIFLUX_UPDATER_PUBLIC_KEY }}
         run: |
           sh plugin-packages/build-packages.sh
           ./scripts/build-siflux-release.sh
@@ -100,7 +100,7 @@ jobs:
         if: runner.os == 'Windows'
         env:
           CGO_ENABLED: '1'
-          BEEFTV_UPDATER_PUBLIC_KEY: ${{ vars.BEEFTV_UPDATER_PUBLIC_KEY }}
+          SIFLUX_UPDATER_PUBLIC_KEY: ${{ vars.SIFLUX_UPDATER_PUBLIC_KEY }}
         shell: pwsh
         run: powershell -NoProfile -ExecutionPolicy Bypass -File .\scripts\build-siflux-windows-release.ps1
       - name: Package native installer

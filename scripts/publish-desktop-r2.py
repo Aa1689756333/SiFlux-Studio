@@ -59,7 +59,7 @@ def fingerprint(path):
 def signed_payload(path, verifier):
     if Path(path).stat().st_size > MAX_MANIFEST:
         raise PublishError("Manifest is too large")
-    # The Go verifier reads BEEFTV_UPDATER_PUBLIC_KEY itself; no key in argv/logs.
+    # The Go verifier reads SIFLUX_UPDATER_PUBLIC_KEY itself; no key in argv/logs.
     result = run([str(verifier), "verify", "--envelope", str(path)])
     if result.returncode:
         raise PublishError("Manifest signature or schema verification failed")

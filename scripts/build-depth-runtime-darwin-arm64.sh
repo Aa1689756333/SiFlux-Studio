@@ -44,12 +44,12 @@ printf '%s\n' \
   > "$RUNTIME_STAGE/.venv/bin/python"
 chmod 0750 "$RUNTIME_STAGE/.venv/bin/python"
 
-if [[ -n "${BEEFTV_VDA_SOURCE_DIR:-}" ]]; then
-  if [[ "$(git -C "$BEEFTV_VDA_SOURCE_DIR" rev-parse HEAD)" != "$VDA_COMMIT" ]]; then
-    echo "BEEFTV_VDA_SOURCE_DIR is not at the required commit $VDA_COMMIT" >&2
+if [[ -n "${SIFLUX_VDA_SOURCE_DIR:-}" ]]; then
+  if [[ "$(git -C "$SIFLUX_VDA_SOURCE_DIR" rev-parse HEAD)" != "$VDA_COMMIT" ]]; then
+    echo "SIFLUX_VDA_SOURCE_DIR is not at the required commit $VDA_COMMIT" >&2
     exit 1
   fi
-  rsync -a "$BEEFTV_VDA_SOURCE_DIR/" "$STAGE_DIR/vda-repo/"
+  rsync -a "$SIFLUX_VDA_SOURCE_DIR/" "$STAGE_DIR/vda-repo/"
 else
   git -c http.version=HTTP/1.1 clone --filter=blob:none --no-checkout https://github.com/DepthAnything/Video-Depth-Anything.git "$STAGE_DIR/vda-repo"
   git -C "$STAGE_DIR/vda-repo" checkout "$VDA_COMMIT"

@@ -39,9 +39,9 @@
 | 字幕 | SRT + libass `subtitles=filename=render-subtitles.srt` | 先按计划字幕栅格化 PNG 再 overlay；无图像时才走 `subtitles=` + libass |
 | 源标识 | 授权后的 resource id | 浏览器 nodeId；永远不是本地路径 |
 
-`web/test/timeline-ffmpeg-native.test.ts` 的 `createNativeEngine` 用 `spawnSync("ffmpeg")` 跑 wasm 风格步骤，验证与 Go native 共用 `fixtures/editing/*.plan.json`。默认 `BEEFTV_NATIVE_FFMPEG_TEST!==1` 时 skip。这不是生产集成：桌面任务仍走 `task_render.go` → `editing.Renderer`。
+`web/test/timeline-ffmpeg-native.test.ts` 的 `createNativeEngine` 用 `spawnSync("ffmpeg")` 跑 wasm 风格步骤，验证与 Go native 共用 `fixtures/editing/*.plan.json`。默认 `SIFLUX_NATIVE_FFMPEG_TEST!==1` 时 skip。这不是生产集成：桌面任务仍走 `task_render.go` → `editing.Renderer`。
 
-浏览器真实 worker 夹具：`web/test/timeline-worker.browser.test.ts`（mock `/api/timeline/render-plan` 返回同一份 six-second-mix 计划）。需 `BEEFTV_BROWSER_WORKER_TEST=1`。
+浏览器真实 worker 夹具：`web/test/timeline-worker.browser.test.ts`（mock `/api/timeline/render-plan` 返回同一份 six-second-mix 计划）。需 `SIFLUX_BROWSER_WORKER_TEST=1`。
 
 Go native 夹具：`backend/internal/editing/native_ffmpeg_test.go`。本机有 ffmpeg/ffprobe 时探测实际输出时长、音轨和烧录，缺工具则 skip。
 

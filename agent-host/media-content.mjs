@@ -1,7 +1,7 @@
 import crypto from 'node:crypto';
 
-const MARKER = 'BEEFTV_MEDIA_PART_V1:';
-const REFERENCE_MARKER = 'BEEFTV_MEDIA_REF_V1:';
+const MARKER = 'SIFLUX_MEDIA_PART_V1:';
+const REFERENCE_MARKER = 'SIFLUX_MEDIA_REF_V1:';
 const MAX_PART_BYTES = 8 * 1024 * 1024;
 const MAX_REQUEST_BYTES = 32 * 1024 * 1024;
 const MIME = new Set(['image/jpeg', 'image/png', 'video/mp4', 'audio/wav']);

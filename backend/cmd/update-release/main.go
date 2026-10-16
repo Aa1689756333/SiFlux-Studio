@@ -24,7 +24,7 @@ Commands:
 
 The private key is never written to stdout or stderr. Generate it only to an
 explicit file with mode 0600. Production publishing uses GitHub secret
-BEEFTV_UPDATER_PRIVATE_KEY and repository variable BEEFTV_UPDATER_PUBLIC_KEY.
+SIFLUX_UPDATER_PRIVATE_KEY and repository variable SIFLUX_UPDATER_PUBLIC_KEY.
 `
 
 func main() {

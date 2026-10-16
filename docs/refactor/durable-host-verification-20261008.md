@@ -18,7 +18,7 @@ history/status 严格投影业务字段；不发送 native image base64、内部
 
 - 随包 Node **24.15.0**：`node --test durable-session-owner-cases.mjs durable-turn-budget-cases.mjs`，9 项通过（4.910 秒）。覆盖写后 SIGKILL safe 重放不重复、未知写 unsafe 不重放、closed 授权拒绝、complete 后崩溃只重建历史、取消等待、官方停止、补充输入跨崩溃顺序、pin 保存、媒体数据投影、失败不假成功和持久预算。Bun 测试入口通过独立 Node runner 执行这些 case，避免混用 Bun 与 node:test 的清理语义。
 - **真实 server.mjs + Go HTTP + SQLite**：`go test ./internal/handler -run TestDurableActualHost -count=1 -timeout 65s`，通过（6.990 秒）。实际创建两视频草案，SIGKILL 后同一 Go turn 仍 open，重启默认 Durable 宿主恢复两参考线，完成后 Go turn 关闭，实际 Undo 恢复原节点。关闭新 Durable 创建后，已有 Durable 历史仍可读，旧 SDK 空会话可创建与读取；来回激活不重跑已完成任务。
-- **实际锁依赖与随包 runtime**：`BEEFTV_NODE_RUNTIME=/Applications/BeefTV.app/Contents/Resources/agent-host/runtime bun test scripts/package-agent-host.test.mjs`，3 项通过（38.43 秒）。干净目录从 frozen lock 安装并验证官方包/本地模块导入，路径含空格，正式 server 启动零模型调用。
+- **实际锁依赖与随包 runtime**：`SIFLUX_NODE_RUNTIME=/Applications/BeefTV.app/Contents/Resources/agent-host/runtime bun test scripts/package-agent-host.test.mjs`，3 项通过（38.43 秒）。干净目录从 frozen lock 安装并验证官方包/本地模块导入，路径含空格，正式 server 启动零模型调用。
 - `bun install --frozen-lockfile` 通过；未请求真实付费模型。
 
 测试中的 Go 业务、回执和撤销是真实实现；模型是隔离本地脚本供应商。本报告不声称桌面交互、真实模型理解、Windows runtime 或生产发布已完成。

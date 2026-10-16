@@ -27,7 +27,7 @@ func TestIsLoopbackRequestOriginRules(t *testing.T) {
 	}
 	for _, tc := range cases {
 		t.Run(tc.name, func(t *testing.T) {
-			t.Setenv("BEEFTV_ALLOWED_ORIGINS", tc.allowed)
+			t.Setenv("SIFLUX_ALLOWED_ORIGINS", tc.allowed)
 			req := httptest.NewRequest(http.MethodGet, "http://"+tc.host+"/api/ops", nil)
 			req.Host = tc.host
 			req.RemoteAddr = tc.remote

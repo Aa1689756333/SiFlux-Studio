@@ -30,7 +30,7 @@ const provider=createServer(async(req,res)=>{
 });
 try{
  const proxyPort=await listen(proxy),modelPort=await listen(provider);const reservation=createServer();const port=await listen(reservation);await new Promise(r=>reservation.close(r));base=`http://127.0.0.1:${port}`;
- const env={...process.env,BEEFTV_AGENT_DATA_DIR:config.directory,BEEFTV_AGENT_PORT:String(port),BEEFTV_AGENT_HOST_TOKEN:config.hostToken,BEEFTV_OPS_URL:`http://127.0.0.1:${proxyPort}`,BEEFTV_AGENT_API_KEY:'fixture',BEEFTV_AGENT_API:'openai-completions',BEEFTV_AGENT_MODEL:'synthetic',BEEFTV_AGENT_BASE_URL:`http://127.0.0.1:${modelPort}/v1`,BEEFTV_AGENT_TOTAL_REQUEST_BUDGET:'0'};
+ const env={...process.env,SIFLUX_AGENT_DATA_DIR:config.directory,SIFLUX_AGENT_PORT:String(port),SIFLUX_AGENT_HOST_TOKEN:config.hostToken,SIFLUX_OPS_URL:`http://127.0.0.1:${proxyPort}`,SIFLUX_AGENT_API_KEY:'fixture',SIFLUX_AGENT_API:'openai-completions',SIFLUX_AGENT_MODEL:'synthetic',SIFLUX_AGENT_BASE_URL:`http://127.0.0.1:${modelPort}/v1`,SIFLUX_AGENT_TOTAL_REQUEST_BUDGET:'0'};
  async function start(){child=spawn(process.execPath,[path.join(config.root,'agent-host/server.mjs')],{cwd:config.root,env,stdio:['ignore','pipe','pipe']});child.stdout.on('data',d=>{log+=d});child.stderr.on('data',d=>{log+=d});await until(async()=>{try{return(await fetch(base+'/health',{signal:AbortSignal.timeout(200)})).ok}catch{return false}})}
  await start();const pending=api('/chat',{canvasId:config.canvasId,turnId:config.turnId,message:'Move one node in each of two canvases',permissionMode:'read-only',revisionBefore:1}).then(r=>r.text()).catch(()=>{});
  await until(()=>killed&&(child.signalCode!==null||child.exitCode!==null));await pending;

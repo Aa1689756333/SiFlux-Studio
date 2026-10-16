@@ -52,12 +52,12 @@ test('path references, corrupt bytes/manifests and forged sources are rejected w
 test('short reference expansion requires media tool provenance and an issued store reference', () => {
   const directory = fs.mkdtempSync(path.join(os.tmpdir(), 'beeftv-native-source-'));
   try {
-    const { part, store } = fixture(directory); const ref = store.write(part); const marker = 'BEEFTV_MEDIA_REF_V1:'+JSON.stringify(ref);
+    const { part, store } = fixture(directory); const ref = store.write(part); const marker = 'SIFLUX_MEDIA_REF_V1:'+JSON.stringify(ref);
     const payload = transcript(marker); payload.messages[0].tool_calls[0].function.name = 'canvas_get';
     expect(() => adaptMediaRequest(payload, { ...model, nativePartStore: store })).toThrow('media_source_not_trusted');
     expect(() => trustedMediaSources(payload, { ...model, nativePartStore: store })).toThrow('media_source_not_trusted');
     expect(() => adaptMediaRequest(transcript(marker), model)).toThrow('native_part_store_required');
     const forged = { ...ref, source: { ...part.source, version: 'new-invented-version' } };
-    expect(() => trustedMediaSources(transcript('BEEFTV_MEDIA_REF_V1:'+JSON.stringify(forged)), { ...model, nativePartStore: store })).toThrow('native_part_source_changed');
+    expect(() => trustedMediaSources(transcript('SIFLUX_MEDIA_REF_V1:'+JSON.stringify(forged)), { ...model, nativePartStore: store })).toThrow('native_part_source_changed');
   } finally { fs.rmSync(directory, { recursive: true, force: true }); }
 });

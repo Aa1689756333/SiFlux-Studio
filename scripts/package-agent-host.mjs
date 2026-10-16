@@ -19,7 +19,7 @@ function run(command, args, cwd) {
 }
 
 export function verifyRuntime(runtime, target) {
-  if (!runtime) throw new Error('BEEFTV_NODE_RUNTIME is required; release builds cannot use global Node');
+  if (!runtime) throw new Error('SIFLUX_NODE_RUNTIME is required; release builds cannot use global Node');
   const expected = targets[target];
   if (!expected) throw new Error(`Unsupported agent-host target: ${target}`);
   const node = path.resolve(runtime, expected[0] === 'win32' ? 'node.exe' : 'bin/node');
@@ -68,8 +68,8 @@ if (process.argv[1] && path.resolve(process.argv[1]) === fileURLToPath(import.me
   try {
     if (!process.versions.bun) throw new Error('Run this packaging helper with Bun');
     const [target, destination] = process.argv.slice(2);
-    if (destination === '--verify-runtime') verifyRuntime(process.env.BEEFTV_NODE_RUNTIME, target);
-    else packageAgentHost({ runtime: process.env.BEEFTV_NODE_RUNTIME, target, destination });
+    if (destination === '--verify-runtime') verifyRuntime(process.env.SIFLUX_NODE_RUNTIME, target);
+    else packageAgentHost({ runtime: process.env.SIFLUX_NODE_RUNTIME, target, destination });
   } catch (error) {
     console.error(error.message);
     process.exitCode = 1;

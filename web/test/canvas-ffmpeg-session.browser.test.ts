@@ -6,7 +6,7 @@ import { tmpdir } from "node:os";
 import { join, resolve, sep } from "node:path";
 import { spawnSync } from "node:child_process";
 
-const enabled = process.env.BEEFTV_BROWSER_WORKER_TEST === "1";
+const enabled = process.env.SIFLUX_BROWSER_WORKER_TEST === "1";
 let browser: Browser, server: ReturnType<typeof Bun.serve>, dir: string, base: string;
 
 const run = (args: string[]) => {
@@ -28,7 +28,7 @@ beforeAll(async () => {
         cacheDir: join(dir, "vite-cache"),
         publicDir: false,
         logLevel: "error",
-        define: { __BEEFTV_HEAVY_MEDIA_ENABLED__: "true", __APP_VERSION__: '"test"', __APP_CHANGELOG__: '""' },
+        define: { __SIFLUX_HEAVY_MEDIA_ENABLED__: "true", __APP_VERSION__: '"test"', __APP_CHANGELOG__: '""' },
         resolve: { alias: { "@": resolve(import.meta.dir, "../src") } },
         build: { outDir: dist, emptyOutDir: true, rolldownOptions: { input: resolve(import.meta.dir, "fixtures/canvas-ffmpeg-session-harness.html") } },
     });

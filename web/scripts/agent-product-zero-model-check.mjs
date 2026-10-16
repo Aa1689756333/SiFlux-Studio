@@ -17,12 +17,12 @@ import { chromium } from "playwright";
 
 const SCRIPT_DIR = dirname(fileURLToPath(import.meta.url));
 const WEB_ROOT = resolve(SCRIPT_DIR, "..");
-const WS = resolve(process.env.BEEFTV_WORKSPACE || join(WEB_ROOT, ".."));
-const APD = resolve(process.env.BEEFTV_AGENT_PRODUCT_DIR || join(WS, ".local/agent-product"));
+const WS = resolve(process.env.SIFLUX_WORKSPACE || join(WEB_ROOT, ".."));
+const APD = resolve(process.env.SIFLUX_AGENT_PRODUCT_DIR || join(WS, ".local/agent-product"));
 const API = process.env.AGENT_E2E_API || "http://127.0.0.1:18090/api";
 const WEB_PORT = Number(process.env.AGENT_E2E_WEB_PORT || 18400);
 const OWNER = readFileSync(join(APD, "data/agent_owner_token"), "utf8").trim();
-const CLI = process.env.BEEFTV_CLI || join(APD, "beeftv");
+const CLI = process.env.SIFLUX_CLI || join(APD, "beeftv");
 const sleep = (ms) => new Promise((r) => setTimeout(r, ms));
 const checks = [];
 const check = (name, ok, detail = "") => { checks.push({ name, ok: Boolean(ok), detail: String(detail).slice(0, 300) }); console.log(`${ok ? "PASS" : "FAIL"}  ${name}${detail ? ` — ${detail}` : ""}`); };
@@ -33,8 +33,8 @@ const scriptSource = readFileSync(join(WEB_ROOT, "scripts/agent-product-browser-
 const srcSource = readFileSync(fileURLToPath(import.meta.url), "utf8");
 check("脚本不含硬编码个人工作树路径", !scriptSource.includes("/Volumes/"), "读取 scripts/agent-product-browser-e2e.mjs");
 const srcConfig = srcSource.slice(0, srcSource.indexOf("const sleep ="));
-check("零模型脚本同样从自身位置推导路径", srcConfig.includes("fileURLToPath(import.meta.url)") && srcConfig.includes("BEEFTV_WORKSPACE") && !srcConfig.includes("/Volumes/"), "读取 scripts/agent-product-zero-model-check.mjs 的配置段");
-check("脚本用 import.meta.url 推导工作区根", scriptSource.includes("fileURLToPath(import.meta.url)") && scriptSource.includes("BEEFTV_WORKSPACE"));
+check("零模型脚本同样从自身位置推导路径", srcConfig.includes("fileURLToPath(import.meta.url)") && srcConfig.includes("SIFLUX_WORKSPACE") && !srcConfig.includes("/Volumes/"), "读取 scripts/agent-product-zero-model-check.mjs 的配置段");
+check("脚本用 import.meta.url 推导工作区根", scriptSource.includes("fileURLToPath(import.meta.url)") && scriptSource.includes("SIFLUX_WORKSPACE"));
 check("工作区根与产物目录推导正确", APD === join(WS, ".local/agent-product"), APD);
 
 const vite = spawn("bunx", ["vite", "--host", "127.0.0.1", "--port", String(WEB_PORT), "--strictPort"], { cwd: WEB_ROOT, env: { ...process.env, VITE_API_PROXY_TARGET: "http://127.0.0.1:18090" }, stdio: "pipe" });
@@ -46,7 +46,7 @@ await api("PUT", `/canvas-projects/${A}`, { project: { id: A, revision: 0, title
 const before = (await api("GET", `/canvas-projects/${A}`)).data.project;
 
 // 2) CLI 改目标镜头（真实 CLI + 真实服务端，零模型）
-const cli = spawnSync(CLI, ["canvas", "node", "update", "--canvas", A, "--node", "n2", "--expected-revision", String(before.revision), "--content", "夜景：雨夜巷口对峙", "--op-id", `hc-cli-${s}`, "--json"], { env: { ...process.env, BEEFTV_BASE_URL: API, BEEFTV_OWNER_TOKEN: OWNER }, encoding: "utf8" });
+const cli = spawnSync(CLI, ["canvas", "node", "update", "--canvas", A, "--node", "n2", "--expected-revision", String(before.revision), "--content", "夜景：雨夜巷口对峙", "--op-id", `hc-cli-${s}`, "--json"], { env: { ...process.env, SIFLUX_BASE_URL: API, SIFLUX_OWNER_TOKEN: OWNER }, encoding: "utf8" });
 check("CLI 改目标镜头成功（零模型）", cli.status === 0, `exit=${cli.status}`);
 
 const browser = await chromium.launch({ headless: true, executablePath: "/Applications/Google Chrome.app/Contents/MacOS/Google Chrome" });
@@ -116,7 +116,7 @@ check("撤销未改动连线", afterDoc.connections.length === 2, String(afterDo
 
   // 外部（CLI）写入目标字段：这不是用户编辑，不能变成一条可撤销记录
   const current = (await api("GET", `/canvas-projects/${A}`)).data.project;
-  const cli2 = spawnSync(CLI, ["canvas", "node", "update", "--canvas", A, "--node", "n2", "--expected-revision", String(current.revision), "--content", "外部第二次写入", "--op-id", `hc-cli2-${s}`, "--json"], { env: { ...process.env, BEEFTV_BASE_URL: API, BEEFTV_OWNER_TOKEN: OWNER }, encoding: "utf8" });
+  const cli2 = spawnSync(CLI, ["canvas", "node", "update", "--canvas", A, "--node", "n2", "--expected-revision", String(current.revision), "--content", "外部第二次写入", "--op-id", `hc-cli2-${s}`, "--json"], { env: { ...process.env, SIFLUX_BASE_URL: API, SIFLUX_OWNER_TOKEN: OWNER }, encoding: "utf8" });
   check("外部第二次写入成功（零模型）", cli2.status === 0, `exit=${cli2.status}`);
   await sleep(6000);
 

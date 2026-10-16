@@ -78,7 +78,7 @@ const server = createServer(async (req, res) => {
   }
   if (phase.startsWith('pending-')) {
     if (modelRequests === 1) { arrived(); await gate; send(res, 'canvas_nodes_create'); }
-    else { assert(JSON.stringify(request.messages).includes('image_url')); assert(JSON.stringify(request.messages).includes('BEEFTV_INPUT:picture')); send(res); }
+    else { assert(JSON.stringify(request.messages).includes('image_url')); assert(JSON.stringify(request.messages).includes('SIFLUX_INPUT:picture')); send(res); }
     return;
   }
   if (['partial-stop', 'persisted-supplement-stop', 'persisted-supplement-stop-crash', 'prep-error-partial'].includes(phase)) {

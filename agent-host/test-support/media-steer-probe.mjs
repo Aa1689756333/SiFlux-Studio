@@ -98,9 +98,9 @@ try {
   const reservation = createServer(), hostPort = await listen(reservation); await new Promise(resolve => reservation.close(resolve));
   base = `http://127.0.0.1:${hostPort}`;
   child = spawn(process.execPath, [path.join(root, 'agent-host/server.mjs')], { cwd: root, stdio: ['ignore', 'pipe', 'pipe'], env: {
-    ...process.env, BEEFTV_AGENT_DATA_DIR: scratch, BEEFTV_AGENT_PORT: String(hostPort), BEEFTV_OPS_URL: `http://127.0.0.1:${opsPort}/api`,
-    BEEFTV_AGENT_HOST_TOKEN: hostAuth, BEEFTV_AGENT_API_KEY: 'synthetic-only', BEEFTV_AGENT_MODEL: model, BEEFTV_AGENT_API: 'openai-completions',
-    BEEFTV_AGENT_BASE_URL: `http://127.0.0.1:${modelPort}/v1`, BEEFTV_AGENT_MAX_REQUESTS_PER_TURN: '12', BEEFTV_AGENT_MAX_TOOL_STEPS_PER_TURN: '12',
+    ...process.env, SIFLUX_AGENT_DATA_DIR: scratch, SIFLUX_AGENT_PORT: String(hostPort), SIFLUX_OPS_URL: `http://127.0.0.1:${opsPort}/api`,
+    SIFLUX_AGENT_HOST_TOKEN: hostAuth, SIFLUX_AGENT_API_KEY: 'synthetic-only', SIFLUX_AGENT_MODEL: model, SIFLUX_AGENT_API: 'openai-completions',
+    SIFLUX_AGENT_BASE_URL: `http://127.0.0.1:${modelPort}/v1`, SIFLUX_AGENT_MAX_REQUESTS_PER_TURN: '12', SIFLUX_AGENT_MAX_TOOL_STEPS_PER_TURN: '12',
   } });
   child.stdout.on('data', data => { hostLog += data; }); child.stderr.on('data', data => { hostLog += data; });
   for (let attempt = 0; attempt < 100; attempt++) { try { if ((await fetch(base + '/health')).ok) break; } catch {} if (child.exitCode !== null) throw Error(hostLog); await delay(100); }

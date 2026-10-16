@@ -13,7 +13,7 @@ const (
 
 // ReadHostToken 取值顺序与 handler / agentops 一致：显式环境变量优先，其次数据目录文件。
 func ReadHostToken(dataDir string) string {
-	if value := strings.TrimSpace(os.Getenv("BEEFTV_AGENT_HOST_TOKEN")); value != "" {
+	if value := strings.TrimSpace(os.Getenv("SIFLUX_AGENT_HOST_TOKEN")); value != "" {
 		return value
 	}
 	return readTokenFile(dataDir, hostTokenFile)

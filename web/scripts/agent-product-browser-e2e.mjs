@@ -7,7 +7,7 @@
  * - 断言同时读后端文档与页面 DOM（节点、提示词编辑器、面板气泡）。
  *
  * 前置：隔离后端 127.0.0.1:18090 已启动，并已显式放行本脚本使用的 DEV Origin
- * （`BEEFTV_ALLOWED_ORIGINS` / `CANVAS_CORS_ORIGINS`，见 restart-isolated-server.sh）。
+ * （`SIFLUX_ALLOWED_ORIGINS` / `CANVAS_CORS_ORIGINS`，见 restart-isolated-server.sh）。
  * 发行形态是同源打包页面，不需要这条放行。
  *
  * 用法：bun scripts/agent-product-browser-e2e.mjs
@@ -23,12 +23,12 @@ import { chromium } from "playwright";
 // 路径全部从本脚本位置推导，或用环境变量覆盖；默认产物落在 <workspace>/.local/agent-product。
 const SCRIPT_DIR = dirname(fileURLToPath(import.meta.url));
 const WEB_ROOT = resolve(SCRIPT_DIR, "..");
-const WORKSPACE_ROOT = resolve(process.env.BEEFTV_WORKSPACE || join(WEB_ROOT, ".."));
-const AGENT_PRODUCT_DIR = resolve(process.env.BEEFTV_AGENT_PRODUCT_DIR || join(WORKSPACE_ROOT, ".local/agent-product"));
+const WORKSPACE_ROOT = resolve(process.env.SIFLUX_WORKSPACE || join(WEB_ROOT, ".."));
+const AGENT_PRODUCT_DIR = resolve(process.env.SIFLUX_AGENT_PRODUCT_DIR || join(WORKSPACE_ROOT, ".local/agent-product"));
 const API = process.env.AGENT_E2E_API || "http://127.0.0.1:18090/api";
 const WEB_PORT = Number(process.env.AGENT_E2E_WEB_PORT || 18400);
 const SHOTS = join(AGENT_PRODUCT_DIR, "screenshots");
-const CLI = process.env.BEEFTV_CLI || join(AGENT_PRODUCT_DIR, "beeftv");
+const CLI = process.env.SIFLUX_CLI || join(AGENT_PRODUCT_DIR, "beeftv");
 const OWNER = readFileSync(join(AGENT_PRODUCT_DIR, "data/agent_owner_token"), "utf8").trim();
 const STAMP = new Date().toISOString().replace(/[:.]/g, "-");
 const RESULT_PATH = process.env.AGENT_E2E_RESULT || join(AGENT_PRODUCT_DIR, "results-react-cross-entry.json");
@@ -91,7 +91,7 @@ async function readCanvas(id) {
 
 function runCli(args) {
     const result = spawnSync(CLI, args, {
-        env: { ...process.env, BEEFTV_BASE_URL: API, BEEFTV_OWNER_TOKEN: OWNER },
+        env: { ...process.env, SIFLUX_BASE_URL: API, SIFLUX_OWNER_TOKEN: OWNER },
         encoding: "utf8",
     });
     let parsed = null;

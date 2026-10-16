@@ -37,7 +37,7 @@ if ((Get-FileHash -LiteralPath $checkpoint -Algorithm SHA256).Hash.ToLowerInvari
 }
 
 New-Item -ItemType Directory -Path $WorkDir -Force | Out-Null
-$env:BEEFTV_VDA_SOURCE = $source
+$env:SIFLUX_VDA_SOURCE = $source
 $env:PYTHONPATH = $tool
 $env:PYTHONIOENCODING = "utf-8"
 & $python -m depth_capture.probe --device $Device --runtime-dir $runtime --work-dir $WorkDir

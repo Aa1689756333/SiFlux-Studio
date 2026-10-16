@@ -6,7 +6,7 @@
 
 本地合同检查仍由 `scripts/verify-beeftv-local-release.sh` 负责。macOS 发布脚本会先跑该门禁；Windows 发布脚本只做本机打包，不重复整套门禁。
 
-前端未压缩产物的默认体积上限为 105 MiB，可通过 `BEEFTV_WEB_BUDGET_MIB` 调整。包含 FFmpeg、MediaPipe 和预设资源的主线基线约为 99.24 MiB；自动更新增量约 25 KiB。此上限不是 zip 下载大小。
+前端未压缩产物的默认体积上限为 105 MiB，可通过 `SIFLUX_WEB_BUDGET_MIB` 调整。包含 FFmpeg、MediaPipe 和预设资源的主线基线约为 99.24 MiB；自动更新增量约 25 KiB。此上限不是 zip 下载大小。
 
 ## macOS
 
@@ -14,21 +14,21 @@
 ./scripts/build-beeftv-release.sh
 ```
 
-如果系统没有全局 Go，可通过 `BEEFTV_GO_DIR` 指定本地工具链目录：
+如果系统没有全局 Go，可通过 `SIFLUX_GO_DIR` 指定本地工具链目录：
 
 ```bash
-BEEFTV_GO_DIR=/tmp/beeftv-go.rpIfVN/go ./scripts/build-beeftv-release.sh
+SIFLUX_GO_DIR=/tmp/beeftv-go.rpIfVN/go ./scripts/build-beeftv-release.sh
 ```
 
 生产自动更新包需要额外环境变量：
 
 | 变量 | 作用 |
 | --- | --- |
-| `BEEFTV_UPDATER_PUBLIC_KEY` | 注入更新源公钥；缺省则更新器保持关闭 |
-| `BEEFTV_UPDATER_FEED_URL` | 可选，默认官方 `desktop-update.json` 地址 |
-| `BEEFTV_WAILS_PLATFORM` | 可选，例如 `darwin/arm64` 或 `darwin/amd64` |
-| `BEEFTV_SKIP_LOCAL_VERIFY` | 设为 `1` 时跳过本地门禁；发布流水线的校验作业会跑门禁 |
-| `BEEFTV_EXTRA_LDFLAGS` | 追加到 Wails `-ldflags` |
+| `SIFLUX_UPDATER_PUBLIC_KEY` | 注入更新源公钥；缺省则更新器保持关闭 |
+| `SIFLUX_UPDATER_FEED_URL` | 可选，默认官方 `desktop-update.json` 地址 |
+| `SIFLUX_WAILS_PLATFORM` | 可选，例如 `darwin/arm64` 或 `darwin/amd64` |
+| `SIFLUX_SKIP_LOCAL_VERIFY` | 设为 `1` 时跳过本地门禁；发布流水线的校验作业会跑门禁 |
+| `SIFLUX_EXTRA_LDFLAGS` | 追加到 Wails `-ldflags` |
 
 产物：
 
@@ -69,7 +69,7 @@ backend\cmd\desktop\build\bin\plugin-packages\*.beeftv-plugin
 | 前提 | 用途 | 依据 |
 | --- | --- | --- |
 | Windows 10/11 amd64 | Wails Windows 目标 | [Wails CLI platforms](https://wails.io/docs/reference/cli) |
-| Go 1.25 或更新，且在 PATH（或 `BEEFTV_GO_DIR\bin\go.exe`） | 编译桌面后端；`backend/go.mod` 要求 1.25 | 仓库 `backend/go.mod` |
+| Go 1.25 或更新，且在 PATH（或 `SIFLUX_GO_DIR\bin\go.exe`） | 编译桌面后端；`backend/go.mod` 要求 1.25 | 仓库 `backend/go.mod` |
 | Bun 在 PATH | `wails.json` 的 `bun install --frozen-lockfile` 与 `bun run build:desktop` | 仓库 `backend/cmd/desktop/wails.json` |
 | `CGO_ENABLED` 不能是 `0` | `gorm.io/driver/sqlite` 依赖 `github.com/mattn/go-sqlite3` | [go-sqlite3 README](https://github.com/mattn/go-sqlite3#windows) |
 | PATH 中的 `gcc`/`clang`，或可执行的 `CC` | 编译 go-sqlite3。Go 1.25 起 Windows CGO 需要支持 DWARF 5 的 GCC（binutils 2.37 或更新） | [go-sqlite3 Windows](https://github.com/mattn/go-sqlite3#windows)、[Go Minimum Requirements · cgo](https://go.dev/wiki/MinimumRequirements#cgo) |
@@ -171,15 +171,15 @@ GitHub 仓库配置：
 
 | 位置 | 名称 | 内容 |
 | --- | --- | --- |
-| Actions secret | `BEEFTV_UPDATER_PRIVATE_KEY` | 私钥文件全文 |
-| Actions variable | `BEEFTV_UPDATER_PUBLIC_KEY` | 公钥文件全文 |
+| Actions secret | `SIFLUX_UPDATER_PRIVATE_KEY` | 私钥文件全文 |
+| Actions variable | `SIFLUX_UPDATER_PUBLIC_KEY` | 公钥文件全文 |
 
 发布流水线会用私钥推导公钥，必须和变量一致，否则失败，不会发布未签名更新源。
 
 本地要打带更新器的包时，导出公钥即可：
 
 ```bash
-export BEEFTV_UPDATER_PUBLIC_KEY="$(tr -d '[:space:]' < /path/to/beeftv-updater.public)"
+export SIFLUX_UPDATER_PUBLIC_KEY="$(tr -d '[:space:]' < /path/to/beeftv-updater.public)"
 ./scripts/build-beeftv-release.sh
 ```
 
@@ -234,9 +234,9 @@ v1.5.6 及以前的更新器仍内置 GitHub 清单地址。如果旧客户端�
 
 仓库 Actions 需要以下配置：
 
-- Secret `BEEFTV_R2_ACCESS_KEY_ID`、`BEEFTV_R2_SECRET_ACCESS_KEY`：仅对这个 bucket 拥有对象读写权限的 S3 凭据，不使用账户管理员令牌。
-- Variable `BEEFTV_R2_ENDPOINT`：该账户的官方 HTTPS R2 S3 endpoint。
-- 原有 `BEEFTV_UPDATER_PRIVATE_KEY` 和 `BEEFTV_UPDATER_PUBLIC_KEY` 保持不变。
+- Secret `SIFLUX_R2_ACCESS_KEY_ID`、`SIFLUX_R2_SECRET_ACCESS_KEY`：仅对这个 bucket 拥有对象读写权限的 S3 凭据，不使用账户管理员令牌。
+- Variable `SIFLUX_R2_ENDPOINT`：该账户的官方 HTTPS R2 S3 endpoint。
+- 原有 `SIFLUX_UPDATER_PRIVATE_KEY` 和 `SIFLUX_UPDATER_PUBLIC_KEY` 保持不变。
 
 `scripts/publish-desktop-r2.py` 复用 `update-release verify` 验签，使用 AWS CLI v2 上传；发布机必须支持 `put-object` 的 `IfMatch`、`IfNoneMatch` 条件写。`stage` 只准备版本对象；`activate` 确认 GitHub 最新正式版本及公开清单与本次签名清单一致、全部公开对象可校验后，备份上一份清单，再通过 ETag 条件写切换。公网检查使用该版本客户端的请求标识。重复执行同一版本是幂等的，已有对象内容不同或试图降级会失败。
 

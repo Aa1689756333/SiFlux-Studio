@@ -22,7 +22,7 @@ import (
 	"infinite-canvas/backend/internal/assistant"
 )
 
-const fixtureEnv = "BEEFTV_ASSISTANT_RUNTIME_FIXTURE"
+const fixtureEnv = "SIFLUX_ASSISTANT_RUNTIME_FIXTURE"
 
 var platformProcessFixtures = map[string]func() int{}
 
@@ -58,8 +58,8 @@ func runProcessFixture(mode string) int {
 }
 
 func runHTTPFixture() int {
-	nonce := os.Getenv("BEEFTV_AGENT_INSTANCE_NONCE")
-	if dataDir := os.Getenv("BEEFTV_AGENT_DATA_DIR"); dataDir != "" {
+	nonce := os.Getenv("SIFLUX_AGENT_INSTANCE_NONCE")
+	if dataDir := os.Getenv("SIFLUX_AGENT_DATA_DIR"); dataDir != "" {
 		_ = os.WriteFile(filepath.Join(dataDir, "child-env.txt"), []byte(strings.Join(os.Environ(), "\n")), 0o600)
 		_ = os.WriteFile(filepath.Join(dataDir, "child-pid.txt"), []byte(strconv.Itoa(os.Getpid())), 0o600)
 	}
@@ -80,13 +80,13 @@ func runHTTPFixture() int {
 			return
 		}
 		w.Header().Set("Content-Type", "application/json")
-		busy := os.Getenv("BEEFTV_AGENT_BUSY") == "1"
+		busy := os.Getenv("SIFLUX_AGENT_BUSY") == "1"
 		_ = json.NewEncoder(w).Encode(map[string]any{
-			"ok": true, "busy": busy, "model": os.Getenv("BEEFTV_AGENT_MODEL"),
+			"ok": true, "busy": busy, "model": os.Getenv("SIFLUX_AGENT_MODEL"),
 			"instance": InstanceProof(nonce),
 		})
 	})
-	if fdRaw := strings.TrimSpace(os.Getenv("BEEFTV_AGENT_LISTEN_FD")); fdRaw != "" {
+	if fdRaw := strings.TrimSpace(os.Getenv("SIFLUX_AGENT_LISTEN_FD")); fdRaw != "" {
 		fd, err := strconv.Atoi(fdRaw)
 		if err != nil {
 			fmt.Fprintln(os.Stderr, err)
@@ -103,9 +103,9 @@ func runHTTPFixture() int {
 		}
 		return 0
 	}
-	port := strings.TrimSpace(os.Getenv("BEEFTV_AGENT_PORT"))
+	port := strings.TrimSpace(os.Getenv("SIFLUX_AGENT_PORT"))
 	if port == "" {
-		fmt.Fprintln(os.Stderr, "missing BEEFTV_AGENT_PORT")
+		fmt.Fprintln(os.Stderr, "missing SIFLUX_AGENT_PORT")
 		return 2
 	}
 	fmt.Fprintln(os.Stderr, "fixture listening on allocated loopback port")
@@ -117,7 +117,7 @@ func runHTTPFixture() int {
 }
 
 func runSupervisorFixture() int {
-	dataDir := os.Getenv("BEEFTV_SUPERVISOR_DATA")
+	dataDir := os.Getenv("SIFLUX_SUPERVISOR_DATA")
 	config := HostConfig{HostCommand: os.Args[0], HostArgs: []string{}}
 	encoded, err := json.Marshal(config)
 	if err != nil {
@@ -395,8 +395,8 @@ func startForeignHealth(t *testing.T) (addr string, hits *int32) {
 
 func TestFreshHostDoesNotAdoptForeignHealthyListener(t *testing.T) {
 	foreign, hits := startForeignHealth(t)
-	t.Setenv("BEEFTV_AGENT_HOST_URL", foreign)
-	t.Setenv("BEEFTV_AGENT_PORT", "18500")
+	t.Setenv("SIFLUX_AGENT_HOST_URL", foreign)
+	t.Setenv("SIFLUX_AGENT_PORT", "18500")
 	host := New(Options{DataDir: t.TempDir()})
 	if host.Endpoint() != "" || host.Running() {
 		t.Fatal("新构造的 Host 不得认领已有监听器")
@@ -432,9 +432,9 @@ func TestLaunchPinsPortAndDropsSpoofedOwnerOpenAI(t *testing.T) {
 			"PATH=" + os.Getenv("PATH"),
 			"HOME=" + os.Getenv("HOME"),
 			fixtureEnv + "=http",
-			"BEEFTV_AGENT_PORT=18500",
-			"BEEFTV_OWNER_TOKEN=stolen-owner",
-			"BEEFTV_AGENT_HOST_TOKEN=stolen-host",
+			"SIFLUX_AGENT_PORT=18500",
+			"SIFLUX_OWNER_TOKEN=stolen-owner",
+			"SIFLUX_AGENT_HOST_TOKEN=stolen-host",
 			"OPENAI_API_KEY=sk-openai",
 			"ANTHROPIC_API_KEY=sk-ant",
 		}
@@ -448,14 +448,14 @@ func TestLaunchPinsPortAndDropsSpoofedOwnerOpenAI(t *testing.T) {
 		t.Fatal(err)
 	}
 	childEnv := strings.Split(string(raw), "\n")
-	if port := envValue(childEnv, "BEEFTV_AGENT_PORT"); port == "" || port == "18500" {
+	if port := envValue(childEnv, "SIFLUX_AGENT_PORT"); port == "" || port == "18500" {
 		t.Fatalf("子进程 PORT 必须是监督器钉死的实例端口，得到 %q", port)
 	}
-	if envValue(childEnv, "BEEFTV_OWNER_TOKEN") != "" {
+	if envValue(childEnv, "SIFLUX_OWNER_TOKEN") != "" {
 		t.Fatal("子进程不得看到 OWNER_TOKEN")
 	}
-	if envValue(childEnv, "BEEFTV_AGENT_HOST_TOKEN") != "pinned-host" {
-		t.Fatalf("子进程宿主凭据应被覆盖，得到 %q", envValue(childEnv, "BEEFTV_AGENT_HOST_TOKEN"))
+	if envValue(childEnv, "SIFLUX_AGENT_HOST_TOKEN") != "pinned-host" {
+		t.Fatalf("子进程宿主凭据应被覆盖，得到 %q", envValue(childEnv, "SIFLUX_AGENT_HOST_TOKEN"))
 	}
 	if envHasKey(childEnv, "OPENAI_API_KEY") || envHasKey(childEnv, "ANTHROPIC_API_KEY") {
 		t.Fatal("子进程不得继承 OPENAI/ANTHROPIC 密钥")

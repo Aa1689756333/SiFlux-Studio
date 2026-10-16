@@ -78,7 +78,7 @@ func cmdSign(args []string, stdout, stderr io.Writer) error {
 			return err
 		}
 		if !derivedPublicEquals(private, public) {
-			return fmt.Errorf("private key does not match --expect-public-key / BEEFTV_UPDATER_PUBLIC_KEY")
+			return fmt.Errorf("private key does not match --expect-public-key / SIFLUX_UPDATER_PUBLIC_KEY")
 		}
 	}
 
@@ -170,7 +170,7 @@ func cmdPrintLdflags(args []string, stdout, stderr io.Writer) error {
 		return fmt.Errorf("print-ldflags: %w; unsigned desktop builds cannot publish an updater feed", err)
 	}
 	feed := strings.TrimSpace(*feedURL)
-	if envFeed := strings.TrimSpace(os.Getenv("BEEFTV_UPDATER_FEED_URL")); envFeed != "" && feed == defaultFeedURL {
+	if envFeed := strings.TrimSpace(os.Getenv("SIFLUX_UPDATER_FEED_URL")); envFeed != "" && feed == defaultFeedURL {
 		feed = envFeed
 	}
 	if !strings.HasPrefix(feed, "https://") {

@@ -119,7 +119,7 @@ func (h *Host) readyTimeout() time.Duration {
 }
 
 // TestingUseOwnedEndpoint injects a loopback child for handler tests. Production
-// never reads BEEFTV_AGENT_HOST_URL or :18500 as a fallback.
+// never reads SIFLUX_AGENT_HOST_URL or :18500 as a fallback.
 func (h *Host) TestingUseOwnedEndpoint(baseURL, nonce, fingerprint string) {
 	if h == nil {
 		return

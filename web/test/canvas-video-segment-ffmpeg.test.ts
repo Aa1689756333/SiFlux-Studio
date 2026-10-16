@@ -6,7 +6,7 @@ import { describe, expect, test } from "bun:test";
 
 import { assertUsableSegmentOutput, buildRemoveAudioArgs, MUTED_VIDEO_OUTPUT_NAME, SEGMENT_INPUT_NAME } from "../src/lib/canvas/canvas-video-segment-args";
 
-const QA_SOURCE = process.env.BEEFTV_SEGMENT_QA_MP4 || "";
+const QA_SOURCE = process.env.SIFLUX_SEGMENT_QA_MP4 || "";
 
 function commandExists(name: string) {
     const result = spawnSync(name, ["-version"], { encoding: "utf8" });
@@ -90,8 +90,8 @@ describe.skipIf(!hasFfmpeg)("remove-audio ffmpeg args on real media", () => {
         }
     });
 
-    test.skipIf(!QA_SOURCE)("optional BEEFTV_SEGMENT_QA_MP4 full-source mute keeps a video stream", () => {
-        if (!existsSync(QA_SOURCE)) throw new Error(`BEEFTV_SEGMENT_QA_MP4 指向的文件不存在`);
+    test.skipIf(!QA_SOURCE)("optional SIFLUX_SEGMENT_QA_MP4 full-source mute keeps a video stream", () => {
+        if (!existsSync(QA_SOURCE)) throw new Error(`SIFLUX_SEGMENT_QA_MP4 指向的文件不存在`);
         const dir = mkdtempSync(join(tmpdir(), "beeftv-segment-qa-"));
         try {
             copyFileSync(QA_SOURCE, join(dir, SEGMENT_INPUT_NAME));

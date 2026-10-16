@@ -113,10 +113,10 @@ curl -s -X POST http://127.0.0.1:8082/inference \
 
 | 变量 | 用途 |
 | --- | --- |
-| `BEEFTV_BASE_URL` | 本机工作区地址，默认 `http://127.0.0.1:8080/api`；只接受回环主机 |
-| `BEEFTV_OWNER_TOKEN` | owner 凭据：可执行写操作、登记客户端；运行时会把它写到数据目录下 0600 的文件 |
-| `BEEFTV_CLIENT_ID` / `BEEFTV_CLIENT_TOKEN` | 已登记客户端凭据：能力模式由服务端登记决定，不能自我提升 |
-| `BEEFTV_DESKTOP_TOKEN` | 仅供桌面管理操作（如登记客户端）通过入口守卫；不要交给外部 Agent |
+| `SIFLUX_BASE_URL` | 本机工作区地址，默认 `http://127.0.0.1:8080/api`；只接受回环主机 |
+| `SIFLUX_OWNER_TOKEN` | owner 凭据：可执行写操作、登记客户端；运行时会把它写到数据目录下 0600 的文件 |
+| `SIFLUX_CLIENT_ID` / `SIFLUX_CLIENT_TOKEN` | 已登记客户端凭据：能力模式由服务端登记决定，不能自我提升 |
+| `SIFLUX_DESKTOP_TOKEN` | 仅供桌面管理操作（如登记客户端）通过入口守卫；不要交给外部 Agent |
 
 两条边界：
 
@@ -126,7 +126,7 @@ curl -s -X POST http://127.0.0.1:8082/inference \
 
 桌面发行包自带内置助手及 Node 24.15.0，无需用户安装 Node。macOS 的运行时位于 `BeefTV.app/Contents/Resources/agent-host/runtime/bin/node`，Windows 位于 `BeefTV.exe` 同级的 `agent-host/runtime/node.exe`。桌面后端直接启动随包 Node 与 `server.mjs`。
 
-构建发行包前必须设置 `BEEFTV_NODE_RUNTIME`：macOS 指向包含 `bin/node` 的官方 Node 目录，Windows 指向包含 `node.exe` 的官方 Node 目录。运行时版本、平台或架构不匹配都会终止构建；macOS 还会拒绝依赖 Homebrew 等非系统动态库的 Node。GitHub Actions 为每个平台准备固定版本运行时。
+构建发行包前必须设置 `SIFLUX_NODE_RUNTIME`：macOS 指向包含 `bin/node` 的官方 Node 目录，Windows 指向包含 `node.exe` 的官方 Node 目录。运行时版本、平台或架构不匹配都会终止构建；macOS 还会拒绝依赖 Homebrew 等非系统动态库的 Node。GitHub Actions 为每个平台准备固定版本运行时。
 
 打包脚本在临时目录使用 Bun 和 `agent-host/bun.lock` 安装冻结的 production 依赖，再以随包 Node 验证 SDK 导入。它不会复制开发目录中的 `node_modules`，也不会在缺少运行时时回退到系统 Node。两个发行入口分别为 `scripts/build-beeftv-release.sh` 和 `scripts/build-beeftv-windows-release.ps1`。
 

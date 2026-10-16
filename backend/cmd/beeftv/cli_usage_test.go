@@ -20,8 +20,8 @@ func TestCanvasSubcommandGuards(t *testing.T) {
 		_, _ = w.Write([]byte(`{"code":0,"data":{"ok":true},"msg":"ok"}`))
 	}))
 	defer server.Close()
-	t.Setenv("BEEFTV_BASE_URL", server.URL)
-	t.Setenv("BEEFTV_OWNER_TOKEN", "owner-token-for-test")
+	t.Setenv("SIFLUX_BASE_URL", server.URL)
+	t.Setenv("SIFLUX_OWNER_TOKEN", "owner-token-for-test")
 
 	cases := [][]string{
 		{"canvas", "node"},
@@ -69,8 +69,8 @@ func TestInvalidFlagsAreUsageErrorsWithoutWrites(t *testing.T) {
 		_, _ = w.Write([]byte(`{"code":0,"data":{"ok":true},"msg":"ok"}`))
 	}))
 	defer server.Close()
-	t.Setenv("BEEFTV_BASE_URL", server.URL)
-	t.Setenv("BEEFTV_OWNER_TOKEN", "owner-token-for-test")
+	t.Setenv("SIFLUX_BASE_URL", server.URL)
+	t.Setenv("SIFLUX_OWNER_TOKEN", "owner-token-for-test")
 
 	cases := [][]string{
 		{"canvas", "node", "update", "--canvas", "c1", "--node", "n1", "--expected-revision", "1", "--op-id", "op-1", "--nope", "x"},
@@ -113,8 +113,8 @@ func TestReadOnlyTightensOperationSetLocally(t *testing.T) {
 		]},"msg":"ok"}`))
 	}))
 	defer server.Close()
-	t.Setenv("BEEFTV_BASE_URL", server.URL)
-	t.Setenv("BEEFTV_OWNER_TOKEN", "owner-token-for-test")
+	t.Setenv("SIFLUX_BASE_URL", server.URL)
+	t.Setenv("SIFLUX_OWNER_TOKEN", "owner-token-for-test")
 
 	c, err := newClient()
 	if err != nil {
@@ -151,9 +151,9 @@ func TestDesktopTokenHeaderIsSentWhenConfigured(t *testing.T) {
 		_, _ = w.Write([]byte(`{"code":0,"data":{"ops":[]},"msg":"ok"}`))
 	}))
 	defer server.Close()
-	t.Setenv("BEEFTV_BASE_URL", server.URL)
-	t.Setenv("BEEFTV_OWNER_TOKEN", "owner-token-for-test")
-	t.Setenv("BEEFTV_DESKTOP_TOKEN", "desktop-shell-token")
+	t.Setenv("SIFLUX_BASE_URL", server.URL)
+	t.Setenv("SIFLUX_OWNER_TOKEN", "owner-token-for-test")
+	t.Setenv("SIFLUX_DESKTOP_TOKEN", "desktop-shell-token")
 
 	c, err := newClient()
 	if err != nil {
@@ -168,7 +168,7 @@ func TestDesktopTokenHeaderIsSentWhenConfigured(t *testing.T) {
 
 	// 未配置时不发送该头，独立 server 形态不受影响。
 	seen = ""
-	t.Setenv("BEEFTV_DESKTOP_TOKEN", "")
+	t.Setenv("SIFLUX_DESKTOP_TOKEN", "")
 	c2, err := newClient()
 	if err != nil {
 		t.Fatal(err)
@@ -181,7 +181,7 @@ func TestDesktopTokenHeaderIsSentWhenConfigured(t *testing.T) {
 	}
 }
 
-// 运行时发现：没有 BEEFTV_BASE_URL 时，CLI 要从工作区对应的运行时描述文件找到
+// 运行时发现：没有 SIFLUX_BASE_URL 时，CLI 要从工作区对应的运行时描述文件找到
 // 正在运行的桌面工作区，而不是去猜一个固定端口。外部 Agent 靠这条路径接入，
 // 手里只有自己的客户端凭据，没有桌面启动令牌。
 func TestBaseURLComesFromRuntimeDiscovery(t *testing.T) {
@@ -200,12 +200,12 @@ func TestBaseURLComesFromRuntimeDiscovery(t *testing.T) {
 	if err := runtimeinfo.Write(dataDir, server.URL, "v-test"); err != nil {
 		t.Fatal(err)
 	}
-	t.Setenv("BEEFTV_BASE_URL", "")
-	t.Setenv("BEEFTV_DATA_DIR", dataDir)
-	t.Setenv("BEEFTV_OWNER_TOKEN", "")
-	t.Setenv("BEEFTV_DESKTOP_TOKEN", "")
-	t.Setenv("BEEFTV_CLIENT_ID", "client-test")
-	t.Setenv("BEEFTV_CLIENT_TOKEN", "client-token-test")
+	t.Setenv("SIFLUX_BASE_URL", "")
+	t.Setenv("SIFLUX_DATA_DIR", dataDir)
+	t.Setenv("SIFLUX_OWNER_TOKEN", "")
+	t.Setenv("SIFLUX_DESKTOP_TOKEN", "")
+	t.Setenv("SIFLUX_CLIENT_ID", "client-test")
+	t.Setenv("SIFLUX_CLIENT_TOKEN", "client-token-test")
 
 	base, source := resolveBaseURL()
 	if base != server.URL {
@@ -252,8 +252,8 @@ func TestStaleRuntimeFileIsIgnored(t *testing.T) {
 	if err := os.WriteFile(path, stale, 0o600); err != nil {
 		t.Fatal(err)
 	}
-	t.Setenv("BEEFTV_BASE_URL", "")
-	t.Setenv("BEEFTV_DATA_DIR", dataDir)
+	t.Setenv("SIFLUX_BASE_URL", "")
+	t.Setenv("SIFLUX_DATA_DIR", dataDir)
 	base, _ := resolveBaseURL()
 	if base != "" {
 		t.Fatalf("过期运行时文件应被忽略，得到 %q", base)
@@ -268,17 +268,17 @@ func TestStaleRuntimeFileIsIgnored(t *testing.T) {
 	}
 }
 
-// 显式 BEEFTV_BASE_URL 优先于自动发现。
+// 显式 SIFLUX_BASE_URL 优先于自动发现。
 func TestExplicitBaseURLWinsOverDiscovery(t *testing.T) {
 	t.Setenv("USERPROFILE", t.TempDir())
 	dataDir := t.TempDir()
 	if err := runtimeinfo.Write(dataDir, "http://127.0.0.1:53999/api", "v-test"); err != nil {
 		t.Fatal(err)
 	}
-	t.Setenv("BEEFTV_DATA_DIR", dataDir)
-	t.Setenv("BEEFTV_BASE_URL", "http://127.0.0.1:8080/api")
+	t.Setenv("SIFLUX_DATA_DIR", dataDir)
+	t.Setenv("SIFLUX_BASE_URL", "http://127.0.0.1:8080/api")
 	base, source := resolveBaseURL()
-	if base != "http://127.0.0.1:8080/api" || source != "BEEFTV_BASE_URL" {
+	if base != "http://127.0.0.1:8080/api" || source != "SIFLUX_BASE_URL" {
 		t.Fatalf("显式地址应优先，得到 %q（%s）", base, source)
 	}
 }

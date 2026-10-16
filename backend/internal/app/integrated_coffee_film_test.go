@@ -27,8 +27,8 @@ import (
 // Opt-in real-media acceptance fixture: source bytes are existing coffee shots,
 // never an old experimental final film. The output database/resources persist.
 func TestIntegratedCoffeeFilmBusinessOperations(t *testing.T) {
-	out := os.Getenv("BEEFTV_INTEGRATED_FILM_OUTPUT")
-	manifest := os.Getenv("BEEFTV_COFFEE_ASSETS_MANIFEST")
+	out := os.Getenv("SIFLUX_INTEGRATED_FILM_OUTPUT")
+	manifest := os.Getenv("SIFLUX_COFFEE_ASSETS_MANIFEST")
 	if out == "" || manifest == "" {
 		t.Skip("set explicit source manifest and output directory for OUT01 acceptance")
 	}

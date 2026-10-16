@@ -37,7 +37,7 @@ const ops = createServer(async (req, res) => {
 const provider = createServer(async (req, res) => {
   const body = await read(req); modelCalls++;
   if (modelCalls === 1) await new Promise(resolve => { releaseOld = resolve; });
-  else { assert(JSON.stringify(body.messages).includes('image_url')); assert(JSON.stringify(body.messages).includes('BEEFTV_INPUT:attachment-only')); }
+  else { assert(JSON.stringify(body.messages).includes('image_url')); assert(JSON.stringify(body.messages).includes('SIFLUX_INPUT:attachment-only')); }
   if (modelCalls === 3) await new Promise(resolve => { releaseLatest = resolve; });
   res.writeHead(200, { 'content-type': 'text/event-stream' });
   const isTool = modelCalls === 1 || modelCalls === 3;
@@ -51,8 +51,8 @@ try {
   const opsPort = await listen(ops), providerPort = await listen(provider);
   const reservation = createServer(), hostPort = await listen(reservation); await new Promise(resolve => reservation.close(resolve));
   base = `http://127.0.0.1:${hostPort}`;
-  const env = { ...process.env, BEEFTV_AGENT_DATA_DIR: directory, BEEFTV_AGENT_PORT: String(hostPort), BEEFTV_OPS_URL: `http://127.0.0.1:${opsPort}/api`, BEEFTV_AGENT_HOST_TOKEN: hostToken,
-    BEEFTV_AGENT_API_KEY: 'fixture-only', BEEFTV_AGENT_API: 'openai-completions', BEEFTV_AGENT_MODEL: 'fixture', BEEFTV_AGENT_BASE_URL: `http://127.0.0.1:${providerPort}/v1`, BEEFTV_AGENT_TOTAL_REQUEST_BUDGET: '0' };
+  const env = { ...process.env, SIFLUX_AGENT_DATA_DIR: directory, SIFLUX_AGENT_PORT: String(hostPort), SIFLUX_OPS_URL: `http://127.0.0.1:${opsPort}/api`, SIFLUX_AGENT_HOST_TOKEN: hostToken,
+    SIFLUX_AGENT_API_KEY: 'fixture-only', SIFLUX_AGENT_API: 'openai-completions', SIFLUX_AGENT_MODEL: 'fixture', SIFLUX_AGENT_BASE_URL: `http://127.0.0.1:${providerPort}/v1`, SIFLUX_AGENT_TOTAL_REQUEST_BUDGET: '0' };
   child = spawn(process.execPath, [path.join(root, 'agent-host/server.mjs')], { cwd: root, env, stdio: ['ignore', 'pipe', 'pipe'] });
   child.stdout.on('data', chunk => { log += chunk; }); child.stderr.on('data', chunk => { log += chunk; });
   await until(async () => { try { return (await request('/health')).ok; } catch { return false; } });

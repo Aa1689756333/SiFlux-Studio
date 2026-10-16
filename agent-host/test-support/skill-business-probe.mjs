@@ -64,10 +64,10 @@ try {
   const modelPort = await listen(provider);
   const reservation = createServer(); const port = await listen(reservation); await new Promise((resolve) => reservation.close(resolve));
   base = `http://127.0.0.1:${port}`;
-  const env = { ...process.env, BEEFTV_AGENT_DATA_DIR: config.directory,
-    BEEFTV_AGENT_PORT: String(port), BEEFTV_AGENT_HOST_TOKEN: config.hostToken, BEEFTV_OPS_URL: config.backend,
-    BEEFTV_AGENT_API_KEY: 'fixture-only', BEEFTV_AGENT_API: 'openai-completions', BEEFTV_AGENT_MODEL: 'synthetic',
-    BEEFTV_AGENT_BASE_URL: `http://127.0.0.1:${modelPort}/v1`, BEEFTV_AGENT_TOTAL_REQUEST_BUDGET: '0' };
+  const env = { ...process.env, SIFLUX_AGENT_DATA_DIR: config.directory,
+    SIFLUX_AGENT_PORT: String(port), SIFLUX_AGENT_HOST_TOKEN: config.hostToken, SIFLUX_OPS_URL: config.backend,
+    SIFLUX_AGENT_API_KEY: 'fixture-only', SIFLUX_AGENT_API: 'openai-completions', SIFLUX_AGENT_MODEL: 'synthetic',
+    SIFLUX_AGENT_BASE_URL: `http://127.0.0.1:${modelPort}/v1`, SIFLUX_AGENT_TOTAL_REQUEST_BUDGET: '0' };
   async function start() {
     child = spawn(process.execPath, [path.join(config.root, 'agent-host/server.mjs')], { cwd: config.root, env, stdio: ['ignore', 'pipe', 'pipe'] });
     child.stdout.on('data', (chunk) => { log += chunk; }); child.stderr.on('data', (chunk) => { log += chunk; });

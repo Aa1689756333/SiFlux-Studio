@@ -29,12 +29,12 @@ const mcpStartupTimeout = 5 * time.Second
 
 // resolveBaseURL 决定连哪个工作区，并说明来源（诊断输出用，不含任何凭据）。
 //
-// 桌面应用监听的是动态端口，所以没有显式 BEEFTV_BASE_URL 时不去猜端口，而是读数据
+// 桌面应用监听的是动态端口，所以没有显式 SIFLUX_BASE_URL 时不去猜端口，而是读数据
 // 目录对应的运行时描述文件：那是正在运行的桌面后端自己写下的地址。文件里的进程已经退出
 // 就当它不存在，绝不拿一个过期端口去连别的进程。
 func resolveBaseURL() (string, string) {
-	if base := strings.TrimSpace(os.Getenv("BEEFTV_BASE_URL")); base != "" {
-		return base, "BEEFTV_BASE_URL"
+	if base := strings.TrimSpace(os.Getenv("SIFLUX_BASE_URL")); base != "" {
+		return base, "SIFLUX_BASE_URL"
 	}
 	if info, found := runtimeinfo.Discover(""); found {
 		return info.BaseURL, "运行中的桌面工作区"
@@ -117,14 +117,14 @@ func newClient() (*client, error) {
 		return nil, err
 	}
 	return &client{
-		fixedBaseURL: source == "BEEFTV_BASE_URL",
+		fixedBaseURL: source == "SIFLUX_BASE_URL",
 		baseURL:      strings.TrimRight(base, "/"),
-		clientID:     strings.TrimSpace(os.Getenv("BEEFTV_CLIENT_ID")),
-		token:        strings.TrimSpace(os.Getenv("BEEFTV_CLIENT_TOKEN")),
-		ownerToken:   strings.TrimSpace(os.Getenv("BEEFTV_OWNER_TOKEN")),
+		clientID:     strings.TrimSpace(os.Getenv("SIFLUX_CLIENT_ID")),
+		token:        strings.TrimSpace(os.Getenv("SIFLUX_CLIENT_TOKEN")),
+		ownerToken:   strings.TrimSpace(os.Getenv("SIFLUX_OWNER_TOKEN")),
 		// 桌面形态整个 API 由桌面启动令牌把关：CLI/MCP 要接同一个桌面工作区就必须出示它。
 		// 它只是通过守卫，不改变能力模式——能力仍由 owner/已登记客户端凭据决定。
-		desktopToken: strings.TrimSpace(os.Getenv("BEEFTV_DESKTOP_TOKEN")),
+		desktopToken: strings.TrimSpace(os.Getenv("SIFLUX_DESKTOP_TOKEN")),
 		// 凭据头是自定义敏感头，不能依赖标准库只保护 Authorization 的行为：一律不跟随重定向。
 		http: &http.Client{Timeout: 60 * time.Second, CheckRedirect: func(*http.Request, []*http.Request) error {
 			return http.ErrUseLastResponse
@@ -149,7 +149,7 @@ func (c *client) currentBaseURL() string {
 func (c *client) do(ctx context.Context, method, path string, body any) (json.RawMessage, error) {
 	base := c.currentBaseURL()
 	if base == "" {
-		return nil, &cliError{code: exitTransportFailure, reason: "runtime_not_found", msg: "未发现运行中的 BeefTV 工作区。请先打开 BeefTV；若使用自定义目录，请检查 BEEFTV_DATA_DIR；独立服务请显式设置 BEEFTV_BASE_URL"}
+		return nil, &cliError{code: exitTransportFailure, reason: "runtime_not_found", msg: "未发现运行中的 BeefTV 工作区。请先打开 BeefTV；若使用自定义目录，请检查 SIFLUX_DATA_DIR；独立服务请显式设置 SIFLUX_BASE_URL"}
 	}
 	var payload io.Reader
 	if body != nil {
@@ -396,18 +396,18 @@ func usage() {
   beeftv client register --label <label> [--kind codex|claude|cursor|other] [--mode read-only|read-write]
   beeftv mcp serve [--read-only]
 
-连接哪个工作区：不设 BEEFTV_BASE_URL 时自动连正在运行的 BeefTV 桌面应用，端口是动态的。
-BEEFTV_DATA_DIR 可以指向非默认数据目录。Windows 从用户目录下 .beeftv/runtime 读取对应
+连接哪个工作区：不设 SIFLUX_BASE_URL 时自动连正在运行的 BeefTV 桌面应用，端口是动态的。
+SIFLUX_DATA_DIR 可以指向非默认数据目录。Windows 从用户目录下 .beeftv/runtime 读取对应
 工作区的运行信息，其他平台读取数据目录里的 runtime.json。升级后请重新打开 BeefTV。
 
-凭据：在 BeefTV 的设置里新建一个客户端，把它给出的 BEEFTV_CLIENT_ID 与 BEEFTV_CLIENT_TOKEN
+凭据：在 BeefTV 的设置里新建一个客户端，把它给出的 SIFLUX_CLIENT_ID 与 SIFLUX_CLIENT_TOKEN
 填进环境变量即可，不需要桌面令牌。新连接默认开放全部业务工具，操作审批由外部 Agent 管理。
 历史只读凭据继续保持只读；CLI 仍支持显式签发只读凭据。
 
 写操作必须带幂等键（CLI 的 --op-id，MCP 工具参数里的 operationId）：重试同一操作要复用同一个值。
 
-环境变量：BEEFTV_BASE_URL、BEEFTV_DATA_DIR、BEEFTV_CLIENT_ID、BEEFTV_CLIENT_TOKEN、
-BEEFTV_OWNER_TOKEN（owner 可信通道）、BEEFTV_DESKTOP_TOKEN（桌面自身调用）
+环境变量：SIFLUX_BASE_URL、SIFLUX_DATA_DIR、SIFLUX_CLIENT_ID、SIFLUX_CLIENT_TOKEN、
+SIFLUX_OWNER_TOKEN（owner 可信通道）、SIFLUX_DESKTOP_TOKEN（桌面自身调用）
 退出码：0 成功；2 用法；3 未找到；4 冲突；5 前置条件；6 只读/未授权；7 不支持；8 参数；9 连接失败；1 内部
 `)
 }

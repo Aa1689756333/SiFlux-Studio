@@ -110,9 +110,9 @@ test("keyframe explanation fits light desktop and dark 390px panels", async () =
             await assertLocked(page);
             expect(await page.getByText("视频比例由首帧图片决定。需要其他比例时，请先裁切或扩图，再生成视频。", { exact: true }).evaluate((element) => getComputedStyle(element).fontSize)).toBe("12px");
             expect(await page.evaluate(() => document.documentElement.scrollWidth <= window.innerWidth)).toBe(true);
-            if (process.env.BEEFTV_UI_EVIDENCE_DIR) {
-                mkdirSync(process.env.BEEFTV_UI_EVIDENCE_DIR, { recursive: true });
-                await page.locator(".canvas-image-settings-popover").screenshot({ path: `${process.env.BEEFTV_UI_EVIDENCE_DIR}/h3-aspect-${dark ? "dark-390" : "light-desktop"}.png` });
+            if (process.env.SIFLUX_UI_EVIDENCE_DIR) {
+                mkdirSync(process.env.SIFLUX_UI_EVIDENCE_DIR, { recursive: true });
+                await page.locator(".canvas-image-settings-popover").screenshot({ path: `${process.env.SIFLUX_UI_EVIDENCE_DIR}/h3-aspect-${dark ? "dark-390" : "light-desktop"}.png` });
             }
             expect(errors).toEqual([]);
         } finally { await page.close(); }

@@ -411,9 +411,9 @@ func TestExtractRuntimeArchivePreservesTrustedExecutableBit(t *testing.T) {
 }
 
 func TestEnsureInstallsTheOfficialRuntimeArchive(t *testing.T) {
-	archiveSource := os.Getenv("BEEFTV_TEST_DEPTH_RUNTIME_ARCHIVE")
+	archiveSource := os.Getenv("SIFLUX_TEST_DEPTH_RUNTIME_ARCHIVE")
 	if archiveSource == "" {
-		t.Skip("set BEEFTV_TEST_DEPTH_RUNTIME_ARCHIVE for the release-artifact integration test")
+		t.Skip("set SIFLUX_TEST_DEPTH_RUNTIME_ARCHIVE for the release-artifact integration test")
 	}
 	model := []byte("integration-model-placeholder")
 	modelHash := sha256.Sum256(model)
@@ -469,9 +469,9 @@ func TestEnsureInstallsTheOfficialRuntimeArchive(t *testing.T) {
 }
 
 func TestEnsureLiveDepthRuntime(t *testing.T) {
-	dataDir := os.Getenv("BEEFTV_TEST_DEPTH_LIVE_DATA_DIR")
+	dataDir := os.Getenv("SIFLUX_TEST_DEPTH_LIVE_DATA_DIR")
 	if dataDir == "" {
-		t.Skip("set BEEFTV_TEST_DEPTH_LIVE_DATA_DIR for the live installation check")
+		t.Skip("set SIFLUX_TEST_DEPTH_LIVE_DATA_DIR for the live installation check")
 	}
 	installation, err := Ensure(context.Background(), EnsureOptions{
 		ManifestURL: "https://github.com/glanderness/BeefTV/releases/download/v1.5.5/depth-runtime-manifest.json",

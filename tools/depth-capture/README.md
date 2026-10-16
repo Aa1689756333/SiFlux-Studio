@@ -13,7 +13,7 @@ PYTORCH_ENABLE_MPS_FALLBACK=1 uv run python -m depth_capture \
   --save-raw
 ```
 
-模型代码和权重默认持久化在项目目录的 `tools/depth-capture/.cache/runtime`，不会因为 `/tmp` 清理而丢失。也可以通过 `BEEFTV_DEPTH_RUNTIME` 指定其他持久化目录。下载会先写入临时文件并校验，未完成的文件不会被当成模型使用。Apple Silicon 默认建议使用 `--input-size 280 --max-resolution 960`；CUDA 环境可提高到 `--input-size 518 --max-resolution 1280`。
+模型代码和权重默认持久化在项目目录的 `tools/depth-capture/.cache/runtime`，不会因为 `/tmp` 清理而丢失。也可以通过 `SIFLUX_DEPTH_RUNTIME` 指定其他持久化目录。下载会先写入临时文件并校验，未完成的文件不会被当成模型使用。Apple Silicon 默认建议使用 `--input-size 280 --max-resolution 960`；CUDA 环境可提高到 `--input-size 518 --max-resolution 1280`。
 
 ## 输出
 

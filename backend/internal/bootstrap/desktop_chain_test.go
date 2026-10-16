@@ -15,7 +15,7 @@ import (
 )
 
 // 桌面形态启动链的集成验收（无 GUI）：
-//   - UI 会话凭桌面启动令牌签发，不需要 BEEFTV_UI_BOOTSTRAP，也不需要把 owner 凭据交给页面；
+//   - UI 会话凭桌面启动令牌签发，不需要 SIFLUX_UI_BOOTSTRAP，也不需要把 owner 凭据交给页面；
 //   - 宿主由启动链按本机配置里的随包启动器拉起（这里用暂存的 Resources 布局）；
 //   - 模型连接信息来自应用已有的本地模型配置，不需要进程内临时密钥；
 //   - 关闭 Runtime 时本进程启动的宿主子进程被回收。
@@ -27,18 +27,18 @@ func TestDesktopProfileStartupChain(t *testing.T) {
 	if _, err := os.Stat(filepath.Join(hostSource, "server.mjs")); err != nil {
 		t.Skipf("agent-host 源码不可用: %v", err)
 	}
-	nodeSource := os.Getenv("BEEFTV_TEST_NODE")
+	nodeSource := os.Getenv("SIFLUX_TEST_NODE")
 	if nodeSource == "" {
-		t.Skip("未设置 BEEFTV_TEST_NODE（自包含 node 二进制路径），跳过随包运行时的集成验收")
+		t.Skip("未设置 SIFLUX_TEST_NODE（自包含 node 二进制路径），跳过随包运行时的集成验收")
 	}
 	// Exercise persisted channel configuration, never inherited provider overrides.
 	// Inherited PORT / HOST_URL are not runtime authority; the supervisor binds a
 	// fresh loopback endpoint after launch.
-	for _, key := range []string{"BEEFTV_AGENT_API_KEY", "BEEFTV_AGENT_BASE_URL", "BEEFTV_AGENT_MODEL", "BEEFTV_AGENT_PROTOCOL", "BEEFTV_AGENT_HOST_TOKEN", "BEEFTV_UI_BOOTSTRAP", "BEEFTV_AGENT_PORT", "BEEFTV_AGENT_HOST_URL"} {
+	for _, key := range []string{"SIFLUX_AGENT_API_KEY", "SIFLUX_AGENT_BASE_URL", "SIFLUX_AGENT_MODEL", "SIFLUX_AGENT_PROTOCOL", "SIFLUX_AGENT_HOST_TOKEN", "SIFLUX_UI_BOOTSTRAP", "SIFLUX_AGENT_PORT", "SIFLUX_AGENT_HOST_URL"} {
 		t.Setenv(key, "")
 	}
-	if os.Getenv("BEEFTV_TEST_REAL_TURN") != "1" {
-		t.Setenv("BEEFTV_AGENT_MAX_REQUESTS", "0")
+	if os.Getenv("SIFLUX_TEST_REAL_TURN") != "1" {
+		t.Setenv("SIFLUX_AGENT_MAX_REQUESTS", "0")
 	}
 
 	dataDir := t.TempDir()
@@ -81,10 +81,10 @@ func TestDesktopProfileStartupChain(t *testing.T) {
 	// 默认用占位密钥验证「连接信息来自本地模型配置」；需要真实回合时在启动前写入真实凭据，
 	// 因为宿主只在启动时读取一次模型连接信息。
 	modelID, modelURL, modelKey := "gpt-5.5", "https://relay.example.com/v1", "local-config-key"
-	if os.Getenv("BEEFTV_TEST_REAL_TURN") == "1" {
-		credentials := os.Getenv("BEEFTV_TEST_CREDENTIALS")
+	if os.Getenv("SIFLUX_TEST_REAL_TURN") == "1" {
+		credentials := os.Getenv("SIFLUX_TEST_CREDENTIALS")
 		if credentials == "" {
-			t.Fatal("BEEFTV_TEST_REAL_TURN=1 需要 BEEFTV_TEST_CREDENTIALS")
+			t.Fatal("SIFLUX_TEST_REAL_TURN=1 需要 SIFLUX_TEST_CREDENTIALS")
 		}
 		raw, err := os.ReadFile(credentials)
 		if err != nil {
@@ -161,11 +161,11 @@ func TestDesktopProfileStartupChain(t *testing.T) {
 	if session.Data.Bootstrap.DevBootstrap || session.Data.Bootstrap.OwnerToken {
 		t.Fatalf("不应依赖开发引导或 owner 凭据，得到 %s", body)
 	}
-	if os.Getenv("BEEFTV_UI_BOOTSTRAP") == "1" {
-		t.Fatal("该用例必须在没有 BEEFTV_UI_BOOTSTRAP 的前提下运行")
+	if os.Getenv("SIFLUX_UI_BOOTSTRAP") == "1" {
+		t.Fatal("该用例必须在没有 SIFLUX_UI_BOOTSTRAP 的前提下运行")
 	}
 
-	// 模型连接信息必须来自应用已有的本地模型配置：进程内没有 BEEFTV_AGENT_API_KEY。
+	// 模型连接信息必须来自应用已有的本地模型配置：进程内没有 SIFLUX_AGENT_API_KEY。
 	// 启动链拉起自有子进程后，/assistant/status 在实例证明通过时才报 available。
 	deadline := time.Now().Add(90 * time.Second)
 	available := false
@@ -203,7 +203,7 @@ func TestDesktopProfileStartupChain(t *testing.T) {
 	// 外部客户端（CLI/MCP）接同一个桌面实例：桌面形态的 API 由启动令牌把关，
 	// 客户端必须同时出示「桌面启动令牌（过守卫）」与「已登记客户端凭据（定能力）」。
 	// 这一步是零模型只读验证：读工具可用，写工具被只读客户端拒绝。
-	if cliBinary := os.Getenv("BEEFTV_TEST_CLI"); cliBinary != "" {
+	if cliBinary := os.Getenv("SIFLUX_TEST_CLI"); cliBinary != "" {
 		// 客户端登记按现有合同需要 owner 凭据（本机用户可读，0600）；桌面令牌只负责过守卫。
 		ownerRaw, err := os.ReadFile(filepath.Join(dataDir, "agent_owner_token"))
 		if err != nil {
@@ -233,10 +233,10 @@ func TestDesktopProfileStartupChain(t *testing.T) {
 		runCli := func(args ...string) (int, string) {
 			command := exec.Command(cliBinary, args...)
 			command.Env = append(os.Environ(),
-				"BEEFTV_BASE_URL="+baseURL,
-				"BEEFTV_DESKTOP_TOKEN=",
-				"BEEFTV_CLIENT_ID="+registered.Data.Client.ID,
-				"BEEFTV_CLIENT_TOKEN="+registered.Data.Token,
+				"SIFLUX_BASE_URL="+baseURL,
+				"SIFLUX_DESKTOP_TOKEN=",
+				"SIFLUX_CLIENT_ID="+registered.Data.Client.ID,
+				"SIFLUX_CLIENT_TOKEN="+registered.Data.Token,
 			)
 			output, err := command.CombinedOutput()
 			exitCode := 0
@@ -255,8 +255,8 @@ func TestDesktopProfileStartupChain(t *testing.T) {
 		}
 		// 没有登记凭据时拒绝；外部客户端不持有桌面壳的令牌。
 		command := exec.Command(cliBinary, "ops", "list", "--read-only", "--json")
-		command.Env = append(os.Environ(), "BEEFTV_BASE_URL="+baseURL,
-			"BEEFTV_DESKTOP_TOKEN=", "BEEFTV_CLIENT_ID="+registered.Data.Client.ID, "BEEFTV_CLIENT_TOKEN=invalid")
+		command.Env = append(os.Environ(), "SIFLUX_BASE_URL="+baseURL,
+			"SIFLUX_DESKTOP_TOKEN=", "SIFLUX_CLIENT_ID="+registered.Data.Client.ID, "SIFLUX_CLIENT_TOKEN=invalid")
 		if err := command.Run(); err == nil {
 			t.Fatal("无效客户端凭据不应能访问桌面实例")
 		}
@@ -269,10 +269,10 @@ func TestDesktopProfileStartupChain(t *testing.T) {
 		t.Logf("CLI 桌面接线通过：读成功、无令牌被拒、只读写被拒")
 	}
 
-	// 最小文字读写（默认跳过，避免测试依赖真实模型）：设置 BEEFTV_TEST_REAL_TURN=1
-	// 与 BEEFTV_TEST_CREDENTIALS=<beefapi 凭据 json> 时，用真实模型走一次
+	// 最小文字读写（默认跳过，避免测试依赖真实模型）：设置 SIFLUX_TEST_REAL_TURN=1
+	// 与 SIFLUX_TEST_CREDENTIALS=<beefapi 凭据 json> 时，用真实模型走一次
 	// 「读画布 + 改一个节点字段」，证明发行形态下的助手链路真的能读写。
-	if os.Getenv("BEEFTV_TEST_REAL_TURN") == "1" {
+	if os.Getenv("SIFLUX_TEST_REAL_TURN") == "1" {
 		fixture := "desktop-chain-fixture"
 		code, body := desktopRequestWith(t, baseURL+"/canvas-projects/"+fixture, http.MethodPut, launchToken, true, map[string]any{
 			"project": map[string]any{"id": fixture, "revision": 0, "title": "发行链夹具",

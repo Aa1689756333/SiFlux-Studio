@@ -19,7 +19,7 @@ BeefTV 桌面版是无需登录的本地优先工作区。项目、画布、素�
 在仓库根目录执行：
 
 ```bash
-BEEFTV_GO_DIR=/path/to/go ./scripts/build-beeftv-release.sh
+SIFLUX_GO_DIR=/path/to/go ./scripts/build-beeftv-release.sh
 ```
 
 macOS 应用输出到 `backend/cmd/desktop/build/bin/BeefTV.app`。
@@ -45,7 +45,7 @@ powershell -NoProfile -ExecutionPolicy Bypass -File .\scripts\build-beeftv-windo
 需要同时调试前后端时，可参考 `scripts/beeftv-shared-dev.sh`。验证本地发行边界：
 
 ```bash
-BEEFTV_GO_DIR=/path/to/go ./scripts/verify-beeftv-local-release.sh
+SIFLUX_GO_DIR=/path/to/go ./scripts/verify-beeftv-local-release.sh
 ```
 
 ## 数据位置与备份

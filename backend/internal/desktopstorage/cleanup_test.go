@@ -71,7 +71,7 @@ func TestWorkspaceLockRejectsOtherInstancesAndReleases(t *testing.T) {
 }
 
 func TestCrossVolumeMigration(t *testing.T) {
-	volume := os.Getenv("BEEFTV_TEST_SECOND_VOLUME")
+	volume := os.Getenv("SIFLUX_TEST_SECOND_VOLUME")
 	if volume == "" {
 		t.Skip("native cross-volume fixture not requested")
 	}

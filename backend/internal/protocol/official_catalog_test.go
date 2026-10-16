@@ -11,8 +11,8 @@ import (
 )
 
 const (
-	manifestContractStart            = "<!-- BEEFTV_PLUGIN_MANIFEST_START -->"
-	manifestContractEnd              = "<!-- BEEFTV_PLUGIN_MANIFEST_END -->"
+	manifestContractStart            = "<!-- SIFLUX_PLUGIN_MANIFEST_START -->"
+	manifestContractEnd              = "<!-- SIFLUX_PLUGIN_MANIFEST_END -->"
 	manifestDocumentationPlaceholder = "<当前插件的完整 documentation，由 README.md 与 docs/interface.md 拼接而成；为避免 JSON 递归，此处不重复展开正文。>"
 )
 

@@ -23,7 +23,7 @@ def smoke(archive):
                     target.chmod((item.external_attr >> 16) & 0o777)
         app = root / "BeefTV-linux" / "BeefTV"
         data = root / "isolated data"
-        env = {k: v for k, v in os.environ.items() if not k.startswith(("CANVAS_", "BEEFTV_"))}
+        env = {k: v for k, v in os.environ.items() if not k.startswith(("CANVAS_", "SIFLUX_"))}
         # CI has no GPU; the WebView uses software rendering under Xvfb.
         env["LIBGL_ALWAYS_SOFTWARE"] = "1"
         with (root / "desktop.log").open("w+") as log:

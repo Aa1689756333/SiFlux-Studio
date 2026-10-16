@@ -4,14 +4,14 @@ import fs from 'node:fs';
 import crypto from 'node:crypto';
 import path from 'node:path';
 
-const LISTEN_FD = Number(process.env.BEEFTV_AGENT_LISTEN_FD || 0);
-const PORT_RAW = String(process.env.BEEFTV_AGENT_PORT || '').trim();
-const INSTANCE_NONCE = process.env.BEEFTV_AGENT_INSTANCE_NONCE || '';
-const LIFETIME_STDIN = process.env.BEEFTV_AGENT_LIFETIME_STDIN === '1';
-const DATA_DIR = process.env.BEEFTV_AGENT_DATA_DIR || '';
-const MODEL = process.env.BEEFTV_AGENT_MODEL || '';
+const LISTEN_FD = Number(process.env.SIFLUX_AGENT_LISTEN_FD || 0);
+const PORT_RAW = String(process.env.SIFLUX_AGENT_PORT || '').trim();
+const INSTANCE_NONCE = process.env.SIFLUX_AGENT_INSTANCE_NONCE || '';
+const LIFETIME_STDIN = process.env.SIFLUX_AGENT_LIFETIME_STDIN === '1';
+const DATA_DIR = process.env.SIFLUX_AGENT_DATA_DIR || '';
+const MODEL = process.env.SIFLUX_AGENT_MODEL || '';
 if (!LISTEN_FD && !PORT_RAW) {
-  console.error('owned-listener: missing BEEFTV_AGENT_PORT or BEEFTV_AGENT_LISTEN_FD');
+  console.error('owned-listener: missing SIFLUX_AGENT_PORT or SIFLUX_AGENT_LISTEN_FD');
   process.exit(2);
 }
 

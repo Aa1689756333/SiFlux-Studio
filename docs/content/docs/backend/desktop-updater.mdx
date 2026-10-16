@@ -89,8 +89,8 @@ go run ./cmd/update-release gen-key \
 
 | GitHub 位置 | 名称 | 内容 |
 | --- | --- | --- |
-| Actions secret | `BEEFTV_UPDATER_PRIVATE_KEY` | 64 字节私钥的标准 Base64 |
-| Actions variable | `BEEFTV_UPDATER_PUBLIC_KEY` | 32 字节公钥的标准 Base64 |
+| Actions secret | `SIFLUX_UPDATER_PRIVATE_KEY` | 64 字节私钥的标准 Base64 |
+| Actions variable | `SIFLUX_UPDATER_PUBLIC_KEY` | 32 字节公钥的标准 Base64 |
 
 发布前会核对私钥推导出的公钥与变量一致。缺密钥或对不上都会失败，不会发布未签名更新源。
 

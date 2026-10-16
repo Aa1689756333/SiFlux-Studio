@@ -279,15 +279,15 @@ if ($versionValue -notmatch '^v[0-9]+\.[0-9]+\.[0-9]+([.-][0-9A-Za-z.-]+)?$') {
 $failures = New-Object System.Collections.Generic.List[string]
 
 $goPath = Get-CommandPath "go"
-if (-not $goPath -and $env:BEEFTV_GO_DIR) {
-    $bundledGo = Join-Path $env:BEEFTV_GO_DIR "bin\go.exe"
+if (-not $goPath -and $env:SIFLUX_GO_DIR) {
+    $bundledGo = Join-Path $env:SIFLUX_GO_DIR "bin\go.exe"
     if (Test-Path -LiteralPath $bundledGo -PathType Leaf) {
         $env:PATH = "$(Split-Path -Parent $bundledGo);$env:PATH"
         $goPath = $bundledGo
     }
 }
 if (-not $goPath) {
-    $failures.Add("Go is required on PATH, or set BEEFTV_GO_DIR to a toolchain directory that contains bin\go.exe")
+    $failures.Add("Go is required on PATH, or set SIFLUX_GO_DIR to a toolchain directory that contains bin\go.exe")
 }
 
 $bunPath = Get-CommandPath "bun"
@@ -370,12 +370,12 @@ if ([string]::IsNullOrWhiteSpace($env:CANVAS_BUILD_TIME)) {
 }
 $env:CANVAS_BUILD_VERSION = $versionValue
 $ldflags = "-X infinite-canvas/backend/internal/buildinfo.Version=$versionValue -X infinite-canvas/backend/internal/buildinfo.Commit=$commitValue -X infinite-canvas/backend/internal/buildinfo.BuildTime=$($env:CANVAS_BUILD_TIME)"
-if (-not [string]::IsNullOrWhiteSpace($env:BEEFTV_UPDATER_PUBLIC_KEY)) {
+if (-not [string]::IsNullOrWhiteSpace($env:SIFLUX_UPDATER_PUBLIC_KEY)) {
     Write-Step "Injecting desktop updater FeedURL and PublicKey ldflags"
     $previousLocation = Get-Location
     Set-Location (Join-Path $repoRoot "backend")
     try {
-        $ldflagsResult = Invoke-NativeExecutable -FilePath "go" -ArgumentList @("run", "./cmd/update-release", "print-ldflags") -CaptureOutput -FailureMessage "update-release print-ldflags failed. Set BEEFTV_UPDATER_PUBLIC_KEY to the base64 32-byte Ed25519 public key that matches GitHub variable BEEFTV_UPDATER_PUBLIC_KEY."
+        $ldflagsResult = Invoke-NativeExecutable -FilePath "go" -ArgumentList @("run", "./cmd/update-release", "print-ldflags") -CaptureOutput -FailureMessage "update-release print-ldflags failed. Set SIFLUX_UPDATER_PUBLIC_KEY to the base64 32-byte Ed25519 public key that matches GitHub variable SIFLUX_UPDATER_PUBLIC_KEY."
         $updaterLdflags = ([string]$ldflagsResult.Output).Trim()
         if ([string]::IsNullOrWhiteSpace($updaterLdflags)) {
             throw "update-release print-ldflags produced no output"
@@ -386,8 +386,8 @@ if (-not [string]::IsNullOrWhiteSpace($env:BEEFTV_UPDATER_PUBLIC_KEY)) {
         Set-Location $previousLocation
     }
 }
-if (-not [string]::IsNullOrWhiteSpace($env:BEEFTV_EXTRA_LDFLAGS)) {
-    $ldflags = "$ldflags $($env:BEEFTV_EXTRA_LDFLAGS.Trim())"
+if (-not [string]::IsNullOrWhiteSpace($env:SIFLUX_EXTRA_LDFLAGS)) {
+    $ldflags = "$ldflags $($env:SIFLUX_EXTRA_LDFLAGS.Trim())"
 }
 
 Write-Step "Building SiFlux $versionValue ($commitValue) for windows/amd64"

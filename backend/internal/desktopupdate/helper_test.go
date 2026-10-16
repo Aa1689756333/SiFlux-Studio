@@ -14,7 +14,7 @@ import (
 func TestMain(m *testing.M) {
 	// A copied test executable is a real PE launch target for the Windows
 	// replacement test, without recursively running this test suite.
-	if os.Getenv("BEEFTV_UPDATER_TEST_LAUNCH") == "1" && len(os.Args) == 1 {
+	if os.Getenv("SIFLUX_UPDATER_TEST_LAUNCH") == "1" && len(os.Args) == 1 {
 		os.Exit(0)
 	}
 	if done, err := HandleHelperCommand(os.Args); done {
@@ -89,7 +89,7 @@ func TestSpawnedHelperReplacesInstall(t *testing.T) {
 		}
 		req.Platform = "windows-amd64"
 		req.TargetPath = filepath.Join(oldDir, windowsExeName)
-		t.Setenv("BEEFTV_UPDATER_TEST_LAUNCH", "1")
+		t.Setenv("SIFLUX_UPDATER_TEST_LAUNCH", "1")
 	}
 	encoded, err := json.Marshal(req)
 	if err != nil {

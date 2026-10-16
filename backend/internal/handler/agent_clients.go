@@ -106,7 +106,7 @@ func requireDesktopUITrust(c *gin.Context, svc *app.Service, desktopTrust func(*
 		return false
 	}
 	ownerOK := agentops.OwnerTokenMatches(svc.DataDir(), strings.TrimSpace(c.GetHeader("X-Beeftv-Owner")))
-	devBootstrap := strings.TrimSpace(os.Getenv("BEEFTV_UI_BOOTSTRAP")) == "1"
+	devBootstrap := strings.TrimSpace(os.Getenv("SIFLUX_UI_BOOTSTRAP")) == "1"
 	desktopShell := desktopTrust != nil && desktopTrust(c.Request)
 	if !ownerOK && !devBootstrap && !desktopShell {
 		fail(c, http.StatusForbidden, app.BadAuthRequest("管理客户端凭据需要 owner 凭据或桌面界面"))
@@ -185,16 +185,16 @@ func clientSetup(kind agentops.ClientKind, cliPath, dataDir string, reg agentops
 	switch kind {
 	case agentops.ClientKindCodex:
 		command := "codex mcp add beeftv" +
-			" --env BEEFTV_DATA_DIR=" + shellQuote(dataDir) +
-			" --env BEEFTV_CLIENT_ID=" + shellQuote(reg.ID) +
-			" --env BEEFTV_CLIENT_TOKEN=" + shellQuote(token) +
+			" --env SIFLUX_DATA_DIR=" + shellQuote(dataDir) +
+			" --env SIFLUX_CLIENT_ID=" + shellQuote(reg.ID) +
+			" --env SIFLUX_CLIENT_TOKEN=" + shellQuote(token) +
 			" -- " + shellQuote(cliPath) + " " + strings.Join(serveArgs, " ")
 		return gin.H{"kind": string(kind), "title": "在 Codex 里加上 BeefTV", "command": command}
 	case agentops.ClientKindClaude:
 		command := "claude mcp add beeftv" +
-			" -e BEEFTV_DATA_DIR=" + shellQuote(dataDir) +
-			" -e BEEFTV_CLIENT_ID=" + shellQuote(reg.ID) +
-			" -e BEEFTV_CLIENT_TOKEN=" + shellQuote(token) +
+			" -e SIFLUX_DATA_DIR=" + shellQuote(dataDir) +
+			" -e SIFLUX_CLIENT_ID=" + shellQuote(reg.ID) +
+			" -e SIFLUX_CLIENT_TOKEN=" + shellQuote(token) +
 			" -- " + shellQuote(cliPath) + " " + strings.Join(serveArgs, " ")
 		return gin.H{"kind": string(kind), "title": "在 Claude Code 里加上 BeefTV", "command": command}
 	case agentops.ClientKindClaudeDesktop:
@@ -213,7 +213,7 @@ func mcpServersJSON(cliPath, dataDir string, args []string, clientID, token stri
 	payload := map[string]any{"mcpServers": map[string]any{"beeftv": map[string]any{
 		"command": cliPath,
 		"args":    args,
-		"env":     map[string]string{"BEEFTV_DATA_DIR": dataDir, "BEEFTV_CLIENT_ID": clientID, "BEEFTV_CLIENT_TOKEN": token},
+		"env":     map[string]string{"SIFLUX_DATA_DIR": dataDir, "SIFLUX_CLIENT_ID": clientID, "SIFLUX_CLIENT_TOKEN": token},
 	}}}
 	encoded, err := json.MarshalIndent(payload, "", "  ")
 	if err != nil {

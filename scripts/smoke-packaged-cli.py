@@ -70,10 +70,10 @@ def smoke(archive, platform):
         worker = threading.Thread(target=server.serve_forever, daemon=True)
         worker.start()
         env = {key: value for key, value in os.environ.items()
-               if not key.startswith("BEEFTV_") and not key.startswith("CANVAS_")}
-        env.update(BEEFTV_BASE_URL=f"http://127.0.0.1:{server.server_port}/api",
-                   BEEFTV_DATA_DIR=str(root / "data"), BEEFTV_CLIENT_ID="release-smoke",
-                   BEEFTV_CLIENT_TOKEN=token)
+               if not key.startswith("SIFLUX_") and not key.startswith("CANVAS_")}
+        env.update(SIFLUX_BASE_URL=f"http://127.0.0.1:{server.server_port}/api",
+                   SIFLUX_DATA_DIR=str(root / "data"), SIFLUX_CLIENT_ID="release-smoke",
+                   SIFLUX_CLIENT_TOKEN=token)
         process = None
         try:
             with (root / "stderr.log").open("w+") as stderr:
@@ -125,7 +125,7 @@ def smoke(archive, platform):
                     for invalid in ({}, {**headers, "Authorization": "Bearer invalid"},
                                     {**headers, "X-Beeftv-Owner": "owner"},
                                     {**headers, "X-Desktop-Token": "desktop"}):
-                        request = urllib.request.Request(env["BEEFTV_BASE_URL"][:-4] + route,
+                        request = urllib.request.Request(env["SIFLUX_BASE_URL"][:-4] + route,
                                                          headers=invalid)
                         try:
                             urllib.request.urlopen(request, timeout=5).close()
@@ -134,7 +134,7 @@ def smoke(archive, platform):
                                 raise RuntimeError("unexpected credential rejection") from error
                         else:
                             raise RuntimeError("mock catalog accepted invalid credentials")
-                request = urllib.request.Request(env["BEEFTV_BASE_URL"] + "/unknown", headers=headers)
+                request = urllib.request.Request(env["SIFLUX_BASE_URL"] + "/unknown", headers=headers)
                 try:
                     urllib.request.urlopen(request, timeout=5).close()
                 except urllib.error.HTTPError as error:

@@ -105,7 +105,7 @@ func RegisterAgentUISessionRoutes(r gin.IRouter, svc *app.Service, ui *uiSession
 			return
 		}
 		ownerOK := agentops.OwnerTokenMatches(svc.DataDir(), strings.TrimSpace(c.GetHeader("X-Beeftv-Owner")))
-		devBootstrap := strings.TrimSpace(os.Getenv("BEEFTV_UI_BOOTSTRAP")) == "1"
+		devBootstrap := strings.TrimSpace(os.Getenv("SIFLUX_UI_BOOTSTRAP")) == "1"
 		// The UI bootstrap secret comes through the Wails binding, separately from entry credentials.
 		desktopShell := desktopTrust != nil && desktopTrust(c.Request)
 		if !ownerOK && !devBootstrap && !desktopShell {

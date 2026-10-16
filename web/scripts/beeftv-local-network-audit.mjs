@@ -1,6 +1,6 @@
 import { chromium } from "playwright";
 
-const baseURL = process.env.BEEFTV_URL || "http://127.0.0.1:3000";
+const baseURL = process.env.SIFLUX_URL || "http://127.0.0.1:3000";
 const chrome = "/Applications/Google Chrome.app/Contents/MacOS/Google Chrome";
 const routes = ["/", "/projects", "/project", "/assets", "/canvas", "/tasks", "/settings?section=models", "/create"];
 const localApiPrefixes = [

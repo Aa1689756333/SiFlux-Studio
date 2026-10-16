@@ -43,11 +43,11 @@ async function start(dir, limit) {
   base = `http://127.0.0.1:${port}`;
   log = '';
   child = spawn(process.execPath, [path.join(root, 'agent-host/server.mjs')], { cwd: root, stdio: ['ignore', 'pipe', 'pipe'], env: {
-    ...process.env, BEEFTV_AGENT_PORT: String(port), BEEFTV_AGENT_LISTEN_FD: '0', BEEFTV_AGENT_LIFETIME_STDIN: '0',
-    BEEFTV_AGENT_INSTANCE_NONCE: '', BEEFTV_AGENT_DATA_DIR: dir, BEEFTV_AGENT_HOST_TOKEN: token,
-    BEEFTV_AGENT_API_KEY: 'fake', BEEFTV_AGENT_MODEL: 'fake', BEEFTV_AGENT_API: 'openai-completions',
-    BEEFTV_AGENT_BASE_URL: `http://127.0.0.1:${provider.address().port}/v1`, BEEFTV_OPS_URL: `http://127.0.0.1:${ops.address().port}/api`,
-    BEEFTV_AGENT_TOTAL_REQUEST_BUDGET: String(limit), BEEFTV_AGENT_MAX_REQUESTS_PER_TURN: '1',
+    ...process.env, SIFLUX_AGENT_PORT: String(port), SIFLUX_AGENT_LISTEN_FD: '0', SIFLUX_AGENT_LIFETIME_STDIN: '0',
+    SIFLUX_AGENT_INSTANCE_NONCE: '', SIFLUX_AGENT_DATA_DIR: dir, SIFLUX_AGENT_HOST_TOKEN: token,
+    SIFLUX_AGENT_API_KEY: 'fake', SIFLUX_AGENT_MODEL: 'fake', SIFLUX_AGENT_API: 'openai-completions',
+    SIFLUX_AGENT_BASE_URL: `http://127.0.0.1:${provider.address().port}/v1`, SIFLUX_OPS_URL: `http://127.0.0.1:${ops.address().port}/api`,
+    SIFLUX_AGENT_TOTAL_REQUEST_BUDGET: String(limit), SIFLUX_AGENT_MAX_REQUESTS_PER_TURN: '1',
   }});
   child.stdout.on('data', data => { log += data; }); child.stderr.on('data', data => { log += data; });
   for (let i = 0; i < 150; i++) {

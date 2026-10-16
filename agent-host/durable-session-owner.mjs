@@ -22,11 +22,11 @@ const STATE = defineDoc({ kind: 'beeftv.host', version: 1, scope: 'session',
 export const THINKING_LEVELS = ['off', 'minimal', 'low', 'medium', 'high'];
 // The root agent's reasoning level; budgets follow pi-ai's DEFAULT_THINKING_BUDGETS.
 export function agentThinkingLevel(env = process.env) {
-  const value = String(env.BEEFTV_AGENT_THINKING || '').trim().toLowerCase();
+  const value = String(env.SIFLUX_AGENT_THINKING || '').trim().toLowerCase();
   return THINKING_LEVELS.includes(value) ? value : 'low';
 }
 const CTX = BACKGROUND_CONTEXT;
-const supplementMarker = (id) => `[BEEFTV_INPUT:${id}]`;
+const supplementMarker = (id) => `[SIFLUX_INPUT:${id}]`;
 function supplementContent(id, content) {
   return [{ type: 'text', text: supplementMarker(id) }, ...(typeof content === 'string' ? [{ type: 'text', text: content }] : content)];
 }

@@ -152,8 +152,8 @@ for (const reduced of [false, true]) {
                         expect(box.y).toBeGreaterThanOrEqual(0);
                         expect(box.x + box.width).toBeLessThanOrEqual(viewport.width + 1);
                         expect(box.y + box.height).toBeLessThanOrEqual(viewport.height + 1);
-                        if (process.env.BEEFTV_MODEL_PICKER_SCREENSHOT && reduced && !dark && !mobile && id === "text") {
-                            await page.screenshot({ path: process.env.BEEFTV_MODEL_PICKER_SCREENSHOT });
+                        if (process.env.SIFLUX_MODEL_PICKER_SCREENSHOT && reduced && !dark && !mobile && id === "text") {
+                            await page.screenshot({ path: process.env.SIFLUX_MODEL_PICKER_SCREENSHOT });
                         }
                         await popup.locator(".ant-select-item-option").filter({ hasText: model! }).click();
                         const selected = JSON.parse((await page.getByTestId("selected-models").textContent())!);

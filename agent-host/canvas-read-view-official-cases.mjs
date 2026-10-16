@@ -19,8 +19,8 @@ test('official Durable provider receives complete parseable 23-node view and ori
       taskFailureDiagnostics: { request: 'diagnostic blob '.repeat(10000) },
       ...(i === 0 ? { svg: '<svg>' + 'synthetic'.repeat(50000) + '</svg>' } : {}) } })),
     connections: [{ id: 'edge', source: 'node-0', target: 'node-22' }], revision: 399 };
-  if (process.env.BEEFTV_CANVAS_VIEW_TEST_FIXTURE) {
-    canvas = JSON.parse(fs.readFileSync(process.env.BEEFTV_CANVAS_VIEW_TEST_FIXTURE, 'utf8'));
+  if (process.env.SIFLUX_CANVAS_VIEW_TEST_FIXTURE) {
+    canvas = JSON.parse(fs.readFileSync(process.env.SIFLUX_CANVAS_VIEW_TEST_FIXTURE, 'utf8'));
     assert.equal(canvas.nodes.length, 23);
     canvas.revision = 399;
     for (let i = 0; i < canvas.nodes.length; i++) {

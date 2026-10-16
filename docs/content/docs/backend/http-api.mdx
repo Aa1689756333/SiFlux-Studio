@@ -113,19 +113,19 @@ Wails 和浏览器开发模式共用同一套 `127.0.0.1` HTTP 合同。路由�
 
 按轮撤销不依赖浏览器流或宿主的最后一条消息：轮前文档由后端在转发前落盘，变更摘要由该轮自己的写入回执重建，
 因此浏览器断流（没有 `turn_end`）、用户取消或后端在回合中途重启之后，已经落地的助手写入仍然可以撤销。
-宿主对模型请求与工具步骤各自有单轮上限（`BEEFTV_AGENT_MAX_REQUESTS_PER_TURN`、
-`BEEFTV_AGENT_MAX_TOOL_STEPS_PER_TURN`），按轮独立计数、下一轮从零开始；总预算
-`BEEFTV_AGENT_TOTAL_REQUEST_BUDGET` 默认关闭，只有显式配置才启用。
+宿主对模型请求与工具步骤各自有单轮上限（`SIFLUX_AGENT_MAX_REQUESTS_PER_TURN`、
+`SIFLUX_AGENT_MAX_TOOL_STEPS_PER_TURN`），按轮独立计数、下一轮从零开始；总预算
+`SIFLUX_AGENT_TOTAL_REQUEST_BUDGET` 默认关闭，只有显式配置才启用。
 
 ### 外部客户端连接
 
 桌面设置的「外部 Agent」提供 Codex、Claude Code、Claude Desktop、Cursor 及其他 MCP 客户端的接入配置。Claude Desktop 使用开发者设置中的 `mcpServers` JSON；Claude Code 使用终端命令，Windows 命令需在 PowerShell 运行。保留其他 MCP 服务配置，连接时保持 BeefTV 开启。
 
-配置固定使用随包 CLI 的绝对路径和 `BEEFTV_DATA_DIR`，避免客户端继承的环境选错工作区。Windows CLI 为主程序旁的 `cli/beeftv.exe`，不要把桌面主程序 `BeefTV.exe` 用作 MCP 命令。安装文件不完整时，`POST /agent-clients` 返回 412 / `cli_unavailable`，不签发凭据；重新下载并完整解压后重试。
+配置固定使用随包 CLI 的绝对路径和 `SIFLUX_DATA_DIR`，避免客户端继承的环境选错工作区。Windows CLI 为主程序旁的 `cli/beeftv.exe`，不要把桌面主程序 `BeefTV.exe` 用作 MCP 命令。安装文件不完整时，`POST /agent-clients` 返回 412 / `cli_unavailable`，不签发凭据；重新下载并完整解压后重试。
 
 MCP 使用官方 Go SDK 的 stdio transport；stdout 只写协议消息，启动诊断写 stderr。未发现运行实例时返回 `runtime_not_found`，不猜测默认端口；读取操作清单的启动等待上限为 5 秒。
 
-使用运行时发现地址的 CLI/MCP 会在每次调用前重新读取当前实例，桌面重启换端口后，下一次调用连接新实例。显式设置 `BEEFTV_BASE_URL` 时保持固定地址。连接失败不会自动重发写操作，以免重复执行已送达的请求。
+使用运行时发现地址的 CLI/MCP 会在每次调用前重新读取当前实例，桌面重启换端口后，下一次调用连接新实例。显式设置 `SIFLUX_BASE_URL` 时保持固定地址。连接失败不会自动重发写操作，以免重复执行已送达的请求。
 
 Windows 的运行地址描述文件位于用户目录的 `.beeftv/runtime/`，按数据目录的规范化路径摘要分开保存，并校验工作区身份。该位置在 AppData 外，客户端不再读取 AppData 中旧的 `runtime.json`，避免 Microsoft Store/MSIX 客户端的私有副本遮住真实实例。数据库和素材仍留在原工作区。升级后保持 BeefTV 开启，并在「外部 Agent」重新生成连接配置。
 

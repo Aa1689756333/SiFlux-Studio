@@ -20,7 +20,7 @@ export async function officialNativeHistory(entry, doc, context) {
       for(const message of item.model || []){
         if(message.role!=='toolResult'||!/^media_(overview|inspect|check)$/.test(message.toolName||''))continue;
         for(const content of message.content||[])for(const line of String(content.text||'').split('\n')){
-          const prefix=['BEEFTV_MEDIA_REF_V1:','BEEFTV_MEDIA_PART_V1:'].find(prefix=>line.startsWith(prefix));if(!prefix)continue;
+          const prefix=['SIFLUX_MEDIA_REF_V1:','SIFLUX_MEDIA_PART_V1:'].find(prefix=>line.startsWith(prefix));if(!prefix)continue;
           const part=JSON.parse(line.slice(prefix.length));
           if(!part.source || (part.source.originTurnId && part.source.originTurnId!==round.turnId))throw Error('native_history_origin_conflict');
           const key=`${message.toolCallId}:${nativeSourceKey(part.source)}`;

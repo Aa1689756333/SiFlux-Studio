@@ -20,10 +20,10 @@ type ProviderService interface {
 // 失败时返回的 reason 直接就是 /assistant/status 契约里的机器可读原因。
 func ResolveProvider(resolve func() (assistant.Provider, error)) (assistant.Provider, string) {
 	override := assistant.Provider{
-		BaseURL:  strings.TrimSpace(os.Getenv("BEEFTV_AGENT_BASE_URL")),
-		APIKey:   strings.TrimSpace(os.Getenv("BEEFTV_AGENT_API_KEY")),
-		Model:    strings.TrimSpace(os.Getenv("BEEFTV_AGENT_MODEL")),
-		Protocol: strings.TrimSpace(os.Getenv("BEEFTV_AGENT_PROTOCOL")),
+		BaseURL:  strings.TrimSpace(os.Getenv("SIFLUX_AGENT_BASE_URL")),
+		APIKey:   strings.TrimSpace(os.Getenv("SIFLUX_AGENT_API_KEY")),
+		Model:    strings.TrimSpace(os.Getenv("SIFLUX_AGENT_MODEL")),
+		Protocol: strings.TrimSpace(os.Getenv("SIFLUX_AGENT_PROTOCOL")),
 	}
 	if override.BaseURL != "" && override.APIKey != "" && override.Model != "" {
 		if override.Protocol == "" {

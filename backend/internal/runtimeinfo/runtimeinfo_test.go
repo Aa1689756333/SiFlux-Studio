@@ -134,7 +134,7 @@ func TestDiscoverIgnoresGarbageAndEmptyBaseURL(t *testing.T) {
 }
 
 func TestDefaultDataDirHonorsOverrides(t *testing.T) {
-	t.Setenv("BEEFTV_DATA_DIR", "")
+	t.Setenv("SIFLUX_DATA_DIR", "")
 	t.Setenv("CANVAS_DESKTOP_DATA_DIR", filepath.Join("tmp", "desktop-data"))
 	got, err := DefaultDataDir()
 	if err != nil {
@@ -144,13 +144,13 @@ func TestDefaultDataDirHonorsOverrides(t *testing.T) {
 		t.Fatalf("应使用桌面数据目录覆盖，得到 %q", got)
 	}
 	// CLI 侧的显式指定优先级更高：用来连非默认目录的工作区。
-	t.Setenv("BEEFTV_DATA_DIR", filepath.Join("tmp", "cli-data"))
+	t.Setenv("SIFLUX_DATA_DIR", filepath.Join("tmp", "cli-data"))
 	got, err = DefaultDataDir()
 	if err != nil {
 		t.Fatal(err)
 	}
 	if got != filepath.Join("tmp", "cli-data") {
-		t.Fatalf("BEEFTV_DATA_DIR 应优先，得到 %q", got)
+		t.Fatalf("SIFLUX_DATA_DIR 应优先，得到 %q", got)
 	}
 }
 
@@ -160,7 +160,7 @@ func TestExplicitDataDirIgnoresHostAppData(t *testing.T) {
 	t.Setenv("APPDATA", shadowDir)
 	t.Setenv("XDG_CONFIG_HOME", shadowDir)
 	t.Setenv("CANVAS_DESKTOP_DATA_DIR", shadowDir)
-	t.Setenv("BEEFTV_DATA_DIR", realDir)
+	t.Setenv("SIFLUX_DATA_DIR", realDir)
 	if err := Write(realDir, "http://127.0.0.1:53211/api", "real"); err != nil {
 		t.Fatal(err)
 	}

@@ -9,7 +9,7 @@ import { spawnSync } from "node:child_process";
 // Opt-in: requires local ffmpeg/ffprobe and Chromium. Production-style Vite assets,
 // real browser Worker/core/Canvas2D, real downloads. No encoder/task/API mocks.
 // Canvas persistence stops at its explicitly injected onCreateAssembledNode callback.
-const enabled = process.env.BEEFTV_BROWSER_WORKER_TEST === "1";
+const enabled = process.env.SIFLUX_BROWSER_WORKER_TEST === "1";
 let browser: Browser, server: ReturnType<typeof Bun.serve>, dir: string, base: string;
 const run = (args: string[]) => {
     const result = spawnSync("ffmpeg", ["-hide_banner", "-y", ...args], { cwd: dir, maxBuffer: 32 * 1024 * 1024 });
@@ -24,7 +24,7 @@ beforeAll(async () => {
     writeFileSync(join(dir, "broken.mp4"), "deliberately invalid local media");
     const dist = join(dir, "dist");
     await build({ configFile: false, root: resolve(import.meta.dir, ".."), cacheDir: join(dir, "vite-cache"), publicDir: false, logLevel: "error",
-        define: { __BEEFTV_HEAVY_MEDIA_ENABLED__: "true", __APP_VERSION__: '"test"', __APP_CHANGELOG__: '""' },
+        define: { __SIFLUX_HEAVY_MEDIA_ENABLED__: "true", __APP_VERSION__: '"test"', __APP_CHANGELOG__: '""' },
         resolve: { alias: { "@": resolve(import.meta.dir, "../src") } },
         build: { outDir: dist, emptyOutDir: true, rolldownOptions: { input: resolve(import.meta.dir, "fixtures/timeline-worker-harness.html") } },
     });

@@ -87,7 +87,7 @@ export async function exportTimelineToMp4(timeline: TimelineProject, sources: Ti
     for (const sourceId of canonicalSourceIds(canonical)) {
         if (!sourceById.has(sourceId)) throw new Error("找不到素材：" + sourceId);
     }
-    if (!__BEEFTV_HEAVY_MEDIA_ENABLED__) throw new Error("精简版未包含 FFmpeg 本地媒体工具，请安装完整媒体包");
+    if (!__SIFLUX_HEAVY_MEDIA_ENABLED__) throw new Error("精简版未包含 FFmpeg 本地媒体工具，请安装完整媒体包");
     onProgress?.({ phase: "loading", percent: 0, detail: "加载 FFmpeg" });
     const [{ FFmpeg }, { default: coreURL }, { default: wasmURL }, { fetchFile }] = await Promise.all([import("@ffmpeg/ffmpeg"), import("@ffmpeg/core?url"), import("@ffmpeg/core/wasm?url"), import("@ffmpeg/util")]);
     signal?.throwIfAborted();

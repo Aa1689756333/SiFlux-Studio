@@ -20,7 +20,7 @@ func TestCLIAndMCPAgainstIsolatedIntegratedRuntime(t *testing.T) {
 	if testing.Short() {
 		t.Skip("builds CLI and starts isolated loopback service")
 	}
-	for _, key := range []string{"BEEFTV_CLIENT_ID", "BEEFTV_CLIENT_TOKEN", "BEEFTV_DESKTOP_TOKEN", "BEEFTV_AGENT_API_KEY", "BEEFTV_AGENT_HOST_TOKEN"} {
+	for _, key := range []string{"SIFLUX_CLIENT_ID", "SIFLUX_CLIENT_TOKEN", "SIFLUX_DESKTOP_TOKEN", "SIFLUX_AGENT_API_KEY", "SIFLUX_AGENT_HOST_TOKEN"} {
 		t.Setenv(key, "")
 	}
 	bin := filepath.Join(t.TempDir(), "beeftv")
@@ -31,7 +31,7 @@ func TestCLIAndMCPAgainstIsolatedIntegratedRuntime(t *testing.T) {
 	if output, err := build.CombinedOutput(); err != nil {
 		t.Fatalf("build CLI: %v %s", err, output)
 	}
-	t.Setenv("BEEFTV_BIN", bin)
+	t.Setenv("SIFLUX_BIN", bin)
 	dataDir := t.TempDir()
 	var runtime *bootstrap.Runtime
 	start := func() {
@@ -44,12 +44,12 @@ func TestCLIAndMCPAgainstIsolatedIntegratedRuntime(t *testing.T) {
 		if err := runtime.Start(); err != nil {
 			t.Fatal(err)
 		}
-		t.Setenv("BEEFTV_BASE_URL", runtime.BaseURL())
+		t.Setenv("SIFLUX_BASE_URL", runtime.BaseURL())
 		owner, err := agentops.EnsureOwnerToken(dataDir)
 		if err != nil {
 			t.Fatal(err)
 		}
-		t.Setenv("BEEFTV_OWNER_TOKEN", owner)
+		t.Setenv("SIFLUX_OWNER_TOKEN", owner)
 	}
 	stop := func() {
 		t.Helper()

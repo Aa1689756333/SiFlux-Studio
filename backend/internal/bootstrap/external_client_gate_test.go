@@ -356,8 +356,8 @@ func TestAgentClientSetupShapes(t *testing.T) {
 			if !filepath.IsAbs(entry.Command) || filepath.Base(filepath.Dir(entry.Command)) != "cli" {
 				t.Fatalf("unsafe CLI command: %q", entry.Command)
 			}
-			if entry.Env["BEEFTV_DATA_DIR"] != harness.dataDir {
-				t.Fatalf("wrong workspace directory: %q", entry.Env["BEEFTV_DATA_DIR"])
+			if entry.Env["SIFLUX_DATA_DIR"] != harness.dataDir {
+				t.Fatalf("wrong workspace directory: %q", entry.Env["SIFLUX_DATA_DIR"])
 			}
 		}
 		if title, _ := setup["title"].(string); title == "" {

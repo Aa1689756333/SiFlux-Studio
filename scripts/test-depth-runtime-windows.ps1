@@ -19,7 +19,7 @@ foreach ($required in @($python, (Join-Path $worker "depth_capture\__main__.py")
     if (-not (Test-Path -LiteralPath $required -PathType Leaf)) { throw "深度运行包缺少文件: $required" }
 }
 $env:PYTHONPATH = $worker
-$env:BEEFTV_VDA_SOURCE = $source
+$env:SIFLUX_VDA_SOURCE = $source
 $env:PATH = "$bin;$env:PATH"
 & $python -c "import torch, torchvision, cv2, numpy, depth_capture; print(torch.__version__); print(torch.version.cuda or 'cpu')"
 if ($LASTEXITCODE -ne 0) { throw "深度运行包 Python 依赖加载失败" }

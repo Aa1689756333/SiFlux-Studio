@@ -15,7 +15,7 @@ import (
 
 const (
 	LocalProviderConfigFile = "local-model-config.json"
-	RedactedSecret          = "__BEEFTV_REDACTED__"
+	RedactedSecret          = "__SIFLUX_REDACTED__"
 )
 
 // ProviderConfig owns the local provider snapshot. It has no database or

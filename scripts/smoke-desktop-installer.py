@@ -376,7 +376,7 @@ def smoke(args):
     payload = args.payload.resolve()
     with tempfile.TemporaryDirectory(prefix='beeftv-installer-') as directory, ExitStack() as cleanup:
         root = Path(directory)
-        env = {k: v for k, v in os.environ.items() if not k.startswith(('CANVAS_', 'BEEFTV_'))}
+        env = {k: v for k, v in os.environ.items() if not k.startswith(('CANVAS_', 'SIFLUX_'))}
         home = root / 'home'
         home.mkdir()
         env['HOME'] = str(home)

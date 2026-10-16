@@ -10,9 +10,9 @@ import (
 // Opt-in acceptance probe against the official signed feed. No private keys,
 // installation changes, or credentials are needed.
 func TestLiveSystemProxyUpdateDownload(t *testing.T) {
-	key := os.Getenv("BEEFTV_TEST_UPDATER_PUBLIC_KEY")
+	key := os.Getenv("SIFLUX_TEST_UPDATER_PUBLIC_KEY")
 	if key == "" {
-		t.Skip("set BEEFTV_TEST_UPDATER_PUBLIC_KEY for a live signed download")
+		t.Skip("set SIFLUX_TEST_UPDATER_PUBLIC_KEY for a live signed download")
 	}
 	for _, name := range []string{"HTTP_PROXY", "http_proxy", "HTTPS_PROXY", "https_proxy"} {
 		old, present := os.LookupEnv(name)

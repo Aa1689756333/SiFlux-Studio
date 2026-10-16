@@ -14,10 +14,10 @@ import (
 
 func TestClientFollowsRuntimeForOperationsAndBusiness(t *testing.T) {
 	dir := t.TempDir()
-	t.Setenv("BEEFTV_DATA_DIR", dir)
-	t.Setenv("BEEFTV_BASE_URL", "")
-	t.Setenv("BEEFTV_CLIENT_ID", "client")
-	t.Setenv("BEEFTV_CLIENT_TOKEN", "credential")
+	t.Setenv("SIFLUX_DATA_DIR", dir)
+	t.Setenv("SIFLUX_BASE_URL", "")
+	t.Setenv("SIFLUX_CLIENT_ID", "client")
+	t.Setenv("SIFLUX_CLIENT_TOKEN", "credential")
 	c, err := newClient()
 	if err != nil {
 		t.Fatal(err)
@@ -64,8 +64,8 @@ func TestClientDoesNotUseCachedEndpointAfterRuntimeDisappears(t *testing.T) {
 	for _, invalid := range []bool{false, true} {
 		t.Run(fmt.Sprint(invalid), func(t *testing.T) {
 			dir := t.TempDir()
-			t.Setenv("BEEFTV_DATA_DIR", dir)
-			t.Setenv("BEEFTV_BASE_URL", "")
+			t.Setenv("SIFLUX_DATA_DIR", dir)
+			t.Setenv("SIFLUX_BASE_URL", "")
 			calls := 0
 			server := httptest.NewServer(http.HandlerFunc(func(w http.ResponseWriter, r *http.Request) {
 				calls++
@@ -107,13 +107,13 @@ func TestClientDoesNotUseCachedEndpointAfterRuntimeDisappears(t *testing.T) {
 }
 
 func TestClientFixedAddressDoesNotFollowRuntime(t *testing.T) {
-	t.Setenv("BEEFTV_DATA_DIR", t.TempDir())
-	t.Setenv("BEEFTV_BASE_URL", "http://127.0.0.1:43210")
+	t.Setenv("SIFLUX_DATA_DIR", t.TempDir())
+	t.Setenv("SIFLUX_BASE_URL", "http://127.0.0.1:43210")
 	c, err := newClient()
 	if err != nil {
 		t.Fatal(err)
 	}
-	if err := runtimeinfo.Write(os.Getenv("BEEFTV_DATA_DIR"), "http://127.0.0.1:43211", "test"); err != nil {
+	if err := runtimeinfo.Write(os.Getenv("SIFLUX_DATA_DIR"), "http://127.0.0.1:43211", "test"); err != nil {
 		t.Fatal(err)
 	}
 	if c.currentBaseURL() != "http://127.0.0.1:43210" {

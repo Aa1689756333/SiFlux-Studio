@@ -13,7 +13,7 @@ import (
 )
 
 func TestSchemaMigrationCrashHelper(t *testing.T) {
-	path := os.Getenv("BEEFTV_SCHEMA_CRASH_FIXTURE")
+	path := os.Getenv("SIFLUX_SCHEMA_CRASH_FIXTURE")
 	if path == "" {
 		t.Skip("child-process crash fixture only")
 	}
@@ -43,7 +43,7 @@ func TestSchemaRepairRecoversAfterProcessKill(t *testing.T) {
 		t.Fatal(err)
 	}
 	cmd := exec.Command(os.Args[0], "-test.run=^TestSchemaMigrationCrashHelper$", "-test.v")
-	cmd.Env = append(os.Environ(), "BEEFTV_SCHEMA_CRASH_FIXTURE="+path)
+	cmd.Env = append(os.Environ(), "SIFLUX_SCHEMA_CRASH_FIXTURE="+path)
 	if err := cmd.Start(); err != nil {
 		t.Fatal(err)
 	}

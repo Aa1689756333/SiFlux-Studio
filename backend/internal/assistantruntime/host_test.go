@@ -18,7 +18,7 @@ func testPin(opsURL, desktop string) childPin {
 	return childPin{OpsURL: opsURL, DesktopTok: desktop}
 }
 
-// 宿主把 BEEFTV_OPS_URL 当基址再拼 /ops，因此这里必须带 /api 前缀；
+// 宿主把 SIFLUX_OPS_URL 当基址再拼 /ops，因此这里必须带 /api 前缀；
 // 少了它宿主启动即因 404 退出，界面只会显示「创作助手暂时不可用」。
 func TestHostEnvOpsURLKeepsAPIPrefix(t *testing.T) {
 	dataDir := t.TempDir()
@@ -32,32 +32,32 @@ func TestHostEnvOpsURLKeepsAPIPrefix(t *testing.T) {
 	t.Setenv("CANVAS_BACKEND_PORT", "")
 
 	env := New(Options{DataDir: dataDir}).buildEnv(testProvider(), testPin("http://127.0.0.1:18090/api", "desktop-shell-token"))
-	if got := envValue(env, "BEEFTV_OPS_URL"); got != "http://127.0.0.1:18090/api" {
-		t.Fatalf("BEEFTV_OPS_URL 应使用显式地址，得到 %q", got)
+	if got := envValue(env, "SIFLUX_OPS_URL"); got != "http://127.0.0.1:18090/api" {
+		t.Fatalf("SIFLUX_OPS_URL 应使用显式地址，得到 %q", got)
 	}
-	if got := envValue(env, "BEEFTV_AGENT_HOST_TOKEN"); got != "host-token" {
-		t.Fatalf("BEEFTV_AGENT_HOST_TOKEN = %q", got)
+	if got := envValue(env, "SIFLUX_AGENT_HOST_TOKEN"); got != "host-token" {
+		t.Fatalf("SIFLUX_AGENT_HOST_TOKEN = %q", got)
 	}
-	if got := envValue(env, "BEEFTV_OWNER_TOKEN"); got != "" {
-		t.Fatalf("不得向子进程注入 BEEFTV_OWNER_TOKEN，得到 %q", got)
+	if got := envValue(env, "SIFLUX_OWNER_TOKEN"); got != "" {
+		t.Fatalf("不得向子进程注入 SIFLUX_OWNER_TOKEN，得到 %q", got)
 	}
-	if got := envValue(env, "BEEFTV_AGENT_DATA_DIR"); got != dataDir {
-		t.Fatalf("BEEFTV_AGENT_DATA_DIR = %q", got)
+	if got := envValue(env, "SIFLUX_AGENT_DATA_DIR"); got != dataDir {
+		t.Fatalf("SIFLUX_AGENT_DATA_DIR = %q", got)
 	}
-	if got := envValue(env, "BEEFTV_AGENT_API_KEY"); got != "test-key" {
-		t.Fatalf("BEEFTV_AGENT_API_KEY 应由调用方注入，得到 %q", got)
+	if got := envValue(env, "SIFLUX_AGENT_API_KEY"); got != "test-key" {
+		t.Fatalf("SIFLUX_AGENT_API_KEY 应由调用方注入，得到 %q", got)
 	}
-	if got := envValue(env, "BEEFTV_AGENT_DESKTOP_TOKEN"); got != "desktop-shell-token" {
+	if got := envValue(env, "SIFLUX_AGENT_DESKTOP_TOKEN"); got != "desktop-shell-token" {
 		t.Fatalf("桌面形态应把启动令牌交给宿主，得到 %q", got)
 	}
 }
 
 // 显式注入的环境变量优先于渠道解析（开发与受控测试路径）；此时不需要应用服务。
 func TestResolveAssistantProviderPrefersExplicitEnv(t *testing.T) {
-	t.Setenv("BEEFTV_AGENT_API_KEY", "env-key")
-	t.Setenv("BEEFTV_AGENT_BASE_URL", "https://env.example/v1")
-	t.Setenv("BEEFTV_AGENT_MODEL", "env-model")
-	t.Setenv("BEEFTV_AGENT_PROTOCOL", "claude-api")
+	t.Setenv("SIFLUX_AGENT_API_KEY", "env-key")
+	t.Setenv("SIFLUX_AGENT_BASE_URL", "https://env.example/v1")
+	t.Setenv("SIFLUX_AGENT_MODEL", "env-model")
+	t.Setenv("SIFLUX_AGENT_PROTOCOL", "claude-api")
 
 	provider, reason := ResolveProvider(nil)
 	if reason != "" {
@@ -88,10 +88,10 @@ func TestAssistantHostEnvCarriesProtocolAndBaseURLShape(t *testing.T) {
 	for _, item := range cases {
 		env := host.buildEnv(assistant.Provider{Model: "m", BaseURL: item.baseURL, APIKey: "k", Protocol: item.protocol},
 			testPin("http://127.0.0.1:18090/api", ""))
-		if got := envValue(env, "BEEFTV_AGENT_API"); got != item.wantAPI {
+		if got := envValue(env, "SIFLUX_AGENT_API"); got != item.wantAPI {
 			t.Fatalf("协议 %s 应映射到 %s，得到 %q", item.protocol, item.wantAPI, got)
 		}
-		if got := envValue(env, "BEEFTV_AGENT_BASE_URL"); got != item.wantBase {
+		if got := envValue(env, "SIFLUX_AGENT_BASE_URL"); got != item.wantBase {
 			t.Fatalf("协议 %s 的接口地址应为 %s，得到 %q", item.protocol, item.wantBase, got)
 		}
 	}
@@ -214,16 +214,16 @@ func TestBuildEnvStripsInheritedSecretsAndClearsBlankAuthority(t *testing.T) {
 			return []string{
 				"PATH=/usr/bin:/opt/homebrew/bin",
 				"HOME=/tmp",
-				"BEEFTV_AGENT_PORT=18500",
-				"BEEFTV_OWNER_TOKEN=stolen-owner",
-				"BEEFTV_AGENT_HOST_TOKEN=stolen-host",
-				"BEEFTV_OPS_URL=http://evil.example/api",
-				"BEEFTV_AGENT_API_KEY=inherited-key",
+				"SIFLUX_AGENT_PORT=18500",
+				"SIFLUX_OWNER_TOKEN=stolen-owner",
+				"SIFLUX_AGENT_HOST_TOKEN=stolen-host",
+				"SIFLUX_OPS_URL=http://evil.example/api",
+				"SIFLUX_AGENT_API_KEY=inherited-key",
 				"OPENAI_API_KEY=sk-openai",
 				"ANTHROPIC_API_KEY=sk-ant",
 				"GEMINI_API_KEY=stolen-gemini",
-				"BEEFTV_AGENT_MAX_TOKENS=1234",
-				"BEEFTV_AGENT_THINKING=medium",
+				"SIFLUX_AGENT_MAX_TOKENS=1234",
+				"SIFLUX_AGENT_THINKING=medium",
 			}
 		},
 	})
@@ -234,22 +234,22 @@ func TestBuildEnvStripsInheritedSecretsAndClearsBlankAuthority(t *testing.T) {
 	if got := envValue(env, "PATH"); got != "/usr/bin:/opt/homebrew/bin" {
 		t.Fatalf("PATH 必须保留，得到 %q", got)
 	}
-	if got := envValue(env, "BEEFTV_AGENT_PORT"); got != "54321" {
+	if got := envValue(env, "SIFLUX_AGENT_PORT"); got != "54321" {
 		t.Fatalf("PORT 必须由监督器钉死，得到 %q", got)
 	}
-	if got := envValue(env, "BEEFTV_AGENT_HOST_TOKEN"); got != "pinned-host" {
+	if got := envValue(env, "SIFLUX_AGENT_HOST_TOKEN"); got != "pinned-host" {
 		t.Fatalf("宿主凭据必须覆盖继承值，得到 %q", got)
 	}
-	if got := envValue(env, "BEEFTV_OWNER_TOKEN"); got != "" {
+	if got := envValue(env, "SIFLUX_OWNER_TOKEN"); got != "" {
 		t.Fatalf("OWNER_TOKEN 不得进入子进程，得到 %q", got)
 	}
-	if got := envValue(env, "BEEFTV_OPS_URL"); got != "http://127.0.0.1:18090/api" {
+	if got := envValue(env, "SIFLUX_OPS_URL"); got != "http://127.0.0.1:18090/api" {
 		t.Fatalf("OPS_URL 必须钉死，得到 %q", got)
 	}
-	if got := envValue(env, "BEEFTV_AGENT_API_KEY"); got != "" {
+	if got := envValue(env, "SIFLUX_AGENT_API_KEY"); got != "" {
 		t.Fatalf("空白权威密钥必须清掉继承值，得到 %q", got)
 	}
-	if !envHasKey(env, "BEEFTV_AGENT_API_KEY") {
+	if !envHasKey(env, "SIFLUX_AGENT_API_KEY") {
 		t.Fatal("空白权威密钥必须以空值写出，不能省略")
 	}
 	if envValue(env, "OPENAI_API_KEY") != "" || envHasKey(env, "OPENAI_API_KEY") {
@@ -258,17 +258,17 @@ func TestBuildEnvStripsInheritedSecretsAndClearsBlankAuthority(t *testing.T) {
 	if envValue(env, "ANTHROPIC_API_KEY") != "" || envHasKey(env, "ANTHROPIC_API_KEY") {
 		t.Fatal("不得把环境里的 ANTHROPIC_API_KEY 带进 SDK")
 	}
-	if envValue(env, "BEEFTV_AGENT_INSTANCE_NONCE") != "nonce-value" {
+	if envValue(env, "SIFLUX_AGENT_INSTANCE_NONCE") != "nonce-value" {
 		t.Fatal("实例 nonce 必须钉死")
 	}
-	if envValue(env, "BEEFTV_AGENT_LIFETIME_STDIN") != "1" {
+	if envValue(env, "SIFLUX_AGENT_LIFETIME_STDIN") != "1" {
 		t.Fatal("生命周期管道标记必须钉死")
 	}
-	if envValue(env, "BEEFTV_AGENT_MAX_TOKENS") != "1234" {
-		t.Fatalf("非权威可调参数应保留，得到 %q", envValue(env, "BEEFTV_AGENT_MAX_TOKENS"))
+	if envValue(env, "SIFLUX_AGENT_MAX_TOKENS") != "1234" {
+		t.Fatalf("非权威可调参数应保留，得到 %q", envValue(env, "SIFLUX_AGENT_MAX_TOKENS"))
 	}
-	if envValue(env, "BEEFTV_AGENT_THINKING") != "medium" {
-		t.Fatalf("思考强度应保留，得到 %q", envValue(env, "BEEFTV_AGENT_THINKING"))
+	if envValue(env, "SIFLUX_AGENT_THINKING") != "medium" {
+		t.Fatalf("思考强度应保留，得到 %q", envValue(env, "SIFLUX_AGENT_THINKING"))
 	}
 }
 

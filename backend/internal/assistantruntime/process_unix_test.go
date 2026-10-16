@@ -45,7 +45,7 @@ func TestStopContextDoesNotReapOutsider(t *testing.T) {
 func TestParentSIGKILLClosesLifetimePipeAndChildExits(t *testing.T) {
 	dataDir := t.TempDir()
 	cmd := exec.Command(os.Args[0])
-	cmd.Env = append(os.Environ(), fixtureEnv+"=supervisor", "BEEFTV_SUPERVISOR_DATA="+dataDir)
+	cmd.Env = append(os.Environ(), fixtureEnv+"=supervisor", "SIFLUX_SUPERVISOR_DATA="+dataDir)
 	cmd.Stdout = os.Stderr
 	cmd.Stderr = os.Stderr
 	if err := cmd.Start(); err != nil {

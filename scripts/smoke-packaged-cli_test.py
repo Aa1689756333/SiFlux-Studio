@@ -19,7 +19,7 @@ class PackagedCLITest(unittest.TestCase):
             with zipfile.ZipFile(archive, "w") as bundle:
                 entry = zipfile.ZipInfo(name)
                 entry.external_attr = 0o100755 << 16
-                bundle.writestr(entry, b'#!/bin/sh\necho "fixture startup failure $BEEFTV_CLIENT_TOKEN" >&2\nexit 1\n')
+                bundle.writestr(entry, b'#!/bin/sh\necho "fixture startup failure $SIFLUX_CLIENT_TOKEN" >&2\nexit 1\n')
             with self.assertRaisesRegex(RuntimeError, r"fixture startup failure \[redacted\]"):
                 module.smoke(archive, "darwin-arm64")
 

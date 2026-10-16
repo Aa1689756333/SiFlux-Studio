@@ -47,10 +47,10 @@ func TestHostConfigResponseOmitsProviderSecret(t *testing.T) {
 	if err != nil {
 		t.Fatal(err)
 	}
-	t.Setenv("BEEFTV_AGENT_API_KEY", "secret-key")
-	t.Setenv("BEEFTV_AGENT_BASE_URL", "https://example.invalid/v1")
-	t.Setenv("BEEFTV_AGENT_MODEL", "MiniMax-M3")
-	t.Setenv("BEEFTV_AGENT_PROTOCOL", "chat-completion")
+	t.Setenv("SIFLUX_AGENT_API_KEY", "secret-key")
+	t.Setenv("SIFLUX_AGENT_BASE_URL", "https://example.invalid/v1")
+	t.Setenv("SIFLUX_AGENT_MODEL", "MiniMax-M3")
+	t.Setenv("SIFLUX_AGENT_PROTOCOL", "chat-completion")
 
 	host := assistantruntime.New(assistantruntime.OptionsFromService(svc))
 	router := gin.New()
@@ -81,7 +81,7 @@ func TestHostConfigResponseOmitsProviderSecret(t *testing.T) {
 
 func TestHostConfigResolvesPersistedModelsOnlyDefault(t *testing.T) {
 	gin.SetMode(gin.TestMode)
-	for _, key := range []string{"BEEFTV_AGENT_API_KEY", "BEEFTV_AGENT_BASE_URL", "BEEFTV_AGENT_MODEL", "BEEFTV_AGENT_PROTOCOL"} {
+	for _, key := range []string{"SIFLUX_AGENT_API_KEY", "SIFLUX_AGENT_BASE_URL", "SIFLUX_AGENT_MODEL", "SIFLUX_AGENT_PROTOCOL"} {
 		t.Setenv(key, "")
 	}
 	dataDir := t.TempDir()
@@ -128,9 +128,9 @@ func TestHostStartWithoutCommandReturnsMissingReason(t *testing.T) {
 	if err != nil {
 		t.Fatal(err)
 	}
-	t.Setenv("BEEFTV_AGENT_API_KEY", "k")
-	t.Setenv("BEEFTV_AGENT_BASE_URL", "https://example.invalid/v1")
-	t.Setenv("BEEFTV_AGENT_MODEL", "m")
+	t.Setenv("SIFLUX_AGENT_API_KEY", "k")
+	t.Setenv("SIFLUX_AGENT_BASE_URL", "https://example.invalid/v1")
+	t.Setenv("SIFLUX_AGENT_MODEL", "m")
 
 	router := gin.New()
 	RegisterAgentHostLifecycleRoutes(router.Group("/api"), svc, assistantruntime.New(assistantruntime.OptionsFromService(svc)))
@@ -168,15 +168,15 @@ func TestHostConfigWriteRoundTrip(t *testing.T) {
 
 func useLifecycleProvider(t *testing.T) {
 	t.Helper()
-	t.Setenv("BEEFTV_AGENT_API_KEY", "k")
-	t.Setenv("BEEFTV_AGENT_BASE_URL", "https://example.invalid/v1")
-	t.Setenv("BEEFTV_AGENT_MODEL", "m")
-	t.Setenv("BEEFTV_AGENT_PROTOCOL", "chat-completion")
+	t.Setenv("SIFLUX_AGENT_API_KEY", "k")
+	t.Setenv("SIFLUX_AGENT_BASE_URL", "https://example.invalid/v1")
+	t.Setenv("SIFLUX_AGENT_MODEL", "m")
+	t.Setenv("SIFLUX_AGENT_PROTOCOL", "chat-completion")
 }
 
 func ownedListenerNode(t *testing.T) string {
 	t.Helper()
-	if path := strings.TrimSpace(os.Getenv("BEEFTV_TEST_NODE")); path != "" {
+	if path := strings.TrimSpace(os.Getenv("SIFLUX_TEST_NODE")); path != "" {
 		return path
 	}
 	path, err := exec.LookPath("node")
@@ -414,7 +414,7 @@ func TestStatusTimeoutChildWithFingerprintChangeDoesNotRelaunch(t *testing.T) {
 	if err := os.WriteFile(filepath.Join(dataDir, "hang-health"), []byte("1"), 0o600); err != nil {
 		t.Fatal(err)
 	}
-	t.Setenv("BEEFTV_AGENT_MODEL", "other-model")
+	t.Setenv("SIFLUX_AGENT_MODEL", "other-model")
 
 	status := lifecycleRequest(router, http.MethodGet, "/api/assistant/status", "", "")
 	if status.Code != http.StatusOK {
@@ -431,7 +431,7 @@ func TestStatusTimeoutChildWithFingerprintChangeDoesNotRelaunch(t *testing.T) {
 func TestStatusHealthyIdleFingerprintChangeRestarts(t *testing.T) {
 	host, router, _ := startOwnedListenerHost(t)
 	firstPID := host.PID()
-	t.Setenv("BEEFTV_AGENT_MODEL", "other-model")
+	t.Setenv("SIFLUX_AGENT_MODEL", "other-model")
 
 	status := lifecycleRequest(router, http.MethodGet, "/api/assistant/status", "", "")
 	if status.Code != http.StatusOK {

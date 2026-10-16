@@ -89,15 +89,15 @@ async function withHost(run, envExtra = {}, options = {}) {
     base = `http://127.0.0.1:${port}`;
     const env = {
       ...process.env,
-      BEEFTV_AGENT_DATA_DIR: directory,
-      BEEFTV_AGENT_HOST_TOKEN: hostToken,
-      BEEFTV_AGENT_PORT: String(port),
-      BEEFTV_OPS_URL: `http://127.0.0.1:${opsPort}/api`,
-      BEEFTV_AGENT_API: 'openai-completions',
-      BEEFTV_AGENT_MODEL: 'synthetic',
-      BEEFTV_AGENT_API_KEY: 'synthetic-only',
-      BEEFTV_AGENT_BASE_URL: `http://127.0.0.1:${modelPort}/v1`,
-      BEEFTV_AGENT_TURN_TIMEOUT_MS: '20000',
+      SIFLUX_AGENT_DATA_DIR: directory,
+      SIFLUX_AGENT_HOST_TOKEN: hostToken,
+      SIFLUX_AGENT_PORT: String(port),
+      SIFLUX_OPS_URL: `http://127.0.0.1:${opsPort}/api`,
+      SIFLUX_AGENT_API: 'openai-completions',
+      SIFLUX_AGENT_MODEL: 'synthetic',
+      SIFLUX_AGENT_API_KEY: 'synthetic-only',
+      SIFLUX_AGENT_BASE_URL: `http://127.0.0.1:${modelPort}/v1`,
+      SIFLUX_AGENT_TURN_TIMEOUT_MS: '20000',
       ...envExtra,
     };
     const start = async () => {
@@ -114,7 +114,7 @@ async function withHost(run, envExtra = {}, options = {}) {
       const exited = new Promise((resolve) => child.once('close', resolve));
       child.kill('SIGTERM');
       await exited;
-      if (modelId) env.BEEFTV_AGENT_MODEL = modelId;
+      if (modelId) env.SIFLUX_AGENT_MODEL = modelId;
       await start();
     };
     await start();

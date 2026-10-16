@@ -14,7 +14,7 @@ func TestWindowsCanonicalDescriptorIgnoresAppDataShadows(t *testing.T) {
 	dataDir := filepath.Join(home, "AppData", "Roaming", "BeefTV")
 	shadowDir := filepath.Join(home, "AppData", "Local", "Packages", "fixture", "LocalCache", "Roaming", "BeefTV")
 	t.Setenv("APPDATA", filepath.Dir(shadowDir))
-	t.Setenv("BEEFTV_DATA_DIR", dataDir)
+	t.Setenv("SIFLUX_DATA_DIR", dataDir)
 	for _, dir := range []string{dataDir, shadowDir} {
 		if err := os.MkdirAll(dir, 0o700); err != nil {
 			t.Fatal(err)

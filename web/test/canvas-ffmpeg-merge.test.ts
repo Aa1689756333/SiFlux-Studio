@@ -1,6 +1,6 @@
 import { afterEach, beforeEach, expect, mock, test } from "bun:test";
 
-(globalThis as { __BEEFTV_HEAVY_MEDIA_ENABLED__?: boolean }).__BEEFTV_HEAVY_MEDIA_ENABLED__ = true;
+(globalThis as { __SIFLUX_HEAVY_MEDIA_ENABLED__?: boolean }).__SIFLUX_HEAVY_MEDIA_ENABLED__ = true;
 
 function deferred<T = void>() {
     let resolve!: (value: T | PromiseLike<T>) => void;

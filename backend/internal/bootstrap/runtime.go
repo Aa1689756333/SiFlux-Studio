@@ -364,7 +364,7 @@ func (r *Runtime) Start() error {
 		// 运行时发现：端口是动态的，外部客户端靠工作区对应的运行时描述文件找到当前地址，
 		// 而不是靠猜端口或拿到桌面启动令牌。写失败不影响应用启动。
 		if err := runtimeinfo.Write(r.cfg.DataDir, opsURL, buildinfo.Current().Version); err != nil {
-			log.Printf("未能写入运行时地址（外部 Agent 需手动指定 BEEFTV_BASE_URL）：%v", err)
+			log.Printf("未能写入运行时地址（外部 Agent 需手动指定 SIFLUX_BASE_URL）：%v", err)
 		}
 		if r.assistantHost != nil {
 			if err := r.assistantHost.Start(opsURL, r.launchToken); err != nil {

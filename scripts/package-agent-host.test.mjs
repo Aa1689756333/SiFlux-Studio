@@ -16,7 +16,7 @@ test('release rejects missing runtime and unsupported target', () => {
 });
 
 test('bundled runtime, locked dependencies, and paths with spaces', () => {
-  const runtime = process.env.BEEFTV_NODE_RUNTIME;
+  const runtime = process.env.SIFLUX_NODE_RUNTIME;
   expect(runtime).toBeTruthy();
   const target = `${process.platform === 'win32' ? 'windows' : process.platform}/${process.arch === 'x64' ? 'amd64' : 'arm64'}`;
   const scratch = mkdtempSync(path.join(tmpdir(), 'beeftv package test '));
@@ -42,7 +42,7 @@ test('bundled runtime, locked dependencies, and paths with spaces', () => {
 }, 240000);
 
 test('packaged server starts with local imports and makes zero model requests', async () => {
-  const runtime = process.env.BEEFTV_NODE_RUNTIME;
+  const runtime = process.env.SIFLUX_NODE_RUNTIME;
   expect(runtime).toBeTruthy();
   const target = `${process.platform === 'win32' ? 'windows' : process.platform}/${process.arch === 'x64' ? 'amd64' : 'arm64'}`;
   const scratch = mkdtempSync(path.join(tmpdir(), 'beeftv packaged server '));
@@ -81,10 +81,10 @@ test('packaged server starts with local imports and makes zero model requests', 
     let spawnError;
     child = spawn(bundled, ['server.mjs'], { cwd: destination, stdio: ['ignore', 'pipe', 'pipe'], env: {
       PATH: '', HOME: scratch, USERPROFILE: scratch, ...(process.env.SystemRoot ? { SystemRoot: process.env.SystemRoot } : {}),
-      BEEFTV_OPS_URL: `${opsURL}/api`, BEEFTV_AGENT_HOST_TOKEN: 'test-host',
-      BEEFTV_AGENT_DATA_DIR: path.join(scratch, 'data'), BEEFTV_AGENT_PORT: String(port),
-      BEEFTV_AGENT_MODEL: 'packaging-test-model', BEEFTV_AGENT_API: 'openai-completions',
-      BEEFTV_AGENT_BASE_URL: providerURL, BEEFTV_AGENT_API_KEY: 'test-placeholder', BEEFTV_AGENT_TOTAL_REQUEST_BUDGET: '0',
+      SIFLUX_OPS_URL: `${opsURL}/api`, SIFLUX_AGENT_HOST_TOKEN: 'test-host',
+      SIFLUX_AGENT_DATA_DIR: path.join(scratch, 'data'), SIFLUX_AGENT_PORT: String(port),
+      SIFLUX_AGENT_MODEL: 'packaging-test-model', SIFLUX_AGENT_API: 'openai-completions',
+      SIFLUX_AGENT_BASE_URL: providerURL, SIFLUX_AGENT_API_KEY: 'test-placeholder', SIFLUX_AGENT_TOTAL_REQUEST_BUDGET: '0',
     } });
     child.stdout.on('data', (chunk) => { output += chunk; });
     child.stderr.on('data', (chunk) => { output += chunk; });

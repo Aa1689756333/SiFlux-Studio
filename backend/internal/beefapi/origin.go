@@ -16,7 +16,7 @@ const (
 	ClientScope      = "inference"
 	CredentialRef    = "beefapi-enterprise"
 	ChannelID        = "beefapi"
-	TestOriginEnv    = "BEEFTV_ENTERPRISE_TEST_ORIGIN"
+	TestOriginEnv    = "SIFLUX_ENTERPRISE_TEST_ORIGIN"
 	WalletPath       = "/console/topup"
 )
 

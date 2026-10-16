@@ -4,10 +4,10 @@ set -euo pipefail
 
 ROOT_DIR="$(cd "$(dirname "${BASH_SOURCE[0]}")/.." && pwd)"
 DESKTOP_DIR="$ROOT_DIR/backend/cmd/desktop"
-GO_DIR="${BEEFTV_GO_DIR:-/tmp/siflux-go.rpIfVN/go}"
+GO_DIR="${SIFLUX_GO_DIR:-/tmp/siflux-go.rpIfVN/go}"
 
 HOST_OS="$(uname -s | tr '[:upper:]' '[:lower:]')"
-AGENT_TARGET="${BEEFTV_WAILS_PLATFORM:-$HOST_OS/$(uname -m)}"
+AGENT_TARGET="${SIFLUX_WAILS_PLATFORM:-$HOST_OS/$(uname -m)}"
 [[ "$AGENT_TARGET" != "darwin/x86_64" ]] || AGENT_TARGET="darwin/amd64"
 [[ "$AGENT_TARGET" != "linux/x86_64" ]] || AGENT_TARGET="linux/amd64"
 if [[ "$AGENT_TARGET" == linux/* && ( "$HOST_OS" != linux || "$AGENT_TARGET" != linux/amd64 || "$(uname -m)" != x86_64 ) ]]; then
@@ -32,14 +32,14 @@ if ! command -v go >/dev/null 2>&1 && [[ -x "$GO_DIR/bin/go" ]]; then
 fi
 
 if ! command -v go >/dev/null 2>&1; then
-  echo "Go is required (set BEEFTV_GO_DIR when using a bundled toolchain)" >&2
+  echo "Go is required (set SIFLUX_GO_DIR when using a bundled toolchain)" >&2
   exit 1
 fi
 
-# Use the shared size gate default; an explicit BEEFTV_WEB_BUDGET_MIB override
+# Use the shared size gate default; an explicit SIFLUX_WEB_BUDGET_MIB override
 # applies consistently to local and CI builds.
 
-if [[ "${BEEFTV_SKIP_LOCAL_VERIFY:-}" != "1" ]]; then
+if [[ "${SIFLUX_SKIP_LOCAL_VERIFY:-}" != "1" ]]; then
   "$ROOT_DIR/scripts/verify-siflux-local-release.sh"
 fi
 
@@ -49,20 +49,20 @@ export CANVAS_BUILD_VERSION="$VERSION_VALUE"
 export GOTOOLCHAIN="${GOTOOLCHAIN:-local}"
 
 LDFLAGS="-X infinite-canvas/backend/internal/buildinfo.Version=$VERSION_VALUE -X infinite-canvas/backend/internal/buildinfo.Commit=$COMMIT_VALUE -X infinite-canvas/backend/internal/buildinfo.BuildTime=$BUILD_TIME_VALUE"
-if [[ -n "${BEEFTV_UPDATER_PUBLIC_KEY:-}" ]]; then
+if [[ -n "${SIFLUX_UPDATER_PUBLIC_KEY:-}" ]]; then
   UPDATER_LDFLAGS="$(
     cd "$ROOT_DIR/backend"
     go run ./cmd/update-release print-ldflags
   )"
   LDFLAGS="$LDFLAGS $UPDATER_LDFLAGS"
 fi
-if [[ -n "${BEEFTV_EXTRA_LDFLAGS:-}" ]]; then
-  LDFLAGS="$LDFLAGS $BEEFTV_EXTRA_LDFLAGS"
+if [[ -n "${SIFLUX_EXTRA_LDFLAGS:-}" ]]; then
+  LDFLAGS="$LDFLAGS $SIFLUX_EXTRA_LDFLAGS"
 fi
 
-if [[ -n "${BEEFTV_WAILS_PLATFORM:-}" ]]; then
+if [[ -n "${SIFLUX_WAILS_PLATFORM:-}" ]]; then
   host_arch="$(uname -m)"
-  case "$BEEFTV_WAILS_PLATFORM" in
+  case "$SIFLUX_WAILS_PLATFORM" in
     darwin/amd64)
       if [[ "$host_arch" == "arm64" ]]; then
         export CGO_ENABLED=1
@@ -90,11 +90,11 @@ cp "$ROOT_DIR/assets/app-icon.png" "$DESKTOP_DIR/build/appicon.png"
   if [[ "$AGENT_TARGET" == linux/amd64 ]]; then
     go run github.com/wailsapp/wails/v2/cmd/wails@v2.16.0 build \
       -clean -trimpath -platform linux/amd64 -tags webkit2_41 -ldflags "$LDFLAGS"
-  elif [[ -n "${BEEFTV_WAILS_PLATFORM:-}" ]]; then
+  elif [[ -n "${SIFLUX_WAILS_PLATFORM:-}" ]]; then
     go run github.com/wailsapp/wails/v2/cmd/wails@v2.16.0 build \
       -clean \
       -trimpath \
-      -platform "$BEEFTV_WAILS_PLATFORM" \
+      -platform "$SIFLUX_WAILS_PLATFORM" \
       -ldflags "$LDFLAGS"
   else
     go run github.com/wailsapp/wails/v2/cmd/wails@v2.16.0 build \
@@ -141,8 +141,8 @@ CLI_BINARY="$APP_BUNDLE/Contents/MacOS/cli/siflux"
 mkdir -p "$(dirname "$CLI_BINARY")"
 (
   cd "$ROOT_DIR/backend"
-  if [[ -n "${BEEFTV_WAILS_PLATFORM:-}" ]]; then
-    GOOS="${BEEFTV_WAILS_PLATFORM%%/*}" GOARCH="${BEEFTV_WAILS_PLATFORM##*/}" \
+  if [[ -n "${SIFLUX_WAILS_PLATFORM:-}" ]]; then
+    GOOS="${SIFLUX_WAILS_PLATFORM%%/*}" GOARCH="${SIFLUX_WAILS_PLATFORM##*/}" \
       go build -trimpath -ldflags "$LDFLAGS" -o "$CLI_BINARY" ./cmd/siflux
   else
     go build -trimpath -ldflags "$LDFLAGS" -o "$CLI_BINARY" ./cmd/siflux

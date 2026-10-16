@@ -184,7 +184,7 @@ func TestPrintLdflags(t *testing.T) {
 		t.Fatalf("missing public key ldflag: %s", got)
 	}
 	t.Setenv(publicKeyEnv, public)
-	t.Setenv("BEEFTV_UPDATER_FEED_URL", "https://example.com/desktop-update.json")
+	t.Setenv("SIFLUX_UPDATER_FEED_URL", "https://example.com/desktop-update.json")
 	stdout.Reset()
 	if err := run([]string{"print-ldflags"}, &stdout, ioDiscard{}); err != nil {
 		t.Fatal(err)

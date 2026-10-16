@@ -38,7 +38,7 @@ function isAbortLike(error: unknown, signal?: AbortSignal): boolean {
 }
 
 async function defaultSpawn(onProgress?: (progress: CanvasFFmpegProgress) => void): Promise<FFmpegInstance> {
-    if (typeof __BEEFTV_HEAVY_MEDIA_ENABLED__ !== "undefined" && !__BEEFTV_HEAVY_MEDIA_ENABLED__) {
+    if (typeof __SIFLUX_HEAVY_MEDIA_ENABLED__ !== "undefined" && !__SIFLUX_HEAVY_MEDIA_ENABLED__) {
         throw new Error("精简版未包含 FFmpeg 本地媒体工具；请安装完整媒体包或使用模型生成与原素材编排");
     }
     const [{ FFmpeg }, { default: ffmpegCoreURL }, { default: ffmpegWasmURL }] = await Promise.all([

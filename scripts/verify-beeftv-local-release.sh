@@ -3,14 +3,14 @@
 set -euo pipefail
 
 ROOT_DIR="$(cd "$(dirname "${BASH_SOURCE[0]}")/.." && pwd)"
-GO_DIR="${BEEFTV_GO_DIR:-/tmp/beeftv-go.rpIfVN/go}"
+GO_DIR="${SIFLUX_GO_DIR:-/tmp/beeftv-go.rpIfVN/go}"
 
 if ! command -v go >/dev/null 2>&1 && [[ -x "$GO_DIR/bin/go" ]]; then
   export PATH="$GO_DIR/bin:$PATH"
 fi
 
 if ! command -v go >/dev/null 2>&1; then
-  echo "Go is required for the local release gate (set BEEFTV_GO_DIR when using a bundled toolchain)" >&2
+  echo "Go is required for the local release gate (set SIFLUX_GO_DIR when using a bundled toolchain)" >&2
   exit 1
 fi
 

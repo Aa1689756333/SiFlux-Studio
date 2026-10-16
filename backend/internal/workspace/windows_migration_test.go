@@ -12,7 +12,7 @@ import (
 )
 
 func TestWindowsCrossVolumeSQLiteAndEncryptedConfigSurviveRestart(t *testing.T) {
-	volume := os.Getenv("BEEFTV_TEST_SECOND_VOLUME")
+	volume := os.Getenv("SIFLUX_TEST_SECOND_VOLUME")
 	if volume == "" {
 		t.Skip("native second volume not requested")
 	}

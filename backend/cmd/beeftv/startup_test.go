@@ -20,7 +20,7 @@ func TestMCPStartupTimeout(t *testing.T) {
 		<-r.Context().Done()
 	}))
 	defer server.Close()
-	t.Setenv("BEEFTV_BASE_URL", server.URL)
+	t.Setenv("SIFLUX_BASE_URL", server.URL)
 	start := time.Now()
 	err := run([]string{"mcp", "serve"})
 	if cliErr, ok := err.(*cliError); !ok || cliErr.reason != "mcp_startup_timeout" {
@@ -34,7 +34,7 @@ func TestMCPStartupTimeout(t *testing.T) {
 // The test executable runs the real main function so stdout and process exit
 // behavior are exercised without building or launching a desktop/database.
 func TestMCPProcessHelper(t *testing.T) {
-	if os.Getenv("BEEFTV_TEST_PROCESS") != "1" {
+	if os.Getenv("SIFLUX_TEST_PROCESS") != "1" {
 		return
 	}
 	for i, arg := range os.Args {
@@ -47,12 +47,12 @@ func TestMCPProcessHelper(t *testing.T) {
 }
 
 func TestMCPFailureKeepsStdoutPure(t *testing.T) {
-	t.Setenv("BEEFTV_BASE_URL", "")
-	t.Setenv("BEEFTV_DATA_DIR", t.TempDir())
+	t.Setenv("SIFLUX_BASE_URL", "")
+	t.Setenv("SIFLUX_DATA_DIR", t.TempDir())
 	for _, args := range [][]string{{"mcp", "serve"}, {"mcp", "serve", "--json"}} {
 		ctx, cancel := context.WithTimeout(context.Background(), 3*time.Second)
 		cmd := exec.CommandContext(ctx, os.Args[0], append([]string{"-test.run=^TestMCPProcessHelper$", "--"}, args...)...)
-		cmd.Env = append(os.Environ(), "BEEFTV_TEST_PROCESS=1")
+		cmd.Env = append(os.Environ(), "SIFLUX_TEST_PROCESS=1")
 		var stdout, stderr bytes.Buffer
 		cmd.Stdout, cmd.Stderr = &stdout, &stderr
 		err := cmd.Run()
@@ -68,11 +68,11 @@ func TestMCPExitsWhenPipeCloses(t *testing.T) {
 		_, _ = w.Write([]byte(`{"code":0,"data":{"ops":[]}}`))
 	}))
 	defer server.Close()
-	t.Setenv("BEEFTV_BASE_URL", server.URL)
+	t.Setenv("SIFLUX_BASE_URL", server.URL)
 	ctx, cancel := context.WithTimeout(context.Background(), 3*time.Second)
 	defer cancel()
 	cmd := exec.CommandContext(ctx, os.Args[0], "-test.run=^TestMCPProcessHelper$", "--", "mcp", "serve")
-	cmd.Env = append(os.Environ(), "BEEFTV_TEST_PROCESS=1")
+	cmd.Env = append(os.Environ(), "SIFLUX_TEST_PROCESS=1")
 	cmd.Stdin = strings.NewReader("")
 	var stdout, stderr bytes.Buffer
 	cmd.Stdout, cmd.Stderr = &stdout, &stderr
@@ -99,11 +99,11 @@ func TestMCPFixtureHandshakeAndCancellation(t *testing.T) {
 	}))
 	defer server.Close()
 	defer server.CloseClientConnections()
-	t.Setenv("BEEFTV_BASE_URL", server.URL)
+	t.Setenv("SIFLUX_BASE_URL", server.URL)
 	ctx, cancel := context.WithTimeout(context.Background(), 8*time.Second)
 	defer cancel()
 	cmd := exec.Command(os.Args[0], "-test.run=^TestMCPProcessHelper$", "--", "mcp", "serve")
-	cmd.Env = append(os.Environ(), "BEEFTV_TEST_PROCESS=1")
+	cmd.Env = append(os.Environ(), "SIFLUX_TEST_PROCESS=1")
 	client := mcp.NewClient(&mcp.Implementation{Name: "fixture", Version: "1"}, nil)
 	session, err := client.Connect(ctx, &mcp.CommandTransport{Command: cmd}, nil)
 	if err != nil {

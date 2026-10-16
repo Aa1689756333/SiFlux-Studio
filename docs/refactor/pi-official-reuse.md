@@ -44,7 +44,7 @@
 | `root.reset(handoff)` | 采用 | 旧会话退役交接：把旧会话文本写成新上下文开头的官方 reset 条目。 |
 | `root.submit` / `submission.wait` / `root.abort` | 采用 | 回合提交、终态结算与停止；`whenBusy: "steer"` 用于运行中补充。 |
 | pi-coding-agent 技能（`formatSkillsForPrompt` / `/skill:name` 展开） | 照样实现 | Durable 没有技能组件。目录按 `<available_skills>` 的格式写成常驻系统提示段，正文按官方 `<skill name=…>` 块写进用户消息或 `skill_load` 工具结果；目录函数要求本机文件路径，不直接复用。 |
-| `thinkingLevel`（根会话） | 采用 | 默认 `low`（约 2048 个思考 token），可用 `BEEFTV_AGENT_THINKING` 改为 off、minimal、low、medium 或 high；已有对话在下一轮开始时跟上。只对 Anthropic 协议的模型打开思考，思考和回答共用 `BEEFTV_AGENT_MAX_TOKENS`（默认 16384）。 |
+| `thinkingLevel`（根会话） | 采用 | 默认 `low`（约 2048 个思考 token），可用 `SIFLUX_AGENT_THINKING` 改为 off、minimal、low、medium 或 high；已有对话在下一轮开始时跟上。只对 Anthropic 协议的模型打开思考，思考和回答共用 `SIFLUX_AGENT_MAX_TOKENS`（默认 16384）。 |
 | `GenerationTask.beforeRequest` hook | 采用 | 准备请求前重读 Go 授权、历史素材归属与补充输入，并在实际 HTTP dispatch 前转换已验证的媒体结果。 |
 | pi 的字节级空闲超时（undici `bodyTimeout` / `httpIdleTimeoutMs`） | 不采用 | 只按“收到任意字节”重置，SSE 心跳会把它续上；且不在 Durable 路径安装。宿主保留按实际文本/工具进展计时的空闲上限，见 `model-stream-idle.mjs`。 |
 | `compaction_*` / `auto_retry_*` | 不映射到面板 | Durable 的压缩与重试在官方任务内部完成；宿主 NDJSON 只发 `text_delta` 与工具 `lifecycle` 行。 |

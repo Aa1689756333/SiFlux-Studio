@@ -12,12 +12,12 @@ import (
 )
 
 func TestWorkspaceLockRejectsLiveLegacyProcess(t *testing.T) {
-	if os.Getenv("BEEFTV_LOCK_TEST_CHILD") == "1" {
+	if os.Getenv("SIFLUX_LOCK_TEST_CHILD") == "1" {
 		time.Sleep(time.Minute)
 		return
 	}
 	child := exec.Command(os.Args[0], "-test.run=^TestWorkspaceLockRejectsLiveLegacyProcess$")
-	child.Env = append(os.Environ(), "BEEFTV_LOCK_TEST_CHILD=1")
+	child.Env = append(os.Environ(), "SIFLUX_LOCK_TEST_CHILD=1")
 	if err := child.Start(); err != nil {
 		t.Fatal(err)
 	}

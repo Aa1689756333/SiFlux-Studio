@@ -10,7 +10,7 @@ const webDir = dirname(fileURLToPath(import.meta.url));
 const appVersion = process.env.CANVAS_BUILD_VERSION?.trim() || readFileSync(resolve(webDir, "../VERSION"), "utf8").trim();
 const apiProxyTarget = process.env.VITE_API_PROXY_TARGET?.trim() || "http://127.0.0.1:8080";
 const desktopLaunchToken = process.env.VITE_DESKTOP_LAUNCH_TOKEN?.trim();
-const heavyMediaEnabled = resolveHeavyMediaEnabled(process.env.BEEFTV_FULL_MEDIA_RESOURCES);
+const heavyMediaEnabled = resolveHeavyMediaEnabled(process.env.SIFLUX_FULL_MEDIA_RESOURCES);
 
 function pruneOptionalMediaPlugin() {
     return {
@@ -36,7 +36,7 @@ export default defineConfig({
     plugins: [react(), pruneOptionalMediaPlugin()],
     define: {
         __APP_VERSION__: JSON.stringify(appVersion),
-        __BEEFTV_HEAVY_MEDIA_ENABLED__: JSON.stringify(heavyMediaEnabled),
+        __SIFLUX_HEAVY_MEDIA_ENABLED__: JSON.stringify(heavyMediaEnabled),
         "import.meta.env.VITE_APP_VERSION": JSON.stringify(appVersion),
     },
     server: {

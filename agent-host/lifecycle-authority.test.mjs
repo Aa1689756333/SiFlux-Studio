@@ -76,27 +76,27 @@ async function waitPidExit(pid, ms) {
 function syntheticHostEnv(directory, extra = {}) {
   return {
     ...process.env,
-    BEEFTV_AGENT_DATA_DIR: directory,
-    BEEFTV_AGENT_HOST_TOKEN: extra.hostToken || 'lifecycle-host-token',
-    BEEFTV_AGENT_PORT: String(extra.port),
-    BEEFTV_AGENT_INSTANCE_NONCE: extra.nonce || '',
-    BEEFTV_AGENT_LIFETIME_STDIN: extra.lifetime === false ? '' : '1',
-    BEEFTV_OPS_URL: extra.opsURL,
-    BEEFTV_AGENT_API: 'openai-completions',
-    BEEFTV_AGENT_MODEL: 'synthetic',
-    BEEFTV_AGENT_API_KEY: 'synthetic-only',
-    BEEFTV_AGENT_BASE_URL: extra.modelURL,
-    BEEFTV_AGENT_TOTAL_REQUEST_BUDGET: '0',
+    SIFLUX_AGENT_DATA_DIR: directory,
+    SIFLUX_AGENT_HOST_TOKEN: extra.hostToken || 'lifecycle-host-token',
+    SIFLUX_AGENT_PORT: String(extra.port),
+    SIFLUX_AGENT_INSTANCE_NONCE: extra.nonce || '',
+    SIFLUX_AGENT_LIFETIME_STDIN: extra.lifetime === false ? '' : '1',
+    SIFLUX_OPS_URL: extra.opsURL,
+    SIFLUX_AGENT_API: 'openai-completions',
+    SIFLUX_AGENT_MODEL: 'synthetic',
+    SIFLUX_AGENT_API_KEY: 'synthetic-only',
+    SIFLUX_AGENT_BASE_URL: extra.modelURL,
+    SIFLUX_AGENT_TOTAL_REQUEST_BUDGET: '0',
   };
 }
 
 test('server exits when PORT and LISTEN_FD are missing', async () => {
   const { child } = spawnHost({
     ...process.env,
-    BEEFTV_AGENT_PORT: '',
-    BEEFTV_AGENT_LISTEN_FD: '',
-    BEEFTV_AGENT_HOST_TOKEN: 't',
-    BEEFTV_AGENT_DATA_DIR: mkdtempSync(path.join(tmpdir(), 'beeftv lifecycle missing port ')),
+    SIFLUX_AGENT_PORT: '',
+    SIFLUX_AGENT_LISTEN_FD: '',
+    SIFLUX_AGENT_HOST_TOKEN: 't',
+    SIFLUX_AGENT_DATA_DIR: mkdtempSync(path.join(tmpdir(), 'beeftv lifecycle missing port ')),
   });
   const result = await waitExit(child, 15000);
   expect(result.code).toBe(2);
@@ -120,17 +120,17 @@ test('health requires instance nonce and omits the secret; stdin EOF shuts down'
     const port = await reservePort();
     const env = {
       ...process.env,
-      BEEFTV_AGENT_DATA_DIR: directory,
-      BEEFTV_AGENT_HOST_TOKEN: hostToken,
-      BEEFTV_AGENT_PORT: String(port),
-      BEEFTV_AGENT_INSTANCE_NONCE: nonce,
-      BEEFTV_AGENT_LIFETIME_STDIN: '1',
-      BEEFTV_OPS_URL: `http://127.0.0.1:${opsPort}/api`,
-      BEEFTV_AGENT_API: 'openai-completions',
-      BEEFTV_AGENT_MODEL: 'synthetic',
-      BEEFTV_AGENT_API_KEY: 'synthetic-only',
-      BEEFTV_AGENT_BASE_URL: `http://127.0.0.1:${modelPort}/v1`,
-      BEEFTV_AGENT_TOTAL_REQUEST_BUDGET: '0',
+      SIFLUX_AGENT_DATA_DIR: directory,
+      SIFLUX_AGENT_HOST_TOKEN: hostToken,
+      SIFLUX_AGENT_PORT: String(port),
+      SIFLUX_AGENT_INSTANCE_NONCE: nonce,
+      SIFLUX_AGENT_LIFETIME_STDIN: '1',
+      SIFLUX_OPS_URL: `http://127.0.0.1:${opsPort}/api`,
+      SIFLUX_AGENT_API: 'openai-completions',
+      SIFLUX_AGENT_MODEL: 'synthetic',
+      SIFLUX_AGENT_API_KEY: 'synthetic-only',
+      SIFLUX_AGENT_BASE_URL: `http://127.0.0.1:${modelPort}/v1`,
+      SIFLUX_AGENT_TOTAL_REQUEST_BUDGET: '0',
     };
     const spawned = spawnHost(env, ['pipe', 'pipe', 'pipe']);
     child = spawned.child;
@@ -212,14 +212,14 @@ test('stdio ignore without lifetime flag does not exit immediately', async () =>
     const port = await reservePort();
     const spawned = spawnHost({
       ...process.env,
-      BEEFTV_AGENT_DATA_DIR: directory,
-      BEEFTV_AGENT_HOST_TOKEN: 'lifecycle-host-token',
-      BEEFTV_AGENT_PORT: String(port),
-      BEEFTV_OPS_URL: `http://127.0.0.1:${opsPort}/api`,
-      BEEFTV_AGENT_API: 'openai-completions',
-      BEEFTV_AGENT_MODEL: 'synthetic',
-      BEEFTV_AGENT_API_KEY: 'synthetic-only',
-      BEEFTV_AGENT_BASE_URL: `http://127.0.0.1:${modelPort}/v1`,
+      SIFLUX_AGENT_DATA_DIR: directory,
+      SIFLUX_AGENT_HOST_TOKEN: 'lifecycle-host-token',
+      SIFLUX_AGENT_PORT: String(port),
+      SIFLUX_OPS_URL: `http://127.0.0.1:${opsPort}/api`,
+      SIFLUX_AGENT_API: 'openai-completions',
+      SIFLUX_AGENT_MODEL: 'synthetic',
+      SIFLUX_AGENT_API_KEY: 'synthetic-only',
+      SIFLUX_AGENT_BASE_URL: `http://127.0.0.1:${modelPort}/v1`,
     }, ['ignore', 'pipe', 'pipe']);
     child = spawned.child;
     const deadline = Date.now() + 15000;

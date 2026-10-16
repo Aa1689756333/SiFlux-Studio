@@ -30,7 +30,7 @@ func TestWorkerCheckpointDownloadUsesResolvedDesktopProxy(t *testing.T) {
 	t.Setenv("ALL_PROXY", "http://127.0.0.1:8888")
 	t.Setenv("NO_PROXY", "cdn.example.com")
 	command := exec.Command(os.Args[0], "-test.run=^TestDepthProxyChildProcess$")
-	command.Env = append(WorkerEnvForPlatform("C:/depth/worker", "windows"), "BEEFTV_PROXY_TEST_HELPER=1")
+	command.Env = append(WorkerEnvForPlatform("C:/depth/worker", "windows"), "SIFLUX_PROXY_TEST_HELPER=1")
 	output, err := command.Output()
 	if err != nil {
 		t.Fatal(err)
@@ -50,7 +50,7 @@ func TestWorkerCheckpointDownloadUsesResolvedDesktopProxy(t *testing.T) {
 }
 
 func TestDepthProxyChildProcess(t *testing.T) {
-	if os.Getenv("BEEFTV_PROXY_TEST_HELPER") != "1" {
+	if os.Getenv("SIFLUX_PROXY_TEST_HELPER") != "1" {
 		return
 	}
 	actual := map[string]string{}

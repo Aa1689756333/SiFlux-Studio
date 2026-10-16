@@ -9,7 +9,7 @@ import (
 )
 
 func TestOpsAcceptanceClientCannotBecomeUIOrManageClients(t *testing.T) {
-	t.Setenv("BEEFTV_UI_BOOTSTRAP", "")
+	t.Setenv("SIFLUX_UI_BOOTSTRAP", "")
 	h := newDesktopHarness(t)
 	registry := agentops.NewClientRegistry(h.dataDir)
 	for _, mode := range []agentops.ClientMode{agentops.ClientReadOnly, agentops.ClientReadWrite} {
@@ -53,7 +53,7 @@ func TestOpsAcceptanceClientCannotBecomeUIOrManageClients(t *testing.T) {
 }
 
 func TestOpsAcceptanceUIBootstrapCredentialIsolation(t *testing.T) {
-	t.Setenv("BEEFTV_UI_BOOTSTRAP", "")
+	t.Setenv("SIFLUX_UI_BOOTSTRAP", "")
 	h := newDesktopHarness(t)
 	foreign := newDesktopHarness(t)
 	for _, tc := range []struct{ name, launch, bootstrap string }{
@@ -82,8 +82,8 @@ func TestOpsAcceptanceUIBootstrapCredentialIsolation(t *testing.T) {
 }
 
 func TestOpsAcceptanceOriginAndLoopbackAtRouter(t *testing.T) {
-	t.Setenv("BEEFTV_ALLOWED_ORIGINS", "https://app.beeftv.local")
-	t.Setenv("BEEFTV_UI_BOOTSTRAP", "")
+	t.Setenv("SIFLUX_ALLOWED_ORIGINS", "https://app.beeftv.local")
+	t.Setenv("SIFLUX_UI_BOOTSTRAP", "")
 	h := newDesktopHarness(t)
 	client, token, err := agentops.NewClientRegistry(h.dataDir).Register("acceptance", agentops.ClientReadOnly)
 	if err != nil {

@@ -1,7 +1,7 @@
 import { expect, mock, test } from "bun:test";
 import type { TimelineProject } from "../../src/types/timeline";
 
-(globalThis as any).__BEEFTV_HEAVY_MEDIA_ENABLED__ = true;
+(globalThis as any).__SIFLUX_HEAVY_MEDIA_ENABLED__ = true;
 let failBurn = false;
 let cancelAt: "load" | "encode" | null = null;
 let controller: AbortController;
