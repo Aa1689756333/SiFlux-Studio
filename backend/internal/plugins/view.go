@@ -101,7 +101,7 @@ func manifestView(raw []byte, metadata protocol.Metadata, source string) Manifes
 		manifest.Metadata = metadata
 	}
 	return ManifestView{
-		ID: metadata.ID, Name: metadata.Name, Version: metadata.Version, APIVersion: "beeftv.plugin/v1", Entry: manifest.Entry, Surfaces: manifest.Surfaces,
+		ID: metadata.ID, Name: metadata.Name, Version: metadata.Version, APIVersion: "siflux.plugin/v1", Entry: manifest.Entry, Surfaces: manifest.Surfaces,
 		Description: metadata.Description, Documentation: metadata.Documentation, Author: metadata.Vendor,
 		Permissions: manifest.Permissions, Trusted: IsBuiltInSource(source), Runtime: manifest.Runtime,
 		Configuration: manifest.Configuration, Contributes: manifest.Contributes,

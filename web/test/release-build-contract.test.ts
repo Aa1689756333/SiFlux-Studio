@@ -67,7 +67,7 @@ describe("desktop release build contract", () => {
         expect(script).toContain("-trimpath");
         expect(script).toContain("wails@v2.16.0 build");
         expect(script).toContain("Contents/Resources/plugin-packages");
-        expect(script).toContain('"$ROOT_DIR/plugin-packages/"*.beeftv-plugin');
+        expect(script).toContain('"$ROOT_DIR/plugin-packages/"*.siflux-plugin');
     });
 
     test("keeps every source file required by the local release gate", () => {

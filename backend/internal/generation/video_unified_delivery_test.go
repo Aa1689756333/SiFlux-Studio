@@ -242,7 +242,7 @@ func TestVideoProtocolAuthSurvivesRelativeURLAndStopsAtRedirect(t *testing.T) {
 		http.Redirect(w, r, media.URL+path+"?credential=provider-key&signature=media-signature", http.StatusFound)
 	}))
 	defer provider.Close()
-	manifest := []byte(`{"apiVersion":"beeftv.plugin/v2","id":"video-query-fixture","name":"Fixture","version":"1.0.0","contributes":{"providers":[{"id":"video-query-fixture","label":"Fixture","capabilities":["video"],"scopes":["canvas"],"auth":{"type":"query","field":"apiKey","query":"credential"},"create":{"method":"POST","path":"/v1/videos"},"poll":{"method":"GET","path":"/v1/task/{{taskId}}"},"response":{"status":{"$ref":"response.status"},"videos":{"$ref":"response.video_url"}}}]}}`)
+	manifest := []byte(`{"apiVersion":"siflux.plugin/v2","id":"video-query-fixture","name":"Fixture","version":"1.0.0","contributes":{"providers":[{"id":"video-query-fixture","label":"Fixture","capabilities":["video"],"scopes":["canvas"],"auth":{"type":"query","field":"apiKey","query":"credential"},"create":{"method":"POST","path":"/v1/videos"},"poll":{"method":"GET","path":"/v1/task/{{taskId}}"},"response":{"status":{"$ref":"response.status"},"videos":{"$ref":"response.video_url"}}}]}}`)
 	adapter, err := protocol.LoadInstalledPlugin(manifest, nil)
 	if err != nil {
 		t.Fatal(err)
@@ -521,7 +521,7 @@ func TestVideoBinaryResultPreservesMethodAuthAndOriginalTaskRenewal(t *testing.T
 		_, _ = w.Write(payload)
 	}))
 	defer server.Close()
-	manifest := []byte(`{"apiVersion":"beeftv.plugin/v2","id":"video-binary-fixture","name":"Fixture","version":"1.0.0","contributes":{"providers":[{"id":"video-binary-fixture","label":"Fixture","capabilities":["video"],"scopes":["canvas"],"auth":{"type":"header","field":"apiKey","header":"X-Video-Api-Key"},"create":{"method":"POST","path":"/v1/videos"},"poll":{"method":"GET","path":"/v1/tasks/{{taskId}}"},"result":{"method":"POST","path":"/v1/tasks/{{taskId}}/result","headers":{"X-Result-Mode":"binary"}},"response":{"status":{"$ref":"response.status"}}}]}}`)
+	manifest := []byte(`{"apiVersion":"siflux.plugin/v2","id":"video-binary-fixture","name":"Fixture","version":"1.0.0","contributes":{"providers":[{"id":"video-binary-fixture","label":"Fixture","capabilities":["video"],"scopes":["canvas"],"auth":{"type":"header","field":"apiKey","header":"X-Video-Api-Key"},"create":{"method":"POST","path":"/v1/videos"},"poll":{"method":"GET","path":"/v1/tasks/{{taskId}}"},"result":{"method":"POST","path":"/v1/tasks/{{taskId}}/result","headers":{"X-Result-Mode":"binary"}},"response":{"status":{"$ref":"response.status"}}}]}}`)
 	adapter, err := protocol.LoadInstalledPlugin(manifest, nil)
 	if err != nil {
 		t.Fatal(err)

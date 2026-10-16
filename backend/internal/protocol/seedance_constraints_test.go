@@ -7,9 +7,9 @@ import (
 
 func TestSeedanceInstalledPluginsSendAdaptive(t *testing.T) {
 	for _, tc := range []struct{ file, id, ratioKey string }{
-		{"volcengine-ark-seedance.beeftv-plugin", "volcengine-ark-video", "ratio"},
-		{"volcengine-ark-agent-plan-seedance.beeftv-plugin", "volcengine-ark-agent-plan-video", "ratio"},
-		{"seedance-videos-compatible.beeftv-plugin", "seedance-videos-compatible", "aspect_ratio"},
+		{"volcengine-ark-seedance.siflux-plugin", "volcengine-ark-video", "ratio"},
+		{"volcengine-ark-agent-plan-seedance.siflux-plugin", "volcengine-ark-agent-plan-video", "ratio"},
+		{"seedance-videos-compatible.siflux-plugin", "seedance-videos-compatible", "aspect_ratio"},
 	} {
 		a := officialPackageAdapter(t, tc.file, tc.id)
 		spec, err := a.BuildCreate(context.Background(), RequestContext{Request: GenerationRequest{Capability: CapabilityVideo, Model: "seedance-2.5-official", Prompt: "move", AspectRatio: "9:16", Duration: 6, Images: []MediaReference{{URL: "https://example.com/first.png", Role: "first_frame"}}}})
@@ -49,9 +49,9 @@ func TestSeedanceTaskConstraints(t *testing.T) {
 
 func TestInstalledSeedancePluginsPreserveExplicitTaskType(t *testing.T) {
 	for _, plugin := range []struct{ file, id string }{
-		{"volcengine-ark-seedance.beeftv-plugin", "volcengine-ark-video"},
-		{"volcengine-ark-agent-plan-seedance.beeftv-plugin", "volcengine-ark-agent-plan-video"},
-		{"seedance-videos-compatible.beeftv-plugin", "seedance-videos-compatible"},
+		{"volcengine-ark-seedance.siflux-plugin", "volcengine-ark-video"},
+		{"volcengine-ark-agent-plan-seedance.siflux-plugin", "volcengine-ark-agent-plan-video"},
+		{"seedance-videos-compatible.siflux-plugin", "seedance-videos-compatible"},
 	} {
 		a := officialPackageAdapter(t, plugin.file, plugin.id)
 		for _, tc := range []struct{ model, op, want string }{

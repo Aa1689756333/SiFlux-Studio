@@ -82,7 +82,7 @@ rsync -a \
     --exclude='docs/audits/' \
     --exclude='docs/plans/' \
     --exclude='docs/visual-regression/' \
-    --exclude='plugin-packages/*.beeftv-plugin' \
+    --exclude='plugin-packages/*.siflux-plugin' \
     --exclude='plugin-packages/official-payment-*' \
     --exclude='*.db' \
     --exclude='*.db-*' \
@@ -95,4 +95,4 @@ rsync -a \
     --exclude='*.bak' \
     "$source_directory/" "$destination_directory/"
 
-printf 'exported BeefTV public source to %s\n' "$destination_directory"
+printf 'exported SiFlux public source to %s\n' "$destination_directory"

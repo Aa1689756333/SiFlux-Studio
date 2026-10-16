@@ -72,12 +72,12 @@ func TestInstallCrashBeforeCommitRestartsFromOldState(t *testing.T) {
 	}
 	svc := New(runtime, store)
 	v1 := testPluginPackage(t, testManifest("crash-install", "1.0.0"))
-	if _, err := svc.InstallUploaded("admin-1", v1, "crash-install-v1.beeftv-plugin"); err != nil {
+	if _, err := svc.InstallUploaded("admin-1", v1, "crash-install-v1.siflux-plugin"); err != nil {
 		t.Fatal(err)
 	}
 	runtime.failNextCommit(errors.New("forced pre-commit failure"))
 	v2 := testPluginPackage(t, testManifest("crash-install", "2.0.0"))
-	_, err = svc.InstallUploaded("admin-1", v2, "crash-install-v2.beeftv-plugin")
+	_, err = svc.InstallUploaded("admin-1", v2, "crash-install-v2.siflux-plugin")
 	if err == nil || !strings.Contains(err.Error(), "forced pre-commit failure") {
 		t.Fatalf("pre-commit error = %v", err)
 	}
@@ -98,12 +98,12 @@ func TestInstallCrashAfterCommitBeforePublishRestartsFromCommittedState(t *testi
 	}
 	svc := New(runtime, store)
 	v1 := testPluginPackage(t, testManifest("crash-publish-install", "1.0.0"))
-	if _, err := svc.InstallUploaded("admin-1", v1, "crash-publish-install-v1.beeftv-plugin"); err != nil {
+	if _, err := svc.InstallUploaded("admin-1", v1, "crash-publish-install-v1.siflux-plugin"); err != nil {
 		t.Fatal(err)
 	}
 	runtime.skipNextPublish()
 	v2 := testPluginPackage(t, testManifest("crash-publish-install", "2.0.0"))
-	_, err = svc.InstallUploaded("admin-1", v2, "crash-publish-install-v2.beeftv-plugin")
+	_, err = svc.InstallUploaded("admin-1", v2, "crash-publish-install-v2.siflux-plugin")
 	if err == nil || !errors.Is(err, errPublishInterrupted) {
 		t.Fatalf("post-commit error = %v", err)
 	}
@@ -123,7 +123,7 @@ func TestEnableCrashBeforeAndAfterCommit(t *testing.T) {
 	}
 	svc := New(runtime, store)
 	pkg := testPluginPackage(t, testManifest("crash-enable", "1.0.0"))
-	if _, err := svc.InstallUploaded("admin-1", pkg, "crash-enable.beeftv-plugin"); err != nil {
+	if _, err := svc.InstallUploaded("admin-1", pkg, "crash-enable.siflux-plugin"); err != nil {
 		t.Fatal(err)
 	}
 	admin := &model.User{ID: "admin-1"}
@@ -166,7 +166,7 @@ func TestUninstallCrashBeforeAndAfterCommit(t *testing.T) {
 	}
 	svc := New(runtime, store)
 	pkg := testPluginPackage(t, testManifest("crash-uninstall", "1.0.0"))
-	if _, err := svc.InstallUploaded("admin-1", pkg, "crash-uninstall.beeftv-plugin"); err != nil {
+	if _, err := svc.InstallUploaded("admin-1", pkg, "crash-uninstall.siflux-plugin"); err != nil {
 		t.Fatal(err)
 	}
 	if err := store.SaveUserPluginState(&model.UserPluginState{ID: "user-state-crash", UserID: "user-1", PluginID: "crash-uninstall", Enabled: true, CreatedAt: time.Now(), UpdatedAt: time.Now()}); err != nil {
@@ -222,7 +222,7 @@ func TestInstallTransactionFailureWithFSFailureKeepsReferencedBlob(t *testing.T)
 	}
 	svc := New(runtime, store)
 	v1 := testPluginPackage(t, testManifest("tx-fs", "1.0.0"))
-	if _, err := svc.InstallUploaded("admin-1", v1, "tx-fs-v1.beeftv-plugin"); err != nil {
+	if _, err := svc.InstallUploaded("admin-1", v1, "tx-fs-v1.siflux-plugin"); err != nil {
 		t.Fatal(err)
 	}
 	runtime.testFailCommit = func() error {
@@ -232,7 +232,7 @@ func TestInstallTransactionFailureWithFSFailureKeepsReferencedBlob(t *testing.T)
 		return errors.New("forced tx failure")
 	}
 	v2 := testPluginPackage(t, testManifest("tx-fs", "2.0.0"))
-	_, err = svc.InstallUploaded("admin-1", v2, "tx-fs-v2.beeftv-plugin")
+	_, err = svc.InstallUploaded("admin-1", v2, "tx-fs-v2.siflux-plugin")
 	if err == nil || !strings.Contains(err.Error(), "forced tx failure") {
 		t.Fatalf("tx+fs error = %v", err)
 	}
@@ -255,11 +255,11 @@ func TestSameHashReinstallFailureDoesNotDeleteLivePackage(t *testing.T) {
 	}
 	svc := New(runtime, store)
 	pkg := testPluginPackage(t, testManifest("same-hash", "1.0.0"))
-	if _, err := svc.InstallUploaded("admin-1", pkg, "same-hash.beeftv-plugin"); err != nil {
+	if _, err := svc.InstallUploaded("admin-1", pkg, "same-hash.siflux-plugin"); err != nil {
 		t.Fatal(err)
 	}
 	runtime.failNextCommit(errors.New("forced same-hash commit failure"))
-	if _, err := svc.InstallUploaded("admin-1", pkg, "same-hash.beeftv-plugin"); err == nil || !strings.Contains(err.Error(), "forced same-hash commit failure") {
+	if _, err := svc.InstallUploaded("admin-1", pkg, "same-hash.siflux-plugin"); err == nil || !strings.Contains(err.Error(), "forced same-hash commit failure") {
 		t.Fatalf("same-hash error = %v", err)
 	}
 	assertImmediatePlugin(t, runtime, "same-hash", "1.0.0", StatusEnabled, pkg)
@@ -278,7 +278,7 @@ func TestLegacyDiskImportThenStaleFileIsIgnored(t *testing.T) {
 	if err != nil {
 		t.Fatal(err)
 	}
-	if _, err := fileRuntime.Install(v1, "legacy-import.beeftv-plugin"); err != nil {
+	if _, err := fileRuntime.Install(v1, "legacy-import.siflux-plugin"); err != nil {
 		t.Fatal(err)
 	}
 	runtime, err := NewRuntimeWithStore(dataDir, store)
@@ -290,10 +290,10 @@ func TestLegacyDiskImportThenStaleFileIsIgnored(t *testing.T) {
 	}
 	svc := New(runtime, store)
 	v2 := testPluginPackage(t, testManifest("legacy-import", "2.0.0"))
-	if _, err := svc.InstallUploaded("admin-1", v2, "legacy-import-v2.beeftv-plugin"); err != nil {
+	if _, err := svc.InstallUploaded("admin-1", v2, "legacy-import-v2.siflux-plugin"); err != nil {
 		t.Fatal(err)
 	}
-	stale, err := json.Marshal([]RegistryRecord{{ID: "stale-only", Raw: json.RawMessage(`{"apiVersion":"beeftv.plugin/v1","id":"stale-only"}`), Source: OriginUploaded}})
+	stale, err := json.Marshal([]RegistryRecord{{ID: "stale-only", Raw: json.RawMessage(`{"apiVersion":"siflux.plugin/v1","id":"stale-only"}`), Source: OriginUploaded}})
 	if err != nil {
 		t.Fatal(err)
 	}
@@ -340,7 +340,7 @@ func TestMalformedAuthoritativeDBFailsClosedAndIgnoresDisk(t *testing.T) {
 	}
 	svc := New(runtime, store)
 	pkg := testPluginPackage(t, testManifest("db-corrupt", "1.0.0"))
-	if _, err := svc.InstallUploaded("admin-1", pkg, "db-corrupt.beeftv-plugin"); err != nil {
+	if _, err := svc.InstallUploaded("admin-1", pkg, "db-corrupt.siflux-plugin"); err != nil {
 		t.Fatal(err)
 	}
 	if err := repo.SaveSystemSetting(&model.SystemSetting{Key: RegistrySettingKey, ValueJSON: "{not-json"}); err != nil {
@@ -374,7 +374,7 @@ func TestInvalidLegacyImportFailsClosedPreservesBytesAndSkipsAuthority(t *testin
 			{ID: "bad-json", Raw: json.RawMessage(`{"id":1}`), Source: OriginUploaded},
 		})},
 		{name: "path-escape", body: marshalRegistryForTest(t, []RegistryRecord{
-			{ID: "path-escape", Raw: testManifest("path-escape", "1.0.0"), Source: OriginUploaded, PackagePath: "../evil.beeftv-plugin", PackageSHA256: strings.Repeat("ab", 32)},
+			{ID: "path-escape", Raw: testManifest("path-escape", "1.0.0"), Source: OriginUploaded, PackagePath: "../evil.siflux-plugin", PackageSHA256: strings.Repeat("ab", 32)},
 		})},
 		{name: "path-hash-mismatch", body: marshalRegistryForTest(t, []RegistryRecord{
 			{ID: "path-hash", Raw: testManifest("path-hash", "1.0.0"), Source: OriginUploaded, PackagePath: strings.Repeat("ab", 32) + protocol.PluginPackageExtension, PackageSHA256: strings.Repeat("cd", 32)},
@@ -410,7 +410,7 @@ func TestInvalidAuthoritativeDBFailsClosedAndPreservesBytes(t *testing.T) {
 	}
 	svc := New(runtime, store)
 	pkg := testPluginPackage(t, testManifest("db-struct", "1.0.0"))
-	if _, err := svc.InstallUploaded("admin-1", pkg, "db-struct.beeftv-plugin"); err != nil {
+	if _, err := svc.InstallUploaded("admin-1", pkg, "db-struct.siflux-plugin"); err != nil {
 		t.Fatal(err)
 	}
 	var officialID string
@@ -459,7 +459,7 @@ func TestUnavailableAdapterStartsAndKeepsStructurallyValidAuthority(t *testing.T
 	}
 	svc := New(runtime, store)
 	pkg := testPluginPackage(t, testManifest("host-missing", "1.0.0"))
-	if _, err := svc.InstallUploaded("admin-1", pkg, "host-missing.beeftv-plugin"); err != nil {
+	if _, err := svc.InstallUploaded("admin-1", pkg, "host-missing.siflux-plugin"); err != nil {
 		t.Fatal(err)
 	}
 	records, found, err := store.LoadPluginRegistry()
@@ -501,7 +501,7 @@ func TestSameHashInstallReusesVerifiedBlob(t *testing.T) {
 	}
 	svc := New(runtime, store)
 	pkg := testPluginPackage(t, testManifest("reuse-blob", "1.0.0"))
-	if _, err := svc.InstallUploaded("admin-1", pkg, "reuse-blob.beeftv-plugin"); err != nil {
+	if _, err := svc.InstallUploaded("admin-1", pkg, "reuse-blob.siflux-plugin"); err != nil {
 		t.Fatal(err)
 	}
 	path := filepath.Join(runtime.packageDir, blobFileName(pluginHash(pkg)))
@@ -513,7 +513,7 @@ func TestSameHashInstallReusesVerifiedBlob(t *testing.T) {
 	if err != nil {
 		t.Fatal(err)
 	}
-	if _, err := svc.InstallUploaded("admin-1", pkg, "reuse-blob.beeftv-plugin"); err != nil {
+	if _, err := svc.InstallUploaded("admin-1", pkg, "reuse-blob.siflux-plugin"); err != nil {
 		t.Fatal(err)
 	}
 	after, err := os.Stat(path)
@@ -534,7 +534,7 @@ func TestSameHashInstallDoesNotRewriteCorruptExistingBlob(t *testing.T) {
 	}
 	svc := New(runtime, store)
 	pkg := testPluginPackage(t, testManifest("corrupt-blob", "1.0.0"))
-	if _, err := svc.InstallUploaded("admin-1", pkg, "corrupt-blob.beeftv-plugin"); err != nil {
+	if _, err := svc.InstallUploaded("admin-1", pkg, "corrupt-blob.siflux-plugin"); err != nil {
 		t.Fatal(err)
 	}
 	path := filepath.Join(runtime.packageDir, blobFileName(pluginHash(pkg)))
@@ -542,7 +542,7 @@ func TestSameHashInstallDoesNotRewriteCorruptExistingBlob(t *testing.T) {
 	if err := os.WriteFile(path, garbage, 0o600); err != nil {
 		t.Fatal(err)
 	}
-	if _, err := svc.InstallUploaded("admin-1", pkg, "corrupt-blob.beeftv-plugin"); err == nil || !strings.Contains(err.Error(), "内容与哈希不一致") {
+	if _, err := svc.InstallUploaded("admin-1", pkg, "corrupt-blob.siflux-plugin"); err == nil || !strings.Contains(err.Error(), "内容与哈希不一致") {
 		t.Fatalf("corrupt blob reinstall error = %v", err)
 	}
 	got, err := os.ReadFile(path)
@@ -566,7 +566,7 @@ func TestPackageRejectsCorruptBlob(t *testing.T) {
 	}
 	svc := New(runtime, store)
 	pkg := testPluginPackage(t, testManifest("export-corrupt", "1.0.0"))
-	if _, err := svc.InstallUploaded("admin-1", pkg, "export-corrupt.beeftv-plugin"); err != nil {
+	if _, err := svc.InstallUploaded("admin-1", pkg, "export-corrupt.siflux-plugin"); err != nil {
 		t.Fatal(err)
 	}
 	path := filepath.Join(runtime.packageDir, blobFileName(pluginHash(pkg)))
@@ -594,7 +594,7 @@ func TestPackageSerializesWithUninstall(t *testing.T) {
 	}
 	svc := New(runtime, store)
 	pkg := testPluginPackage(t, testManifest("export-race", "1.0.0"))
-	if _, err := svc.InstallUploaded("admin-1", pkg, "export-race.beeftv-plugin"); err != nil {
+	if _, err := svc.InstallUploaded("admin-1", pkg, "export-race.siflux-plugin"); err != nil {
 		t.Fatal(err)
 	}
 	wantHash := pluginHash(pkg)
@@ -642,7 +642,7 @@ func marshalRegistryForTest(t *testing.T, records []RegistryRecord) []byte {
 }
 
 func hostUnavailableManifest(id string) json.RawMessage {
-	return json.RawMessage(fmt.Sprintf(`{"apiVersion":"beeftv.plugin/v1","id":%q,"version":"1.0.0","name":%q,"author":"Test","documentation":"# %s","runtime":{"backend":"host:missing-engine"},"contributes":{"providers":[{"id":%q,"label":%q,"capabilities":["video"],"scopes":["canvas"],"create":{"method":"POST","path":"/tasks","fields":{"prompt":"request.prompt"}},"response":{"statusPaths":["status"]}}]}}`, id, id, id, id, id))
+	return json.RawMessage(fmt.Sprintf(`{"apiVersion":"siflux.plugin/v1","id":%q,"version":"1.0.0","name":%q,"author":"Test","documentation":"# %s","runtime":{"backend":"host:missing-engine"},"contributes":{"providers":[{"id":%q,"label":%q,"capabilities":["video"],"scopes":["canvas"],"create":{"method":"POST","path":"/tasks","fields":{"prompt":"request.prompt"}},"response":{"statusPaths":["status"]}}]}}`, id, id, id, id, id))
 }
 
 func assertNoAuthorityRow(t *testing.T, repo *repository.Repository) {

@@ -6,7 +6,7 @@ import (
 )
 
 func TestOfficialResponsesCollectsStandardOutputAndPreservesTools(t *testing.T) {
-	adapter := officialPackageAdapter(t, "openai-responses.beeftv-plugin", "openai-response")
+	adapter := officialPackageAdapter(t, "openai-responses.siflux-plugin", "openai-response")
 	payload := []byte(`{"status":"completed","output":[{"type":"reasoning","summary":[{"type":"summary_text","text":"brief summary"}]},{"type":"function_call","call_id":"call-test","name":"canvas_get_state","arguments":"{}"},{"type":"message","role":"assistant","content":[{"type":"output_text","text":"Hello "},{"type":"output_text","text":"world"}]},{"type":"message","role":"assistant","content":[{"type":"output_text","text":"!"}]}]}`)
 	created, err := adapter.ParseCreate(context.Background(), payload)
 	if err != nil || created.Result == nil || created.Result.Text != "Hello world!" || created.Result.Reasoning != "brief summary" {

@@ -197,7 +197,7 @@ jobs:
               for name in ['manifest.json', 'README.md', 'docs', 'assets', 'web', 'backend', 'LICENSE']:
                   source = package / name
                   files.extend([source] if source.is_file() else [item for item in source.rglob('*') if item.is_file()])
-              with ZipFile(root / (package.name + '.beeftv-plugin'), 'w', ZIP_DEFLATED) as archive:
+              with ZipFile(root / (package.name + '.siflux-plugin'), 'w', ZIP_DEFLATED) as archive:
                   for source in sorted(files):
                       archive.write(source, source.relative_to(package).as_posix())
           PY

@@ -200,7 +200,7 @@ func OfficialPluginPackageDir() (string, error) {
 }
 
 // OfficialPluginPackageCandidates lists locations that may contain shipped
-// *.beeftv-plugin archives. Production launches must not depend on the
+// *.siflux-plugin archives. Production launches must not depend on the
 // caller's working directory: Windows/Linux Wails output keeps packages next
 // to the executable, and macOS .app bundles keep them in Contents/Resources.
 func OfficialPluginPackageCandidates(executablePath, workingDir string) []string {

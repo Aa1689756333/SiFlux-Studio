@@ -28,7 +28,7 @@ func TestPluginViewIncludesDocumentationForEveryOfficialProtocol(t *testing.T) {
 	for _, plugin := range plugins {
 		pluginsByID[plugin.Manifest.ID] = plugin
 	}
-	packages, err := filepath.Glob(filepath.Join("..", "..", "..", "plugin-packages", "*.beeftv-plugin"))
+	packages, err := filepath.Glob(filepath.Join("..", "..", "..", "plugin-packages", "*.siflux-plugin"))
 	if err != nil {
 		t.Fatal(err)
 	}
@@ -90,7 +90,7 @@ func TestPluginViewIncludesDocumentationForEveryOfficialProtocol(t *testing.T) {
 }
 
 func TestPluginRuntimeRefreshesExistingOfficialPackageDocumentation(t *testing.T) {
-	packagePath := filepath.Join("..", "..", "..", "plugin-packages", "openai-images.beeftv-plugin")
+	packagePath := filepath.Join("..", "..", "..", "plugin-packages", "openai-images.siflux-plugin")
 	packageData, err := os.ReadFile(packagePath)
 	if err != nil {
 		t.Fatal(err)
@@ -194,19 +194,19 @@ func TestPluginRuntimeIsTheProtocolSourceOfTruth(t *testing.T) {
 	if got := center.registrySnapshot().List("", "", false); len(got) == 0 {
 		t.Fatal("bundled providers were not reconciled into the unified plugin registry")
 	}
-	if _, err := center.install([]byte(`{"apiVersion":"beeftv.plugin/v1"}`), "legacy.json"); err == nil {
+	if _, err := center.install([]byte(`{"apiVersion":"siflux.plugin/v1"}`), "legacy.json"); err == nil {
 		t.Fatal("bare JSON manifest was accepted by the upload runtime")
 	}
-	manifest := []byte(`{"apiVersion":"beeftv.plugin/v1","id":"uploaded-runtime","version":"1.0.0","name":"Uploaded Runtime","author":"Test","documentation":"# Uploaded Runtime","contributes":{"providers":[{"id":"uploaded-runtime","label":"Uploaded Runtime","capabilities":["video"],"scopes":["canvas"],"create":{"method":"POST","path":"/tasks","fields":{"prompt":"request.prompt"}},"response":{"statusPaths":["status"]}}]}}`)
-	plugin, err := center.install(testPluginPackage(t, manifest), "uploaded-runtime.beeftv-plugin")
+	manifest := []byte(`{"apiVersion":"siflux.plugin/v1","id":"uploaded-runtime","version":"1.0.0","name":"Uploaded Runtime","author":"Test","documentation":"# Uploaded Runtime","contributes":{"providers":[{"id":"uploaded-runtime","label":"Uploaded Runtime","capabilities":["video"],"scopes":["canvas"],"create":{"method":"POST","path":"/tasks","fields":{"prompt":"request.prompt"}},"response":{"statusPaths":["status"]}}]}}`)
+	plugin, err := center.install(testPluginPackage(t, manifest), "uploaded-runtime.siflux-plugin")
 	if err != nil {
 		t.Fatal(err)
 	}
 	if plugin.Status != "enabled" || !center.registrySnapshot().IsCapability("uploaded-runtime", protocol.CapabilityVideo) {
 		t.Fatalf("installed plugin was not activated: %#v", plugin)
 	}
-	updatedManifest := []byte(`{"apiVersion":"beeftv.plugin/v1","id":"uploaded-runtime","version":"2.0.0","name":"Uploaded Runtime v2","author":"Test","documentation":"# Uploaded Runtime v2","contributes":{"providers":[{"id":"uploaded-runtime","label":"Uploaded Runtime v2","capabilities":["video"],"scopes":["canvas"],"create":{"method":"POST","path":"/tasks","fields":{"prompt":"request.prompt"}},"response":{"statusPaths":["status"]}}]}}`)
-	updated, err := center.install(testPluginPackage(t, updatedManifest), "uploaded-runtime-v2.beeftv-plugin")
+	updatedManifest := []byte(`{"apiVersion":"siflux.plugin/v1","id":"uploaded-runtime","version":"2.0.0","name":"Uploaded Runtime v2","author":"Test","documentation":"# Uploaded Runtime v2","contributes":{"providers":[{"id":"uploaded-runtime","label":"Uploaded Runtime v2","capabilities":["video"],"scopes":["canvas"],"create":{"method":"POST","path":"/tasks","fields":{"prompt":"request.prompt"}},"response":{"statusPaths":["status"]}}]}}`)
+	updated, err := center.install(testPluginPackage(t, updatedManifest), "uploaded-runtime-v2.siflux-plugin")
 	if err != nil || updated.Manifest.Version != "2.0.0" || updated.Manifest.Name != "Uploaded Runtime v2" {
 		t.Fatalf("plugin update = %#v, err = %v", updated, err)
 	}
@@ -262,7 +262,7 @@ func TestSeedanceLegacyProtocolResolvesInstalledProvider(t *testing.T) {
 }
 
 func TestPluginRuntimeDropsRemovedOfficialProtocol(t *testing.T) {
-	staleManifest := json.RawMessage(`{"apiVersion":"beeftv.plugin/v2","id":"removed-official-protocol","version":"1.0.0","name":"Removed Official Protocol","author":"Test","documentation":"# Removed\n\n## BeefTV运行时合同","contributes":{"providers":[{"id":"removed-official-protocol","label":"Removed","capabilities":["video"],"scopes":["canvas"],"create":{"method":"POST","path":"/tasks","body":{"prompt":{"$ref":"request.prompt"}}},"response":{"status":"pending"}}]}}`)
+	staleManifest := json.RawMessage(`{"apiVersion":"siflux.plugin/v2","id":"removed-official-protocol","version":"1.0.0","name":"Removed Official Protocol","author":"Test","documentation":"# Removed\n\n## SiFlux运行时合同","contributes":{"providers":[{"id":"removed-official-protocol","label":"Removed","capabilities":["video"],"scopes":["canvas"],"create":{"method":"POST","path":"/tasks","body":{"prompt":{"$ref":"request.prompt"}}},"response":{"status":"pending"}}]}}`)
 	registryData, err := json.Marshal([]pluginRegistryRecord{{ID: "removed-official-protocol", Raw: staleManifest, Source: PluginOriginOfficial}})
 	if err != nil {
 		t.Fatal(err)
@@ -281,7 +281,7 @@ func TestPluginRuntimeDropsRemovedOfficialProtocol(t *testing.T) {
 }
 
 func TestPluginRuntimeRejectsDeprecatedPaymentContribution(t *testing.T) {
-	manifest := json.RawMessage(`{"apiVersion":"beeftv.plugin/v1","id":"uploaded-payment-provider","version":"1.0.0","name":"Uploaded Payment Provider","author":"Test","enabled":true,"runtime":{"backend":"host:untrusted-payment"},"contributes":{"paymentProviders":[{"id":"untrusted-payment","label":"Untrusted Payment","icon":"brand:untrusted","checkoutMode":"redirect","expiryPolicy":{"defaultMinutes":30,"minMinutes":5,"maxMinutes":1440}}]}}`)
+	manifest := json.RawMessage(`{"apiVersion":"siflux.plugin/v1","id":"uploaded-payment-provider","version":"1.0.0","name":"Uploaded Payment Provider","author":"Test","enabled":true,"runtime":{"backend":"host:untrusted-payment"},"contributes":{"paymentProviders":[{"id":"untrusted-payment","label":"Untrusted Payment","icon":"brand:untrusted","checkoutMode":"redirect","expiryPolicy":{"defaultMinutes":30,"minMinutes":5,"maxMinutes":1440}}]}}`)
 	registryData, err := json.Marshal([]pluginRegistryRecord{{ID: "uploaded-payment-provider", Raw: manifest, Source: "uploaded"}})
 	if err != nil {
 		t.Fatal(err)
@@ -343,7 +343,7 @@ func TestAutoDLPluginPackageLoadsAsOfficialRuntime(t *testing.T) {
 func TestDeclarativeProtocolRuntimeExecutesCreatePollAndDownload(t *testing.T) {
 	allowLoopbackProviderTest(t)
 	manifest := []byte(`{
-		"apiVersion":"beeftv.plugin/v1",
+		"apiVersion":"siflux.plugin/v1",
 			"id":"test-declarative-video-runtime","version":"1.0.0","name":"Test Declarative Video","author":"Test","documentation":"# Test Declarative Video",
 		"contributes":{"providers":[{"id":"test-declarative-video-runtime","label":"Test Declarative Video","capabilities":["video"],"scopes":["canvas"],"create":{"method":"POST","path":"/tasks","fields":{"model":"request.model","prompt":"request.prompt","seconds":"request.duration"}},"poll":{"method":"GET","path":"/tasks/{{taskId}}"},"response":{"taskIdPaths":["id"],"statusPaths":["status"],"resultPaths":["video_url"],"resultKind":"video"}}]}
 	}`)
@@ -351,7 +351,7 @@ func TestDeclarativeProtocolRuntimeExecutesCreatePollAndDownload(t *testing.T) {
 	if err != nil {
 		t.Fatal(err)
 	}
-	if _, err := center.install(testPluginPackage(t, manifest), "test-declarative-video-runtime.beeftv-plugin"); err != nil {
+	if _, err := center.install(testPluginPackage(t, manifest), "test-declarative-video-runtime.siflux-plugin"); err != nil {
 		t.Fatal(err)
 	}
 
@@ -404,7 +404,7 @@ func TestDeclarativeProtocolPollingPolicyOnlyChangesVideoBehavior(t *testing.T) 
 func TestDeclarativeProtocolPollRecoversFromTransientGatewayFailure(t *testing.T) {
 	allowLoopbackProviderTest(t)
 	adapter, err := protocol.LoadManifest([]byte(`{
-		"apiVersion":"beeftv.plugin/v1",
+		"apiVersion":"siflux.plugin/v1",
 		"id":"test-declarative-video-retry","version":"1.0.0","name":"Test Declarative Video Retry","author":"Test","documentation":"# Test",
 		"contributes":{"providers":[{"id":"test-declarative-video-retry","label":"Test Declarative Video Retry","capabilities":["video"],"scopes":["canvas"],"create":{"method":"POST","path":"/tasks","fields":{"model":"request.model"}},"poll":{"method":"GET","path":"/tasks/{{taskId}}"},"response":{"taskIdPaths":["id"],"statusPaths":["status"],"resultPaths":["video_url"],"resultKind":"video"}}]}
 	}`))
@@ -452,7 +452,7 @@ func TestDeclarativeProtocolPollRecoversFromTransientGatewayFailure(t *testing.T
 func TestDeclarativeProtocolRetriesResultDownloadByQueryingOriginalTask(t *testing.T) {
 	allowLoopbackProviderTest(t)
 	adapter, err := protocol.LoadManifest([]byte(`{
-		"apiVersion":"beeftv.plugin/v1",
+		"apiVersion":"siflux.plugin/v1",
 		"id":"test-declarative-download-retry","version":"1.0.0","name":"Test Declarative Download Retry","author":"Test","documentation":"# Test",
 		"contributes":{"providers":[{"id":"test-declarative-download-retry","label":"Test Declarative Download Retry","capabilities":["video"],"scopes":["canvas"],"create":{"method":"POST","path":"/tasks","fields":{"model":"request.model"}},"poll":{"method":"GET","path":"/tasks/{{taskId}}"},"response":{"taskIdPaths":["id"],"statusPaths":["status"],"resultPaths":["video_url"],"resultKind":"video"}}]}
 	}`))
@@ -507,7 +507,7 @@ func TestDeclarativeProtocolRetriesResultDownloadByQueryingOriginalTask(t *testi
 func TestDeclarativeProtocolRuntimeGeneratesPerCreateIdempotencyKey(t *testing.T) {
 	allowLoopbackProviderTest(t)
 	manifest := []byte(`{
-		"apiVersion":"beeftv.plugin/v1",
+		"apiVersion":"siflux.plugin/v1",
 		"id":"test-idempotency-key-runtime","version":"1.0.0","name":"Test Idempotency Key","author":"Test","documentation":"# Test Idempotency Key",
 		"contributes":{"providers":[{"id":"test-idempotency-key-runtime","label":"Test Idempotency Key","capabilities":["video"],"scopes":["canvas"],"create":{"method":"POST","path":"/tasks","headers":{"Idempotency-Key":{"$ref":"request.extra.idempotencyKey"}},"body":{"model":{"$ref":"request.model"},"prompt":{"$ref":"request.prompt"}}},"poll":{"method":"GET","path":"/tasks/{{taskId}}"},"response":{"taskIdPaths":["id"],"statusPaths":["status"],"resultPaths":["video_url"],"resultKind":"video"}}]}
 	}`)
@@ -515,7 +515,7 @@ func TestDeclarativeProtocolRuntimeGeneratesPerCreateIdempotencyKey(t *testing.T
 	if err != nil {
 		t.Fatal(err)
 	}
-	if _, err := center.install(testPluginPackage(t, manifest), "test-idempotency-key-runtime.beeftv-plugin"); err != nil {
+	if _, err := center.install(testPluginPackage(t, manifest), "test-idempotency-key-runtime.siflux-plugin"); err != nil {
 		t.Fatal(err)
 	}
 
@@ -672,7 +672,7 @@ func TestProviderTaskNotReadyStrictClassification(t *testing.T) {
 func newDeclarativeNewAPIChannel2TestAdapter(t *testing.T) protocol.Adapter {
 	t.Helper()
 	adapter, err := protocol.LoadManifest([]byte(`{
-		"apiVersion":"beeftv.plugin/v1",
+		"apiVersion":"siflux.plugin/v1",
 		"id":"newapi-channel-2","version":"1.0.0","name":"NewAPI Channel 2","author":"Test","documentation":"# Test",
 		"contributes":{"providers":[{"id":"newapi-channel-2","label":"NewAPI Channel 2","capabilities":["video"],"scopes":["canvas"],"create":{"method":"POST","path":"/video/generations","fields":{"model":"request.model"}},"poll":{"method":"GET","path":"/video/generations/{{taskId}}"},"response":{"taskIdPaths":["id"],"statusPaths":["status"],"resultPaths":["video_url"],"resultKind":"video"}}]}
 	}`))
@@ -685,7 +685,7 @@ func newDeclarativeNewAPIChannel2TestAdapter(t *testing.T) protocol.Adapter {
 func TestDeclarativeProtocolRecoveryQueriesExistingTaskWithoutCreating(t *testing.T) {
 	allowLoopbackProviderTest(t)
 	manifest := []byte(`{
-		"apiVersion":"beeftv.plugin/v2",
+		"apiVersion":"siflux.plugin/v2",
 		"id":"test-declarative-video-recovery","version":"1.0.0","name":"Test Declarative Video Recovery","author":"Test","documentation":"# Test Declarative Video Recovery",
 		"contributes":{"providers":[{"id":"test-declarative-video-recovery","label":"Test Declarative Video Recovery","capabilities":["video"],"scopes":["canvas"],"create":{"method":"POST","path":"/tasks","body":{"model":{"$ref":"request.model"}}},"poll":{"method":"GET","path":"/videos/{{taskId}}"},"result":{"method":"GET","path":"/videos/{{taskId}}/content"},"response":{"taskId":{"$coalesce":[{"$ref":"response.id"},{"$ref":"taskId"}]},"status":{"$coalesce":[{"$ref":"response.status"},"pending"]}}}]}
 	}`)
@@ -693,7 +693,7 @@ func TestDeclarativeProtocolRecoveryQueriesExistingTaskWithoutCreating(t *testin
 	if err != nil {
 		t.Fatal(err)
 	}
-	if _, err := center.install(testPluginPackage(t, manifest), "test-declarative-video-recovery.beeftv-plugin"); err != nil {
+	if _, err := center.install(testPluginPackage(t, manifest), "test-declarative-video-recovery.siflux-plugin"); err != nil {
 		t.Fatal(err)
 	}
 
@@ -738,7 +738,7 @@ func TestDeclarativeProtocolRecoveryQueriesExistingTaskWithoutCreating(t *testin
 func TestDeclarativeProtocolRuntimeMapsReferenceImageURL(t *testing.T) {
 	allowLoopbackProviderTest(t)
 	manifest := []byte(`{
-		"apiVersion":"beeftv.plugin/v1",
+		"apiVersion":"siflux.plugin/v1",
 		"id":"test-declarative-reference-image-runtime","version":"1.0.0","name":"Test Declarative Reference Image","author":"Test","documentation":"# Test Declarative Reference Image",
 		"contributes":{"providers":[{"id":"test-declarative-reference-image-runtime","label":"Test Declarative Reference Image","capabilities":["video"],"scopes":["canvas"],"create":{"method":"POST","path":"/tasks","fields":{"prompt":"request.prompt","ref_image_0":"request.images.0.url"}},"response":{"statusPaths":["status"],"messagePaths":["msg"]}}]}
 	}`)
@@ -746,7 +746,7 @@ func TestDeclarativeProtocolRuntimeMapsReferenceImageURL(t *testing.T) {
 	if err != nil {
 		t.Fatal(err)
 	}
-	if _, err := center.install(testPluginPackage(t, manifest), "test-declarative-reference-image-runtime.beeftv-plugin"); err != nil {
+	if _, err := center.install(testPluginPackage(t, manifest), "test-declarative-reference-image-runtime.siflux-plugin"); err != nil {
 		t.Fatal(err)
 	}
 

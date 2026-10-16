@@ -213,7 +213,7 @@ func packageNamed(t *testing.T, dir, platform, version string) string {
 			"SiFlux.app/Contents/MacOS/SiFlux":                                                                   "binary",
 			"SiFlux.app/Contents/MacOS/cli/siflux":                                                               "cli",
 			"SiFlux.app/Contents/Info.plist":                                                                     "<plist></plist>",
-			"SiFlux.app/Contents/Resources/plugin-packages/core.beeftv-plugin":                                   "plugin",
+			"SiFlux.app/Contents/Resources/plugin-packages/core.siflux-plugin":                                   "plugin",
 			"SiFlux.app/Contents/Resources/agent-host/server.mjs":                                                "host",
 			"SiFlux.app/Contents/Resources/agent-host/session-identity.mjs":                                      "identity",
 			"SiFlux.app/Contents/Resources/agent-host/package.json":                                              "{}",

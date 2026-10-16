@@ -1,4 +1,4 @@
-# BeefTV 桌面发布
+# SiFlux 桌面发布
 
 生产桌面包使用仓库根目录的 `VERSION` 作为唯一版本源。发布脚本会把版本号、当前 Git 提交和 UTC 构建时间同时注入前端与 Go 后端，并生成不依赖 Vite 开发服务器的 Wails 应用包。
 
@@ -33,14 +33,14 @@ SIFLUX_GO_DIR=/tmp/beeftv-go.rpIfVN/go ./scripts/build-beeftv-release.sh
 产物：
 
 ```text
-backend/cmd/desktop/build/bin/BeefTV.app
-backend/cmd/desktop/build/bin/BeefTV.app/Contents/Resources/plugin-packages/*.beeftv-plugin
+backend/cmd/desktop/build/bin/SiFlux.app
+backend/cmd/desktop/build/bin/SiFlux.app/Contents/Resources/plugin-packages/*.siflux-plugin
 ```
 
 验收重点：
 
-- `backend/cmd/desktop/build/bin/BeefTV.app` 存在；
-- Wails 将 `frontend/dist` 编译进应用二进制；应用包内应存在 `Contents/MacOS/BeefTV`，并由构建日志确认完成 `Compiling frontend` 与 `Packaging application`；
+- `backend/cmd/desktop/build/bin/SiFlux.app` 存在；
+- Wails 将 `frontend/dist` 编译进应用二进制；应用包内应存在 `Contents/MacOS/SiFlux`，并由构建日志确认完成 `Compiling frontend` 与 `Packaging application`；
 - macOS `Info.plist` 的 `CFBundleShortVersionString` 和 `CFBundleVersion` 与根目录 `VERSION`（去掉 `v` 前缀）一致；
 - `/api/health/live` 与 `/api/system/version` 返回的版本信息来自同一份发布元数据；
 - 发布启动不需要 `127.0.0.1:3000` 的 Vite 开发服务器。
@@ -56,11 +56,11 @@ powershell -NoProfile -ExecutionPolicy Bypass -File .\scripts\build-beeftv-windo
 产物：
 
 ```text
-backend\cmd\desktop\build\bin\BeefTV.exe
-backend\cmd\desktop\build\bin\plugin-packages\*.beeftv-plugin
+backend\cmd\desktop\build\bin\SiFlux.exe
+backend\cmd\desktop\build\bin\plugin-packages\*.siflux-plugin
 ```
 
-官方插件必须和 `BeefTV.exe` 放在同一目录下的 `plugin-packages\`。从开始菜单、快捷方式或资源管理器启动时，工作目录不一定是仓库或 exe 所在目录；应用按可执行文件位置查找官方插件，不依赖当前工作目录。
+官方插件必须和 `SiFlux.exe` 放在同一目录下的 `plugin-packages\`。从开始菜单、快捷方式或资源管理器启动时，工作目录不一定是仓库或 exe 所在目录；应用按可执行文件位置查找官方插件，不依赖当前工作目录。
 
 ### 本机前提
 
@@ -73,38 +73,38 @@ backend\cmd\desktop\build\bin\plugin-packages\*.beeftv-plugin
 | Bun 在 PATH | `wails.json` 的 `bun install --frozen-lockfile` 与 `bun run build:desktop` | 仓库 `backend/cmd/desktop/wails.json` |
 | `CGO_ENABLED` 不能是 `0` | `gorm.io/driver/sqlite` 依赖 `github.com/mattn/go-sqlite3` | [go-sqlite3 README](https://github.com/mattn/go-sqlite3#windows) |
 | PATH 中的 `gcc`/`clang`，或可执行的 `CC` | 编译 go-sqlite3。Go 1.25 起 Windows CGO 需要支持 DWARF 5 的 GCC（binutils 2.37 或更新） | [go-sqlite3 Windows](https://github.com/mattn/go-sqlite3#windows)、[Go Minimum Requirements · cgo](https://go.dev/wiki/MinimumRequirements#cgo) |
-| 已有 `plugin-packages/*.beeftv-plugin`，或能现场打包 | 官方协议包是运行时依赖 | 仓库 `plugin-packages/build-packages.sh` |
+| 已有 `plugin-packages/*.siflux-plugin`，或能现场打包 | 官方协议包是运行时依赖 | 仓库 `plugin-packages/build-packages.sh` |
 | Microsoft WebView2 Runtime | 运行 Wails 窗口。Windows 11 通常已安装 | [Wails Windows](https://wails.io/docs/guides/windows)、[Wails installation](https://wails.io/docs/gettingstarted/installation) |
 
 现场打包官方插件时的顺序：
 
-1. 若已有 `plugin-packages/*.beeftv-plugin`，直接使用；
+1. 若已有 `plugin-packages/*.siflux-plugin`，直接使用；
 2. 否则若本机有 `bash`、`zip` 和 `node`，调用现有 `plugin-packages/build-packages.sh`；
 3. 否则用 Bun 或 Node 运行 `plugin-packages/embed-documentation.mjs`，再用 PowerShell 写出带正斜杠路径的 zip。反斜杠路径会被插件校验拒绝。
 
 构建使用与 macOS 相同的 Wails 模块 `github.com/wailsapp/wails/v2/cmd/wails@v2.16.0`，并显式传入 `-platform windows/amd64`、`-webview2 download`。Wails 把生产二进制写到 `build/bin`。缺少 WebView2 时，下载策略会提示安装官方 bootstrapper。
 
-本脚本不生成 NSIS 安装包。Wails 的 `-nsis` 需要另装 NSIS，且默认安装脚本是否包含 `plugin-packages\` 未经本仓库验证。当前支持的发布形态是：把 `BeefTV.exe` 和旁边的 `plugin-packages\` 一起分发。
+本脚本不生成 NSIS 安装包。Wails 的 `-nsis` 需要另装 NSIS，且默认安装脚本是否包含 `plugin-packages\` 未经本仓库验证。当前支持的发布形态是：把 `SiFlux.exe` 和旁边的 `plugin-packages\` 一起分发。
 
 ### NSIS 安装包
 
-`scripts/package-desktop-installer.py --platform windows-amd64` 调用 `scripts/installers/windows.nsi`，把 `BeefTV.exe`、`plugin-packages\`、`agent-host\`、`cli\`、`media-runtime\` 等载荷打成 `BeefTV-vX.Y.Z-windows-amd64-setup.exe`。
+`scripts/package-desktop-installer.py --platform windows-amd64` 调用 `scripts/installers/windows.nsi`，把 `SiFlux.exe`、`plugin-packages\`、`agent-host\`、`cli\`、`media-runtime\` 等载荷打成 `SiFlux-vX.Y.Z-windows-amd64-setup.exe`。
 
-- 安装位置可选。默认 `%LOCALAPPDATA%\Programs\BeefTV`；覆盖安装默认沿用上一次的安装位置（读取注册表 `InstallLocation`），用户仍可另选。静默安装用 `/D=<目录>` 指定。
-- 无论选择哪个文件夹，安装包都装入其下名为 `BeefTV` 的子目录：选择 `D:\Apps` 会安装到 `D:\Apps\BeefTV`。
-- 安装器以当前用户权限运行（`RequestExecutionLevel user`）。它会拒绝盘符根目录、非空的非 BeefTV 目录（避免覆盖用户数据）以及当前用户无写权限的目录（例如 `Program Files`，需改用其他文件夹），并在目录页给出提示。
+- 安装位置可选。默认 `%LOCALAPPDATA%\Programs\SiFlux`；覆盖安装默认沿用上一次的安装位置（读取注册表 `InstallLocation`），用户仍可另选。静默安装用 `/D=<目录>` 指定。
+- 无论选择哪个文件夹，安装包都装入其下名为 `SiFlux` 的子目录：选择 `D:\Apps` 会安装到 `D:\Apps\SiFlux`。
+- 安装器以当前用户权限运行（`RequestExecutionLevel user`）。它会拒绝盘符根目录、非空的非 SiFlux 目录（避免覆盖用户数据）以及当前用户无写权限的目录（例如 `Program Files`，需改用其他文件夹），并在目录页给出提示。
 - 卸载只删除随包文件、`agent-host`、`plugin-packages`、`cli`、`media-runtime` 和根目录清单内的文件；未知用户文件保留。安装位置的临时暂存和备份目录与被替换目录同卷，替换完成前不删除旧程序。
 
 在非 Windows 主机交叉编译出来的 exe，不能当作 Windows 验收通过。
 
 ## 启动目录与数据目录
 
-桌面进程默认数据目录来自 Go 的 `os.UserConfigDir()`，再拼 `BeefTV`：
+桌面进程默认数据目录来自 Go 的 `os.UserConfigDir()`，再拼 `SiFlux`：
 
 | 系统 | 默认数据目录 |
 | --- | --- |
-| Windows | `%AppData%\BeefTV`（Roaming） |
-| macOS | `~/Library/Application Support/BeefTV` |
+| Windows | `%AppData%\SiFlux`（Roaming） |
+| macOS | `~/Library/Application Support/SiFlux` |
 
 其中包含 SQLite、本地资源和迁移备份。隔离调试时设置 `CANVAS_DESKTOP_DATA_DIR`，或启动桌面程序时传入 `--data-dir=/绝对路径/独立测试目录`；启动参数优先于环境变量，拒绝相对路径和文件系统根目录。`CANVAS_BACKEND_DATA_DIR` 只作用于 `cmd/server`，不会改桌面数据目录。
 
@@ -112,7 +112,7 @@ backend\cmd\desktop\build\bin\plugin-packages\*.beeftv-plugin
 
 需要知道的限制：
 
-- 未签名的 `BeefTV.exe` 可能被 SmartScreen 拦截；本脚本不签名。
+- 未签名的 `SiFlux.exe` 可能被 SmartScreen 拦截；本脚本不签名。
 - 构建机没有 C 编译器时，脚本会失败。常见 MSYS2/MinGW 路径若存在但不在 PATH，脚本会指出路径，不会自动加入 PATH。
 - 数据库连接串目前把数据目录与 `/open_ai_canvas.db` 直接拼接。Windows 一般接受正斜杠；数据目录名里如果出现 `?` 或 `#`，可能被当成 DSN 参数。
 
@@ -134,12 +134,12 @@ backend\cmd\desktop\build\bin\plugin-packages\*.beeftv-plugin
 
 | 系统 | 被替换 | 不会进更新包、也不会被替换 |
 | --- | --- | --- |
-| macOS | `BeefTV.app` | `~/Library/Application Support/BeefTV` |
-| Windows | `BeefTV.exe` 和旁边的 `plugin-packages\*.beeftv-plugin` | `%AppData%\BeefTV` |
+| macOS | `SiFlux.app` | `~/Library/Application Support/SiFlux` |
+| Windows | `SiFlux.exe` 和旁边的 `plugin-packages\*.siflux-plugin` | `%AppData%\SiFlux` |
 
 应用包身份和可执行文件路径保持不变，所以前端 IndexedDB 会继续可用。官方插件随应用包更新；用户自己装的插件如果放在数据目录里，会留下来。
 
-程序与数据必须使用独立目录。尤其不要把 Windows zip 解压到 `%AppData%\BeefTV`，也不要将 `CANVAS_DESKTOP_DATA_DIR` 指向 exe 所在目录。更新器会在退出前拒绝这类目录重叠。
+程序与数据必须使用独立目录。尤其不要把 Windows zip 解压到 `%AppData%\SiFlux`，也不要将 `CANVAS_DESKTOP_DATA_DIR` 指向 exe 所在目录。更新器会在退出前拒绝这类目录重叠。
 
 更新包禁止带上 `.env`、SQLite 数据库和 `.settings-key`。打包工具遇到用户数据目录会直接拒绝。
 
@@ -213,7 +213,7 @@ Actions 中的 `desktop-*` 临时安装包保留 7 天，用于发布任务之�
 zip 里的布局：
 
 - macOS：`SiFlux.app/...`，保留可执行权限；内部安全符号链接会被解成普通文件，不会写成 zip 符号链接项。
-- Windows：根目录的 `BeefTV.exe` 和 `plugin-packages/*.beeftv-plugin`（这两个名字仍沿用上游，待全面改名时一并处理）。
+- Windows：根目录的 `SiFlux.exe` 和 `plugin-packages/*.siflux-plugin`（这两个名字仍沿用上游，待全面改名时一并处理）。
 - Linux x64：`SiFlux-linux/` 内包含 `SiFlux`、`cli/siflux`、`agent-host/` 和 `plugin-packages/`。在 Ubuntu 24.04 原生构建，使用 GTK3 和 WebKitGTK 4.1；安装依赖和启动方法见 [Linux 安装说明](linux-install.md)。更新和回滚替换整个程序目录，用户数据留在配置目录。
 
 更新清单与四个平台产物只发布在 GitHub Releases：
@@ -244,7 +244,7 @@ Linux 发布任务会从最终 ZIP 解压执行随包 CLI，并在 Xvfb 中启�
 如果上传中途失败，draft 与已上传的产物留在同一次运行里。核对原因后重跑发布任务；不要删除正式 tag，
 也不要用不同内容重建同版本包。已经安装新版本的客户端不自动降级。
 
-在 `glanderness/BeefTV` 的 `main` 上手动运行 `.github/workflows/release-desktop.yml`。输入的 `confirm_version` 必须和 `VERSION` 一致。`CHANGELOG.md` 必须有对应的 `## vX.Y.Z` 段落，这段文字会同时成为 GitHub Release 说明和清单里的 `notes`。
+在 `glanderness/SiFlux` 的 `main` 上手动运行 `.github/workflows/release-desktop.yml`。输入的 `confirm_version` 必须和 `VERSION` 一致。`CHANGELOG.md` 必须有对应的 `## vX.Y.Z` 段落，这段文字会同时成为 GitHub Release 说明和清单里的 `notes`。
 
 工作流会拒绝：
 
@@ -273,16 +273,16 @@ go run ./cmd/update-release sign \
   --private-key /path/to/beeftv-updater.private \
   --expect-public-key "$(tr -d '[:space:]' < /path/to/beeftv-updater.public)" \
   --require-platforms darwin-arm64,darwin-amd64,windows-amd64,linux-amd64 \
-  --asset darwin-arm64=/tmp/BeefTV-vX.Y.Z-darwin-arm64.zip \
-  --asset darwin-amd64=/tmp/BeefTV-vX.Y.Z-darwin-amd64.zip \
-  --asset windows-amd64=/tmp/BeefTV-vX.Y.Z-windows-amd64.zip \
-  --asset linux-amd64=/tmp/BeefTV-vX.Y.Z-linux-amd64.zip \
+  --asset darwin-arm64=/tmp/SiFlux-vX.Y.Z-darwin-arm64.zip \
+  --asset darwin-amd64=/tmp/SiFlux-vX.Y.Z-darwin-amd64.zip \
+  --asset windows-amd64=/tmp/SiFlux-vX.Y.Z-windows-amd64.zip \
+  --asset linux-amd64=/tmp/SiFlux-vX.Y.Z-linux-amd64.zip \
   --output /tmp/desktop-update.json
 ```
 
 ### 回滚
 
-客户端在退出前校验并把更新准备到程序所在磁盘；无写入权限、磁盘空间不足或签名错误时保留当前运行的应用。替换/启动失败会尝试恢复旧程序。程序旁的 `.beeftv-update-*` 目录暂存旧程序和恢复记录；本地后端启动、界面挂载、素材与画布缓存成功加载，且本地工作区与两类资源列表读取成功后，客户端自动清理同一安装位置已成功升级的目录（包括旧版本遗留目录）。失败、回滚、记录不完整或含额外文件的目录继续保留。Windows 升级锁随句柄关闭删除；macOS 保留零字节 `.BeefTV.update.lock`，防止仍使用旧版锁协议的助手并发替换应用，它不存储升级包或旧程序。清理失败不阻塞使用，下次启动重试。已启动的新进程不会自动降级，以免把迁移后的数据库交给旧程序；恢复旧程序时需另行确认数据库兼容或还原匹配的数据备份。
+客户端在退出前校验并把更新准备到程序所在磁盘；无写入权限、磁盘空间不足或签名错误时保留当前运行的应用。替换/启动失败会尝试恢复旧程序。程序旁的 `.beeftv-update-*` 目录暂存旧程序和恢复记录；本地后端启动、界面挂载、素材与画布缓存成功加载，且本地工作区与两类资源列表读取成功后，客户端自动清理同一安装位置已成功升级的目录（包括旧版本遗留目录）。失败、回滚、记录不完整或含额外文件的目录继续保留。Windows 升级锁随句柄关闭删除；macOS 保留零字节 `.SiFlux.update.lock`，防止仍使用旧版锁协议的助手并发替换应用，它不存储升级包或旧程序。清理失败不阻塞使用，下次启动重试。已启动的新进程不会自动降级，以免把迁移后的数据库交给旧程序；恢复旧程序时需另行确认数据库兼容或还原匹配的数据备份。
 
 已经发布的版本不能收回。已经更新成功的用户，不会因为删除 GitHub Release 而回到旧包。
 

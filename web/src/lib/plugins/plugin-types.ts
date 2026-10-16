@@ -1,7 +1,7 @@
 import type { Asset } from "@/stores/use-asset-store";
 
-export const PLUGIN_API_VERSION = "beeftv.plugin/v1" as const;
-export const PLUGIN_API_VERSION_V2 = "beeftv.plugin/v2" as const;
+export const PLUGIN_API_VERSION = "siflux.plugin/v1" as const;
+export const PLUGIN_API_VERSION_V2 = "siflux.plugin/v2" as const;
 
 export type EditorSlotKind =
     | "timeline-panel"

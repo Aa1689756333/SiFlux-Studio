@@ -27,11 +27,11 @@ func TestPackageDarwinLayoutAndModes(t *testing.T) {
 		t.Fatal(err)
 	}
 	pluginDir := filepath.Join(app, "Contents", "Resources", "plugin-packages")
-	if err := os.WriteFile(filepath.Join(pluginDir, "real.beeftv-plugin"), []byte("plugin-bytes"), 0o644); err != nil {
+	if err := os.WriteFile(filepath.Join(pluginDir, "real.siflux-plugin"), []byte("plugin-bytes"), 0o644); err != nil {
 		t.Fatal(err)
 	}
 	if runtime.GOOS != "windows" {
-		if err := os.Symlink("real.beeftv-plugin", filepath.Join(pluginDir, "alias.beeftv-plugin")); err != nil {
+		if err := os.Symlink("real.siflux-plugin", filepath.Join(pluginDir, "alias.siflux-plugin")); err != nil {
 			t.Fatal(err)
 		}
 		if err := os.Symlink(outside, filepath.Join(app, "Contents", "MacOS", "escaped")); err != nil {
@@ -71,7 +71,7 @@ func TestPackageDarwinLayoutAndModes(t *testing.T) {
 		t.Fatalf("secret or db leaked into zip: %v", names)
 	}
 	if runtime.GOOS != "windows" {
-		if !names["SiFlux.app/Contents/Resources/plugin-packages/alias.beeftv-plugin"] {
+		if !names["SiFlux.app/Contents/Resources/plugin-packages/alias.siflux-plugin"] {
 			t.Fatalf("dereferenced plugin alias missing: %v", names)
 		}
 	}
@@ -107,7 +107,7 @@ func TestPackageDarwinLayoutAndModes(t *testing.T) {
 				}
 			}
 		}
-		if file.Name == "SiFlux.app/Contents/Resources/plugin-packages/alias.beeftv-plugin" {
+		if file.Name == "SiFlux.app/Contents/Resources/plugin-packages/alias.siflux-plugin" {
 			if got := string(readZipFile(t, file)); got != "plugin-bytes" {
 				t.Fatalf("alias content %q", got)
 			}
@@ -140,7 +140,7 @@ func TestPackageWindowsLayout(t *testing.T) {
 	if !names["cli/siflux.exe"] {
 		t.Fatal("missing bundled CLI")
 	}
-	if !names["SiFlux.exe"] || !names["plugin-packages/core.beeftv-plugin"] || !names["agent-host/runtime/node.exe"] || !names["agent-host/node_modules/@earendil-works/pi-coding-agent/package.json"] {
+	if !names["SiFlux.exe"] || !names["plugin-packages/core.siflux-plugin"] || !names["agent-host/runtime/node.exe"] || !names["agent-host/node_modules/@earendil-works/pi-coding-agent/package.json"] {
 		t.Fatalf("windows zip layout %v", names)
 	}
 	if names[".env.local"] || names["extra.dll"] {
@@ -200,7 +200,7 @@ func TestPackageRejectsInvalidInputs(t *testing.T) {
 	if err := os.MkdirAll(filepath.Join(dataDir, "plugin-packages"), 0o755); err != nil {
 		t.Fatal(err)
 	}
-	if err := os.WriteFile(filepath.Join(dataDir, "plugin-packages", "core.beeftv-plugin"), []byte("p"), 0o644); err != nil {
+	if err := os.WriteFile(filepath.Join(dataDir, "plugin-packages", "core.siflux-plugin"), []byte("p"), 0o644); err != nil {
 		t.Fatal(err)
 	}
 	if err := run([]string{"package", "--platform", "windows-amd64", "--input", dataDir, "--output", out}, ioDiscard{}, ioDiscard{}); err == nil {
@@ -269,7 +269,7 @@ func writeFakeDarwinApp(t *testing.T, app string) string {
 	if err := os.WriteFile(filepath.Join(app, "Contents", "Info.plist"), []byte("<plist></plist>"), 0o644); err != nil {
 		t.Fatal(err)
 	}
-	if err := os.WriteFile(filepath.Join(plugins, "core.beeftv-plugin"), []byte("plugin"), 0o644); err != nil {
+	if err := os.WriteFile(filepath.Join(plugins, "core.siflux-plugin"), []byte("plugin"), 0o644); err != nil {
 		t.Fatal(err)
 	}
 	writeFakeAgentHost(t, filepath.Join(app, "Contents", "Resources", "agent-host"), "runtime/bin/node")
@@ -285,7 +285,7 @@ func writeFakeWindowsBin(t *testing.T, dir string) string {
 	if err := os.WriteFile(filepath.Join(dir, "SiFlux.exe"), []byte("exe"), 0o755); err != nil {
 		t.Fatal(err)
 	}
-	if err := os.WriteFile(filepath.Join(dir, "plugin-packages", "core.beeftv-plugin"), []byte("plugin"), 0o644); err != nil {
+	if err := os.WriteFile(filepath.Join(dir, "plugin-packages", "core.siflux-plugin"), []byte("plugin"), 0o644); err != nil {
 		t.Fatal(err)
 	}
 	writeFakeAgentHost(t, filepath.Join(dir, "agent-host"), "runtime/node.exe")

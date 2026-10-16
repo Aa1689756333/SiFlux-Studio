@@ -25,7 +25,7 @@ func workflowPluginManifest(id, name, description string) protocol.Manifest {
 		})
 	}
 	return protocol.Manifest{
-		APIVersion: "beeftv.plugin/v1",
+		APIVersion: "siflux.plugin/v1",
 		Metadata: protocol.Metadata{
 			ID:            id,
 			Version:       "1.0.0",

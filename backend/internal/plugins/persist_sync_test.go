@@ -21,7 +21,7 @@ func TestSyncDirectoryReportsMissingPath(t *testing.T) {
 
 func TestWritePluginFileSyncsNameAndLeavesNoTemp(t *testing.T) {
 	dir := t.TempDir()
-	path := filepath.Join(dir, "named.beeftv-plugin")
+	path := filepath.Join(dir, "named.siflux-plugin")
 	if err := writePluginFile(path, []byte("plugin-bytes")); err != nil {
 		t.Fatal(err)
 	}

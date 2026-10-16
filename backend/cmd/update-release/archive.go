@@ -21,7 +21,7 @@ const (
 	macExecutableRel     = "Contents/MacOS/SiFlux"
 	windowsExecutable    = "SiFlux.exe"
 	pluginDirName        = "plugin-packages"
-	pluginSuffix         = ".beeftv-plugin"
+	pluginSuffix         = ".siflux-plugin"
 )
 
 func cmdPackage(args []string, stdout, stderr io.Writer) error {

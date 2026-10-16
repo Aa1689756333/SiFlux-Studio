@@ -12,8 +12,8 @@ import (
 )
 
 const (
-	PluginPackageFormat    = "beeftv.plugin/package-v1"
-	PluginPackageExtension = ".beeftv-plugin"
+	PluginPackageFormat    = "siflux.plugin/package-v1"
+	PluginPackageExtension = ".siflux-plugin"
 	PluginPackageMaxBytes  = 48 << 20
 	PluginManifestMaxBytes = 512 << 10
 	pluginPackageMaxFiles  = 256

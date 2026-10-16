@@ -6,7 +6,7 @@ import (
 )
 
 func TestFullVideoFullVideoWireContract(t *testing.T) {
-	a := officialPackageAdapter(t, "full-video.beeftv-plugin", "full-video")
+	a := officialPackageAdapter(t, "full-video.siflux-plugin", "full-video")
 	request := GenerationRequest{Model: "sd-native-full-2.5", Prompt: "test", Duration: 5, Resolution: "480p", AspectRatio: "16:9", Extra: map[string]any{"idempotencyKey": "stable-fixture-key"}, Videos: []MediaReference{{URL: "https://media.example/video", Metadata: map[string]any{"durationMs": 3000}}}}
 	spec, err := a.BuildCreate(context.Background(), RequestContext{Request: request})
 	if err != nil {

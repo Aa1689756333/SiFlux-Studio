@@ -13,7 +13,7 @@ import { EditorAiAssistant } from "./editor-ai-assistant";
 export const EDITOR_SHELL_PLUGIN_ID = "editor-shell";
 
 const manifest: PluginManifestV2 = {
-    apiVersion: "beeftv.plugin/v2",
+    apiVersion: "siflux.plugin/v2",
     id: EDITOR_SHELL_PLUGIN_ID,
     name: "剪辑工作台",
     version: "0.1.0",

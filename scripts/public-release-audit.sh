@@ -45,7 +45,7 @@ find "$root" \( -path "$root/.git" -o -path "$root/.git/*" \) -prune -o -type f 
     relative=${path#"$root"/}
     basename=${relative##*/}
     case "$relative" in
-        backend/server|backend/desktop|plugin-packages/*.beeftv-plugin)
+        backend/server|backend/desktop|plugin-packages/*.siflux-plugin)
             printf '%s\n' "$relative"
             continue
             ;;

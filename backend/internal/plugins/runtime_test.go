@@ -64,7 +64,7 @@ func TestInstallRejectsOfficialPackageCollision(t *testing.T) {
 		t.Fatal("no official protocol plugin to collide with; run plugin-packages/build-packages.sh")
 	}
 	manifest := testManifest(official.Manifest.ID, "1.0.0")
-	_, err = runtime.Install(testPluginPackage(t, manifest), official.Manifest.ID+".beeftv-plugin")
+	_, err = runtime.Install(testPluginPackage(t, manifest), official.Manifest.ID+".siflux-plugin")
 	if err == nil || !strings.Contains(err.Error(), "不能通过上传覆盖") {
 		t.Fatalf("official collision error = %v", err)
 	}
@@ -75,13 +75,13 @@ func TestInstallRejectsMalformedPackages(t *testing.T) {
 	if err != nil {
 		t.Fatal(err)
 	}
-	if _, err := runtime.Install(nil, "empty.beeftv-plugin"); err == nil {
+	if _, err := runtime.Install(nil, "empty.siflux-plugin"); err == nil {
 		t.Fatal("empty package accepted")
 	}
-	if _, err := runtime.Install([]byte("not-a-zip"), "broken.beeftv-plugin"); err == nil {
+	if _, err := runtime.Install([]byte("not-a-zip"), "broken.siflux-plugin"); err == nil {
 		t.Fatal("non-zip package accepted")
 	}
-	if _, err := runtime.Install([]byte(`{"apiVersion":"beeftv.plugin/v1"}`), "legacy.json"); err == nil {
+	if _, err := runtime.Install([]byte(`{"apiVersion":"siflux.plugin/v1"}`), "legacy.json"); err == nil {
 		t.Fatal("bare JSON manifest accepted")
 	}
 	var buffer bytes.Buffer
@@ -96,10 +96,10 @@ func TestInstallRejectsMalformedPackages(t *testing.T) {
 	if err := writer.Close(); err != nil {
 		t.Fatal(err)
 	}
-	if _, err := runtime.Install(buffer.Bytes(), "missing-manifest.beeftv-plugin"); err == nil {
+	if _, err := runtime.Install(buffer.Bytes(), "missing-manifest.siflux-plugin"); err == nil {
 		t.Fatal("zip without manifest.json accepted")
 	}
-	if _, err := runtime.Install(testPluginPackage(t, []byte(`{"apiVersion":`)), "truncated.beeftv-plugin"); err == nil {
+	if _, err := runtime.Install(testPluginPackage(t, []byte(`{"apiVersion":`)), "truncated.siflux-plugin"); err == nil {
 		t.Fatal("truncated manifest accepted")
 	}
 }
@@ -110,7 +110,7 @@ func TestInstallCustomUpdateAndDisabledRecovery(t *testing.T) {
 	if err != nil {
 		t.Fatal(err)
 	}
-	plugin, err := runtime.Install(testPluginPackage(t, testManifest("uploaded-runtime", "1.0.0")), "uploaded-runtime.beeftv-plugin")
+	plugin, err := runtime.Install(testPluginPackage(t, testManifest("uploaded-runtime", "1.0.0")), "uploaded-runtime.siflux-plugin")
 	if err != nil {
 		t.Fatal(err)
 	}
@@ -120,7 +120,7 @@ func TestInstallCustomUpdateAndDisabledRecovery(t *testing.T) {
 	if !runtime.Registry().IsCapability("uploaded-runtime", protocol.CapabilityVideo) {
 		t.Fatal("installed plugin was not registered")
 	}
-	updated, err := runtime.Install(testPluginPackage(t, testManifest("uploaded-runtime", "2.0.0")), "uploaded-runtime-v2.beeftv-plugin")
+	updated, err := runtime.Install(testPluginPackage(t, testManifest("uploaded-runtime", "2.0.0")), "uploaded-runtime-v2.siflux-plugin")
 	if err != nil || updated.Manifest.Version != "2.0.0" {
 		t.Fatalf("update = %#v, err = %v", updated, err)
 	}
@@ -151,7 +151,7 @@ func TestMutationRollsBackWhenReloadFails(t *testing.T) {
 	}
 	before := ids(runtime.List())
 	runtime.failNextCommit(errors.New("forced reload failure"))
-	_, err = runtime.Install(testPluginPackage(t, testManifest("atomic-install", "1.0.0")), "atomic-install.beeftv-plugin")
+	_, err = runtime.Install(testPluginPackage(t, testManifest("atomic-install", "1.0.0")), "atomic-install.siflux-plugin")
 	if err == nil || !strings.Contains(err.Error(), "forced reload failure") {
 		t.Fatalf("install error = %v", err)
 	}
@@ -159,7 +159,7 @@ func TestMutationRollsBackWhenReloadFails(t *testing.T) {
 		t.Fatalf("install rollback list = %#v, want %#v", got, before)
 	}
 
-	plugin, err := runtime.Install(testPluginPackage(t, testManifest("atomic-toggle", "1.0.0")), "atomic-toggle.beeftv-plugin")
+	plugin, err := runtime.Install(testPluginPackage(t, testManifest("atomic-toggle", "1.0.0")), "atomic-toggle.siflux-plugin")
 	if err != nil {
 		t.Fatal(err)
 	}
@@ -212,7 +212,7 @@ func TestConcurrentReloadAndMutation(t *testing.T) {
 		go func(pluginID string) {
 			defer work.Done()
 			start.Wait()
-			_, err := runtime.Install(testPluginPackage(t, testManifest(pluginID, "1.0.0")), pluginID+".beeftv-plugin")
+			_, err := runtime.Install(testPluginPackage(t, testManifest(pluginID, "1.0.0")), pluginID+".siflux-plugin")
 			if err != nil {
 				errorsCh <- err
 				return
@@ -274,7 +274,7 @@ func TestDisabledOfficialStateSurvivesRestart(t *testing.T) {
 }
 
 func TestRuntimeDropsRemovedOfficialProtocol(t *testing.T) {
-	staleManifest := json.RawMessage(`{"apiVersion":"beeftv.plugin/v2","id":"removed-official-protocol","version":"1.0.0","name":"Removed Official Protocol","author":"Test","documentation":"# Removed\n\n## BeefTV运行时合同","contributes":{"providers":[{"id":"removed-official-protocol","label":"Removed","capabilities":["video"],"scopes":["canvas"],"create":{"method":"POST","path":"/tasks","body":{"prompt":{"$ref":"request.prompt"}}},"response":{"status":"pending"}}]}}`)
+	staleManifest := json.RawMessage(`{"apiVersion":"siflux.plugin/v2","id":"removed-official-protocol","version":"1.0.0","name":"Removed Official Protocol","author":"Test","documentation":"# Removed\n\n## SiFlux运行时合同","contributes":{"providers":[{"id":"removed-official-protocol","label":"Removed","capabilities":["video"],"scopes":["canvas"],"create":{"method":"POST","path":"/tasks","body":{"prompt":{"$ref":"request.prompt"}}},"response":{"status":"pending"}}]}}`)
 	registryData, err := json.Marshal([]RegistryRecord{{ID: "removed-official-protocol", Raw: staleManifest, Source: OriginOfficial}})
 	if err != nil {
 		t.Fatal(err)
@@ -299,11 +299,11 @@ func TestSameBytesReinstallKeepsLiveBlobWhenReloadFails(t *testing.T) {
 		t.Fatal(err)
 	}
 	pkg := testPluginPackage(t, testManifest("same-bytes-reload", "1.0.0"))
-	if _, err := runtime.Install(pkg, "same-bytes-reload.beeftv-plugin"); err != nil {
+	if _, err := runtime.Install(pkg, "same-bytes-reload.siflux-plugin"); err != nil {
 		t.Fatal(err)
 	}
 	runtime.failNextCommit(errors.New("forced same-bytes reload failure"))
-	if _, err := runtime.Install(pkg, "same-bytes-reload.beeftv-plugin"); err == nil || !strings.Contains(err.Error(), "forced same-bytes reload failure") {
+	if _, err := runtime.Install(pkg, "same-bytes-reload.siflux-plugin"); err == nil || !strings.Contains(err.Error(), "forced same-bytes reload failure") {
 		t.Fatalf("same-bytes reload error = %v", err)
 	}
 	assertImmediatePlugin(t, runtime, "same-bytes-reload", "1.0.0", StatusEnabled, pkg)
@@ -318,11 +318,11 @@ func TestSameBytesReinstallKeepsLiveBlobWhenWriteFails(t *testing.T) {
 		t.Fatal(err)
 	}
 	pkg := testPluginPackage(t, testManifest("same-bytes-write", "1.0.0"))
-	if _, err := runtime.Install(pkg, "same-bytes-write.beeftv-plugin"); err != nil {
+	if _, err := runtime.Install(pkg, "same-bytes-write.siflux-plugin"); err != nil {
 		t.Fatal(err)
 	}
 	runtime.failNextWriteRegistry(errors.New("forced same-bytes write failure"))
-	if _, err := runtime.Install(pkg, "same-bytes-write.beeftv-plugin"); err == nil || !strings.Contains(err.Error(), "forced same-bytes write failure") {
+	if _, err := runtime.Install(pkg, "same-bytes-write.siflux-plugin"); err == nil || !strings.Contains(err.Error(), "forced same-bytes write failure") {
 		t.Fatalf("same-bytes write error = %v", err)
 	}
 	assertPackageBytes(t, runtime, dataDir, "same-bytes-write", pkg)
@@ -342,7 +342,7 @@ func TestListReturnsDefensiveCopiesOfMutableMetadata(t *testing.T) {
 		t.Fatal(err)
 	}
 	pkg := testPluginPackage(t, testManifestWithMutableMetadata("copy-semantics", "1.0.0"))
-	if _, err := runtime.Install(pkg, "copy-semantics.beeftv-plugin"); err != nil {
+	if _, err := runtime.Install(pkg, "copy-semantics.siflux-plugin"); err != nil {
 		t.Fatal(err)
 	}
 	item, ok := ByID(runtime.List(), "copy-semantics")
@@ -429,11 +429,11 @@ func TestClonePluginViewJSONFailureDoesNotLeakAliases(t *testing.T) {
 }
 
 func testManifest(id, version string) []byte {
-	return []byte(fmt.Sprintf(`{"apiVersion":"beeftv.plugin/v1","id":%q,"version":%q,"name":%q,"author":"Test","documentation":"# %s","contributes":{"providers":[{"id":%q,"label":%q,"capabilities":["video"],"scopes":["canvas"],"create":{"method":"POST","path":"/tasks","fields":{"prompt":"request.prompt"}},"response":{"statusPaths":["status"]}}]}}`, id, version, id, id, id, id))
+	return []byte(fmt.Sprintf(`{"apiVersion":"siflux.plugin/v1","id":%q,"version":%q,"name":%q,"author":"Test","documentation":"# %s","contributes":{"providers":[{"id":%q,"label":%q,"capabilities":["video"],"scopes":["canvas"],"create":{"method":"POST","path":"/tasks","fields":{"prompt":"request.prompt"}},"response":{"statusPaths":["status"]}}]}}`, id, version, id, id, id, id))
 }
 
 func testManifestWithMutableMetadata(id, version string) []byte {
-	return []byte(fmt.Sprintf(`{"apiVersion":"beeftv.plugin/v1","id":%q,"version":%q,"name":%q,"author":"Test","documentation":"# %s","surfaces":["canvas","settings"],"permissions":["network"],"contributes":{"providers":[{"id":%q,"label":%q,"capabilities":["video"],"scopes":["canvas"],"create":{"method":"POST","path":"/tasks","fields":{"prompt":"request.prompt"},"headers":{"X-Test":"one"},"query":{"mode":"fast"}},"response":{"statusPaths":["status"]}}],"workflows":[{"id":%q,"label":"WF","providerId":%q,"capability":"video","defaults":{"style":"film"}}],"canvasNodes":[{"id":%q,"label":"Node","defaultTitle":"Node","defaultSize":{"width":320,"height":200},"schema":{"type":"object"},"renderer":"declarative"}]}}`, id, version, id, id, id, id, id+"-wf", id, id+"-node"))
+	return []byte(fmt.Sprintf(`{"apiVersion":"siflux.plugin/v1","id":%q,"version":%q,"name":%q,"author":"Test","documentation":"# %s","surfaces":["canvas","settings"],"permissions":["network"],"contributes":{"providers":[{"id":%q,"label":%q,"capabilities":["video"],"scopes":["canvas"],"create":{"method":"POST","path":"/tasks","fields":{"prompt":"request.prompt"},"headers":{"X-Test":"one"},"query":{"mode":"fast"}},"response":{"statusPaths":["status"]}}],"workflows":[{"id":%q,"label":"WF","providerId":%q,"capability":"video","defaults":{"style":"film"}}],"canvasNodes":[{"id":%q,"label":"Node","defaultTitle":"Node","defaultSize":{"width":320,"height":200},"schema":{"type":"object"},"renderer":"declarative"}]}}`, id, version, id, id, id, id, id+"-wf", id, id+"-node"))
 }
 
 func assertImmediatePlugin(t *testing.T, runtime *Runtime, pluginID, version, status string, want []byte) {

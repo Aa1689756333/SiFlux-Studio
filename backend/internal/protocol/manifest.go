@@ -249,7 +249,7 @@ func loadDeclarativeManifestProvider(manifest Manifest, index int) (Adapter, err
 }
 
 func ValidateManifest(manifest Manifest) error {
-	if version := strings.TrimSpace(manifest.APIVersion); version != "beeftv.plugin/v1" && version != "beeftv.plugin/v2" {
+	if version := strings.TrimSpace(manifest.APIVersion); version != "siflux.plugin/v1" && version != "siflux.plugin/v2" {
 		return fmt.Errorf("unsupported protocol manifest apiVersion %q", manifest.APIVersion)
 	}
 	if strings.TrimSpace(manifest.Metadata.ID) == "" || strings.TrimSpace(manifest.Metadata.Version) == "" {

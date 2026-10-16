@@ -114,7 +114,7 @@ func TestProviderCatalogCustomPluginUsesManifestUntilRegistryOverlay(t *testing.
 		t.Fatal(err)
 	}
 	svc := New(runtime, nil)
-	plugin, err := svc.Install(testPluginPackage(t, testManifest("catalog-custom-video", "1.0.0")), "catalog-custom-video.beeftv-plugin")
+	plugin, err := svc.Install(testPluginPackage(t, testManifest("catalog-custom-video", "1.0.0")), "catalog-custom-video.siflux-plugin")
 	if err != nil {
 		t.Fatal(err)
 	}

@@ -1,10 +1,10 @@
 # Third-party notices
 
 This file records direct dependencies and bundled third-party assets in the
-BeefTV public source snapshot. Transitive dependency notices remain available
+SiFlux public source snapshot. Transitive dependency notices remain available
 in the dependency packages installed from `bun.lock` and `backend/go.sum`.
 
-BeefTV's MIT license applies only to BeefTV-authored material. Each component
+SiFlux's MIT license applies only to SiFlux-authored material. Each component
 below remains subject to its own license.
 
 ## Frontend runtime dependencies
@@ -52,7 +52,7 @@ and cgo bindings distributed under their package license.
 | `web/public/mediapipe/wasm/*`, `web/public/canvas/models/blaze-face-full-range-sparse.tflite` | MediaPipe Tasks Vision distribution, Apache-2.0 |
 | `web/public/three/basis/*` | Basis Universal transcoder distributed with three.js; Apache-2.0 |
 | `web/public/canvas/models/facecap.glb` | three.js example face-cap model; distributed with the MIT-licensed three.js examples |
-| `web/public/canvas/models/director-repro-triangle.gltf` | BeefTV hand-authored offline test fixture; MIT |
+| `web/public/canvas/models/director-repro-triangle.gltf` | SiFlux hand-authored offline test fixture; MIT |
 | `web/public/icons/*.svg` | Compatibility/service identifiers based on `@lobehub/icons` where applicable; package code is MIT, names and marks remain property of their owners |
 
 ## Images and demonstration media
@@ -62,17 +62,17 @@ The files under `web/public/welcome/spring`, `welcome/charge`, and
 are used under CC BY 4.0. Exact creators, source pages, modifications, and
 license links are preserved in `web/public/welcome/credits.html`.
 
-BeefTV logos, workspace screenshots, folder covers, lighting thumbnails, and
+SiFlux logos, workspace screenshots, folder covers, lighting thumbnails, and
 short-drama style thumbnails in `web/public` are project-maintained interface
-assets distributed with BeefTV under the repository MIT license. They are not
+assets distributed with SiFlux under the repository MIT license. They are not
 representations of output quality from any model provider.
 
-`docs/public/images/canvas-version-history.png` is a BeefTV documentation
+`docs/public/images/canvas-version-history.png` is a SiFlux documentation
 screenshot distributed under the repository MIT license.
 
 ## Protocol packages and trademarks
 
-Directories under `plugin-packages/` are BeefTV protocol descriptions and
-adapters. Generated `.beeftv-plugin` archives are build artifacts and are not
+Directories under `plugin-packages/` are SiFlux protocol descriptions and
+adapters. Generated `.siflux-plugin` archives are build artifacts and are not
 committed to the public source snapshot. Provider names identify compatible
 APIs only. No affiliation or endorsement is implied.

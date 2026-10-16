@@ -46,7 +46,7 @@ func TestEditorShellIsUserToggleableApplication(t *testing.T) {
 func TestInstallUploadedRejectsReservedApplicationID(t *testing.T) {
 	runtime, store, _ := newManagedRuntime(t)
 	svc := New(runtime, store)
-	_, err := svc.InstallUploaded("admin-1", testPluginPackage(t, testManifest(PromptOptimizer, "1.0.0")), "prompt-optimizer.beeftv-plugin")
+	_, err := svc.InstallUploaded("admin-1", testPluginPackage(t, testManifest(PromptOptimizer, "1.0.0")), "prompt-optimizer.siflux-plugin")
 	if err == nil || !strings.Contains(err.Error(), "由官方应用保留") {
 		t.Fatalf("reserved id error = %v", err)
 	}
@@ -112,7 +112,7 @@ func TestInstallUploadedRollsBackNewPluginWhenStoreFails(t *testing.T) {
 	runtime, store, _ := newManagedRuntime(t)
 	store.failSavePlatform = true
 	svc := New(runtime, store)
-	_, err := svc.InstallUploaded("admin-1", testPluginPackage(t, testManifest("store-fail-upload", "1.0.0")), "store-fail-upload.beeftv-plugin")
+	_, err := svc.InstallUploaded("admin-1", testPluginPackage(t, testManifest("store-fail-upload", "1.0.0")), "store-fail-upload.siflux-plugin")
 	if err == nil || !strings.Contains(err.Error(), "保存插件平台状态") {
 		t.Fatalf("store failure error = %v", err)
 	}
@@ -127,7 +127,7 @@ func TestInstallUploadedNilStoreDoesNotInstall(t *testing.T) {
 		t.Fatal(err)
 	}
 	svc := New(runtime, nil)
-	_, err = svc.InstallUploaded("admin-1", testPluginPackage(t, testManifest("nil-store-upload", "1.0.0")), "nil-store-upload.beeftv-plugin")
+	_, err = svc.InstallUploaded("admin-1", testPluginPackage(t, testManifest("nil-store-upload", "1.0.0")), "nil-store-upload.siflux-plugin")
 	if err == nil || !strings.Contains(err.Error(), "插件状态存储未初始化") {
 		t.Fatalf("nil store error = %v", err)
 	}
@@ -140,12 +140,12 @@ func TestInstallUploadedReplacementKeepsOldVersionWhenStoreFails(t *testing.T) {
 	runtime, store, dataDir := newManagedRuntime(t)
 	svc := New(runtime, store)
 	v1 := testPluginPackage(t, testManifest("replace-store-fail", "1.0.0"))
-	if _, err := svc.InstallUploaded("admin-1", v1, "replace-v1.beeftv-plugin"); err != nil {
+	if _, err := svc.InstallUploaded("admin-1", v1, "replace-v1.siflux-plugin"); err != nil {
 		t.Fatal(err)
 	}
 	store.failSavePlatform = true
 	v2 := testPluginPackage(t, testManifest("replace-store-fail", "2.0.0"))
-	_, err := svc.InstallUploaded("admin-1", v2, "replace-v2.beeftv-plugin")
+	_, err := svc.InstallUploaded("admin-1", v2, "replace-v2.siflux-plugin")
 	if err == nil || !strings.Contains(err.Error(), "保存插件平台状态") {
 		t.Fatalf("replacement store error = %v", err)
 	}
@@ -162,12 +162,12 @@ func TestInstallUploadedCommitThenSkippedPublishRestartsFromStore(t *testing.T) 
 	runtime, store, dataDir := newManagedRuntime(t)
 	svc := New(runtime, store)
 	v1 := testPluginPackage(t, testManifest("replace-skip-publish", "1.0.0"))
-	if _, err := svc.InstallUploaded("admin-1", v1, "replace-skip-publish-v1.beeftv-plugin"); err != nil {
+	if _, err := svc.InstallUploaded("admin-1", v1, "replace-skip-publish-v1.siflux-plugin"); err != nil {
 		t.Fatal(err)
 	}
 	runtime.skipNextPublish()
 	v2 := testPluginPackage(t, testManifest("replace-skip-publish", "2.0.0"))
-	_, err := svc.InstallUploaded("admin-1", v2, "replace-skip-publish-v2.beeftv-plugin")
+	_, err := svc.InstallUploaded("admin-1", v2, "replace-skip-publish-v2.siflux-plugin")
 	if err == nil || !errors.Is(err, errPublishInterrupted) {
 		t.Fatalf("skip publish error = %v", err)
 	}
@@ -183,7 +183,7 @@ func TestInstallUploadedConcurrentStoreFailureDoesNotDropOtherUpdate(t *testing.
 	runtime, store, dataDir := newManagedRuntime(t)
 	seed := New(runtime, store)
 	v1 := testPluginPackage(t, testManifest("concurrent-upload", "1.0.0"))
-	if _, err := seed.InstallUploaded("admin-1", v1, "concurrent-v1.beeftv-plugin"); err != nil {
+	if _, err := seed.InstallUploaded("admin-1", v1, "concurrent-v1.siflux-plugin"); err != nil {
 		t.Fatal(err)
 	}
 	store.saveCount = 0
@@ -206,7 +206,7 @@ func TestInstallUploadedConcurrentStoreFailureDoesNotDropOtherUpdate(t *testing.
 	errA := make(chan error, 1)
 	errB := make(chan error, 1)
 	go func() {
-		_, err := svcA.InstallUploaded("admin-1", v2, "concurrent-v2.beeftv-plugin")
+		_, err := svcA.InstallUploaded("admin-1", v2, "concurrent-v2.siflux-plugin")
 		errA <- err
 	}()
 	select {
@@ -215,7 +215,7 @@ func TestInstallUploadedConcurrentStoreFailureDoesNotDropOtherUpdate(t *testing.
 		t.Fatal("first save did not start")
 	}
 	go func() {
-		_, err := svcB.InstallUploaded("admin-1", v3, "concurrent-v3.beeftv-plugin")
+		_, err := svcB.InstallUploaded("admin-1", v3, "concurrent-v3.siflux-plugin")
 		errB <- err
 	}()
 	select {
@@ -266,7 +266,7 @@ func TestSetPlatformAvailabilityNilStoreDoesNotChangeRuntime(t *testing.T) {
 func TestSetPlatformAvailabilityRollsBackRuntimeWhenStoreFails(t *testing.T) {
 	runtime, store, _ := newManagedRuntime(t)
 	svc := New(runtime, store)
-	if _, err := svc.InstallUploaded("admin-1", testPluginPackage(t, testManifest("avail-store-fail", "1.0.0")), "avail-store-fail.beeftv-plugin"); err != nil {
+	if _, err := svc.InstallUploaded("admin-1", testPluginPackage(t, testManifest("avail-store-fail", "1.0.0")), "avail-store-fail.siflux-plugin"); err != nil {
 		t.Fatal(err)
 	}
 	store.failSavePlatform = true
@@ -284,7 +284,7 @@ func TestSetPlatformAvailabilityCommitThenSkippedPublishRestartsFromStore(t *tes
 	runtime, store, dataDir := newManagedRuntime(t)
 	svc := New(runtime, store)
 	pkg := testPluginPackage(t, testManifest("avail-skip-publish", "1.0.0"))
-	if _, err := svc.InstallUploaded("admin-1", pkg, "avail-skip-publish.beeftv-plugin"); err != nil {
+	if _, err := svc.InstallUploaded("admin-1", pkg, "avail-skip-publish.siflux-plugin"); err != nil {
 		t.Fatal(err)
 	}
 	runtime.skipNextPublish()
@@ -306,7 +306,7 @@ func TestSetPlatformAvailabilityCommitThenSkippedPublishRestartsFromStore(t *tes
 func TestSetPlatformAvailabilityConcurrentStoreFailureDoesNotUndoOtherChange(t *testing.T) {
 	runtime, store, _ := newManagedRuntime(t)
 	seed := New(runtime, store)
-	if _, err := seed.InstallUploaded("admin-1", testPluginPackage(t, testManifest("avail-concurrent", "1.0.0")), "avail-concurrent.beeftv-plugin"); err != nil {
+	if _, err := seed.InstallUploaded("admin-1", testPluginPackage(t, testManifest("avail-concurrent", "1.0.0")), "avail-concurrent.siflux-plugin"); err != nil {
 		t.Fatal(err)
 	}
 	store.saveCount = 0
@@ -362,7 +362,7 @@ func TestUninstallUploadedStoreFailureRestoresPlugin(t *testing.T) {
 	runtime, store, dataDir := newManagedRuntime(t)
 	svc := New(runtime, store)
 	pkg := testPluginPackage(t, testManifest("uninstall-store-fail", "1.0.0"))
-	if _, err := svc.InstallUploaded("admin-1", pkg, "uninstall-store-fail.beeftv-plugin"); err != nil {
+	if _, err := svc.InstallUploaded("admin-1", pkg, "uninstall-store-fail.siflux-plugin"); err != nil {
 		t.Fatal(err)
 	}
 	if err := store.SaveUserPluginState(&model.UserPluginState{ID: "user-state-1", UserID: "user-1", PluginID: "uninstall-store-fail", Enabled: true}); err != nil {
@@ -387,7 +387,7 @@ func TestUninstallUploadedStoreFailureRestoresPlugin(t *testing.T) {
 func TestUninstallUploadedSerializesSetUserEnabled(t *testing.T) {
 	runtime, store, _ := newManagedRuntime(t)
 	seed := New(runtime, store)
-	if _, err := seed.InstallUploaded("admin-1", testPluginPackage(t, testManifest("uninstall-serial", "1.0.0")), "uninstall-serial.beeftv-plugin"); err != nil {
+	if _, err := seed.InstallUploaded("admin-1", testPluginPackage(t, testManifest("uninstall-serial", "1.0.0")), "uninstall-serial.siflux-plugin"); err != nil {
 		t.Fatal(err)
 	}
 	store.deleteStarted = make(chan struct{})
