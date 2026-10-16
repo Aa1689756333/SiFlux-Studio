@@ -103,6 +103,11 @@ func defaultDataDir() (string, error) {
 	if err != nil {
 		return "", fmt.Errorf("定位用户应用数据目录: %w", err)
 	}
+	if err := desktopstorage.MigrateLegacyRoot(root); err != nil {
+		// A failed move must not block startup: the legacy workspace stays
+		// untouched and the next launch retries.
+		log.Printf("迁移旧数据目录失败: %v", err)
+	}
 	return desktopstorage.Resolve(root)
 }
 
