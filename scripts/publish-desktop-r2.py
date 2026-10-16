@@ -25,7 +25,7 @@ LATEST = f"{PREFIX}/desktop-update.json"
 IMMUTABLE = "public, max-age=31536000, immutable"
 REVALIDATE = "no-store, max-age=0"
 MAX_MANIFEST = 2 * 1024 * 1024
-GITHUB_LATEST_FEED = "https://github.com/glanderness/BeefTV/releases/latest/download/desktop-update.json"
+GITHUB_LATEST_FEED = "https://github.com/Aa1689756333/SiFlux-Studio/releases/latest/download/desktop-update.json"
 
 
 class PublishError(Exception):
@@ -127,7 +127,7 @@ class PublicHTTP:
 
 
 def require_github_release(payload, manifest, public):
-    result = run(["gh", "api", f"repos/glanderness/BeefTV/releases/tags/{payload['version']}"])
+    result = run(["gh", "api", f"repos/Aa1689756333/SiFlux-Studio/releases/tags/{payload['version']}"])
     if result.returncode:
         raise PublishError("Cannot verify published GitHub release")
     release = json.loads(result.stdout)
@@ -140,7 +140,7 @@ def require_github_release(payload, manifest, public):
     uploaded = {asset.get("name") for asset in release.get("assets", []) if asset.get("state") == "uploaded"}
     if not expected.issubset(uploaded):
         raise PublishError("GitHub release assets are incomplete")
-    latest = run(["gh", "api", "repos/glanderness/BeefTV/releases/latest"])
+    latest = run(["gh", "api", "repos/Aa1689756333/SiFlux-Studio/releases/latest"])
     if latest.returncode or json.loads(latest.stdout).get("tag_name") != payload["version"]:
         raise PublishError("GitHub latest does not point to this version")
     public.check(GITHUB_LATEST_FEED, *fingerprint(manifest), version=payload["version"])
