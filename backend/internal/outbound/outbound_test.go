@@ -1,6 +1,7 @@
 package outbound
 
 import (
+	"context"
 	"encoding/base64"
 	"net"
 	"net/http"
@@ -9,6 +10,37 @@ import (
 	"testing"
 	"time"
 )
+
+// The relay is pinned to this project's own origin. A local proxy in fake-IP/TUN
+// mode rewrites that hostname to a private ULA plus a reserved IPv4, which the
+// outbound policy used to reject — blocking a channel key from being saved even
+// though the relay itself is a healthy public server.
+func TestPinnedRelayHostStaysTrustedWhenLocalProxyRewritesDNS(t *testing.T) {
+	t.Setenv("CANVAS_ALLOWED_PRIVATE_UPSTREAM_HOSTS", "")
+	t.Setenv("CANVAS_ALLOW_PRIVATE_UPSTREAMS", "")
+
+	if !AllowedPrivateUpstreamHost(pinnedRelayHost) {
+		t.Fatalf("%s must be trusted with no operator configuration", pinnedRelayHost)
+	}
+	if _, err := resolveOutboundHost(context.Background(), pinnedRelayHost); err != nil {
+		t.Fatalf("pinned relay host must pass the outbound policy: %v", err)
+	}
+}
+
+// Pinning one host must not widen the policy for anything else.
+func TestPinnedRelayHostDoesNotTrustOtherPrivateTargets(t *testing.T) {
+	t.Setenv("CANVAS_ALLOWED_PRIVATE_UPSTREAM_HOSTS", "")
+	t.Setenv("CANVAS_ALLOW_PRIVATE_UPSTREAMS", "")
+
+	for _, host := range []string{"10.0.0.1", "192.168.1.1", "127.0.0.1", "localhost", "other.example.com"} {
+		if AllowedPrivateUpstreamHost(host) {
+			t.Fatalf("%s must not be trusted", host)
+		}
+	}
+	if _, err := resolveOutboundHost(context.Background(), "10.0.0.1"); err == nil {
+		t.Fatal("private upstream must still be rejected")
+	}
+}
 
 func TestOutboundTransportUsesEnvironmentProxyAndHonorsNoProxy(t *testing.T) {
 	t.Setenv("HTTP_PROXY", "http://172.24.176.1:10808")
