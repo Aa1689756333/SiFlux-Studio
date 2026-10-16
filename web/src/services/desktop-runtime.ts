@@ -43,7 +43,6 @@ export type DesktopRuntimeBinding = {
     InstallUpdate?: () => Promise<void>;
     ConfirmUpdateStartup?: () => Promise<void>;
     OpenSiFluxWebsite?: () => Promise<void>;
-    OpenSiFluxGitHub?: () => Promise<void>;
 };
 
 export type DesktopStorageUsage = { dataDir: string; usedBytes: number; freeBytes: number; previousDir?: string; previousBytes?: number };

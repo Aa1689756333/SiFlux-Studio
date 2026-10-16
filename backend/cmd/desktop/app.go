@@ -130,15 +130,6 @@ func (a *DesktopApp) RuntimeConfig() DesktopRuntimeConfig {
 	return DesktopRuntimeConfig{BaseURL: runtime.BaseURL(), LaunchToken: runtime.LaunchToken(), UIBootstrapToken: runtime.UIBootstrapToken()}
 }
 
-func (a *DesktopApp) OpenSiFluxGitHub() error {
-	ctx, err := a.dialogContext()
-	if err != nil {
-		return err
-	}
-	wailsruntime.BrowserOpenURL(ctx, "https://github.com/Aa1689756333/SiFlux-Studio")
-	return nil
-}
-
 func (a *DesktopApp) OpenSiFluxWebsite() error {
 	ctx, err := a.dialogContext()
 	if err != nil {
