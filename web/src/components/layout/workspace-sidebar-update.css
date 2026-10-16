@@ -50,10 +50,8 @@
 }
 
 .app-workspace-social-links {
-    display: grid;
+    display: flex;
     width: 100%;
-    grid-template-columns: repeat(5, minmax(0, 1fr));
-    justify-items: center;
     align-items: center;
 }
 
@@ -144,35 +142,6 @@
 .app-workspace-social-action svg {
     width: 16px;
     height: 16px;
-}
-
-.app-workspace-github-tooltip .ant-tooltip-inner {
-    border: 1px solid var(--border);
-    border-radius: var(--r-md);
-    padding: 7px 10px;
-    background: var(--popover);
-    box-shadow: var(--elevation-overlay);
-}
-
-.app-workspace-github-tooltip .ant-tooltip-arrow::before {
-    background: var(--popover);
-}
-
-.app-workspace-github-hint {
-    display: inline-flex;
-    align-items: center;
-    gap: 6px;
-    color: var(--user-ink, var(--foreground));
-    font-size: var(--fs-caption);
-    font-weight: 500;
-    white-space: nowrap;
-}
-
-.app-workspace-github-hint svg {
-    width: 13px;
-    height: 13px;
-    flex: none;
-    fill: currentColor;
 }
 
 .app-workspace-update-action.has-update:not(.is-busy) {
@@ -312,4 +281,26 @@
         animation: none;
         transition: none;
     }
+}
+
+.app-workspace-social-action.is-website {
+    width: 100%;
+    height: 36px;
+    gap: 8px;
+    padding: 0 12px;
+}
+
+.app-workspace-social-action.is-website svg {
+    width: 18px;
+    height: 18px;
+}
+
+.app-workspace-social-label {
+    font-size: var(--fs-caption);
+    font-weight: 500;
+    white-space: nowrap;
+}
+
+.app-workspace-sidebar-contact-row.is-collapsed .app-workspace-social-label {
+    display: none;
 }

@@ -3,7 +3,6 @@ import { useLocation } from "react-router";
 import { ConfigProvider } from "antd";
 
 import { AppWorkspaceShell } from "@/components/layout/app-top-nav";
-import { FirstCreationGuide } from "@/components/onboarding/first-creation-guide";
 import { cn } from "@/lib/utils";
 import { isSpatialWorkbenchPath } from "@/lib/workspace-routes";
 import { getWorkspaceAntThemeConfig } from "@/lib/app-theme";
@@ -34,7 +33,6 @@ export default function UserLayout({ children }: { children: ReactNode }) {
         <ConfigProvider theme={productWorkspace ? workspaceTheme : undefined}>
             <div className={cn("app-user-workspace h-dvh overflow-hidden text-foreground", spatialWorkbench && "app-spatial-workspace", productWorkspace && "app-product-workspace", pathname === "/" && "app-home-route")}>
                 <AppWorkspaceShell>{children}</AppWorkspaceShell>
-                <FirstCreationGuide />
             </div>
         </ConfigProvider>
     );
