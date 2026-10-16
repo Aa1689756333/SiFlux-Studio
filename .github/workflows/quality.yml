@@ -45,7 +45,10 @@ jobs:
         run: go test ./cmd/desktop -run 'TestWindowsOpenDesktopMigratesWithBusyScratch|TestNativeMigration' -count=1 -v
 
   released-windows-upgrades:
-    if: github.event_name == 'workflow_dispatch'
+    # 暂停：该作业校验的是上游仓库发布的 v1.7.2 安装包及其 SHA256，属别人的产物。
+    # 改名后应改为验证本仓库自己的发布产物（SiFlux-*-windows-amd64.zip），再恢复承接。
+    # 恢复时需同步替换下方下载 URL、哈希与 --version 参数。
+    if: false
     name: Published Windows upgrade and rollback
     runs-on: windows-latest
     timeout-minutes: 20
