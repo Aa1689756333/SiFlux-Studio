@@ -4,7 +4,7 @@ import { tmpdir } from 'node:os';
 import { join } from 'node:path';
 import { HANDOFF_CHAR_LIMIT, HANDOFF_HEADER, HANDOFF_MESSAGE_LIMIT, TURN_ENTRY_TYPE, createLegacyHistory, handoffNote } from './session-owner.mjs';
 
-function scratchHistory(root = mkdtempSync(join(tmpdir(), 'beeftv-legacy-history-'))) {
+function scratchHistory(root = mkdtempSync(join(tmpdir(), 'siflux-legacy-history-'))) {
   const legacy = createLegacyHistory({ sessionRoot: join(root, 'sessions'), workspaceRoot: join(root, 'workspace') });
   return { root, legacy };
 }
@@ -33,7 +33,7 @@ function writeLegacySession(legacy, canvasId, sessionId, messages = []) {
 }
 
 describe('旧 JSONL 会话只读历史', () => {
-  test('读取升级前 JSONL v3 的用户消息和 BeefTV 轮次，不改会话身份', () => {
+  test('读取升级前 JSONL v3 的用户消息和 SiFlux 轮次，不改会话身份', () => {
     const { root, legacy } = scratchHistory();
     try {
       const canvasId = 'legacy-v3';

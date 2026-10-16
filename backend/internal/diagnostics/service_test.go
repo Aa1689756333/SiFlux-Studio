@@ -37,7 +37,7 @@ func TestExportRedactsSensitiveValuesFromFixture(t *testing.T) {
 		t.Fatal(err)
 	}
 
-	svc := New(Dependencies{Store: repository.New(db), Brand: staticBrand{name: "BeefTV", slug: "beeftv"}})
+	svc := New(Dependencies{Store: repository.New(db), Brand: staticBrand{name: "SiFlux", slug: "siflux"}})
 	bundle, err := svc.Export("user-1", ExportRequest{
 		From: now.Add(-2 * time.Minute).Format(time.RFC3339Nano), To: now.Add(time.Minute).Format(time.RFC3339Nano), TaskID: "task-1",
 		Description: "页面报错", ClientEvents: []ClientEvent{{ID: "event-1", Message: "cookie=client-secret", TraceID: "trace-1"}},
@@ -88,7 +88,7 @@ func TestExportRedactsModelConfigSummary(t *testing.T) {
 		]
 	}`)
 	now := time.Now().UTC()
-	svc := New(Dependencies{Store: repository.New(db), Brand: staticBrand{name: "BeefTV", slug: "beeftv"}, Config: stubModelConfig{body: body}})
+	svc := New(Dependencies{Store: repository.New(db), Brand: staticBrand{name: "SiFlux", slug: "siflux"}, Config: stubModelConfig{body: body}})
 	bundle, err := svc.Export("user-1", ExportRequest{From: now.Add(-time.Minute).Format(time.RFC3339Nano), To: now.Format(time.RFC3339Nano)})
 	if err != nil {
 		t.Fatal(err)

@@ -1,4 +1,4 @@
-// BeefTV 内置 pi 会话宿主（正式）：HTTP 适配器。
+// SiFlux 内置 pi 会话宿主（正式）：HTTP 适配器。
 // 执行运行时只有 durable-session-owner.mjs 一套；旧 JSONL 会话只读历史在 session-owner.mjs。
 // 画布操作桥在 operation-bridge.mjs。
 import http from 'node:http';
@@ -47,7 +47,7 @@ const MAX_TOOL_STEPS_PER_TURN = Number(process.env.SIFLUX_AGENT_MAX_TOOL_STEPS_P
 const LIFETIME_REQUEST_BUDGET = Number(process.env.SIFLUX_AGENT_TOTAL_REQUEST_BUDGET || 0);
 const MAX_BODY_BYTES = 64 * 1024;
 const READ_ONLY_MODE = process.env.SIFLUX_AGENT_READ_ONLY === '1';
-const PROVIDER_ID = 'beeftv';
+const PROVIDER_ID = 'siflux';
 
 for (const [name, value] of Object.entries({ SIFLUX_AGENT_HOST_TOKEN: HOST_TOKEN,
   SIFLUX_AGENT_DATA_DIR: DATA_DIR })) {
@@ -269,12 +269,12 @@ function timingSafeMatch(got, expected) {
 
 function instanceOK(req) {
   if (!INSTANCE_NONCE) return true;
-  return timingSafeMatch(req.headers['x-beeftv-instance-nonce'] || '', INSTANCE_NONCE);
+  return timingSafeMatch(req.headers['x-siflux-instance-nonce'] || '', INSTANCE_NONCE);
 }
 
 function authorized(req) {
   if (!instanceOK(req)) return { ok: false, reason: 'instance_mismatch' };
-  if (!timingSafeMatch(req.headers['x-beeftv-agent-token'] || '', HOST_TOKEN)) return { ok: false, reason: 'unauthorized' };
+  if (!timingSafeMatch(req.headers['x-siflux-agent-token'] || '', HOST_TOKEN)) return { ok: false, reason: 'unauthorized' };
   const origin = String(req.headers.origin || '');
   if (ALLOWED_ORIGIN && origin && origin !== ALLOWED_ORIGIN) return { ok: false, reason: 'origin_rejected' };
   const host = String(req.headers.host || '');

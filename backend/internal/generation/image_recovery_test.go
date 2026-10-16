@@ -51,7 +51,7 @@ func TestDoBinaryRecoverableImageMissingOwnerSendsZeroHTTP(t *testing.T) {
 	}
 }
 
-func TestBeefTVImageSubmissionKeepsRecoveryOwner(t *testing.T) {
+func TestSiFluxImageSubmissionKeepsRecoveryOwner(t *testing.T) {
 	ctx, cancel := context.WithCancel(context.Background())
 	cancel()
 	for _, path := range []string{"/v1/images/generations", "/v1/images/edits"} {
@@ -60,7 +60,7 @@ func TestBeefTVImageSubmissionKeepsRecoveryOwner(t *testing.T) {
 			t.Fatal(err)
 		}
 		if _, _, err = DoBinary(req); !errors.Is(err, ErrImageOwnerMissing) {
-			t.Fatalf("BeefTV %s bypassed recovery owner: %v", path, err)
+			t.Fatalf("SiFlux %s bypassed recovery owner: %v", path, err)
 		}
 	}
 }
