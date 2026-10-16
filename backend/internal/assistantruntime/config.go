@@ -3,6 +3,7 @@ package assistantruntime
 import (
 	"encoding/json"
 	"os"
+	"os/exec"
 	"path/filepath"
 	"strings"
 )
@@ -72,25 +73,80 @@ func writeHostConfig(dataDir string, config HostConfig) error {
 
 // BundledConfig 从可执行文件布局解析随包 Node 运行时。
 // 桌面两种布局都直接执行 Node；Windows 不能依赖 POSIX shell。
+//
+// 没有随包运行时（开发构建、自部署源码目录）时，按 agent-host/run-agent-host.sh 的同一约定
+// 回退到 PATH 上的 node（其次 bun），入口从工作目录向上查找 agent-host/server.mjs。
+// 回退只影响「找不到随包运行时」的情形，发行形态仍然优先使用包内运行时。
 func BundledConfig(executable, goos string) HostConfig {
 	if strings.TrimSpace(executable) == "" {
 		return HostConfig{}
 	}
-	root := filepath.Join(filepath.Dir(executable), "..", "Resources", "agent-host")
-	node := filepath.Join(root, "runtime", "bin", "node")
-	if goos == "linux" {
-		root = filepath.Join(filepath.Dir(executable), "agent-host")
-		node = filepath.Join(root, "runtime", "bin", "node")
-	}
-	if goos == "windows" {
-		root = filepath.Join(filepath.Dir(executable), "agent-host")
-		node = filepath.Join(root, "runtime", "node.exe")
-	}
-	entry := filepath.Join(root, "server.mjs")
-	for _, file := range []string{node, entry} {
-		if info, err := os.Stat(file); err != nil || info.IsDir() {
-			return HostConfig{}
+	roots := packagedAgentHostRoots(executable)
+	if wd, err := os.Getwd(); err == nil {
+		if root := sourceAgentHostRoot(wd); root != "" {
+			roots = append(roots, root)
 		}
 	}
-	return HostConfig{HostCommand: node, HostArgs: []string{entry}}
+	nodeRelative := filepath.Join("runtime", "bin", "node")
+	if goos == "windows" {
+		nodeRelative = filepath.Join("runtime", "node.exe")
+	}
+	for _, root := range roots {
+		entry := filepath.Join(root, "server.mjs")
+		if !isRegularFile(entry) {
+			continue
+		}
+		if node := filepath.Join(root, nodeRelative); isRegularFile(node) {
+			return HostConfig{HostCommand: node, HostArgs: []string{entry}}
+		}
+		if node := systemNodeRuntime(); node != "" {
+			return HostConfig{HostCommand: node, HostArgs: []string{entry}}
+		}
+	}
+	return HostConfig{}
+}
+
+// packagedAgentHostRoots 是发行形态的候选目录：macOS 在 Resources 下，Linux/Windows 与可执行文件同级。
+func packagedAgentHostRoots(executable string) []string {
+	dir := filepath.Dir(executable)
+	return []string{
+		filepath.Join(dir, "..", "Resources", "agent-host"),
+		filepath.Join(dir, "agent-host"),
+	}
+}
+
+// sourceAgentHostRoot 从 start 向上逐级查找源码目录里的 agent-host/server.mjs。
+// 深度有限，避免在无关目录里长时间回溯。
+func sourceAgentHostRoot(start string) string {
+	dir := filepath.Clean(start)
+	for depth := 0; depth < 8; depth++ {
+		candidate := filepath.Join(dir, "agent-host")
+		if isRegularFile(filepath.Join(candidate, "server.mjs")) {
+			return candidate
+		}
+		if filepath.Base(dir) == "agent-host" && isRegularFile(filepath.Join(dir, "server.mjs")) {
+			return dir
+		}
+		parent := filepath.Dir(dir)
+		if parent == dir {
+			break
+		}
+		dir = parent
+	}
+	return ""
+}
+
+// systemNodeRuntime 按启动器脚本的顺序回退：node 优先，其次 bun。
+func systemNodeRuntime() string {
+	for _, name := range []string{"node", "bun"} {
+		if path, err := exec.LookPath(name); err == nil {
+			return path
+		}
+	}
+	return ""
+}
+
+func isRegularFile(path string) bool {
+	info, err := os.Stat(path)
+	return err == nil && !info.IsDir()
 }
