@@ -45,20 +45,17 @@ test("observation failure keeps a known active depth task loading", () => {
     expect(depthCaptureWaitFailureMetadata(new Error("invalid input")).status).toBe("error");
 });
 
-test("hover retry preserves cloud download guards and recovers completed local output", () => {
+test("hover retry keeps cloud download guards after depth capture was removed", () => {
     const retry = nodeHoverToolbarTools.find(tool => tool.id === "retry")!;
     const makeContext = (node: CanvasNodeData) => ({ node, nodeMetadata: node.metadata }) as ToolContext;
     const cloud = { ...source, metadata: { status: "error" as const, taskStatus: "failed", generationErrorCode: "download_failed", errorDetails: "download_failed" } };
     expect(retry.applicable?.(makeContext(cloud))).toBe(false);
+    // 景深已移除：过去 download_failed 的深度节点会被放行重试，现在不再有例外。
     const failedDepth = { ...depth, metadata: { ...cloud.metadata, ...depth.metadata } };
-    expect(retry.applicable?.(makeContext(failedDepth))).toBe(true);
+    expect(retry.applicable?.(makeContext(failedDepth))).toBe(false);
     const completedDepth = { ...failedDepth, metadata: { ...failedDepth.metadata, taskStatus: "succeeded" } };
-    expect(retry.applicable?.(makeContext(completedDepth))).toBe(true);
-    expect(typeof retry.displayLabel === "function" ? retry.displayLabel(makeContext(completedDepth)) : retry.displayLabel).toBe("恢复结果");
-    const explanation = canvasNodeFailureExplanation(completedDepth);
-    const html = renderToStaticMarkup(createElement(GenerationFailureNotice, { explanation, onRetry: () => {}, retryLabel: "恢复结果" }));
-    expect(html).toContain("恢复结果");
-    expect(html).not.toContain("重新生成");
+    const label = typeof retry.displayLabel === "function" ? retry.displayLabel(makeContext(completedDepth)) : retry.displayLabel;
+    expect(label).toBe("重试");
 });
 
 test("copied local failure diagnostics retain the exit cause within the safe summary budget", () => {
