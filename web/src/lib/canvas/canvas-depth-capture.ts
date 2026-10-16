@@ -47,16 +47,5 @@ export function depthCaptureWaitFailureMetadata(error: unknown, observed?: Gener
 }
 
 export function canvasNodeFailureExplanation(node: CanvasNodeData) {
-    const explanation = explainGenerationError({ code: node.metadata?.generationErrorCode || node.metadata?.taskErrorCode, message: node.metadata?.errorDetails }, { taskId: node.metadata?.taskId, model: node.metadata?.model, createdAt: node.metadata?.taskCreatedAt, stage: node.metadata?.taskStage });
-    if (!canRecoverOrRetryDepthCapture(node)) return explanation;
-    if (node.metadata?.taskStatus === "succeeded") {
-        return { ...explanation, reason: "深度视频已生成，暂时未能显示在画布上", action: "点击「恢复结果」重新加载原任务", uncertain: false, retryable: true, blockAutomaticRetry: false };
-    }
-    return {
-        ...explanation,
-        ...(["unknown", "download_failed", "submission_uncertain"].includes(explanation.category) ? { reason: "深度处理失败", action: "请查看详情，检查深度组件和网络后重试" } : {}),
-        uncertain: false,
-        retryable: true,
-        blockAutomaticRetry: false,
-    };
+    return explainGenerationError({ code: node.metadata?.generationErrorCode || node.metadata?.taskErrorCode, message: node.metadata?.errorDetails }, { taskId: node.metadata?.taskId, model: node.metadata?.model, createdAt: node.metadata?.taskCreatedAt, stage: node.metadata?.taskStage });
 }

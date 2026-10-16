@@ -25,14 +25,14 @@ test("depth task stages show the existing CPU slow-path and CUDA fallback notice
     expect(generationTaskStageLabel({ status: "running", stage: "CUDA 设备故障，改用 CPU（可能耗时较长）" })).toBe("CUDA 设备故障，改用 CPU（可能耗时较长）");
 });
 
-test("confirmed local depth failure offers retry without relaxing paid unknown-result guards", () => {
+test("depth metadata no longer changes the failure explanation or the retry label", () => {
     const failed = { ...depth, metadata: { ...depth.metadata, status: "error" as const, taskStatus: "failed", generationErrorCode: "download_failed", errorDetails: "下载生成结果失败" } };
+    const withoutDepthMarker = { ...failed, metadata: { ...failed.metadata, depthSourceNodeId: undefined } };
     const explanation = canvasNodeFailureExplanation(failed);
+    // 景深不再是特例：带不带 depthSourceNodeId 得到完全相同的解释，也就不再有绕开守卫的放行。
+    expect(explanation).toEqual(canvasNodeFailureExplanation(withoutDepthMarker));
     const html = renderToStaticMarkup(createElement(GenerationFailureNotice, { explanation, onRetry: () => {} }));
     expect(html).toContain("重新生成");
-    expect(explanation.uncertain).toBe(false);
-    expect(canvasNodeFailureExplanation({ ...failed, metadata: { ...failed.metadata, taskStatus: "running" } }).uncertain).toBe(true);
-    expect(canvasNodeFailureExplanation({ ...failed, metadata: { ...failed.metadata, depthSourceNodeId: undefined } }).uncertain).toBe(true);
 });
 
 test("observation failure keeps a known active depth task loading", () => {
