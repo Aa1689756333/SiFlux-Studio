@@ -26,8 +26,9 @@ function imageNode(id: string, metadata: Partial<NonNullable<CanvasNodeData["met
 }
 
 describe("canvasNodeRetryPlan", () => {
-    test("depth capture nodes retry through the depth path", () => {
-        expect(canvasNodeRetryPlan(imageNode("depth", { depthSourceNodeId: "source" }), []).kind).toBe("depth");
+    test("nodes carrying depth metadata fall back to the generic retry plan", () => {
+        // 景深重试路径已随功能移除：这类节点不再是特殊情况，走通用计划。
+        expect(canvasNodeRetryPlan(imageNode("depth", { depthSourceNodeId: "source" }), []).kind).toBe("single");
     });
 
     test("script retry requires prompt content", () => {
