@@ -25,17 +25,22 @@ type PluginProviderCatalogItem = {
 };
 
 export async function fetchPluginProviderCatalog(scope: string, capability?: ProtocolCapability) {
+    // The local desktop profile can run without the optional plugin center. Keep
+    // the built-in OpenAI-compatible protocols available for a custom channel: an
+    // empty catalog is as unusable as a missing one, and previously only a thrown
+    // request populated this fallback, so a reachable-but-empty plugin center left
+    // the protocol picker with no options at all.
+    const builtinFallback = () => (scope === "user.custom-channel"
+        ? BUILTIN_OPENAI_PROTOCOLS.filter((item) => !capability || item.capability === capability)
+        : []);
     try {
         const result = await http.get<{ providers: PluginProviderCatalogItem[] }>("/plugins/catalog", { params: { scope, capability } });
-        return result.providers.filter((item) => item.enabled && !item.unavailableReason).map(toProviderDefinition);
+        const providers = result.providers.filter((item) => item.enabled && !item.unavailableReason).map(toProviderDefinition);
+        if (providers.length) return providers;
+        return builtinFallback();
     } catch (error) {
-        // The local desktop profile can run without the optional plugin center.
-        // Keep the built-in OpenAI-compatible protocols available so a custom
-        // channel remains usable even when protocol metadata is unavailable.
-        if (scope === "user.custom-channel") {
-            const fallback = BUILTIN_OPENAI_PROTOCOLS.filter((item) => !capability || item.capability === capability);
-            if (fallback.length) return fallback;
-        }
+        const fallback = builtinFallback();
+        if (fallback.length) return fallback;
         throw error;
     }
 }
