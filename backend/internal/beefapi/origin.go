@@ -9,10 +9,10 @@ import (
 )
 
 const (
-	ProductionOrigin = "https://beeftv.app"
+	ProductionOrigin = "https://api.siflux.cn"
 	LegacyOrigin     = "https://enterprise.beefapi.com"
 	PreviewLocalHost = "enterprise.localhost"
-	ClientID         = "beeftv-enterprise-v1"
+	ClientID         = "siflux-enterprise-v1"
 	ClientScope      = "inference"
 	CredentialRef    = "beefapi-enterprise"
 	ChannelID        = "beefapi"
@@ -20,8 +20,9 @@ const (
 	WalletPath       = "/console/topup"
 )
 
-// CanonicalOrigin defaults to BeefTV and only accepts the legacy enterprise
-// origin or an explicit loopback test origin.
+// CanonicalOrigin pins every managed-channel request to this project's own relay.
+// Only the pinned origin or an explicit loopback test origin is accepted, so no
+// other relay can be configured. LegacyOrigin is deliberately no longer accepted.
 func CanonicalOrigin(explicit string) (string, error) {
 	candidate := strings.TrimRight(strings.TrimSpace(explicit), "/")
 	if candidate == "" {
@@ -29,9 +30,6 @@ func CanonicalOrigin(explicit string) (string, error) {
 	}
 	if candidate == "" || strings.EqualFold(candidate, ProductionOrigin) {
 		return ProductionOrigin, nil
-	}
-	if strings.EqualFold(candidate, LegacyOrigin) {
-		return LegacyOrigin, nil
 	}
 	origin, err := parseSafeTestOrigin(candidate)
 	if err != nil {

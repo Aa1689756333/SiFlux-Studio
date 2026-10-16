@@ -19,7 +19,7 @@ type VideoContract = {
 export function isBeefAPIEndpoint(baseUrl: string): boolean {
     try {
         const url = new URL(baseUrl.trim());
-        return url.protocol === "https:" && ["beeftv.app", "enterprise.beefapi.com"].includes(url.hostname) && !url.username && !url.password && (!url.port || url.port === "443");
+        return url.protocol === "https:" && ["api.siflux.cn"].includes(url.hostname) && !url.username && !url.password && (!url.port || url.port === "443");
     } catch { return false; }
 }
 
