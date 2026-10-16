@@ -79,20 +79,15 @@ describe("canvas node toolbar model", () => {
         expect(groups.get("node-lock")).toBe("more");
     });
 
-    test("offers depth capture as a video processing action and dispatches the source node", () => {
+    test("no longer offers depth capture and keeps the other video processing actions", () => {
+        // 景深（深度动作捕捉）已按产品决定移除：入口冻结，发布流程也不再下载景深清单。
         const node: CanvasNodeData = { id: "video", type: CanvasNodeType.Video, title: "视频", position: { x: 0, y: 0 }, width: 320, height: 180, metadata: { content: "video.mp4" } };
-        const received: CanvasNodeData[] = [];
         const ctx = createNodeContext(node);
-        ctx.handlers = { onNodeDepthCapture: (target) => received.push(target) } as ToolbarHandlers;
+        const tools = new Map(resolveToolbarTools("node-hover", ctx, null).map((item) => [item.id, item]));
 
-        const tool = resolveToolbarTools("node-hover", ctx, null).find((item) => item.id === "depthCapture");
-
-        expect(tool).toBeDefined();
-        expect(tool?.displayLabel).toBe("深度动作捕捉");
-        expect(resolveNodeToolbarPlacement(tool!, ctx).group).toBe("more");
-        expect(tool?.nodeToolbar?.section).toBe("视频处理");
-        tool?.run(ctx);
-        expect(received).toEqual([node]);
+        expect(tools.has("depthCapture")).toBe(false);
+        expect(resolveNodeToolbarPlacement(tools.get("cropVideo")!, ctx).group).toBe("more");
+        expect(tools.get("cropVideo")?.nodeToolbar?.section).toBe("视频处理");
     });
 
     test("uses the redesigned video terminology from the registry", () => {
