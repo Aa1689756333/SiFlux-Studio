@@ -1233,8 +1233,7 @@
 .app-user-workspace.app-product-workspace .app-workspace-brand-wordmark {
     overflow: visible !important;
     padding: 1px 2px 2px 0;
-    text-overflow: clip !important;
-}
+    text-overflow: clip !important; letter-spacing: 0.03em; }
 .app-user-workspace.app-product-workspace .app-workspace-nav-link[data-nav-id="new"],
 .app-user-workspace.app-product-workspace .app-workspace-nav-link[data-nav-id="new"] :is(.app-workspace-nav-title, .app-workspace-nav-icon, svg) {
     color: var(--user-action-foreground) !important;
