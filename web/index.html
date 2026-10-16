@@ -20,18 +20,21 @@
                 background: #090909;
             }
             #root:empty::after {
-                content: "";
+                content: "SiFlux Studio";
                 position: absolute;
                 left: 50%;
                 top: 50%;
-                width: min(240px, 42vw);
-                aspect-ratio: 260 / 56;
                 transform: translate(-50%, -50%);
+                font-family: "Inter Variable", "Inter", "PingFang SC", "Hiragino Sans GB", "Microsoft YaHei", ui-sans-serif, system-ui, sans-serif;
+                font-size: clamp(20px, 3.4vw, 30px);
+                font-weight: 750;
+                letter-spacing: -0.4px;
                 background: linear-gradient(105deg, #c9c9c9 0%, #e4e4e4 43%, #fff 49%, #fff 52%, #e4e4e4 58%, #c9c9c9 100%);
                 background-size: 240% 100%;
                 background-position: 100% 0;
-                -webkit-mask: url('/siflux-wordmark.svg') center / contain no-repeat;
-                mask: url('/siflux-wordmark.svg') center / contain no-repeat;
+                -webkit-background-clip: text;
+                background-clip: text;
+                color: transparent;
                 animation: appearance-bootstrap-shimmer 2.6s ease-in-out infinite;
             }
             @keyframes appearance-bootstrap-shimmer {
@@ -41,7 +44,9 @@
             @media (prefers-reduced-motion: reduce) {
                 #root:empty::after {
                     animation: none;
-                    background: #f2f2f2;
+                    background: none;
+                    color: #f2f2f2;
+                    -webkit-text-fill-color: #f2f2f2;
                 }
             }
         </style>

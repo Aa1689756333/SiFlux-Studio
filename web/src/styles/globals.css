@@ -2949,19 +2949,24 @@
 
     .beeftv-loading-logo {
         display: block;
-        width: min(240px, 42vw);
-        aspect-ratio: 260 / 56;
+        font-family: var(--font-sans);
+        font-size: clamp(20px, 3vw, 28px);
+        font-weight: 750;
+        letter-spacing: -0.4px;
         background: linear-gradient(105deg, #c9c9c9 0%, #e4e4e4 43%, #fff 49%, #fff 52%, #e4e4e4 58%, #c9c9c9 100%);
         background-size: 240% 100%;
         background-position: 100% 0;
-        -webkit-mask: url('/siflux-wordmark.svg') center / contain no-repeat;
-        mask: url('/siflux-wordmark.svg') center / contain no-repeat;
+        -webkit-background-clip: text;
+        background-clip: text;
+        color: transparent;
         animation: appearance-bootstrap-shimmer 2.6s ease-in-out infinite;
     }
 
     .beeftv-loading-logo.is-compact {
         width: 32px;
         aspect-ratio: 1;
+        -webkit-background-clip: border-box;
+        background-clip: border-box;
         -webkit-mask: url('/siflux-mark.svg') center / contain no-repeat;
         mask: url('/siflux-mark.svg') center / contain no-repeat;
     }
@@ -2972,7 +2977,9 @@
     @media (prefers-reduced-motion: reduce) {
         .beeftv-loading-logo {
             animation: none;
-            background: #f2f2f2;
+            background: none;
+            color: #f2f2f2;
+            -webkit-text-fill-color: #f2f2f2;
         }
     }
 

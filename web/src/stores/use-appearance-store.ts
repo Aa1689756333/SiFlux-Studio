@@ -5,7 +5,7 @@ import { applySkinTheme, DEFAULT_CLASSIC_SKIN, normalizeSkinDefinition } from "@
 
 export const DEFAULT_PUBLIC_APPEARANCE: PublicAppearance = {
     schemaVersion: 7,
-    brandName: "SiFlux",
+    brandName: "SiFlux Studio",
     brandSlug: "siflux",
     authHeroTitle: "让一个故事，\n从文字走向银幕。",
     authHeroDescription: "",

@@ -17,7 +17,7 @@ export function FullScreenLoader({ label = "正在恢复工作区", detail = "�
             aria-label={`${label}，${detail}`}
             className={cn("full-screen-loader", className)}
         >
-            <span className="beeftv-loading-logo" aria-hidden="true" />
+            <span className="beeftv-loading-logo" aria-hidden="true">SiFlux Studio</span>
         </div>
     );
 }
