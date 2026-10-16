@@ -69,7 +69,7 @@ RUNTIME_SIZE="$(stat -f '%z' "$OUTPUT_DIR/$ARCHIVE_NAME")"
 RUNTIME_SHA256="$(shasum -a 256 "$OUTPUT_DIR/$ARCHIVE_NAME" | awk '{print $1}')"
 RUNTIME_FILES="$(python3 -c 'import sys,zipfile; print(len(zipfile.ZipFile(sys.argv[1]).infolist()))' "$OUTPUT_DIR/$ARCHIVE_NAME")"
 RUNTIME_EXPANDED_SIZE="$(python3 -c 'import sys,zipfile; print(sum(item.file_size for item in zipfile.ZipFile(sys.argv[1]).infolist()))' "$OUTPUT_DIR/$ARCHIVE_NAME")"
-printf '{\n  "version": 1,\n  "runtime": {\n    "urls": ["https://github.com/glanderness/BeefTV/releases/download/v1.5.5/%s"],\n    "size": %s,\n    "sha256": "%s",\n    "files": %s,\n    "expandedSize": %s\n  },\n  "model": {\n    "urls": [\n      "https://github.com/glanderness/BeefTV/releases/download/v1.5.5/%s",\n      "https://huggingface.co/depth-anything/Video-Depth-Anything-Small/resolve/main/%s"\n    ],\n    "size": %s,\n    "sha256": "%s"\n  }\n}\n' \
+printf '{\n  "version": 1,\n  "runtime": {\n    "urls": ["https://github.com/Aa1689756333/SiFlux-Studio/releases/download/depth-runtime-v2/%s"],\n    "size": %s,\n    "sha256": "%s",\n    "files": %s,\n    "expandedSize": %s\n  },\n  "model": {\n    "urls": [\n      "https://github.com/Aa1689756333/SiFlux-Studio/releases/download/depth-runtime-v2/%s",\n      "https://huggingface.co/depth-anything/Video-Depth-Anything-Small/resolve/main/%s"\n    ],\n    "size": %s,\n    "sha256": "%s"\n  }\n}\n' \
   "$ARCHIVE_NAME" "$RUNTIME_SIZE" "$RUNTIME_SHA256" "$RUNTIME_FILES" "$RUNTIME_EXPANDED_SIZE" "$MODEL_NAME" "$MODEL_NAME" "$MODEL_SIZE" "$MODEL_SHA256" \
   > "$OUTPUT_DIR/depth-runtime-manifest.json"
 
