@@ -150,7 +150,7 @@ backend\cmd\desktop\build\bin\plugin-packages\*.beeftv-plugin
 - **更新签名**：Ed25519 签的是 `desktop-update.json` 里的清单。清单写明每个系统包的下载地址、SHA-256 和大小。应用用编译进去的公钥验签，再核对 zip 哈希。不依赖 Apple 证书，也不走业务云接口。
 - **Apple 签名 / 公证**：决定下载后的 `.app` 能否通过 Gatekeeper 的默认信任检查。现有 macOS 脚本仍使用 ad hoc `codesign --sign -`，没有 Developer ID 身份或 Apple 公证；首次手动安装可能被拦截。更新器本身不依赖 Apple 证书，但要让用户无需手动放行，需要 Developer ID Application 签名及 Apple 公证。首次安装指引见 [快速开始](../QUICKSTART.md#下载与首次打开)。
 
-发布验收必须分别记录安装包哈希、`codesign --verify --deep --strict` 和 `spctl --assess --type execute --verbose=4` 的结果。前两项通过不代表 Gatekeeper 放行；还需在没有历史放行记录的 Mac 上，通过浏览器下载、解压并从 Finder 首次打开验收。GitHub 与 Cloudflare 提供相同字节的包时，不会改变 Apple 对应用签名的判断。
+发布验收必须分别记录安装包哈希、`codesign --verify --deep --strict` 和 `spctl --assess --type execute --verbose=4` 的结果。前两项通过不代表 Gatekeeper 放行；还需在没有历史放行记录的 Mac 上，通过浏览器下载、解压并从 Finder 首次打开验收。
 
 Windows 目前也不做 Authenticode 签名。SmartScreen 可能拦截首次手动安装。
 
@@ -185,7 +185,7 @@ export SIFLUX_UPDATER_PUBLIC_KEY="$(tr -d '[:space:]' < /path/to/beeftv-updater.
 
 脚本会把下面两个链接期变量写进二进制：
 
-- `infinite-canvas/backend/internal/desktopupdate.FeedURL` = `https://updates.beefapi.com/beeftv/desktop-update.json`
+- `infinite-canvas/backend/internal/desktopupdate.FeedURL` = `https://github.com/Aa1689756333/SiFlux-Studio/releases/latest/download/desktop-update.json`
 - `infinite-canvas/backend/internal/desktopupdate.PublicKey` = 公钥 Base64
 
 两个都为空时，应用里的更新器保持关闭，但仍显示当前版本。
@@ -208,7 +208,7 @@ BeefTV-vX.Y.Z-linux-amd64.zip
 desktop-update.json
 ```
 
-Actions 中的 `desktop-*` 临时安装包保留 7 天，用于发布任务之间传递文件及短期排查。正式 GitHub Release 和 Cloudflare R2 下载文件不受此期限影响。清理历史临时包前，应确认对应发布任务成功，且对应版本的平台安装包和更新清单齐全；未确认发布成功的包和升级验证报告保留。
+Actions 中的 `desktop-*` 临时安装包保留 7 天，用于发布任务之间传递文件及短期排查。正式 GitHub Release 的产物不受此期限影响。清理历史临时包前，应确认对应发布任务成功，且对应版本的平台安装包和更新清单齐全；未确认发布成功的包和升级验证报告保留。
 
 zip 里的布局：
 
@@ -216,31 +216,33 @@ zip 里的布局：
 - Windows：根目录的 `BeefTV.exe` 和 `plugin-packages/*.beeftv-plugin`。
 - Linux x64：`BeefTV-linux/` 内包含 `BeefTV`、`cli/beeftv`、`agent-host/` 和 `plugin-packages/`。在 Ubuntu 24.04 原生构建，使用 GTK3 和 WebKitGTK 4.1；安装依赖和启动方法见 [Linux 安装说明](linux-install.md)。更新和回滚替换整个程序目录，用户数据留在配置目录。
 
-从 v1.5.7 起，更新清单和安装包托管在 Cloudflare R2：
+更新清单与四个平台产物只发布在 GitHub Releases：
 
 ```text
-https://updates.beefapi.com/beeftv/desktop-update.json
+https://github.com/Aa1689756333/SiFlux-Studio/releases/latest/download/desktop-update.json
 ```
 
-流水线先建 draft，四个平台构建任务把包保存为 Actions 产物。收齐后生成签名清单，先将版本包和版本清单写入 R2 不可变路径并从公开域名读回校验。之后发布 GitHub Release，最后原子替换 CF 的最新清单。失败或缺包不会激活 CF 更新源。GitHub 同时保留同一份签名清单，供旧客户端迁移。
+流水线先建 draft，四个平台构建任务把包保存为 Actions 产物。收齐后生成签名清单，上传清单与四个平台产物到该 draft Release，全部到位后把 draft 转为正式版本并标记 latest。失败或缺包不会发布。公开下载地址只有 GitHub，没有第二个投递通道。
 
 Linux 发布任务会从最终 ZIP 解压执行随包 CLI，并在 Xvfb 中启动桌面程序，确认本地后端和可见窗口。PR 的 `Linux desktop package checks` 提前执行同一构建与启动检查，不发布版本，也不调用付费模型。
 
-v1.5.6 及以前的更新器仍内置 GitHub 清单地址。如果旧客户端无法连接 GitHub，需要先手动安装 v1.5.7 或更高版本；远端清单无法改写尚未更新的程序。完成这一次迁移后，检查及下载更新均使用 CF 地址。
+更新器内置的清单地址就是上面的 GitHub 地址（见 `.github/workflows/release-desktop.yml` 的 `SIFLUX_UPDATER_FEED_URL`）。清单里的每个产物 URL 同样指向 GitHub Releases 的对应版本目录；客户端先验签清单，再核对下载包的 sha256。
 
-### Cloudflare 发布配置
+### 发布所需凭据
 
-使用专用 R2 bucket `beeftv-releases`，自定义域名 `updates.beefapi.com`，TLS 最低 1.2。只放公开发行文件，不混放用户素材。正式文件路径为 `beeftv/vX.Y.Z/<文件名>`，最新清单为 `beeftv/desktop-update.json`。版本对象长期缓存且不可变，最新清单使用禁止缓存的响应头。
+仓库 Actions 只需要两项配置：
 
-仓库 Actions 需要以下配置：
+- Secret `SIFLUX_UPDATER_PRIVATE_KEY`：签名 `desktop-update.json` 的 Ed25519 私钥（标准 base64，64 字节）。
+- Variable `SIFLUX_UPDATER_PUBLIC_KEY`：匹配的公钥（标准 base64，32 字节）。预检会用私钥推导并与它逐字核对，不一致就拒绝发布。
 
-- Secret `SIFLUX_R2_ACCESS_KEY_ID`、`SIFLUX_R2_SECRET_ACCESS_KEY`：仅对这个 bucket 拥有对象读写权限的 S3 凭据，不使用账户管理员令牌。
-- Variable `SIFLUX_R2_ENDPOINT`：该账户的官方 HTTPS R2 S3 endpoint。
-- 原有 `SIFLUX_UPDATER_PRIVATE_KEY` 和 `SIFLUX_UPDATER_PUBLIC_KEY` 保持不变。
+不需要 Cloudflare 账号，也不需要任何对象存储凭据。
 
-`scripts/publish-desktop-r2.py` 复用 `update-release verify` 验签，使用 AWS CLI v2 上传；发布机必须支持 `put-object` 的 `IfMatch`、`IfNoneMatch` 条件写。`stage` 只准备版本对象；`activate` 确认 GitHub 最新正式版本及公开清单与本次签名清单一致、全部公开对象可校验后，备份上一份清单，再通过 ETag 条件写切换。公网检查使用该版本客户端的请求标识。重复执行同一版本是幂等的，已有对象内容不同或试图降级会失败。
+`scripts/publish-desktop-r2.py` 及其单测已删除：R2 从来不是用户可见的下载地址（清单与产物的公开 URL 一直是 GitHub），
+保留它只会给发布增加一个硬性前置条件。签名的 `desktop-update.json` 由工作流的 `gh release upload` 直接投递，
+验签、sha256 与大小校验全部保留，没有任何削弱。
 
-如果 GitHub 发布成功而 CF 激活失败，保留正式版本及所有不可变对象。核对失败原因后，用同一版本的原始清单重跑 `activate`；不要删除正式 tag 或重建不同内容的同版本包。切换前失败不会改变旧 CF 清单；条件写成功但最终回读失败时，新清单可能已经生效，必须先核对存储与公开入口，不能把它当作未发布。已经安装新版本的客户端不自动降级。
+如果上传中途失败，draft 与已上传的产物留在同一次运行里。核对原因后重跑发布任务；不要删除正式 tag，
+也不要用不同内容重建同版本包。已经安装新版本的客户端不自动降级。
 
 在 `glanderness/BeefTV` 的 `main` 上手动运行 `.github/workflows/release-desktop.yml`。输入的 `confirm_version` 必须和 `VERSION` 一致。`CHANGELOG.md` 必须有对应的 `## vX.Y.Z` 段落，这段文字会同时成为 GitHub Release 说明和清单里的 `notes`。
 

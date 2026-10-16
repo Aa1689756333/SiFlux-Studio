@@ -64,15 +64,8 @@ jobs:
         env:
           SIFLUX_UPDATER_PRIVATE_KEY: ${{ secrets.SIFLUX_UPDATER_PRIVATE_KEY }}
           SIFLUX_UPDATER_PUBLIC_KEY: ${{ vars.SIFLUX_UPDATER_PUBLIC_KEY }}
-          R2_ENDPOINT: ${{ vars.SIFLUX_R2_ENDPOINT }}
-          R2_ACCESS_KEY_ID: ${{ secrets.SIFLUX_R2_ACCESS_KEY_ID }}
-          R2_SECRET_ACCESS_KEY: ${{ secrets.SIFLUX_R2_SECRET_ACCESS_KEY }}
         run: |
           set -euo pipefail
-          if [[ -z "$R2_ENDPOINT" || -z "$R2_ACCESS_KEY_ID" || -z "$R2_SECRET_ACCESS_KEY" ]]; then
-            echo "Missing bucket-scoped R2 release credentials or endpoint."
-            exit 1
-          fi
           if [[ -z "${SIFLUX_UPDATER_PRIVATE_KEY:-}" ]]; then
             echo "Missing GitHub Actions secret SIFLUX_UPDATER_PRIVATE_KEY."
             echo "It must be standard base64 of a 64-byte Ed25519 private key."
@@ -360,13 +353,6 @@ jobs:
       COMMIT: ${{ needs.preflight.outputs.commit }}
       SIFLUX_UPDATER_PRIVATE_KEY: ${{ secrets.SIFLUX_UPDATER_PRIVATE_KEY }}
       SIFLUX_UPDATER_PUBLIC_KEY: ${{ vars.SIFLUX_UPDATER_PUBLIC_KEY }}
-      AWS_ACCESS_KEY_ID: ${{ secrets.SIFLUX_R2_ACCESS_KEY_ID }}
-      AWS_SECRET_ACCESS_KEY: ${{ secrets.SIFLUX_R2_SECRET_ACCESS_KEY }}
-      AWS_DEFAULT_REGION: auto
-      AWS_EC2_METADATA_DISABLED: "true"
-      AWS_REQUEST_CHECKSUM_CALCULATION: when_required
-      AWS_RESPONSE_CHECKSUM_VALIDATION: when_required
-      R2_ENDPOINT: ${{ vars.SIFLUX_R2_ENDPOINT }}
     steps:
       - uses: actions/checkout@v4
 
@@ -382,15 +368,6 @@ jobs:
           pattern: desktop-*
           merge-multiple: true
           path: dist
-
-      - name: Check R2 publisher tooling
-        run: |
-          command -v aws
-          aws s3api put-object --generate-cli-skeleton input > "$RUNNER_TEMP/put-object.json"
-          python3 -c 'import json,sys; p=json.load(open(sys.argv[1])); assert "IfMatch" in p and "IfNoneMatch" in p' "$RUNNER_TEMP/put-object.json"
-          python3 -m unittest discover -s scripts -p 'test_publish_desktop_r2.py'
-          cd backend
-          go build -o "$RUNNER_TEMP/update-release" ./cmd/update-release
 
       - name: Check complete platform set
         run: |
@@ -425,21 +402,11 @@ jobs:
             --envelope "../dist/desktop-update.json" \
             --public-key-text "$SIFLUX_UPDATER_PUBLIC_KEY"
 
-      - name: Stage and verify immutable Cloudflare assets
-        run: |
-          python3 scripts/publish-desktop-r2.py stage \
-            --manifest dist/desktop-update.json --assets-dir dist --with-installers \
-            --verifier "$RUNNER_TEMP/update-release" --endpoint-url "$R2_ENDPOINT"
-
       - name: Publish signed GitHub release
         run: |
           set -euo pipefail
           gh release upload "$VERSION" "dist/desktop-update.json" dist/SiFlux-"$VERSION"-*.zip dist/SiFlux-"$VERSION"-*.dmg dist/SiFlux-"$VERSION"-*-setup.exe dist/SiFlux-"$VERSION"-*.deb
           gh release edit "$VERSION" --draft=false --latest
 
-      - name: Activate verified Cloudflare update feed
-        run: |
-          python3 scripts/publish-desktop-r2.py activate \
-            --manifest dist/desktop-update.json --assets-dir dist --with-installers \
-            --verifier "$RUNNER_TEMP/update-release" --endpoint-url "$R2_ENDPOINT"
-          echo "Published $VERSION at $SIFLUX_UPDATER_FEED_URL."
+      - name: Report published feed
+        run: echo "Published $VERSION at $SIFLUX_UPDATER_FEED_URL."
