@@ -52,8 +52,8 @@ def package(version, platform, payload, output):
             control.mkdir()
             (control / 'control').write_text(
                 f'Package: beeftv\nVersion: {version[1:]}\nArchitecture: amd64\n'
-                'Maintainer: BeefTV Contributors <58928515+glanderness@users.noreply.github.com>\n'
-                'Homepage: https://github.com/glanderness/BeefTV\nSection: graphics\nPriority: optional\n'
+                'Maintainer: SiFlux Studio\n'
+                'Homepage: https://github.com/Aa1689756333/SiFlux-Studio\nSection: graphics\nPriority: optional\n'
                 'Depends: libgtk-3-0t64, libwebkit2gtk-4.1-0, gstreamer1.0-plugins-good, '
                 'gstreamer1.0-plugins-bad, gstreamer1.0-libav, ffmpeg, fonts-noto-cjk\n'
                 'Description: BeefTV creative workspace (Ubuntu 24.04)\n')
