@@ -270,7 +270,7 @@ jobs:
           mkdir -p ../dist
           input="cmd/desktop/build/bin"
           if [[ "$PLATFORM" == darwin-* ]]; then
-            input="$input/BeefTV.app"
+            input="$input/SiFlux.app"
           elif [[ "$PLATFORM" == linux-amd64 ]]; then
             input="$input/SiFlux-linux"
           fi
@@ -302,7 +302,7 @@ jobs:
           set -euo pipefail
           payload='backend/cmd/desktop/build/bin'
           suffix='-setup.exe'
-          if [[ "$PLATFORM" == darwin-* ]]; then payload="$payload/BeefTV.app"; suffix='.dmg'; fi
+          if [[ "$PLATFORM" == darwin-* ]]; then payload="$payload/SiFlux.app"; suffix='.dmg'; fi
           if [[ "$PLATFORM" == linux-* ]]; then payload="$payload/SiFlux-linux"; suffix='.deb'; fi
           command=(python scripts/smoke-desktop-installer.py --platform "$PLATFORM" --installer "dist/SiFlux-${VERSION}-${PLATFORM}${suffix}" --payload "$payload")
           if [[ "$PLATFORM" == linux-* ]]; then xvfb-run -a dbus-run-session -- "${command[@]}"; else "${command[@]}"; fi

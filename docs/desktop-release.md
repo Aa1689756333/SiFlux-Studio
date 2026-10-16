@@ -201,10 +201,10 @@ export SIFLUX_UPDATER_PUBLIC_KEY="$(tr -d '[:space:]' < /path/to/beeftv-updater.
 正式文件名固定为：
 
 ```text
-BeefTV-vX.Y.Z-darwin-arm64.zip
-BeefTV-vX.Y.Z-darwin-amd64.zip
-BeefTV-vX.Y.Z-windows-amd64.zip
-BeefTV-vX.Y.Z-linux-amd64.zip
+SiFlux-vX.Y.Z-darwin-arm64.zip
+SiFlux-vX.Y.Z-darwin-amd64.zip
+SiFlux-vX.Y.Z-windows-amd64.zip
+SiFlux-vX.Y.Z-linux-amd64.zip
 desktop-update.json
 ```
 
@@ -212,9 +212,9 @@ Actions 中的 `desktop-*` 临时安装包保留 7 天，用于发布任务之�
 
 zip 里的布局：
 
-- macOS：`BeefTV.app/...`，保留可执行权限；内部安全符号链接会被解成普通文件，不会写成 zip 符号链接项。
-- Windows：根目录的 `BeefTV.exe` 和 `plugin-packages/*.beeftv-plugin`。
-- Linux x64：`BeefTV-linux/` 内包含 `BeefTV`、`cli/beeftv`、`agent-host/` 和 `plugin-packages/`。在 Ubuntu 24.04 原生构建，使用 GTK3 和 WebKitGTK 4.1；安装依赖和启动方法见 [Linux 安装说明](linux-install.md)。更新和回滚替换整个程序目录，用户数据留在配置目录。
+- macOS：`SiFlux.app/...`，保留可执行权限；内部安全符号链接会被解成普通文件，不会写成 zip 符号链接项。
+- Windows：根目录的 `BeefTV.exe` 和 `plugin-packages/*.beeftv-plugin`（这两个名字仍沿用上游，待全面改名时一并处理）。
+- Linux x64：`SiFlux-linux/` 内包含 `SiFlux`、`cli/siflux`、`agent-host/` 和 `plugin-packages/`。在 Ubuntu 24.04 原生构建，使用 GTK3 和 WebKitGTK 4.1；安装依赖和启动方法见 [Linux 安装说明](linux-install.md)。更新和回滚替换整个程序目录，用户数据留在配置目录。
 
 更新清单与四个平台产物只发布在 GitHub Releases：
 
@@ -264,8 +264,8 @@ Apple 公证不在这条工作流里。macOS 作业沿用现有脚本的 ad hoc 
 cd backend
 go run ./cmd/update-release package \
   --platform darwin-arm64 \
-  --input cmd/desktop/build/bin/BeefTV.app \
-  --output /tmp/BeefTV-vX.Y.Z-darwin-arm64.zip
+  --input cmd/desktop/build/bin/SiFlux.app \
+  --output /tmp/SiFlux-vX.Y.Z-darwin-arm64.zip
 go run ./cmd/update-release sign \
   --version vX.Y.Z \
   --commit "$(git rev-parse HEAD)" \
