@@ -17,8 +17,8 @@ permissions:
 
 env:
   GOTOOLCHAIN: local
-  BEEFTV_UPDATER_FEED_URL: https://updates.beefapi.com/beeftv/desktop-update.json
-  UPDATER_DOWNLOAD_BASE: https://updates.beefapi.com/beeftv
+  BEEFTV_UPDATER_FEED_URL: https://github.com/Aa1689756333/SiFlux-Studio/releases/latest/download/desktop-update.json
+  UPDATER_DOWNLOAD_BASE: https://github.com/Aa1689756333/SiFlux-Studio/releases/download
 
 jobs:
   preflight:
@@ -40,8 +40,8 @@ jobs:
             echo "Desktop updater releases can only be dispatched from main. Current ref: ${{ github.ref }}"
             exit 1
           fi
-          if [[ "${{ github.repository }}" != "glanderness/BeefTV" ]]; then
-            echo "This workflow publishes production updater assets for glanderness/BeefTV only."
+          if [[ "${{ github.repository }}" != "Aa1689756333/SiFlux-Studio" ]]; then
+            echo "This workflow publishes production updater assets for Aa1689756333/SiFlux-Studio only."
             exit 1
           fi
 

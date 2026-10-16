@@ -14,8 +14,8 @@ import (
 
 const (
 	payloadSchema       = 1
-	defaultFeedURL      = "https://updates.beefapi.com/beeftv/desktop-update.json"
-	defaultDownloadHost = "https://updates.beefapi.com/beeftv"
+	defaultFeedURL      = "https://github.com/Aa1689756333/SiFlux-Studio/releases/latest/download/desktop-update.json"
+	defaultDownloadHost = "https://github.com/Aa1689756333/SiFlux-Studio/releases/download"
 	updaterImportPath   = "infinite-canvas/backend/internal/desktopupdate"
 )
 
