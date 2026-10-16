@@ -445,12 +445,21 @@ func allowPrivateUpstreams() bool {
 	return value == "1" || value == "true" || value == "yes"
 }
 
+// pinnedRelayHost is this project's own relay. The product serves that relay
+// exclusively, so it stays trusted even when a local proxy (fake-IP/TUN mode) or
+// split-horizon DNS resolves it to a private, reserved or link-local address.
+// Keep in sync with beefapi.ProductionOrigin.
+const pinnedRelayHost = "api.siflux.cn"
+
 // allowedPrivateUpstreamHost lets operators pin only explicitly trusted upstream
 // hostnames to an internal route without disabling SSRF protection for every URL.
 func AllowedPrivateUpstreamHost(host string) bool {
 	host = normalizeOutboundHost(host)
 	if host == "" {
 		return false
+	}
+	if host == pinnedRelayHost {
+		return true
 	}
 	for _, configured := range strings.Split(os.Getenv("CANVAS_ALLOWED_PRIVATE_UPSTREAM_HOSTS"), ",") {
 		if normalizeOutboundHost(configured) == host {
