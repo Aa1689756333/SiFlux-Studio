@@ -1,4 +1,4 @@
-// Temporary advisory for the two verified WhatsToken routes. Native Ark,
+// Temporary advisory for the reference-video routes served through this project's own relay. Native Ark,
 // Fast and Mini retain their own contract.
 export function seedanceTaskRetryWarning(inputJson?: string, model?: string) {
     try {
