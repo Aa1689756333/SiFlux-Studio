@@ -23,7 +23,7 @@ func TestCLIAndMCPAgainstIsolatedIntegratedRuntime(t *testing.T) {
 	for _, key := range []string{"SIFLUX_CLIENT_ID", "SIFLUX_CLIENT_TOKEN", "SIFLUX_DESKTOP_TOKEN", "SIFLUX_AGENT_API_KEY", "SIFLUX_AGENT_HOST_TOKEN"} {
 		t.Setenv(key, "")
 	}
-	bin := filepath.Join(t.TempDir(), "beeftv")
+	bin := filepath.Join(t.TempDir(), "siflux")
 	if stdruntime.GOOS == "windows" {
 		bin += ".exe"
 	}

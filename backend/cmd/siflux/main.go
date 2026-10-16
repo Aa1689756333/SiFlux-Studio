@@ -1,4 +1,4 @@
-// beeftv 是 BeefTV 的常规命令行入口：与内置 pi、MCP 共用同一套业务操作层，
+// siflux 是 SiFlux 的常规命令行入口：与内置 pi、MCP 共用同一套业务操作层，
 // 连接同一个正在运行的本地工作区，不各自打开数据库或另起 worker。
 package main
 
@@ -149,7 +149,7 @@ func (c *client) currentBaseURL() string {
 func (c *client) do(ctx context.Context, method, path string, body any) (json.RawMessage, error) {
 	base := c.currentBaseURL()
 	if base == "" {
-		return nil, &cliError{code: exitTransportFailure, reason: "runtime_not_found", msg: "未发现运行中的 BeefTV 工作区。请先打开 BeefTV；若使用自定义目录，请检查 SIFLUX_DATA_DIR；独立服务请显式设置 SIFLUX_BASE_URL"}
+		return nil, &cliError{code: exitTransportFailure, reason: "runtime_not_found", msg: "未发现运行中的 SiFlux 工作区。请先打开 SiFlux；若使用自定义目录，请检查 SIFLUX_DATA_DIR；独立服务请显式设置 SIFLUX_BASE_URL"}
 	}
 	var payload io.Reader
 	if body != nil {
@@ -295,7 +295,7 @@ func main() {
 				fmt.Println(string(encoded))
 			}
 		}
-		fmt.Fprintf(os.Stderr, "beeftv: %v\n", err)
+		fmt.Fprintf(os.Stderr, "siflux: %v\n", err)
 		os.Exit(code)
 	}
 	os.Exit(exitOK)
@@ -378,29 +378,29 @@ func run(args []string) error {
 }
 
 func usage() {
-	fmt.Fprint(os.Stderr, `beeftv — BeefTV 业务操作命令行（连接正在运行的本地工作区）
+	fmt.Fprint(os.Stderr, `siflux — SiFlux 业务操作命令行（连接正在运行的本地工作区）
 
-  beeftv ops [--read-only] [--json]
-  beeftv ops call <operation> --params '<json>' [--operation-id <id>] [--json]
-  beeftv business discover
-  beeftv business call --tool <id> --params '<path/query/body json>'
-  beeftv business upload --file <path> [--target resource|skill|plugin] [--params '<json>']
-  beeftv canvas get --canvas <id> [--json]
-  beeftv canvas search [--query <q>] [--page N] [--page-size N] [--json]
-  beeftv canvas node update --canvas <id> --node <id> --expected-revision N [--title T] [--prompt P] [--content C] --op-id <id>
-  beeftv canvas nodes create --canvas <id> --expected-revision N --node <title:type[:prompt]>... --op-id <id>
-  beeftv canvas edge create --canvas <id> --from <nodeId> --to <nodeId> --expected-revision N --op-id <id>
-  beeftv asset list [--query <q>] [--kind <kind>] [--favorite] [--recent] [--project <name>] [--generated] [--json]
-  beeftv asset get --asset <id> [--json]
-  beeftv task get --task <id> [--json]
-  beeftv client register --label <label> [--kind codex|claude|cursor|other] [--mode read-only|read-write]
-  beeftv mcp serve [--read-only]
+  siflux ops [--read-only] [--json]
+  siflux ops call <operation> --params '<json>' [--operation-id <id>] [--json]
+  siflux business discover
+  siflux business call --tool <id> --params '<path/query/body json>'
+  siflux business upload --file <path> [--target resource|skill|plugin] [--params '<json>']
+  siflux canvas get --canvas <id> [--json]
+  siflux canvas search [--query <q>] [--page N] [--page-size N] [--json]
+  siflux canvas node update --canvas <id> --node <id> --expected-revision N [--title T] [--prompt P] [--content C] --op-id <id>
+  siflux canvas nodes create --canvas <id> --expected-revision N --node <title:type[:prompt]>... --op-id <id>
+  siflux canvas edge create --canvas <id> --from <nodeId> --to <nodeId> --expected-revision N --op-id <id>
+  siflux asset list [--query <q>] [--kind <kind>] [--favorite] [--recent] [--project <name>] [--generated] [--json]
+  siflux asset get --asset <id> [--json]
+  siflux task get --task <id> [--json]
+  siflux client register --label <label> [--kind codex|claude|cursor|other] [--mode read-only|read-write]
+  siflux mcp serve [--read-only]
 
-连接哪个工作区：不设 SIFLUX_BASE_URL 时自动连正在运行的 BeefTV 桌面应用，端口是动态的。
+连接哪个工作区：不设 SIFLUX_BASE_URL 时自动连正在运行的 SiFlux 桌面应用，端口是动态的。
 SIFLUX_DATA_DIR 可以指向非默认数据目录。Windows 从用户目录下 .beeftv/runtime 读取对应
-工作区的运行信息，其他平台读取数据目录里的 runtime.json。升级后请重新打开 BeefTV。
+工作区的运行信息，其他平台读取数据目录里的 runtime.json。升级后请重新打开 SiFlux。
 
-凭据：在 BeefTV 的设置里新建一个客户端，把它给出的 SIFLUX_CLIENT_ID 与 SIFLUX_CLIENT_TOKEN
+凭据：在 SiFlux 的设置里新建一个客户端，把它给出的 SIFLUX_CLIENT_ID 与 SIFLUX_CLIENT_TOKEN
 填进环境变量即可，不需要桌面令牌。新连接默认开放全部业务工具，操作审批由外部 Agent 管理。
 历史只读凭据继续保持只读；CLI 仍支持显式签发只读凭据。
 
@@ -694,12 +694,12 @@ func runMCP(c *client, args []string) error {
 	timedOut := errors.Is(startupCtx.Err(), context.DeadlineExceeded)
 	cancel()
 	if timedOut {
-		return &cliError{code: exitTransportFailure, reason: "mcp_startup_timeout", msg: "连接 BeefTV 工作区超过 5 秒，请确认 BeefTV 已启动且工作区可以访问"}
+		return &cliError{code: exitTransportFailure, reason: "mcp_startup_timeout", msg: "连接 SiFlux 工作区超过 5 秒，请确认 SiFlux 已启动且工作区可以访问"}
 	}
 	if err != nil {
 		return err
 	}
-	server := mcp.NewServer(&mcp.Implementation{Name: "beeftv", Version: "1.0.0"}, nil)
+	server := mcp.NewServer(&mcp.Implementation{Name: "siflux", Version: "1.0.0"}, nil)
 	registeredTools := len(ops)
 	business, businessErr := c.businessTools(ctx)
 	if businessErr != nil {
@@ -754,7 +754,7 @@ func runMCP(c *client, args []string) error {
 			})
 	}
 	_, baseSource := resolveBaseURL()
-	fmt.Fprintf(os.Stderr, "beeftv mcp serve: %d 个工具，base=%s（%s），client=%s\n", registeredTools, c.currentBaseURL(), baseSource, orNone(c.clientID))
+	fmt.Fprintf(os.Stderr, "siflux mcp serve: %d 个工具，base=%s（%s），client=%s\n", registeredTools, c.currentBaseURL(), baseSource, orNone(c.clientID))
 	return server.Run(ctx, &mcp.StdioTransport{})
 }
 

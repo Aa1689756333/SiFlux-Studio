@@ -17,7 +17,7 @@ import (
 	"infinite-canvas/backend/internal/operations"
 )
 
-// TestMCPClientLoop 用官方 MCP 客户端连接 `beeftv mcp serve`，验证握手、工具描述、
+// TestMCPClientLoop 用官方 MCP 客户端连接 `siflux mcp serve`，验证握手、工具描述、
 // 幂等 operationId、冲突错误、只读工具与断开。
 func TestMCPClientLoop(t *testing.T) {
 	bin := os.Getenv("SIFLUX_BIN")
@@ -38,7 +38,7 @@ func TestMCPClientLoop(t *testing.T) {
 
 	ctx, cancel := context.WithTimeout(context.Background(), 90*time.Second)
 	defer cancel()
-	client := mcp.NewClient(&mcp.Implementation{Name: "beeftv-acceptance-client", Version: "1.0.0"}, nil)
+	client := mcp.NewClient(&mcp.Implementation{Name: "siflux-acceptance-client", Version: "1.0.0"}, nil)
 	session, err := client.Connect(ctx, &mcp.CommandTransport{Command: exec.Command(bin, "mcp", "serve")}, nil)
 	if err != nil {
 		t.Fatalf("MCP 握手失败: %v", err)

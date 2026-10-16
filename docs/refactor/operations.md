@@ -4,7 +4,7 @@ Agent 操作层抽成工作区共用的 `operations` 核：注册表、幂等键
 
 ## 依赖方向
 
-`handler` / `cmd/beeftv` → `agentops`（鉴权适配）→ `operations`（核）→ `canvas` / `model`
+`handler` / `cmd/siflux` → `agentops`（鉴权适配）→ `operations`（核）→ `canvas` / `model`
 
 `app.Service` 通过 `BindDomain` 实现 `operations.DomainBinder`，是薄适配，操作核不再 import `internal/app`。
 

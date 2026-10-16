@@ -60,7 +60,7 @@ jobs:
       - name: Download known final package
         shell: pwsh
         run: |
-          curl.exe -fLsS --retry 2 https://github.com/glanderness/BeefTV/releases/download/v1.7.2/BeefTV-v1.7.2-windows-amd64.zip -o candidate.zip
+          curl.exe -fLsS --retry 2 https://github.com/glanderness/SiFlux/releases/download/v1.7.2/SiFlux-v1.7.2-windows-amd64.zip -o candidate.zip
           if ($LASTEXITCODE -ne 0) { exit $LASTEXITCODE }
           if ((Get-FileHash candidate.zip -Algorithm SHA256).Hash.ToLower() -ne 'bb2cb4e152c7b2eb1d54adb7553c69d59aef755b242d2cbf0c14e7472a8b4f65') { throw 'Candidate hash mismatch' }
       - name: Real released helpers, backend startup, SQLite and rollback
@@ -208,7 +208,7 @@ jobs:
       - name: Local provider task persistence and restart matrix
         run: go test ./internal/app -run '^TestDBRuntime' -count=1 -json | tee matrix-evidence/runtime.jsonl
       - name: Actual CLI, MCP startup and native process lifecycle
-        run: go test ./cmd/beeftv ./internal/runtimeinfo ./internal/assistantruntime -count=1 -json | tee matrix-evidence/cli-mcp.jsonl
+        run: go test ./cmd/siflux ./internal/runtimeinfo ./internal/assistantruntime -count=1 -json | tee matrix-evidence/cli-mcp.jsonl
       - name: Preserve per-test results and platform evidence
         if: always()
         uses: actions/upload-artifact@v4
