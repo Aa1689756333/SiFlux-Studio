@@ -82,7 +82,7 @@ func TestOpsAcceptanceUIBootstrapCredentialIsolation(t *testing.T) {
 }
 
 func TestOpsAcceptanceOriginAndLoopbackAtRouter(t *testing.T) {
-	t.Setenv("SIFLUX_ALLOWED_ORIGINS", "https://app.beeftv.local")
+	t.Setenv("SIFLUX_ALLOWED_ORIGINS", "https://app.siflux.local")
 	t.Setenv("SIFLUX_UI_BOOTSTRAP", "")
 	h := newDesktopHarness(t)
 	client, token, err := agentops.NewClientRegistry(h.dataDir).Register("acceptance", agentops.ClientReadOnly)
@@ -96,13 +96,13 @@ func TestOpsAcceptanceOriginAndLoopbackAtRouter(t *testing.T) {
 		{"same-origin", "127.0.0.1:54321", "127.0.0.1:12345", "http://127.0.0.1:54321", 200},
 		{"no-origin", "127.0.0.1:54321", "127.0.0.1:12345", "", 200},
 		{"ipv6-loopback", "[::1]:54321", "[::1]:12345", "http://[::1]:54321", 200},
-		{"allowed-origin", "127.0.0.1:54321", "127.0.0.1:12345", "https://app.beeftv.local", 200},
+		{"allowed-origin", "127.0.0.1:54321", "127.0.0.1:12345", "https://app.siflux.local", 200},
 		{"different-port", "127.0.0.1:54321", "127.0.0.1:12345", "http://127.0.0.1:54322", 403},
 		{"localhost-suffix", "127.0.0.1:54321", "127.0.0.1:12345", "http://localhost.attacker.example", 403},
-		{"allowlist-suffix", "127.0.0.1:54321", "127.0.0.1:12345", "https://app.beeftv.local.attacker.example", 403},
+		{"allowlist-suffix", "127.0.0.1:54321", "127.0.0.1:12345", "https://app.siflux.local.attacker.example", 403},
 		{"opaque-origin", "127.0.0.1:54321", "127.0.0.1:12345", "null", 403},
-		{"foreign-host", "attacker.example", "127.0.0.1:12345", "https://app.beeftv.local", 403},
-		{"foreign-remote", "127.0.0.1:54321", "203.0.113.4:12345", "https://app.beeftv.local", 403},
+		{"foreign-host", "attacker.example", "127.0.0.1:12345", "https://app.siflux.local", 403},
+		{"foreign-remote", "127.0.0.1:54321", "203.0.113.4:12345", "https://app.siflux.local", 403},
 	} {
 		t.Run(tc.name, func(t *testing.T) {
 			for _, ui := range []bool{false, true} {

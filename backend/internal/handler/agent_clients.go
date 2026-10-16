@@ -57,7 +57,7 @@ func RegisterAgentClientRoutes(r gin.IRouter, svc *app.Service, clients *agentop
 		kind := agentops.NormalizeClientKind(req.Kind)
 		cliPath, available := bundledCLIPath()
 		if !available {
-			failAgentOps(c, agentops.PreconditionFailed("cli_unavailable", "安装文件不完整，无法连接外部工具。请重新下载并完整解压 BeefTV。", nil))
+			failAgentOps(c, agentops.PreconditionFailed("cli_unavailable", "安装文件不完整，无法连接外部工具。请重新下载并完整解压 SiFlux。", nil))
 			return
 		}
 		dataDir, err := filepath.Abs(svc.DataDir())
@@ -141,15 +141,15 @@ func clientView(item agentops.ClientRegistration) gin.H {
 // bundledCLIPath 给出随包 CLI 的绝对路径。
 //
 // 安装版里 CLI 在主程序旁边的 cli 目录里：macOS 是
-// BeefTV.app/Contents/MacOS/cli/beeftv，Windows 是 BeefTV.exe 旁边的 cli\beeftv.exe。
-// 它不能直接放在主程序同一层：macOS 与 Windows 的文件名都不分大小写，beeftv 会和
-// BeefTV / BeefTV.exe 变成同一个文件，把主程序覆盖掉。
+// SiFlux.app/Contents/MacOS/cli/siflux，Windows 是 SiFlux.exe 旁边的 cli\siflux.exe。
+// 它不能直接放在主程序同一层：macOS 与 Windows 的文件名都不分大小写，siflux 会和
+// SiFlux / SiFlux.exe 变成同一个文件，把主程序覆盖掉。
 //
-// 缺失时不回退 PATH：Windows 会把 beeftv.exe 解析成桌面主程序 BeefTV.exe。
+// 缺失时不回退 PATH：Windows 会把 siflux.exe 解析成桌面主程序 SiFlux.exe。
 func bundledCLIPath() (string, bool) {
-	name := "beeftv"
+	name := "siflux"
 	if runtime.GOOS == "windows" {
-		name = "beeftv.exe"
+		name = "siflux.exe"
 	}
 	executable, err := os.Executable()
 	if err != nil {
@@ -166,13 +166,13 @@ func bundledCLIPath() (string, bool) {
 	return candidate, true
 }
 
-// cliInstallCommand 把随包 CLI 接到用户的 PATH 上，方便在终端直接敲 beeftv。
+// cliInstallCommand 把随包 CLI 接到用户的 PATH 上，方便在终端直接敲 siflux。
 func cliInstallCommand(cliPath string) string {
 	if runtime.GOOS == "windows" {
 		dir := filepath.Dir(cliPath)
 		return `[Environment]::SetEnvironmentVariable("Path", [Environment]::GetEnvironmentVariable("Path", "User") + ` + shellQuote(";"+dir) + `, "User")`
 	}
-	return "ln -sf " + shellQuote(cliPath) + " /usr/local/bin/beeftv"
+	return "ln -sf " + shellQuote(cliPath) + " /usr/local/bin/siflux"
 }
 
 // clientSetup 生成可直接粘贴的接入配置。命令里带的是客户端自己的凭据，
@@ -184,19 +184,19 @@ func clientSetup(kind agentops.ClientKind, cliPath, dataDir string, reg agentops
 	}
 	switch kind {
 	case agentops.ClientKindCodex:
-		command := "codex mcp add beeftv" +
+		command := "codex mcp add siflux" +
 			" --env SIFLUX_DATA_DIR=" + shellQuote(dataDir) +
 			" --env SIFLUX_CLIENT_ID=" + shellQuote(reg.ID) +
 			" --env SIFLUX_CLIENT_TOKEN=" + shellQuote(token) +
 			" -- " + shellQuote(cliPath) + " " + strings.Join(serveArgs, " ")
-		return gin.H{"kind": string(kind), "title": "在 Codex 里加上 BeefTV", "command": command}
+		return gin.H{"kind": string(kind), "title": "在 Codex 里加上 SiFlux", "command": command}
 	case agentops.ClientKindClaude:
-		command := "claude mcp add beeftv" +
+		command := "claude mcp add siflux" +
 			" -e SIFLUX_DATA_DIR=" + shellQuote(dataDir) +
 			" -e SIFLUX_CLIENT_ID=" + shellQuote(reg.ID) +
 			" -e SIFLUX_CLIENT_TOKEN=" + shellQuote(token) +
 			" -- " + shellQuote(cliPath) + " " + strings.Join(serveArgs, " ")
-		return gin.H{"kind": string(kind), "title": "在 Claude Code 里加上 BeefTV", "command": command}
+		return gin.H{"kind": string(kind), "title": "在 Claude Code 里加上 SiFlux", "command": command}
 	case agentops.ClientKindClaudeDesktop:
 		return gin.H{"kind": string(kind), "title": "在 Claude Desktop 的开发者设置中编辑配置",
 			"json": mcpServersJSON(cliPath, dataDir, serveArgs, reg.ID, token)}
@@ -210,7 +210,7 @@ func clientSetup(kind agentops.ClientKind, cliPath, dataDir string, reg agentops
 }
 
 func mcpServersJSON(cliPath, dataDir string, args []string, clientID, token string) string {
-	payload := map[string]any{"mcpServers": map[string]any{"beeftv": map[string]any{
+	payload := map[string]any{"mcpServers": map[string]any{"siflux": map[string]any{
 		"command": cliPath,
 		"args":    args,
 		"env":     map[string]string{"SIFLUX_DATA_DIR": dataDir, "SIFLUX_CLIENT_ID": clientID, "SIFLUX_CLIENT_TOKEN": token},

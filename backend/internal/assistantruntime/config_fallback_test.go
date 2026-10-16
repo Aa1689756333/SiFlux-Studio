@@ -107,7 +107,7 @@ func TestBundledConfigPrefersPackagedRuntime(t *testing.T) {
 	}
 	t.Setenv("PATH", t.TempDir())
 
-	executable := filepath.Join(agentHost, "..", "BeefTV")
+	executable := filepath.Join(agentHost, "..", "SiFlux")
 	got := BundledConfig(executable, runtime.GOOS)
 
 	if got.HostCommand != packaged {

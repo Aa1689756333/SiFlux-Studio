@@ -28,14 +28,14 @@ func TestMain(m *testing.M) {
 }
 
 func TestHandleHelperCommandIgnoresNormalArgs(t *testing.T) {
-	done, err := HandleHelperCommand([]string{"BeefTV"})
+	done, err := HandleHelperCommand([]string{"SiFlux"})
 	if done || err != nil {
 		t.Fatalf("done=%v err=%v", done, err)
 	}
 }
 
 func TestHandleHelperCommandRequiresRequestPath(t *testing.T) {
-	done, err := HandleHelperCommand([]string{"BeefTV", helperFlag})
+	done, err := HandleHelperCommand([]string{"SiFlux", helperFlag})
 	if !done || err == nil {
 		t.Fatalf("done=%v err=%v", done, err)
 	}
@@ -47,7 +47,7 @@ func TestSpawnedHelperReplacesInstall(t *testing.T) {
 	if err := WriteDarwinLayout(oldDir, "OLD"); err != nil {
 		t.Fatal(err)
 	}
-	work, err := os.MkdirTemp(oldDir, ".beeftv-update-")
+	work, err := os.MkdirTemp(oldDir, ".siflux-update-")
 	if err != nil {
 		t.Fatal(err)
 	}
@@ -103,7 +103,7 @@ func TestSpawnedHelperReplacesInstall(t *testing.T) {
 	if err != nil {
 		t.Fatal(err)
 	}
-	helperPath := filepath.Join(work, "BeefTV-update-helper")
+	helperPath := filepath.Join(work, "SiFlux-update-helper")
 	if runtime.GOOS == "windows" {
 		helperPath += ".exe"
 	}
@@ -119,9 +119,9 @@ func TestSpawnedHelperReplacesInstall(t *testing.T) {
 	if err != nil {
 		t.Fatalf("helper: %v\n%s", err, out)
 	}
-	installed := filepath.Join(req.TargetPath, "Contents", "MacOS", "BeefTV")
+	installed := filepath.Join(req.TargetPath, "Contents", "MacOS", "SiFlux")
 	if runtime.GOOS == "windows" {
-		installed = filepath.Join(oldDir, pluginDirName, "official.beeftv-plugin")
+		installed = filepath.Join(oldDir, pluginDirName, "official.siflux-plugin")
 	}
 	got, err := os.ReadFile(installed)
 	if err != nil {
@@ -136,7 +136,7 @@ func TestSpawnedHelperReplacesInstall(t *testing.T) {
 	if err := cleanupCompletedUpdates(Target{Path: req.TargetPath, Platform: req.Platform}, ""); err != nil {
 		t.Fatal(err)
 	}
-	if pathExists(work) || (runtime.GOOS == "windows" && pathExists(filepath.Join(oldDir, ".BeefTV.update.lock"))) {
+	if pathExists(work) || (runtime.GOOS == "windows" && pathExists(filepath.Join(oldDir, ".SiFlux.update.lock"))) {
 		t.Fatal("confirmed startup retained update files")
 	}
 }

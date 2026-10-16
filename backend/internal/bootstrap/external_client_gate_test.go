@@ -29,7 +29,7 @@ func newDesktopHarness(t *testing.T) *desktopHarness {
 	if err != nil {
 		t.Fatal(err)
 	}
-	name := "beeftv"
+	name := "siflux"
 	if runtime.GOOS == "windows" {
 		name += ".exe"
 	}
@@ -352,7 +352,7 @@ func TestAgentClientSetupShapes(t *testing.T) {
 			if err := json.Unmarshal([]byte(value), &config); err != nil {
 				t.Fatal(err)
 			}
-			entry := config.Servers["beeftv"]
+			entry := config.Servers["siflux"]
 			if !filepath.IsAbs(entry.Command) || filepath.Base(filepath.Dir(entry.Command)) != "cli" {
 				t.Fatalf("unsafe CLI command: %q", entry.Command)
 			}

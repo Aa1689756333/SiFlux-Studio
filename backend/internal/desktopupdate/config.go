@@ -16,18 +16,18 @@ var (
 )
 
 const (
-	helperFlag      = "--beeftv-update-helper"
-	appBundleName   = "BeefTV.app"
-	linuxBundleName = "BeefTV-linux"
-	windowsExeName  = "BeefTV.exe"
+	helperFlag      = "--siflux-update-helper"
+	appBundleName   = "SiFlux.app"
+	linuxBundleName = "SiFlux-linux"
+	windowsExeName  = "SiFlux.exe"
 	pluginDirName   = "plugin-packages"
 	// 随包 CLI：外部 Agent 的接入入口，升级包里必须带上，否则升级一次就断了接入。
 	// 它必须待在自己的 cli 目录里：macOS 与 Windows 的文件名都不分大小写，
-	// beeftv 直接放在主程序旁边会和 BeefTV / BeefTV.exe 撞成同一个文件。
+	// siflux 直接放在主程序旁边会和 SiFlux / SiFlux.exe 撞成同一个文件。
 	cliDirName      = "cli"
-	darwinCLIName   = "beeftv"
-	windowsCLIName  = "beeftv.exe"
-	pluginExtension = ".beeftv-plugin"
+	darwinCLIName   = "siflux"
+	windowsCLIName  = "siflux.exe"
+	pluginExtension = ".siflux-plugin"
 	payloadSchema   = 1
 	maxFeedBytes    = 1 << 20
 	maxRedirects    = 8

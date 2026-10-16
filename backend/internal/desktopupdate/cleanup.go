@@ -38,7 +38,7 @@ func cleanupCompletedUpdates(target Target, dataDir string) error {
 	if err != nil {
 		return err
 	}
-	unlock, err := lockInstall(filepath.Join(parent, ".BeefTV.update.lock"))
+	unlock, err := lockInstall(filepath.Join(parent, ".SiFlux.update.lock"))
 	if err != nil {
 		return err
 	}
@@ -55,7 +55,7 @@ func cleanupCompletedUpdates(target Target, dataDir string) error {
 	}
 	var cleanupErr error
 	for _, entry := range entries {
-		if !entry.IsDir() || !strings.HasPrefix(entry.Name(), ".beeftv-update-") {
+		if !entry.IsDir() || !strings.HasPrefix(entry.Name(), ".siflux-update-") {
 			continue
 		}
 		dir := filepath.Join(parent, entry.Name())
@@ -115,7 +115,7 @@ func readCleanupRecord(path string, value any) error {
 func removeCompletedUpdate(dir string) error {
 	// Remove the helper first: Windows can still be executing it. Keep both
 	// records until payload cleanup succeeds so the next startup can retry.
-	names := []string{"BeefTV-update-helper", "BeefTV-update-helper.exe", "backup", "payload", "helper.log", "prepared", "result.json", "request.json"}
+	names := []string{"SiFlux-update-helper", "SiFlux-update-helper.exe", "backup", "payload", "helper.log", "prepared", "result.json", "request.json"}
 	entries, err := os.ReadDir(dir)
 	if err != nil {
 		return err

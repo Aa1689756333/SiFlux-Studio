@@ -50,7 +50,7 @@ func TestDesktopBinaryExcludesTaskBillingRuntime(t *testing.T) {
 		t.Fatal("cannot locate backend module")
 	}
 	moduleRoot := filepath.Clean(filepath.Join(filepath.Dir(currentFile), "..", ".."))
-	binaryPath := filepath.Join(t.TempDir(), "beeftv-desktop")
+	binaryPath := filepath.Join(t.TempDir(), "siflux-desktop")
 	build := exec.Command("go", "build", "-o", binaryPath, "./cmd/desktop")
 	build.Dir = moduleRoot
 	if output, err := build.CombinedOutput(); err != nil {
@@ -78,7 +78,7 @@ func TestDesktopBinaryExcludesHostedStorageControlPlane(t *testing.T) {
 		t.Fatal("cannot locate backend module")
 	}
 	moduleRoot := filepath.Clean(filepath.Join(filepath.Dir(currentFile), "..", ".."))
-	binaryPath := filepath.Join(t.TempDir(), "beeftv-desktop")
+	binaryPath := filepath.Join(t.TempDir(), "siflux-desktop")
 	build := exec.Command("go", "build", "-o", binaryPath, "./cmd/desktop")
 	build.Dir = moduleRoot
 	if output, err := build.CombinedOutput(); err != nil {
@@ -111,7 +111,7 @@ func TestDesktopBinaryExcludesHostedBillingControlPlane(t *testing.T) {
 		t.Fatal("cannot locate backend module")
 	}
 	moduleRoot := filepath.Clean(filepath.Join(filepath.Dir(currentFile), "..", ".."))
-	binaryPath := filepath.Join(t.TempDir(), "beeftv-desktop")
+	binaryPath := filepath.Join(t.TempDir(), "siflux-desktop")
 	build := exec.Command("go", "build", "-o", binaryPath, "./cmd/desktop")
 	build.Dir = moduleRoot
 	if output, err := build.CombinedOutput(); err != nil {
@@ -141,7 +141,7 @@ func TestDesktopBinaryExcludesHostedAdminSurface(t *testing.T) {
 		t.Fatal("cannot locate backend module")
 	}
 	moduleRoot := filepath.Clean(filepath.Join(filepath.Dir(currentFile), "..", ".."))
-	binaryPath := filepath.Join(t.TempDir(), "beeftv-desktop")
+	binaryPath := filepath.Join(t.TempDir(), "siflux-desktop")
 	build := exec.Command("go", "build", "-o", binaryPath, "./cmd/desktop")
 	build.Dir = moduleRoot
 	if output, err := build.CombinedOutput(); err != nil {

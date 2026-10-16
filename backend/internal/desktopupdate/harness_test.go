@@ -61,9 +61,9 @@ func WriteDarwinLayout(root, marker string) error {
 	if err := writeAgentLayout(filepath.Join(root, appBundleName, "Contents", "Resources", "agent-host"), "runtime/bin/node", marker); err != nil {
 		return err
 	}
-	exe := filepath.Join(root, appBundleName, "Contents", "MacOS", "BeefTV")
+	exe := filepath.Join(root, appBundleName, "Contents", "MacOS", "SiFlux")
 	plist := filepath.Join(root, appBundleName, "Contents", "Info.plist")
-	plugin := filepath.Join(root, appBundleName, "Contents", "Resources", pluginDirName, "official.beeftv-plugin")
+	plugin := filepath.Join(root, appBundleName, "Contents", "Resources", pluginDirName, "official.siflux-plugin")
 	if err := os.MkdirAll(filepath.Dir(exe), 0o755); err != nil {
 		return err
 	}
@@ -92,7 +92,7 @@ func WriteWindowsLayout(root, marker string) error {
 		return err
 	}
 	exe := filepath.Join(root, windowsExeName)
-	plugin := filepath.Join(root, pluginDirName, "official.beeftv-plugin")
+	plugin := filepath.Join(root, pluginDirName, "official.siflux-plugin")
 	if err := os.MkdirAll(filepath.Dir(plugin), 0o755); err != nil {
 		return err
 	}
@@ -111,24 +111,24 @@ func WriteWindowsLayout(root, marker string) error {
 
 func DarwinZipFiles(marker string) (map[string][]byte, map[string]bool) {
 	files := map[string][]byte{
-		"BeefTV.app/Contents/MacOS/BeefTV":                                     []byte("#!/bin/sh\necho " + marker + "\n"),
-		"BeefTV.app/Contents/Info.plist":                                       []byte("<plist></plist>"),
-		"BeefTV.app/Contents/Resources/plugin-packages/official.beeftv-plugin": []byte("official-" + marker),
+		"SiFlux.app/Contents/MacOS/SiFlux":                                     []byte("#!/bin/sh\necho " + marker + "\n"),
+		"SiFlux.app/Contents/Info.plist":                                       []byte("<plist></plist>"),
+		"SiFlux.app/Contents/Resources/plugin-packages/official.siflux-plugin": []byte("official-" + marker),
 	}
-	files["BeefTV.app/Contents/MacOS/cli/beeftv"] = []byte("#!/bin/sh\necho cli-" + marker + "\n")
-	execFiles := map[string]bool{"BeefTV.app/Contents/MacOS/BeefTV": true, "BeefTV.app/Contents/MacOS/cli/beeftv": true}
+	files["SiFlux.app/Contents/MacOS/cli/siflux"] = []byte("#!/bin/sh\necho cli-" + marker + "\n")
+	execFiles := map[string]bool{"SiFlux.app/Contents/MacOS/SiFlux": true, "SiFlux.app/Contents/MacOS/cli/siflux": true}
 	for name, body := range agentFiles("runtime/bin/node", marker) {
-		files["BeefTV.app/Contents/Resources/agent-host/"+name] = body
+		files["SiFlux.app/Contents/Resources/agent-host/"+name] = body
 	}
-	execFiles["BeefTV.app/Contents/Resources/agent-host/runtime/bin/node"] = true
+	execFiles["SiFlux.app/Contents/Resources/agent-host/runtime/bin/node"] = true
 	return files, execFiles
 }
 
 func WindowsZipFiles(marker string) (map[string][]byte, map[string]bool) {
 	files := map[string][]byte{
-		"BeefTV.exe":                             []byte("MZ-" + marker),
-		"cli/beeftv.exe":                         []byte("MZ-cli-" + marker),
-		"plugin-packages/official.beeftv-plugin": []byte("official-" + marker),
+		"SiFlux.exe":                             []byte("MZ-" + marker),
+		"cli/siflux.exe":                         []byte("MZ-cli-" + marker),
+		"plugin-packages/official.siflux-plugin": []byte("official-" + marker),
 	}
 	for name, body := range agentFiles("runtime/node.exe", marker) {
 		files["agent-host/"+name] = body

@@ -262,7 +262,7 @@ func TestDesktopLocalResourceAndProjectSurviveRestart(t *testing.T) {
 	if err != nil {
 		t.Fatal(err)
 	}
-	if _, err := part.Write([]byte("beeftv-local-resource")); err != nil {
+	if _, err := part.Write([]byte("siflux-local-resource")); err != nil {
 		t.Fatal(err)
 	}
 	if err := writer.WriteField("kind", "document"); err != nil {
@@ -333,7 +333,7 @@ func TestDesktopLocalResourceAndProjectSurviveRestart(t *testing.T) {
 	if err != nil {
 		t.Fatal(err)
 	}
-	if fileResponse.StatusCode != http.StatusOK || string(fileBody) != "beeftv-local-resource" {
+	if fileResponse.StatusCode != http.StatusOK || string(fileBody) != "siflux-local-resource" {
 		t.Fatalf("local resource body after restart: status=%d body=%q", fileResponse.StatusCode, fileBody)
 	}
 	projectsResponse := request(http.MethodGet, "/projects", nil, "")

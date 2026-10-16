@@ -104,7 +104,7 @@ func RunHelperRequest(req HelperRequest) error {
 		result.Error = err.Error()
 		return err
 	}
-	unlock, err := lockInstall(filepath.Join(filepath.Dir(req.TargetPath), ".BeefTV.update.lock"))
+	unlock, err := lockInstall(filepath.Join(filepath.Dir(req.TargetPath), ".SiFlux.update.lock"))
 	if err != nil {
 		result.Error = "已有更新正在安装"
 		return err
@@ -227,7 +227,7 @@ func (e *Engine) prepareAndStartHelper(ctx context.Context, staged *stagedUpdate
 	}
 	// Prepare on the target volume before exit, so denied access or disk-full
 	// cannot leave a closed application with half-copied replacement files.
-	workDir, err := os.MkdirTemp(filepath.Dir(target.Path), ".beeftv-update-*")
+	workDir, err := os.MkdirTemp(filepath.Dir(target.Path), ".siflux-update-*")
 	if err != nil {
 		return err
 	}
@@ -358,9 +358,9 @@ func physicalPath(path string) (string, error) {
 
 func helperFileName() string {
 	if runtime.GOOS == "windows" {
-		return "BeefTV-update-helper.exe"
+		return "SiFlux-update-helper.exe"
 	}
-	return "BeefTV-update-helper"
+	return "SiFlux-update-helper"
 }
 
 func waitForPrepared(ctx context.Context, path string, timeout time.Duration) error {

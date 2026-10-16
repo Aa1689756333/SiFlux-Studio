@@ -21,7 +21,7 @@ func TestMain(m *testing.M) {
 			panic(err)
 		}
 	}
-	home, err := os.MkdirTemp("", "beeftv-bootstrap-home-")
+	home, err := os.MkdirTemp("", "siflux-bootstrap-home-")
 	if err != nil {
 		panic(err)
 	}
