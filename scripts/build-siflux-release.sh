@@ -4,7 +4,7 @@ set -euo pipefail
 
 ROOT_DIR="$(cd "$(dirname "${BASH_SOURCE[0]}")/.." && pwd)"
 DESKTOP_DIR="$ROOT_DIR/backend/cmd/desktop"
-GO_DIR="${BEEFTV_GO_DIR:-/tmp/beeftv-go.rpIfVN/go}"
+GO_DIR="${BEEFTV_GO_DIR:-/tmp/siflux-go.rpIfVN/go}"
 
 HOST_OS="$(uname -s | tr '[:upper:]' '[:lower:]')"
 AGENT_TARGET="${BEEFTV_WAILS_PLATFORM:-$HOST_OS/$(uname -m)}"
@@ -40,7 +40,7 @@ fi
 # applies consistently to local and CI builds.
 
 if [[ "${BEEFTV_SKIP_LOCAL_VERIFY:-}" != "1" ]]; then
-  "$ROOT_DIR/scripts/verify-beeftv-local-release.sh"
+  "$ROOT_DIR/scripts/verify-siflux-local-release.sh"
 fi
 
 COMMIT_VALUE="$(git -C "$ROOT_DIR" rev-parse --short HEAD 2>/dev/null || echo unknown)"
@@ -80,7 +80,7 @@ if [[ -n "${BEEFTV_WAILS_PLATFORM:-}" ]]; then
   esac
 fi
 
-echo "Building BeefTV $VERSION_VALUE ($COMMIT_VALUE)"
+echo "Building SiFlux $VERSION_VALUE ($COMMIT_VALUE)"
 
 mkdir -p "$DESKTOP_DIR/build"
 cp "$ROOT_DIR/assets/app-icon.png" "$DESKTOP_DIR/build/appicon.png"
@@ -105,51 +105,51 @@ cp "$ROOT_DIR/assets/app-icon.png" "$DESKTOP_DIR/build/appicon.png"
 )
 
 if [[ "$AGENT_TARGET" == linux/amd64 ]]; then
-  LINUX_BUNDLE="$DESKTOP_DIR/build/bin/BeefTV-linux"
+  LINUX_BUNDLE="$DESKTOP_DIR/build/bin/SiFlux-linux"
   mkdir -p "$LINUX_BUNDLE/plugin-packages" "$LINUX_BUNDLE/cli"
-  mv "$DESKTOP_DIR/build/bin/BeefTV" "$LINUX_BUNDLE/BeefTV"
-  cp "$ROOT_DIR/plugin-packages/"*.beeftv-plugin "$LINUX_BUNDLE/plugin-packages/"
+  mv "$DESKTOP_DIR/build/bin/SiFlux" "$LINUX_BUNDLE/SiFlux"
+  cp "$ROOT_DIR/plugin-packages/"*.siflux-plugin "$LINUX_BUNDLE/plugin-packages/"
   cp "$ROOT_DIR/docs/linux-install.md" "$LINUX_BUNDLE/README.md"
   bun "$ROOT_DIR/scripts/package-agent-host.mjs" "$AGENT_TARGET" "$LINUX_BUNDLE/agent-host"
   (
     cd "$ROOT_DIR/backend"
-    go build -trimpath -ldflags "$LDFLAGS" -o "$LINUX_BUNDLE/cli/beeftv" ./cmd/beeftv
+    go build -trimpath -ldflags "$LDFLAGS" -o "$LINUX_BUNDLE/cli/siflux" ./cmd/siflux
   )
-  chmod 755 "$LINUX_BUNDLE/BeefTV" "$LINUX_BUNDLE/cli/beeftv"
+  chmod 755 "$LINUX_BUNDLE/SiFlux" "$LINUX_BUNDLE/cli/siflux"
   echo "Release bundle: $LINUX_BUNDLE"
   exit 0
 fi
 
 # Official protocol packages are runtime dependencies. Finder launches use the
 # bundle Resources directory and must never depend on the caller's cwd.
-APP_BUNDLE="$DESKTOP_DIR/build/bin/BeefTV.app"
+APP_BUNDLE="$DESKTOP_DIR/build/bin/SiFlux.app"
 PLUGIN_RESOURCE_DIR="$APP_BUNDLE/Contents/Resources/plugin-packages"
 mkdir -p "$PLUGIN_RESOURCE_DIR"
-cp "$ROOT_DIR/plugin-packages/"*.beeftv-plugin "$PLUGIN_RESOURCE_DIR/"
+cp "$ROOT_DIR/plugin-packages/"*.siflux-plugin "$PLUGIN_RESOURCE_DIR/"
 
 bun "$ROOT_DIR/scripts/package-agent-host.mjs" "$AGENT_TARGET" \
   "$APP_BUNDLE/Contents/Resources/agent-host"
 
-# The beeftv CLI ships inside the bundle. External agents (Codex, Claude Code,
+# The siflux CLI ships inside the bundle. External agents (Codex, Claude Code,
 # Cursor) connect through it with their own client credential, so the installed
 # app must carry it -- PATH is not a prerequisite.
 #
 # It goes in Contents/MacOS/cli, not directly next to the app binary: macOS
-# volumes are case-insensitive by default, so a file named beeftv beside BeefTV
+# volumes are case-insensitive by default, so a file named siflux beside SiFlux
 # is the same file and would overwrite the app binary.
-CLI_BINARY="$APP_BUNDLE/Contents/MacOS/cli/beeftv"
+CLI_BINARY="$APP_BUNDLE/Contents/MacOS/cli/siflux"
 mkdir -p "$(dirname "$CLI_BINARY")"
 (
   cd "$ROOT_DIR/backend"
   if [[ -n "${BEEFTV_WAILS_PLATFORM:-}" ]]; then
     GOOS="${BEEFTV_WAILS_PLATFORM%%/*}" GOARCH="${BEEFTV_WAILS_PLATFORM##*/}" \
-      go build -trimpath -ldflags "$LDFLAGS" -o "$CLI_BINARY" ./cmd/beeftv
+      go build -trimpath -ldflags "$LDFLAGS" -o "$CLI_BINARY" ./cmd/siflux
   else
-    go build -trimpath -ldflags "$LDFLAGS" -o "$CLI_BINARY" ./cmd/beeftv
+    go build -trimpath -ldflags "$LDFLAGS" -o "$CLI_BINARY" ./cmd/siflux
   fi
 )
 if [[ ! -x "$CLI_BINARY" ]]; then
-  echo "beeftv CLI was not built into the bundle: $CLI_BINARY" >&2
+  echo "siflux CLI was not built into the bundle: $CLI_BINARY" >&2
   exit 1
 fi
 # Adding a Mach-O binary to Contents/MacOS invalidates the bundle signature.

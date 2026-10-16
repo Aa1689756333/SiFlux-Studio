@@ -1,15 +1,15 @@
 #Requires -Version 5.1
 <#
 .SYNOPSIS
-    Native Windows amd64 release entrypoint for the BeefTV Wails desktop app.
+    Native Windows amd64 release entrypoint for the SiFlux Wails desktop app.
 
 .DESCRIPTION
-    Builds the same desktop source as scripts/build-beeftv-release.sh, packages
-    official *.beeftv-plugin archives next to BeefTV.exe, and fails loudly when
+    Builds the same desktop source as scripts/build-siflux-release.sh, packages
+    official *.siflux-plugin archives next to SiFlux.exe, and fails loudly when
     CGO/go-sqlite3 compiler prerequisites are missing.
 
     This script does not install compilers, Bun, Go, Git, WebView2, or NSIS.
-    It does not run scripts/verify-beeftv-local-release.sh (that gate still owns
+    It does not run scripts/verify-siflux-local-release.sh (that gate still owns
     local contract checks). Native compile and launch acceptance stay on Windows.
 
     Official docs used for tool assumptions:
@@ -21,8 +21,8 @@
     - Go 1.25+ Windows CGO DWARF 5 / binutils 2.37+: https://go.dev/wiki/MinimumRequirements#cgo
 
 .OUTPUTS
-    backend\cmd\desktop\build\bin\BeefTV.exe
-    backend\cmd\desktop\build\bin\plugin-packages\*.beeftv-plugin
+    backend\cmd\desktop\build\bin\SiFlux.exe
+    backend\cmd\desktop\build\bin\plugin-packages\*.siflux-plugin
 #>
 [CmdletBinding()]
 param()
@@ -34,14 +34,14 @@ $ErrorActionPreference = "Stop"
 $PSNativeCommandUseErrorActionPreference = $false
 
 if ($env:OS -ne "Windows_NT") {
-    throw "scripts/build-beeftv-windows-release.ps1 is the native Windows entrypoint. On macOS/Linux use scripts/build-beeftv-release.sh. Cross-compiling from another OS is not native acceptance."
+    throw "scripts/build-siflux-windows-release.ps1 is the native Windows entrypoint. On macOS/Linux use scripts/build-siflux-release.sh. Cross-compiling from another OS is not native acceptance."
 }
 
 $repoRoot = (Resolve-Path (Join-Path $PSScriptRoot "..")).Path
 $desktopDir = Join-Path $repoRoot "backend\cmd\desktop"
 $pluginSourceDir = Join-Path $repoRoot "plugin-packages"
 $binDir = Join-Path $desktopDir "build\bin"
-$exePath = Join-Path $binDir "BeefTV.exe"
+$exePath = Join-Path $binDir "SiFlux.exe"
 $pluginResourceDir = Join-Path $binDir "plugin-packages"
 $versionFile = Join-Path $repoRoot "VERSION"
 $wailsModule = "github.com/wailsapp/wails/v2/cmd/wails@v2.16.0"
@@ -122,7 +122,7 @@ function Get-OfficialPluginPackages([string]$Directory) {
     if (-not (Test-Path -LiteralPath $Directory -PathType Container)) {
         return @()
     }
-    return @(Get-ChildItem -LiteralPath $Directory -File -Filter "*.beeftv-plugin")
+    return @(Get-ChildItem -LiteralPath $Directory -File -Filter "*.siflux-plugin")
 }
 
 function Find-CgoCompiler {
@@ -168,7 +168,7 @@ function Test-PluginZipEntries([string]$ZipPath) {
         }
         foreach ($name in $names) {
             if ($name.Contains("\")) {
-                throw "Plugin package $ZipPath entry '$name' uses backslash paths. BeefTV rejects those archives; zip entries must use forward slashes."
+                throw "Plugin package $ZipPath entry '$name' uses backslash paths. SiFlux rejects those archives; zip entries must use forward slashes."
             }
         }
     }
@@ -262,7 +262,7 @@ function Invoke-PluginPackageBuild {
 
     Write-Step "zip/bash/node not all available; packaging official plugins with PowerShell ZipArchive (forward-slash entries)"
     foreach ($packageDir in Get-PluginSourceDirectories) {
-        $outputFile = Join-Path $pluginSourceDir ($packageDir.Name + ".beeftv-plugin")
+        $outputFile = Join-Path $pluginSourceDir ($packageDir.Name + ".siflux-plugin")
         New-PluginZip -PackageDir $packageDir.FullName -OutputFile $outputFile
         Test-PluginZipEntries -ZipPath $outputFile
     }
@@ -339,12 +339,12 @@ if ($sourceDirs.Count -eq 0) {
 }
 $existingPackages = @(Get-OfficialPluginPackages $pluginSourceDir)
 if ($existingPackages.Count -eq 0) {
-    Write-Step "No plugin-packages/*.beeftv-plugin artifacts found; building them"
+    Write-Step "No plugin-packages/*.siflux-plugin artifacts found; building them"
     Invoke-PluginPackageBuild
     $existingPackages = @(Get-OfficialPluginPackages $pluginSourceDir)
 }
 if ($existingPackages.Count -eq 0) {
-    throw "Official plugin packaging produced no *.beeftv-plugin files under plugin-packages/"
+    throw "Official plugin packaging produced no *.siflux-plugin files under plugin-packages/"
 }
 foreach ($package in $existingPackages) {
     Test-PluginZipEntries -ZipPath $package.FullName
@@ -390,7 +390,7 @@ if (-not [string]::IsNullOrWhiteSpace($env:BEEFTV_EXTRA_LDFLAGS)) {
     $ldflags = "$ldflags $($env:BEEFTV_EXTRA_LDFLAGS.Trim())"
 }
 
-Write-Step "Building BeefTV $versionValue ($commitValue) for windows/amd64"
+Write-Step "Building SiFlux $versionValue ($commitValue) for windows/amd64"
 $appIconSource = Join-Path $repoRoot "assets\app-icon.png"
 $buildDir = Join-Path $desktopDir "build"
 New-Item -ItemType Directory -Force -Path $buildDir | Out-Null
@@ -440,30 +440,30 @@ Invoke-NativeExecutable -FilePath "bun" -ArgumentList @((Join-Path $repoRoot "sc
 # Keep media inside the sidecar tree accepted by already released updaters.
 & (Join-Path $repoRoot "scripts\package-media-runtime-windows.ps1") -Destination (Join-Path $binDir "agent-host\media-runtime")
 
-# The beeftv CLI ships with the app. External agents (Codex, Claude Code,
+# The siflux CLI ships with the app. External agents (Codex, Claude Code,
 # Cursor) connect through it with their own client credential, so the installed
 # app must carry it; it is not expected on the user PATH.
 #
-# It goes in a cli subdirectory, not directly next to BeefTV.exe: Windows file
-# names are case-insensitive, so beeftv.exe beside BeefTV.exe is the same name.
+# It goes in a cli subdirectory, not directly next to SiFlux.exe: Windows file
+# names are case-insensitive, so siflux.exe beside SiFlux.exe is the same name.
 $cliDir = Join-Path $binDir "cli"
 New-Item -ItemType Directory -Force -Path $cliDir | Out-Null
-$cliPath = Join-Path $cliDir "beeftv.exe"
+$cliPath = Join-Path $cliDir "siflux.exe"
 Push-Location (Join-Path $repoRoot "backend")
 try {
-    [void](Invoke-NativeExecutable -FilePath "go" -ArgumentList @("build", "-trimpath", "-ldflags", $ldflags, "-o", $cliPath, "./cmd/beeftv") -FailureMessage "beeftv CLI build failed")
+    [void](Invoke-NativeExecutable -FilePath "go" -ArgumentList @("build", "-trimpath", "-ldflags", $ldflags, "-o", $cliPath, "./cmd/siflux") -FailureMessage "siflux CLI build failed")
 }
 finally {
     Pop-Location
 }
 if (-not (Test-Path -LiteralPath $cliPath -PathType Leaf)) {
-    throw "beeftv CLI was not built next to $exePath"
+    throw "siflux CLI was not built next to $exePath"
 }
 
 Write-Host "Release executable: $exePath"
 Write-Host "Bundled agent CLI: $cliPath"
 Write-Host "Official plugins: $pluginResourceDir ($($copied.Count) packages)"
-Write-Host "Launch data directory (unless CANVAS_DESKTOP_DATA_DIR is set): %AppData%\BeefTV"
+Write-Host "Launch data directory (unless CANVAS_DESKTOP_DATA_DIR is set): %AppData%\SiFlux"
 Write-Host "Official plugins are loaded from the executable directory, not from the process working directory."
 Write-Host "WebView2 is required at runtime; Windows 11 usually already has it. Missing runtimes use Wails -webview2 download. See https://wails.io/docs/guides/windows"
-Write-Host "This machine still has to launch BeefTV.exe before the Windows build is accepted. NSIS installer output is not produced."
+Write-Host "This machine still has to launch SiFlux.exe before the Windows build is accepted. NSIS installer output is not produced."
