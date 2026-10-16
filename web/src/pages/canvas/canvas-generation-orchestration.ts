@@ -17,7 +17,6 @@ import { CanvasOwnerAbandonedError, canvasOwnerCanPersist, canvasOwnerEpochMatch
 const NODE_STATUS_SUCCESS = "success" as const;
 
 export type CanvasNodeRetryPlan =
-    | { kind: "depth" }
     | { kind: "script"; prompt: string }
     | { kind: "script-empty" }
     | { kind: "image-batch-root"; children: CanvasNodeData[] }
@@ -26,7 +25,6 @@ export type CanvasNodeRetryPlan =
     | { kind: "single" };
 
 export function canvasNodeRetryPlan(node: CanvasNodeData, nodes: CanvasNodeData[]): CanvasNodeRetryPlan {
-    if (node.metadata?.depthSourceNodeId) return { kind: "depth" };
     if (node.type === CanvasNodeType.Script) {
         const prompt = (node.metadata?.composerContent || node.metadata?.prompt || "").trim();
         return prompt ? { kind: "script", prompt } : { kind: "script-empty" };

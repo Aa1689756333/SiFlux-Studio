@@ -1105,7 +1105,6 @@ function InfiniteCanvasPage() {
         cropNodeId,
         cropVideoNode,
         depthCaptureNode,
-        retryDepthCaptureNode,
         recoverDepthCaptureNodes,
         videoCropNodeId,
         closeFrameDialog,
@@ -2341,10 +2340,6 @@ function InfiniteCanvasPage() {
     const retryCanvasNode = useCallback(
         (node: CanvasNodeData) => {
             const plan = canvasNodeRetryPlan(node, nodesRef.current);
-            if (plan.kind === "depth") {
-                void retryDepthCaptureNode(node);
-                return;
-            }
             if (plan.kind === "script-empty") {
                 message.warning("分镜脚本缺少剧情内容，无法重试");
                 return;
@@ -2368,7 +2363,7 @@ function InfiniteCanvasPage() {
             }
             void handleRetryNode(node);
         },
-        [generateScriptRows, handleRetryNode, message, nodesRef, reconcileImageBatchRootNode, retryDepthCaptureNode, retryImageBatchChildren],
+        [generateScriptRows, handleRetryNode, message, nodesRef, reconcileImageBatchRootNode, retryImageBatchChildren],
     );
 
     // 改动卡片的「在画布上查看」：选中这些节点并把视野带过去，再点亮一下。
