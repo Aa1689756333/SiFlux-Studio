@@ -60,7 +60,6 @@ func (s *Service) validatePortraitTaskQuote(input map[string]any) error {
 	if err != nil || json.Unmarshal(body, &snapshot) != nil {
 		return unavailable()
 	}
-	managed := strings.TrimSpace(stringValue(config["credentialRef"])) == beefapi.CredentialRef
 	resolution := strings.ToLower(strings.TrimSpace(request.VQuality))
 	if resolution != "" {
 		resolution = modelcatalog.NormalizeVideoResolution(resolution)
@@ -70,17 +69,10 @@ func (s *Service) validatePortraitTaskQuote(input map[string]any) error {
 	}
 	matches, quoted := 0, false
 	for _, channel := range snapshot.Channels {
-		if !channel.Enabled || (managed && channel.ID != beefapi.ChannelID) {
+		if !channel.Enabled {
 			continue
 		}
 		base, key := channel.BaseURL, channel.APIKey
-		if channel.ID == beefapi.ChannelID {
-			resolvedKey, resolvedBase, _, _, lookupErr := s.lookupBeefAPICredential()
-			if lookupErr != nil {
-				continue
-			}
-			base, key = resolvedBase, resolvedKey
-		}
 		if strings.TrimSpace(key) == "" || strings.TrimRight(strings.TrimSpace(base), "/") != strings.TrimRight(strings.TrimSpace(request.BaseURL), "/") || key != request.APIKey || channel.SecretKey != request.SecretKey || !portraitHeadersEqual(channel.Headers, request.Headers) {
 			continue
 		}

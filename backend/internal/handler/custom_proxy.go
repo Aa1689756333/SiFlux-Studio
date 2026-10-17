@@ -78,16 +78,6 @@ func proxyCustomRelayRequestWithService(c *gin.Context, policy app.RuntimeReques
 			apiKey = parsed
 		}
 	}
-	if svc != nil {
-		resolved, resolveErr := svc.ResolveCustomRelayAPIKey(target.String(), apiKey)
-		if resolveErr != nil {
-			failService(c, resolveErr)
-			return
-		}
-		if resolved != "" {
-			apiKey = resolved
-		}
-	}
 	if apiKey == "" {
 		fail(c, http.StatusUnauthorized, errors.New("自定义渠道 API Key 无效"))
 		return

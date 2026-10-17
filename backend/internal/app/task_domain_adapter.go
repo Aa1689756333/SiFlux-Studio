@@ -133,8 +133,9 @@ func (taskCatalogAdapter) HasExecutableVideoConfig(input map[string]any) bool {
 
 type taskSecretsAdapter struct{ s *Service }
 
+// The managed channel is retired; input now carries its own secrets unchanged.
 func (a taskSecretsAdapter) ResolveManaged(input map[string]any) (map[string]any, error) {
-	return a.s.resolveManagedBeefAPISecrets(input)
+	return input, nil
 }
 
 func (a taskSecretsAdapter) Protect(input map[string]any) error {
