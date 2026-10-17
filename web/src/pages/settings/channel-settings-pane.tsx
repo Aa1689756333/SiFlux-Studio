@@ -275,7 +275,8 @@ export function ChannelSettingsPane({ onOpenDiagnostics, onOpenModels, onOpenRun
                 <div className="settings-channel-list space-y-2">
                     {userChannels.map((channel) => {
                         const editing = editingChannelId === channel.id;
-                        const builtinBeefAPI = isBuiltinBeefAPIChannel(channel);
+                        // 列表已过滤掉内置托管渠道，此行的托管分支恒不成立。
+                        const builtinBeefAPI = false;
                         const onboardingTarget = builtinBeefAPI || isBuiltinRelayChannel(channel) ? "official-channel" : undefined;
                         // The relay ships with the app and the backend re-adds it on every
                         // read, so offering deletion would only hide it until the next load.
