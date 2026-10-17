@@ -9,7 +9,7 @@ import (
 
 // InstanceHeader is the supervisor-to-child identity header. The secret nonce
 // is never written to health JSON, responses, or logs.
-const InstanceHeader = "X-Beeftv-Instance-Nonce"
+const InstanceHeader = "x-siflux-Instance-Nonce"
 
 func randomNonce() (string, error) {
 	buf := make([]byte, 16)
@@ -34,7 +34,7 @@ func applyInstanceHeaders(req *http.Request, token, nonce string) {
 		return
 	}
 	if token != "" {
-		req.Header.Set("X-Beeftv-Agent-Token", token)
+		req.Header.Set("x-siflux-Agent-Token", token)
 	}
 	if nonce != "" {
 		req.Header.Set(InstanceHeader, nonce)

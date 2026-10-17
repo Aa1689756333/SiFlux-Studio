@@ -35,21 +35,21 @@ func TestExternalAgentTokenCannotApproveCreationWithArbitraryOwner(t *testing.T)
 	}
 	service := app.NewLocal(repository.New(db), t.TempDir())
 	trust := func(r *http.Request) bool {
-		return r.Header.Get("X-Desktop-Token") == "launch" && r.Header.Get("X-Beeftv-UI-Bootstrap") == "ui"
+		return r.Header.Get("X-Desktop-Token") == "launch" && r.Header.Get("x-siflux-UI-Bootstrap") == "ui"
 	}
 	router := gin.New()
 	router.Use(RuntimeDependenciesMiddleware(RuntimeDependencies{DesktopTrust: trust}))
 	RegisterCreationRoutes(router.Group("/api"), service)
 
 	created := creationAuthCall(t, router, http.MethodPost, "/api/creation-runs", map[string]string{
-		"X-Desktop-Token": "launch", "X-Beeftv-UI-Bootstrap": "ui",
+		"X-Desktop-Token": "launch", "x-siflux-UI-Bootstrap": "ui",
 	}, `{"clientKey":"page-1","state":{}}`)
 	if created.Code != http.StatusOK {
 		t.Fatalf("trusted desktop UI should create a run: %d %s", created.Code, created.Body.String())
 	}
 	runID := creationAuthRunID(t, created.Body.Bytes())
 	claimed := creationAuthCall(t, router, http.MethodPost, "/api/creation-runs/"+runID+"/claim", map[string]string{
-		"X-Desktop-Token": "launch", "X-Beeftv-UI-Bootstrap": "ui",
+		"X-Desktop-Token": "launch", "x-siflux-UI-Bootstrap": "ui",
 	}, `{"expectedEpoch":0,"owner":"ui-123"}`)
 	if claimed.Code != http.StatusOK {
 		t.Fatalf("trusted desktop UI should claim with a window owner: %d %s", claimed.Code, claimed.Body.String())
@@ -61,7 +61,7 @@ func TestExternalAgentTokenCannotApproveCreationWithArbitraryOwner(t *testing.T)
 		t.Fatal(err)
 	}
 	agentHeaders := map[string]string{
-		"X-Beeftv-Client": reg.ID, "Authorization": "Bearer " + token,
+		"x-siflux-Client": reg.ID, "Authorization": "Bearer " + token,
 	}
 	approveBody := `{"owner":"ui-123","executionEpoch":1,"submissionIds":["sub-1"]}`
 	agentOnly := creationAuthCall(t, router, http.MethodPost, "/api/creation-runs/"+runID+"/submissions/approve", agentHeaders, approveBody)
@@ -70,8 +70,8 @@ func TestExternalAgentTokenCannotApproveCreationWithArbitraryOwner(t *testing.T)
 	}
 
 	stolenDesktop := map[string]string{
-		"X-Beeftv-Client": reg.ID, "Authorization": "Bearer " + token,
-		"X-Desktop-Token": "launch", "X-Beeftv-UI-Bootstrap": "ui",
+		"x-siflux-Client": reg.ID, "Authorization": "Bearer " + token,
+		"X-Desktop-Token": "launch", "x-siflux-UI-Bootstrap": "ui",
 	}
 	agentPlusDesktop := creationAuthCall(t, router, http.MethodPost, "/api/creation-runs/"+runID+"/submissions/approve", stolenDesktop, approveBody)
 	if agentPlusDesktop.Code != http.StatusForbidden {
@@ -86,7 +86,7 @@ func TestExternalAgentTokenCannotApproveCreationWithArbitraryOwner(t *testing.T)
 	}
 
 	desktop := creationAuthCall(t, router, http.MethodPost, "/api/creation-runs/"+runID+"/submissions/approve", map[string]string{
-		"X-Desktop-Token": "launch", "X-Beeftv-UI-Bootstrap": "ui",
+		"X-Desktop-Token": "launch", "x-siflux-UI-Bootstrap": "ui",
 	}, approveBody)
 	if desktop.Code == http.StatusForbidden {
 		t.Fatalf("trusted desktop UI was refused as an agent: %s", desktop.Body.String())

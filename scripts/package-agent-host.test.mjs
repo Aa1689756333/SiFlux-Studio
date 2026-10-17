@@ -54,9 +54,9 @@ test('packaged server starts with local imports and makes zero model requests', 
     response.writeHead(500).end('No model requests allowed in packaging tests');
   });
   const ops = createServer((request, response) => {
-    requests.push({ method: request.method, path: request.url, host: request.headers['x-beeftv-agent-token'] });
+    requests.push({ method: request.method, path: request.url, host: request.headers['x-siflux-agent-token'] });
     response.setHeader('Content-Type', 'application/json');
-    if (request.method !== 'GET' || request.url !== '/api/ops' || request.headers['x-beeftv-agent-token'] !== 'test-host') {
+    if (request.method !== 'GET' || request.url !== '/api/ops' || request.headers['x-siflux-agent-token'] !== 'test-host') {
       response.writeHead(403).end(JSON.stringify({ code: 403 }));
       return;
     }

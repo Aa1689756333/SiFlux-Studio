@@ -26,7 +26,7 @@ const CLI = process.env.SIFLUX_CLI || join(APD, "beeftv");
 const sleep = (ms) => new Promise((r) => setTimeout(r, ms));
 const checks = [];
 const check = (name, ok, detail = "") => { checks.push({ name, ok: Boolean(ok), detail: String(detail).slice(0, 300) }); console.log(`${ok ? "PASS" : "FAIL"}  ${name}${detail ? ` — ${detail}` : ""}`); };
-async function api(method, path, body) { const res = await fetch(API + path, { method, headers: { "Content-Type": "application/json", "X-Beeftv-Owner": OWNER }, body: body ? JSON.stringify(body) : undefined }); return await res.json().catch(() => null); }
+async function api(method, path, body) { const res = await fetch(API + path, { method, headers: { "Content-Type": "application/json", "x-siflux-Owner": OWNER }, body: body ? JSON.stringify(body) : undefined }); return await res.json().catch(() => null); }
 
 // 1) 路径解析（脚本不硬编码工作树路径）
 const scriptSource = readFileSync(join(WEB_ROOT, "scripts/agent-product-browser-e2e.mjs"), "utf8");

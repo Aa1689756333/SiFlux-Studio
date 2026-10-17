@@ -20,9 +20,9 @@ import (
 // 范围一律从后端自己的回合记录读取，调用方无法自报。
 const (
 	// assistantHostTokenHeader 是内置助手宿主的专属凭据头。
-	assistantHostTokenHeader = "X-Beeftv-Agent-Token"
+	assistantHostTokenHeader = "x-siflux-Agent-Token"
 	// assistantTurnHeader 是后端在 /assistant/chat 里签发、随转发体下发的回合标识。
-	assistantTurnHeader = "X-Beeftv-Agent-Turn"
+	assistantTurnHeader = "x-siflux-Agent-Turn"
 	// assistantMaxReferences 限制一次对话能带上的额外引用数量。
 	assistantMaxReferences = 16
 )

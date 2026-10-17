@@ -17,7 +17,7 @@ func requireOwner(c *gin.Context, svc *app.Service) bool {
 		fail(c, http.StatusForbidden, app.BadAuthRequest("只接受本机同源请求"))
 		return false
 	}
-	if !agentops.OwnerTokenMatches(svc.DataDir(), strings.TrimSpace(c.GetHeader("X-Beeftv-Owner"))) {
+	if !agentops.OwnerTokenMatches(svc.DataDir(), strings.TrimSpace(c.GetHeader("x-siflux-Owner"))) {
 		fail(c, http.StatusForbidden, app.BadAuthRequest("该操作需要 owner 凭据"))
 		return false
 	}

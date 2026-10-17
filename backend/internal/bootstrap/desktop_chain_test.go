@@ -294,7 +294,7 @@ func TestDesktopProfileStartupChain(t *testing.T) {
 			t.Fatal(err)
 		}
 		request.Header.Set("Content-Type", "application/json")
-		request.Header.Set("X-Beeftv-Ui-Session", sessionToken)
+		request.Header.Set("x-siflux-Ui-Session", sessionToken)
 		response, err := (&http.Client{Timeout: 5 * time.Minute}).Do(request)
 		if err != nil {
 			t.Fatalf("对话请求失败: %v", err)
@@ -396,7 +396,7 @@ func desktopRequestOwning(t *testing.T, url, desktopToken, ownerToken string, pa
 	}
 	request.Header.Set("Content-Type", "application/json")
 	request.Header.Set("X-Desktop-Token", desktopToken)
-	request.Header.Set("X-Beeftv-Owner", ownerToken)
+	request.Header.Set("x-siflux-Owner", ownerToken)
 	response, err := http.DefaultClient.Do(request)
 	if err != nil {
 		return 0, err.Error()
@@ -444,7 +444,7 @@ func desktopRequest(t *testing.T, url, method, token string, withToken bool, uiT
 	}
 	request.Header.Set("Content-Type", "application/json")
 	if len(uiToken) > 0 {
-		request.Header.Set("X-Beeftv-UI-Bootstrap", uiToken[0])
+		request.Header.Set("x-siflux-UI-Bootstrap", uiToken[0])
 	}
 	if withToken {
 		request.Header.Set("X-Desktop-Token", token)

@@ -188,7 +188,7 @@ func TestBaseURLComesFromRuntimeDiscovery(t *testing.T) {
 	t.Setenv("USERPROFILE", t.TempDir())
 	var seenClient, seenAuth, seenDesktop string
 	server := httptest.NewServer(http.HandlerFunc(func(w http.ResponseWriter, r *http.Request) {
-		seenClient = r.Header.Get("X-Beeftv-Client")
+		seenClient = r.Header.Get("x-siflux-Client")
 		seenAuth = r.Header.Get("Authorization")
 		seenDesktop = r.Header.Get("X-Desktop-Token")
 		w.Header().Set("Content-Type", "application/json")

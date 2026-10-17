@@ -16,7 +16,7 @@ import (
 func TestTrustedDesktopUICanCommitDocument(t *testing.T) {
 	env := newAssistantTestEnv(t, nil)
 	trust := func(r *http.Request) bool {
-		return r.Header.Get("X-Desktop-Token") == "launch" && r.Header.Get("X-Beeftv-UI-Bootstrap") == "ui"
+		return r.Header.Get("X-Desktop-Token") == "launch" && r.Header.Get("x-siflux-UI-Bootstrap") == "ui"
 	}
 	router := gin.New()
 	router.Use(RuntimeDependenciesMiddleware(RuntimeDependencies{DesktopTrust: trust}))
@@ -24,7 +24,7 @@ func TestTrustedDesktopUICanCommitDocument(t *testing.T) {
 	RegisterAgentOpsRoutes(api, env.service, agentops.NewStore(env.service.Database()), env.clients)
 
 	code, body := postOps(t, router, "canvas.document.commit", "ui-doc-1", map[string]string{
-		"X-Desktop-Token": "launch", "X-Beeftv-UI-Bootstrap": "ui",
+		"X-Desktop-Token": "launch", "x-siflux-UI-Bootstrap": "ui",
 	}, `{"canvasId":"`+env.canvasID+`","expectedRevision":1,"document":{"title":"桌面提交","nodes":[{"id":"n1","type":"text","title":"桌面"}],"connections":[]}}`)
 	if code != http.StatusOK {
 		t.Fatalf("受信任桌面 UI 提交失败: %d %s", code, body)
@@ -58,7 +58,7 @@ func TestTrustedDesktopUICanCommitDocument(t *testing.T) {
 	}
 
 	hostCode, hostBody := postOps(t, env.router, "canvas.document.commit", "host-doc", map[string]string{
-		"X-Beeftv-Agent-Token": assistantTestHostToken,
+		"x-siflux-Agent-Token": assistantTestHostToken,
 	}, `{"canvasId":"`+env.canvasID+`","expectedRevision":2,"document":{"title":"宿主整页"}}`)
 	if hostCode != http.StatusForbidden {
 		t.Fatalf("宿主不得整页提交: %d %s", hostCode, hostBody)
@@ -69,7 +69,7 @@ func TestTrustedDesktopUICanCommitDocument(t *testing.T) {
 		t.Fatal(err)
 	}
 	roCode, roBody := postOps(t, env.router, "canvas.document.commit", "ro-doc", map[string]string{
-		"X-Beeftv-Client": reg.ID, "Authorization": "Bearer " + token,
+		"x-siflux-Client": reg.ID, "Authorization": "Bearer " + token,
 	}, `{"canvasId":"`+env.canvasID+`","expectedRevision":2,"document":{"title":"只读"}}`)
 	if roCode != http.StatusForbidden {
 		t.Fatalf("只读客户端不得整页提交: %d %s", roCode, roBody)

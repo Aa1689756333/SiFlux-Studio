@@ -39,7 +39,7 @@ internal/creation.Service
 - claim / heartbeat / release：45 秒租约，epoch CAS。活跃租约上其他 owner 不能接管；同一 owner 可续约（升 epoch 并延长 TTL）；过期或释放后才能被其他 owner 接管。JSON `owner` 是租约身份，不是调用方角色
 - save：revision CAS；`state.approved` 不能当作方案确认
 - proposal-approve / invalidate：方案 hash、操作白名单、画布基线快照；同版本同 hash 重放不升 revision
-- HTTP 写路径：外层启动令牌仍覆盖 `/creation-runs`（Agent 凭据只豁免 `/api/ops`）。handler 再拒绝 `X-Beeftv-Client`，并在组合根提供 DesktopTrust 时要求桌面 UI 引导密钥
+- HTTP 写路径：外层启动令牌仍覆盖 `/creation-runs`（Agent 凭据只豁免 `/api/ops`）。handler 再拒绝 `x-siflux-Client`，并在组合根提供 DesktopTrust 时要求桌面 UI 引导密钥
 - Prepare（quote）：创作任务约束、受管模型、协议占位校验；不落生成任务
 - Approve：确认前再次核对执行配置指纹；lease + 方案 hash 保护
 - Execute：同一 submission 回放同一 task。Protect 后序列化失败或 Admit 返回空任务时失败关闭，事务回滚，不留 task 行。未知上游回执属于任务提交账本，创作层不再复制一份

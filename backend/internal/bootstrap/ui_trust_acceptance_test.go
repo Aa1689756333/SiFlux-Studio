@@ -36,7 +36,7 @@ func TestOpsAcceptanceClientCannotBecomeUIOrManageClients(t *testing.T) {
 					// Exercise handler-level rejection after passing the desktop transport gate.
 					w := h.call(requestOptions{method: route.method, path: route.path, body: `{"kind":"codex","label":"forbidden","mode":"read-write"}`,
 						clientID: client.ID, clientToken: token, launchToken: h.rt.LaunchToken(), uiBootstrap: h.rt.UIBootstrapToken(), origin: "wails://wails",
-						extraHeaders: map[string]string{"X-Beeftv-Ui-Session": uiToken}})
+						extraHeaders: map[string]string{"x-siflux-Ui-Session": uiToken}})
 					if w.Code != http.StatusForbidden {
 						t.Fatalf("client elevated: %d %s", w.Code, w.Body.String())
 					}
@@ -118,9 +118,9 @@ func TestOpsAcceptanceOriginAndLoopbackAtRouter(t *testing.T) {
 				r.Header.Set("X-Forwarded-Host", "127.0.0.1:54321")
 				if ui {
 					r.Header.Set("X-Desktop-Token", h.rt.LaunchToken())
-					r.Header.Set("X-Beeftv-UI-Bootstrap", h.rt.UIBootstrapToken())
+					r.Header.Set("x-siflux-UI-Bootstrap", h.rt.UIBootstrapToken())
 				} else {
-					r.Header.Set("X-Beeftv-Client", client.ID)
+					r.Header.Set("x-siflux-Client", client.ID)
 					r.Header.Set("Authorization", "Bearer "+token)
 				}
 				w := httptest.NewRecorder()

@@ -16,7 +16,7 @@ const listen = server => new Promise(resolve => server.listen(0, '127.0.0.1', ()
 const read = async req => { let raw = ''; for await (const chunk of req) raw += chunk; return JSON.parse(raw || '{}'); };
 const closed = new Set();
 const ops = createServer(async (req, res) => {
-  assert.equal(req.headers['x-beeftv-agent-token'], hostToken);
+  assert.equal(req.headers['x-siflux-agent-token'], hostToken);
   res.setHeader('content-type', 'application/json');
   const turn = req.url.match(/\/assistant\/runtime\/turns\/([^/]+)(\/complete)?$/);
   if (turn) { if (turn[2]) closed.add(turn[1]); res.end(JSON.stringify({ code: 0, data: { turnId: turn[1], canvasId: 'canvas', open: !closed.has(turn[1]), revision: 1 } })); return; }
@@ -46,7 +46,7 @@ const provider = createServer(async (req, res) => {
   frame(delta); frame({}, isTool ? 'tool_calls' : 'stop'); res.end('data: [DONE]\n\n');
 });
 const until = async check => { const end = Date.now() + 15000; while (!(await check())) { if (Date.now() > end) throw Error('HTTP fixture timeout: ' + log); await delay(20); } };
-const request = (route, body) => fetch(base + route, { method: body === undefined ? 'GET' : 'POST', headers: { 'content-type': 'application/json', 'X-Beeftv-Agent-Token': hostToken }, body: body === undefined ? undefined : JSON.stringify(body), signal: AbortSignal.timeout(20000) });
+const request = (route, body) => fetch(base + route, { method: body === undefined ? 'GET' : 'POST', headers: { 'content-type': 'application/json', 'x-siflux-Agent-Token': hostToken }, body: body === undefined ? undefined : JSON.stringify(body), signal: AbortSignal.timeout(20000) });
 try {
   const opsPort = await listen(ops), providerPort = await listen(provider);
   const reservation = createServer(), hostPort = await listen(reservation); await new Promise(resolve => reservation.close(resolve));

@@ -44,9 +44,9 @@ def smoke(archive, platform):
         class Backend(http.server.BaseHTTPRequestHandler):
             def do_GET(self):
                 authorized = (self.path in ("/api/ops", "/api/business/tools") and
-                              self.headers.get("X-Beeftv-Client") == "release-smoke" and
+                              self.headers.get("x-siflux-Client") == "release-smoke" and
                               self.headers.get("Authorization") == "Bearer " + token and
-                              not self.headers.get("X-Beeftv-Owner") and
+                              not self.headers.get("x-siflux-Owner") and
                               not self.headers.get("X-Desktop-Token"))
                 requests.append((self.path, authorized))
                 self.send_response(200 if authorized else 403)
@@ -120,10 +120,10 @@ def smoke(archive, platform):
                 if ({route for route, _ in requests} != {"/api/ops", "/api/business/tools"}
                         or not all(authorized for _, authorized in requests)):
                     raise RuntimeError("catalog request did not use isolated client credentials")
-                headers = {"X-Beeftv-Client": "release-smoke", "Authorization": "Bearer " + token}
+                headers = {"x-siflux-Client": "release-smoke", "Authorization": "Bearer " + token}
                 for route in ("/api/ops", "/api/business/tools"):
                     for invalid in ({}, {**headers, "Authorization": "Bearer invalid"},
-                                    {**headers, "X-Beeftv-Owner": "owner"},
+                                    {**headers, "x-siflux-Owner": "owner"},
                                     {**headers, "X-Desktop-Token": "desktop"}):
                         request = urllib.request.Request(env["SIFLUX_BASE_URL"][:-4] + route,
                                                          headers=invalid)

@@ -396,7 +396,7 @@ func RegisterAgentProxyRoutes(r gin.IRouter, svc *app.Service, clients *agentops
 
 	r.POST("/assistant/chat", func(c *gin.Context) {
 		// Only failures before BeginAssistantTurn prove no business turn was admitted.
-		c.Header("X-Beeftv-Turn-Admission", "rejected")
+		c.Header("x-siflux-Turn-Admission", "rejected")
 		if !guard(c, true) {
 			return
 		}
@@ -486,16 +486,16 @@ func RegisterAgentProxyRoutes(r gin.IRouter, svc *app.Service, clients *agentops
 		input := assistantTurnInput(payload.SelectedNodeIDs, references)
 		input.PermissionMode = assistantturns.Mode(payload.PermissionMode)
 		input.SkillPins = pins
-		c.Header("X-Beeftv-Turn-Admission", "unknown")
+		c.Header("x-siflux-Turn-Admission", "unknown")
 		revisionBefore, snapshotErr := svc.BeginAssistantTurn(c.GetString("agentUserId"), payload.CanvasID, turnID, input)
 		if snapshotErr != nil {
 			// No request has reached the host, even if saving the turn snapshot
 			// failed ambiguously. There can be no model or operation to recover.
-			c.Header("X-Beeftv-Turn-Admission", "rejected")
+			c.Header("x-siflux-Turn-Admission", "rejected")
 			failService(c, snapshotErr)
 			return
 		}
-		c.Header("X-Beeftv-Turn-Admission", "admitted")
+		c.Header("x-siflux-Turn-Admission", "admitted")
 		// 回合状态由自己的回执结算，和浏览器流是两件事：无论下面走哪条返回路径
 		// （宿主不可达、宿主拒绝、浏览器中途断开、正常结束），都已经落地的操作都要可追溯。
 		settle := false
@@ -545,7 +545,7 @@ func RegisterAgentProxyRoutes(r gin.IRouter, svc *app.Service, clients *agentops
 			// The host can prove it rejected the body before reading a turn or
 			// executing any operation. Preserve uncertainty for other failures.
 			if resp.StatusCode == http.StatusRequestEntityTooLarge && reason == "body_too_large" {
-				c.Header("X-Beeftv-Turn-Admission", "rejected")
+				c.Header("x-siflux-Turn-Admission", "rejected")
 			}
 			if reason == "" {
 				reason = "host_unreachable"

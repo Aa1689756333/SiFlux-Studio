@@ -10,7 +10,7 @@ func TestReadOnlyRoundHTTPDiscoveryAndWritesCannotBeUpgradedByParams(t *testing.
 	env := newAssistantTestEnv(t, nil)
 	const turn = "abcdef0011223344"
 	env.beginTurn(t, turn, app.AssistantTurnInput{PermissionMode: "read-only"})
-	listed := getOps(t, env, map[string]string{"X-Beeftv-Agent-Token": assistantTestHostToken, "X-Beeftv-Agent-Turn": turn})
+	listed := getOps(t, env, map[string]string{"x-siflux-Agent-Token": assistantTestHostToken, "x-siflux-Agent-Turn": turn})
 	for _, id := range []string{"canvas.search", "asset.list", "canvas.get", "model.catalog"} {
 		if !listingHas(listed, id) {
 			t.Fatalf("workspace read missing %s", id)

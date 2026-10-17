@@ -27,9 +27,9 @@ func TestDesktopAssistantCredentialsAreSeparated(t *testing.T) {
 		r.Header.Set("Content-Type", "application/json")
 		r.Header.Set("Origin", origin)
 		r.Header.Set("X-Desktop-Token", launch)
-		r.Header.Set("X-Beeftv-UI-Bootstrap", ui)
+		r.Header.Set("x-siflux-UI-Bootstrap", ui)
 		if external {
-			r.Header.Set("X-Beeftv-Client", client.ID)
+			r.Header.Set("x-siflux-Client", client.ID)
 			r.Header.Set("Authorization", "Bearer "+credential)
 		}
 		w := httptest.NewRecorder()
@@ -63,7 +63,7 @@ func TestDesktopAssistantCredentialsAreSeparated(t *testing.T) {
 		t.Fatal("client header exchanged for UI identity")
 	}
 	w := request("OPTIONS", "/assistant/chat", "wails://wails", "", "", false)
-	if !strings.Contains(w.Header().Get("Access-Control-Allow-Headers"), "X-Beeftv-Ui-Session") {
+	if !strings.Contains(w.Header().Get("Access-Control-Allow-Headers"), "x-siflux-Ui-Session") {
 		t.Fatal("native stream preflight omits UI session header")
 	}
 }

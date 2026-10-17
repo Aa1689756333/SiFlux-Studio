@@ -75,7 +75,7 @@ function check(name, ok, detail = "") {
 async function api(method, path, body) {
     const response = await fetch(API + path, {
         method,
-        headers: { "Content-Type": "application/json", "X-Beeftv-Owner": OWNER },
+        headers: { "Content-Type": "application/json", "x-siflux-Owner": OWNER },
         body: body === undefined ? undefined : JSON.stringify(body),
     });
     const text = await response.text();

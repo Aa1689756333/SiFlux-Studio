@@ -42,7 +42,7 @@ const provider = createServer(async (req, res) => {
   } catch (error) { log += String(error.stack); res.writeHead(500); res.end(String(error)); }
 });
 let base;
-const headers = { 'content-type': 'application/json', 'X-Beeftv-Agent-Token': config.hostToken };
+const headers = { 'content-type': 'application/json', 'x-siflux-Agent-Token': config.hostToken };
 const api = async (route, body) => fetch(base + route, { method: body === undefined ? 'GET' : 'POST', headers,
   body: body === undefined ? undefined : JSON.stringify(body), signal: AbortSignal.timeout(20000) });
 async function backend(route, body) {

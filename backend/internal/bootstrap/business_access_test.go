@@ -58,7 +58,7 @@ func TestExternalBusinessRealUploadRenderAndIsolation(t *testing.T) {
 	r := httptest.NewRequest("POST", "http://127.0.0.1:54321/api/resources", &body)
 	r.RemoteAddr = "127.0.0.1:9999"
 	r.Header.Set("Content-Type", writer.FormDataContentType())
-	r.Header.Set("X-Beeftv-Client", reg.ID)
+	r.Header.Set("x-siflux-Client", reg.ID)
 	r.Header.Set("Authorization", "Bearer "+token)
 	upload := httptest.NewRecorder()
 	h.rt.Handler().ServeHTTP(upload, r)

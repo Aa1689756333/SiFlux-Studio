@@ -241,14 +241,14 @@ func Open(_ context.Context, raw Config) (result *Runtime, openErr error) {
 	clients := agentops.NewClientRegistry(svc.DataDir())
 	rootHandler = http.HandlerFunc(func(w http.ResponseWriter, r *http.Request) {
 		if tool, allowed := businessCatalog.Match(r.Method, r.URL.Path); allowed && isLoopbackRemote(r.RemoteAddr) {
-			if reg, valid := clients.Lookup(r.Header.Get("X-Beeftv-Client"), strings.TrimSpace(strings.TrimPrefix(r.Header.Get("Authorization"), "Bearer "))); valid {
+			if reg, valid := clients.Lookup(r.Header.Get("x-siflux-Client"), strings.TrimSpace(strings.TrimPrefix(r.Header.Get("Authorization"), "Bearer "))); valid {
 				if reg.Mode == agentops.ClientReadOnly && !tool.ReadOnly {
 					w.Header().Set("Content-Type", "application/json")
 					w.WriteHeader(http.StatusForbidden)
 					_, _ = w.Write([]byte(`{"code":403,"reason":"read_only_client","msg":"此连接仅支持读取"}`))
 					return
 				}
-				if r.Header.Get("X-Beeftv-Agent-Turn") != "" || r.Header.Get("X-Beeftv-Agent-Token") != "" || !canvasHandler.IsLocalBusinessRequest(r) {
+				if r.Header.Get("x-siflux-Agent-Turn") != "" || r.Header.Get("x-siflux-Agent-Token") != "" || !canvasHandler.IsLocalBusinessRequest(r) {
 					w.Header().Set("Content-Type", "application/json")
 					w.WriteHeader(http.StatusForbidden)
 					_, _ = w.Write([]byte(`{"code":403,"reason":"invalid_external_identity","msg":"外部调用不能使用助手身份"}`))
@@ -257,7 +257,7 @@ func Open(_ context.Context, raw Config) (result *Runtime, openErr error) {
 				router.ServeHTTP(w, canvasHandler.WithExternalBusinessPrincipal(r, reg.Mode == agentops.ClientReadOnly))
 				return
 			}
-			if r.Header.Get("X-Beeftv-Client") == "" && agentops.OwnerTokenMatches(svc.DataDir(), strings.TrimSpace(r.Header.Get("X-Beeftv-Owner"))) && canvasHandler.IsLocalBusinessRequest(r) {
+			if r.Header.Get("x-siflux-Client") == "" && agentops.OwnerTokenMatches(svc.DataDir(), strings.TrimSpace(r.Header.Get("x-siflux-Owner"))) && canvasHandler.IsLocalBusinessRequest(r) {
 				if launchToken != "" && r.Header.Get("X-Desktop-Token") != launchToken {
 					protected.ServeHTTP(w, r)
 					return
@@ -271,12 +271,12 @@ func Open(_ context.Context, raw Config) (result *Runtime, openErr error) {
 		// above use the same mounted catalog for discovery and authorization.
 		// Credential issuance and runtime administration retain desktop trust.
 		if isOpsEntryPath(r) && isLoopbackRemote(r.RemoteAddr) {
-			if _, ok := clients.Lookup(r.Header.Get("X-Beeftv-Client"), strings.TrimSpace(strings.TrimPrefix(r.Header.Get("Authorization"), "Bearer "))); ok {
+			if _, ok := clients.Lookup(r.Header.Get("x-siflux-Client"), strings.TrimSpace(strings.TrimPrefix(r.Header.Get("Authorization"), "Bearer "))); ok {
 				router.ServeHTTP(w, r)
 				return
 			}
 		}
-		if r.Header.Get("X-Beeftv-Client") != "" {
+		if r.Header.Get("x-siflux-Client") != "" {
 			if launchToken != "" && r.Header.Get("X-Desktop-Token") != launchToken {
 				protected.ServeHTTP(w, r)
 				return
@@ -491,7 +491,7 @@ func desktopCORSMiddleware() gin.HandlerFunc {
 			c.Header("Access-Control-Allow-Credentials", "true")
 			c.Header("Vary", "Origin, Access-Control-Request-Method, Access-Control-Request-Headers")
 		}
-		c.Header("Access-Control-Allow-Headers", "Accept, Authorization, Content-Type, X-Desktop-Token, X-Beeftv-UI-Bootstrap, X-Beeftv-Ui-Session, X-Canvas-Trace-ID, X-Idempotency-Key, X-Canvas-Scene, X-Canvas-Upstream-URL, X-Canvas-Upstream-Format, X-Canvas-Upstream-Base-URL, X-Canvas-Upstream-Headers")
+		c.Header("Access-Control-Allow-Headers", "Accept, Authorization, Content-Type, X-Desktop-Token, x-siflux-UI-Bootstrap, x-siflux-Ui-Session, X-Canvas-Trace-ID, X-Idempotency-Key, X-Canvas-Scene, X-Canvas-Upstream-URL, X-Canvas-Upstream-Format, X-Canvas-Upstream-Base-URL, X-Canvas-Upstream-Headers")
 		c.Header("Access-Control-Expose-Headers", "X-Request-ID, X-Canvas-Trace-ID, X-Diagnostic-Bundle-ID, X-Diagnostic-Schema-Version")
 		c.Header("Access-Control-Allow-Methods", "GET, POST, PUT, PATCH, DELETE, OPTIONS")
 		if c.Request.Method == http.MethodOptions {
@@ -535,7 +535,7 @@ func desktopTrust(launchToken, uiToken string) func(*http.Request) bool {
 	}
 	return func(r *http.Request) bool {
 		got := []byte(r.Header.Get(httptransport.LaunchTokenHeader))
-		ui := []byte(r.Header.Get("X-Beeftv-UI-Bootstrap"))
+		ui := []byte(r.Header.Get("x-siflux-UI-Bootstrap"))
 		return len(got) == len(want) && subtle.ConstantTimeCompare(got, want) == 1 && len(uiToken) > 0 && subtle.ConstantTimeCompare(ui, []byte(uiToken)) == 1
 	}
 }

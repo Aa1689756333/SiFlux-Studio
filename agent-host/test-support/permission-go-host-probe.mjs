@@ -8,7 +8,7 @@ import {setTimeout as delay} from 'node:timers/promises';
 const config=JSON.parse(fs.readFileSync(process.argv[2],'utf8'));
 let child,base,log='',killed=false,calls=0;
 const forwarded=[];
-const headers={'content-type':'application/json','X-Beeftv-Agent-Token':config.hostToken};
+const headers={'content-type':'application/json','x-siflux-Agent-Token':config.hostToken};
 const listen=s=>new Promise(r=>s.listen(0,'127.0.0.1',()=>r(s.address().port)));
 const body=async req=>{let raw='';for await(const data of req)raw+=data;return raw};
 const api=async(route,data)=>fetch(base+route,{headers,method:data===undefined?'GET':'POST',body:data===undefined?undefined:JSON.stringify(data),signal:AbortSignal.timeout(10000)});

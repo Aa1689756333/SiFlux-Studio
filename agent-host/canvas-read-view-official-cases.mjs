@@ -39,7 +39,7 @@ test('official Durable provider receives complete parseable 23-node view and ori
       summary: 'Read canvas', params: { type: 'object', properties: { canvasId: { type: 'string' } } } }] } })); return; }
     if (req.url === '/ops/canvas.get') {
       const body = JSON.parse(raw); assert.deepEqual(body.params, { canvasId: 'canvas' });
-      assert.equal(req.headers['x-beeftv-agent-turn'], 'canvas-view-turn');
+      assert.equal(req.headers['x-siflux-agent-turn'], 'canvas-view-turn');
       reads++; res.end(JSON.stringify({ code: 0, data: { result: { canvasId: 'canvas', canvas } } })); return;
     }
     const payload = JSON.parse(raw); requests++;

@@ -13,7 +13,7 @@ func TestRuntimeLifecycleRequiresHostAndFencesStoppedTurn(t *testing.T) {
 	if got := env.call(t, http.MethodGet, path, ""); got.Code != http.StatusForbidden {
 		t.Fatalf("UI obtained host lifecycle capability: %d", got.Code)
 	}
-	headers := map[string]string{"X-Beeftv-Agent-Token": assistantTestHostToken}
+	headers := map[string]string{"x-siflux-Agent-Token": assistantTestHostToken}
 	state := decodeEnvelope(t, env.callWithHeaders(t, http.MethodGet, path, "", headers))
 	if state["open"] != true || state["canvasId"] != env.canvasID {
 		t.Fatalf("bad resumable state %#v", state)

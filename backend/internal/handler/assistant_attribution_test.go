@@ -21,10 +21,10 @@ func (e *assistantTestEnv) opsAsClient(clientID, token, op, opID, turnID, params
 	request.Host = "127.0.0.1:18090"
 	request.RemoteAddr = "127.0.0.1:12345"
 	request.Header.Set("Content-Type", "application/json")
-	request.Header.Set("X-Beeftv-Client", clientID)
+	request.Header.Set("x-siflux-Client", clientID)
 	request.Header.Set("Authorization", "Bearer "+token)
 	if turnID != "" {
-		request.Header.Set("X-Beeftv-Agent-Turn", turnID)
+		request.Header.Set("x-siflux-Agent-Turn", turnID)
 	}
 	recorder := httptest.NewRecorder()
 	e.router.ServeHTTP(recorder, request)

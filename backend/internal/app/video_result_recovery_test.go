@@ -255,7 +255,7 @@ func TestFailedBeefAPIVideoRecoveryUsesFreshBackupAndKeepsOriginalTask(t *testin
 	}
 	var creates, polls, primary, backups, mediaDownloads atomic.Int32
 	media := httptest.NewServer(http.HandlerFunc(func(w http.ResponseWriter, r *http.Request) {
-		if r.Header.Get("Authorization") != "" || r.Header.Get("X-Gateway-Secret") != "" || r.Header.Get("X-Beeftv-Video-Delivery") != "" {
+		if r.Header.Get("Authorization") != "" || r.Header.Get("X-Gateway-Secret") != "" || r.Header.Get("x-siflux-Video-Delivery") != "" {
 			t.Error("gateway credentials reached external media")
 		}
 		if r.URL.Path == "/tos.mp4" {
@@ -361,7 +361,7 @@ func TestFailedThirdPartyVideoRecoveryRenewsOriginalTaskAndMaterializes(t *testi
 	defer media.Close()
 	var polls, downloads atomic.Int32
 	provider := httptest.NewServer(http.HandlerFunc(func(w http.ResponseWriter, r *http.Request) {
-		if r.Method != http.MethodGet || r.Header.Get("x-goog-api-key") != "provider-fixture" || r.Header.Get("Authorization") != "" || r.URL.Query().Get("delivery") != "" || r.Header.Get("X-Beeftv-Video-Delivery") != "" {
+		if r.Method != http.MethodGet || r.Header.Get("x-goog-api-key") != "provider-fixture" || r.Header.Get("Authorization") != "" || r.URL.Query().Get("delivery") != "" || r.Header.Get("x-siflux-Video-Delivery") != "" {
 			t.Error("third-party recovery changed auth or attempted generation/BeefAPI backup")
 			w.WriteHeader(http.StatusBadRequest)
 			return
@@ -522,7 +522,7 @@ func TestFailedHandwrittenVideoRecoveryQueriesOriginalTaskWithoutCreating(t *tes
 					w.WriteHeader(http.StatusBadRequest)
 					return
 				}
-				if r.Header.Get("Authorization") != "Bearer provider-fixture" || r.Header.Get("X-Private-Channel") != "private-fixture" || r.URL.Query().Get("delivery") != "" || r.Header.Get("X-Beeftv-Video-Delivery") != "" {
+				if r.Header.Get("Authorization") != "Bearer provider-fixture" || r.Header.Get("X-Private-Channel") != "private-fixture" || r.URL.Query().Get("delivery") != "" || r.Header.Get("x-siflux-Video-Delivery") != "" {
 					t.Error("legacy original-task retrieval changed provider authentication")
 				}
 				if r.URL.Path == "/fresh.mp4" {

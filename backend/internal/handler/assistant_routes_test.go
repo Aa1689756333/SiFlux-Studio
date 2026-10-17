@@ -121,9 +121,9 @@ func (e *assistantTestEnv) opsRaw(op, opID, turnID, params string) (int, string)
 	request.Host = "127.0.0.1:18090"
 	request.RemoteAddr = "127.0.0.1:12345"
 	request.Header.Set("Content-Type", "application/json")
-	request.Header.Set("X-Beeftv-Agent-Token", assistantTestHostToken)
+	request.Header.Set("x-siflux-Agent-Token", assistantTestHostToken)
 	if turnID != "" {
-		request.Header.Set("X-Beeftv-Agent-Turn", turnID)
+		request.Header.Set("x-siflux-Agent-Turn", turnID)
 	}
 	recorder := httptest.NewRecorder()
 	e.router.ServeHTTP(recorder, request)
@@ -141,12 +141,12 @@ func useEnvProvider(t *testing.T, protocol string) {
 
 func (e *assistantTestEnv) call(t *testing.T, method, path, body string) *httptest.ResponseRecorder {
 	t.Helper()
-	return e.callWithHeaders(t, method, path, body, map[string]string{"X-Beeftv-Ui-Session": e.uiToken})
+	return e.callWithHeaders(t, method, path, body, map[string]string{"x-siflux-Ui-Session": e.uiToken})
 }
 
 func (e *assistantTestEnv) callWithTimeout(t *testing.T, timeout time.Duration, method, path, body string) *httptest.ResponseRecorder {
 	t.Helper()
-	return e.callWithHeadersTimeout(t, timeout, method, path, body, map[string]string{"X-Beeftv-Ui-Session": e.uiToken})
+	return e.callWithHeadersTimeout(t, timeout, method, path, body, map[string]string{"x-siflux-Ui-Session": e.uiToken})
 }
 
 func (e *assistantTestEnv) callWithHeaders(t *testing.T, method, path, body string, headers map[string]string) *httptest.ResponseRecorder {
@@ -534,7 +534,7 @@ func TestAssistantCancelRequiresWriteAndOwnedCanvas(t *testing.T) {
 		t.Fatal(err)
 	}
 	readOnly := env.callWithHeaders(t, http.MethodPost, "/assistant/cancel", `{"canvasId":"`+env.canvasID+`"}`, map[string]string{
-		"X-Beeftv-Client": reg.ID, "Authorization": "Bearer " + token,
+		"x-siflux-Client": reg.ID, "Authorization": "Bearer " + token,
 	})
 	if readOnly.Code != http.StatusForbidden {
 		t.Fatalf("只读客户端应是 403，得到 %d %s", readOnly.Code, readOnly.Body.String())

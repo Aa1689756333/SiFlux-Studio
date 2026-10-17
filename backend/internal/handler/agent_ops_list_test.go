@@ -18,7 +18,7 @@ func TestOpsListingKeepsOwnerAndExternalCatalogFull(t *testing.T) {
 		t.Fatal(err)
 	}
 
-	ownerListing := getOps(t, env, map[string]string{"X-Beeftv-Owner": owner})
+	ownerListing := getOps(t, env, map[string]string{"x-siflux-Owner": owner})
 	registry := operations.NewRegistry(nil, nil)
 	operations.RegisterDefaultOps(registry)
 	want := make([]string, 0)
@@ -39,12 +39,12 @@ func TestOpsListingKeepsOwnerAndExternalCatalogFull(t *testing.T) {
 	if err != nil {
 		t.Fatal(err)
 	}
-	externalListing := getOps(t, env, map[string]string{"X-Beeftv-Client": reg.ID, "Authorization": "Bearer " + token})
+	externalListing := getOps(t, env, map[string]string{"x-siflux-Client": reg.ID, "Authorization": "Bearer " + token})
 	if !reflect.DeepEqual(externalListing, want) {
 		t.Fatalf("外部客户端能力发现应为 %v，得到 %v", want, externalListing)
 	}
 
-	hostListing := getOps(t, env, map[string]string{"X-Beeftv-Agent-Token": assistantTestHostToken})
+	hostListing := getOps(t, env, map[string]string{"x-siflux-Agent-Token": assistantTestHostToken})
 	wantHost := make([]string, 0)
 	for _, descriptor := range registry.List(operations.ManualCaller(false)) {
 		if descriptor.Scope != operations.ScopeConversation {

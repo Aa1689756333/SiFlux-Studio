@@ -85,10 +85,10 @@ func (h *desktopHarness) call(options requestOptions) *httptest.ResponseRecorder
 		request.Header.Set("X-Desktop-Token", options.launchToken)
 	}
 	if options.uiBootstrap != "" {
-		request.Header.Set("X-Beeftv-UI-Bootstrap", options.uiBootstrap)
+		request.Header.Set("x-siflux-UI-Bootstrap", options.uiBootstrap)
 	}
 	if options.clientID != "" {
-		request.Header.Set("X-Beeftv-Client", options.clientID)
+		request.Header.Set("x-siflux-Client", options.clientID)
 		request.Header.Set("Authorization", "Bearer "+options.clientToken)
 	}
 	for name, value := range options.extraHeaders {

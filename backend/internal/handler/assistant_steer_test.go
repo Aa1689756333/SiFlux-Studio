@@ -28,7 +28,7 @@ func TestAssistantSteerScopeAndNoNewTurn(t *testing.T) {
 		})
 	})
 	body := `{"canvasId":"` + env.canvasID + `","sessionId":"s1","message":"只改结尾"}`
-	rejected := env.callWithHeaders(t, http.MethodPost, "/assistant/steer", body, map[string]string{"X-Beeftv-Ui-Session": "expired"})
+	rejected := env.callWithHeaders(t, http.MethodPost, "/assistant/steer", body, map[string]string{"x-siflux-Ui-Session": "expired"})
 	if rejected.Code != http.StatusForbidden || hits != 0 {
 		t.Fatalf("unauthorized forwarded: %d hits=%d", rejected.Code, hits)
 	}

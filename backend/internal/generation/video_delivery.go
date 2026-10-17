@@ -13,7 +13,7 @@ import (
 
 const videoDeliveryIdleTimeout = 10 * time.Second
 
-const beefAPIVideoDeliveryHeader = "X-Beeftv-Video-Delivery"
+const beefAPIVideoDeliveryHeader = "x-siflux-Video-Delivery"
 
 // Opt in only at the trusted gateway's video status endpoint. Older clients
 // keep their existing delivery route until they support same-task backup.

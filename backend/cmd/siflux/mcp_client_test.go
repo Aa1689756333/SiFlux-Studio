@@ -205,7 +205,7 @@ func seedCanvas(base, canvasID string) error {
 	}
 	req.Header.Set("Content-Type", "application/json")
 	if owner := strings.TrimSpace(os.Getenv("SIFLUX_OWNER_TOKEN")); owner != "" {
-		req.Header.Set("X-Beeftv-Owner", owner)
+		req.Header.Set("x-siflux-Owner", owner)
 	}
 	resp, err := http.DefaultClient.Do(req)
 	if err != nil {

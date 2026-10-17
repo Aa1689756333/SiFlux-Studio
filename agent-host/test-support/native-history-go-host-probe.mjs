@@ -66,11 +66,11 @@ const provider = createServer(async (req, res) => {
   } catch (error) { log += String(error.stack); process.stderr.write('Provider assertion at request '+modelCalls+': '+String(error.stack)+'\n'); res.writeHead(400); res.end(String(error)); }
 });
 let base;
-const headers = { 'content-type': 'application/json', 'X-Beeftv-Agent-Token': config.hostToken };
+const headers = { 'content-type': 'application/json', 'x-siflux-Agent-Token': config.hostToken };
 const api = async (route, body) => fetch(base + route, { method: body === undefined ? 'GET' : 'POST', headers,
   body: body === undefined ? undefined : JSON.stringify(body), signal: AbortSignal.timeout(20000) });
 async function backend(route, body) {
-  const response = await fetch(config.backend + route, { method: body === undefined ? 'GET' : 'POST', headers: { ...headers, 'X-Beeftv-Agent-Turn': config.turnId },
+  const response = await fetch(config.backend + route, { method: body === undefined ? 'GET' : 'POST', headers: { ...headers, 'x-siflux-Agent-Turn': config.turnId },
     body: body === undefined ? undefined : JSON.stringify(body), signal: AbortSignal.timeout(20000) });
   return { status: response.status, value: await response.json() };
 }

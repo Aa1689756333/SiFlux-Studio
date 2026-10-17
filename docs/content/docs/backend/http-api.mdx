@@ -21,7 +21,7 @@ Wails 和浏览器开发模式共用同一套 `127.0.0.1` HTTP 合同。路由�
 
 `POST /assistant/ui-session` 返回仅驻留内存、绑定当前 owner 的 `token` 与 `expiresAt`。界面在到期前 30 秒重新签发凭据，同一身份的并发请求共用签发结果；重置或切换身份后旧响应不能恢复旧凭据。签发仍要求原有本机同源与 owner/桌面引导校验。
 
-`POST /assistant/chat` 的响应头 `X-Beeftv-Turn-Admission` 区分 `rejected`（尚未调用业务轮次入口）、`unknown`（已经尝试开始轮次）与 `admitted`（已创建轮次）。仅明确的 `rejected` 或尚未发送消息的签发失败可按未接纳处理；缺少标记、网络错误或接纳后的断流仍需读取回执与画布确认。凭据续签和 403 失效处理都不会自动重放消息。
+`POST /assistant/chat` 的响应头 `x-siflux-Turn-Admission` 区分 `rejected`（尚未调用业务轮次入口）、`unknown`（已经尝试开始轮次）与 `admitted`（已创建轮次）。仅明确的 `rejected` 或尚未发送消息的签发失败可按未接纳处理；缺少标记、网络错误或接纳后的断流仍需读取回执与画布确认。凭据续签和 403 失效处理都不会自动重放消息。
 
 ## 核心路由组
 
@@ -91,8 +91,8 @@ Wails 和浏览器开发模式共用同一套 `127.0.0.1` HTTP 合同。路由�
 
 ### 助手回合归属
 
-内置助手宿主调用 `/ops/:op` 时出示自己的宿主凭据 `X-Beeftv-Agent-Token`（由后端注入宿主进程，页面与
-外部客户端拿不到），并带上后端在 `/assistant/chat` 中签发、随转发体下发的 `X-Beeftv-Agent-Turn`。
+内置助手宿主调用 `/ops/:op` 时出示自己的宿主凭据 `x-siflux-Agent-Token`（由后端注入宿主进程，页面与
+外部客户端拿不到），并带上后端在 `/assistant/chat` 中签发、随转发体下发的 `x-siflux-Agent-Turn`。
 后端按该回合记录读取这一轮被验证过的范围，而不是信任任何调用方自报的列表：
 
 - 会话默认范围是当前画布，加上当前画布文档里真实关联的素材与生成任务（沿用画布既有的媒体引用解析）。
@@ -131,7 +131,7 @@ Windows 的运行地址描述文件位于用户目录的 `.beeftv/runtime/`，�
 
 ### 只读边界
 
-桌面实例的已登记外部客户端使用自身 ID 与 Bearer 凭据访问 `/ops`、`/ops/:op` 以及业务目录列出的 REST 接口，不需要也不应持有桌面启动令牌。`GET /business/tools` 从当前挂载的业务路由生成目录，包含方法、路径、参数 Schema 和收费提交标记；只有目录中的方法与路径接受外部凭据。业务调用复用原 handler/service，继续检查归属、参数、余额与版本冲突。外部凭据不能签发客户端、换取 UI 会话、读取既有密钥或控制内置宿主、更新器。内置 UI 会话签发另需 Wails 绑定提供的独立 `X-Beeftv-UI-Bootstrap` 凭据；仅有 `X-Desktop-Token` 不足以签发。
+桌面实例的已登记外部客户端使用自身 ID 与 Bearer 凭据访问 `/ops`、`/ops/:op` 以及业务目录列出的 REST 接口，不需要也不应持有桌面启动令牌。`GET /business/tools` 从当前挂载的业务路由生成目录，包含方法、路径、参数 Schema 和收费提交标记；只有目录中的方法与路径接受外部凭据。业务调用复用原 handler/service，继续检查归属、参数、余额与版本冲突。外部凭据不能签发客户端、换取 UI 会话、读取既有密钥或控制内置宿主、更新器。内置 UI 会话签发另需 Wails 绑定提供的独立 `x-siflux-UI-Bootstrap` 凭据；仅有 `X-Desktop-Token` 不足以签发。
 
 外部 Agent 的执行审批由连接的 Agent 负责。新连接不再显示权限选择，缺省签发完整创作访问；历史明确签发的只读连接保留只读，可重新连接取得新凭据。MCP 从同一业务目录与共享操作目录注册工具。CLI 使用 `ops call <operation> --params '<JSON>'` 调用共享操作，使用 `business discover`、`business call --tool <id> --params '<JSON>'` 和 `business upload --file <path>` 发现、调用和上传。上传文件由外部 CLI 在本机读取，再经资源、技能或插件上传接口发送；后端不接受任意本机文件路径。模型配置读取会隐藏所有渠道密钥；带 `expectedRevision` 保存配置时，密钥字段缺省或为空会保留已有值。
 
@@ -144,7 +144,7 @@ Windows 的运行地址描述文件位于用户目录的 `.beeftv/runtime/`，�
 
 内置 Pi 使用另一份按回合保存的权限：`POST /assistant/chat` 可带 `permissionMode: "read-only" | "canvas" | "full-access"`。缺省和旧记录为 `canvas`，不自动升权。只读能查看本用户工作区内容，不能修改、渲染或提交生成提议；当前画布模式保留当前画布写入范围；完全访问能读本用户工作区并修改所有画布。权限在 Go 开始回合时固定，补充输入不能改变，宿主恢复前重新读取；执行中的界面选择器显示该回合权限。技能仍只能读取本轮选定的固定版本，完全访问不开放宿主机 shell。
 
-技能正文按 UTF-8 字节计量：单个正文最多 256 KiB，每轮所选技能正文合计最多 512 KiB，正文完整读取，不静默截断。超限返回 `skill_instruction_too_large`。技能校验发生在开始回合前；此阶段拒绝以及宿主读取请求体时返回的 `body_too_large` 均标记 `X-Beeftv-Turn-Admission: rejected`，客户端可以修改输入后再次发送。其他结果未知的错误仍需读取回执，不能直接重发。
+技能正文按 UTF-8 字节计量：单个正文最多 256 KiB，每轮所选技能正文合计最多 512 KiB，正文完整读取，不静默截断。超限返回 `skill_instruction_too_large`。技能校验发生在开始回合前；此阶段拒绝以及宿主读取请求体时返回的 `body_too_large` 均标记 `x-siflux-Turn-Admission: rejected`，客户端可以修改输入后再次发送。其他结果未知的错误仍需读取回执，不能直接重发。
 
 跨画布回合在第一次写入每张画布前，于业务操作同一事务内保存原文。结算返回 `change.canvasChanges`；单次撤销先校验全部目标，再在一个事务内恢复。任何目标在该轮之后被修改，整组撤销返回冲突，不恢复部分画布。内置暂不提供非画布的 `conversation.message.attach`；外部调用保持开放。
 

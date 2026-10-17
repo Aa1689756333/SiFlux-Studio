@@ -31,7 +31,7 @@ async function withHost(run, envExtra = {}, options = {}) {
   const api = async (route, body) => {
     const response = await fetch(base + route, {
       method: body === undefined ? 'GET' : 'POST',
-      headers: { 'content-type': 'application/json', 'X-Beeftv-Agent-Token': hostToken },
+      headers: { 'content-type': 'application/json', 'x-siflux-Agent-Token': hostToken },
       body: body === undefined ? undefined : JSON.stringify(body),
       signal: AbortSignal.timeout(20000),
     });
@@ -42,7 +42,7 @@ async function withHost(run, envExtra = {}, options = {}) {
   };
   const ops = createServer(async (req, res) => {
     res.setHeader('content-type', 'application/json');
-    if (req.headers['x-beeftv-agent-token'] !== hostToken) { res.writeHead(403).end('{}'); return; }
+    if (req.headers['x-siflux-agent-token'] !== hostToken) { res.writeHead(403).end('{}'); return; }
     if (req.url === '/api/ops') {
       res.end(JSON.stringify({ code: 0, data: { ops: [{ id: 'canvas.get', summary: 'Read', readOnly: true, scope: 'canvas', params: { type: 'object', properties: { canvasId: { type: 'string' } }, required: ['canvasId'] } }] } }));
       return;
@@ -312,7 +312,7 @@ test('真实宿主：旧会话交接首轮断线，重启后重发原请求复�
     writeFileSync(path.join(canvasDir, `2026-10-07T12-00-00-000Z_${sessionId}.jsonl`), JSON.stringify(row) + '\n');
     const body = { canvasId, sessionId, turnId: 'lost-response', requestId: 'lost-response', message: '保留这条消息' };
     const controller = new AbortController();
-    const response = await fetch(base + '/chat', { method: 'POST', headers: { 'Content-Type': 'application/json', 'X-Beeftv-Agent-Token': hostToken }, body: JSON.stringify(body), signal: controller.signal });
+    const response = await fetch(base + '/chat', { method: 'POST', headers: { 'Content-Type': 'application/json', 'x-siflux-Agent-Token': hostToken }, body: JSON.stringify(body), signal: controller.signal });
     const reader = response.body.getReader();
     const first = new TextDecoder().decode((await reader.read()).value);
     const successor = JSON.parse(first.trim().split('\n')[0]).sessionId;

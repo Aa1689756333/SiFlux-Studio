@@ -42,13 +42,13 @@ const provider=createServer(async(req,res)=>{
 });
 const ops=createServer(async(req,res)=>{
   res.setHeader('content-type','application/json');
-  if(req.headers['x-beeftv-agent-token']!==hostAuth){res.writeHead(403).end(JSON.stringify({code:403,reason:'synthetic_unauthorized'}));return;}
+  if(req.headers['x-siflux-agent-token']!==hostAuth){res.writeHead(403).end(JSON.stringify({code:403,reason:'synthetic_unauthorized'}));return;}
   if(req.method==='GET'&&req.url==='/api/ops'){res.end(JSON.stringify({code:0,data:{ops:descriptors}}));return;}
   if(req.url.startsWith('/api/assistant/runtime/turns/')){
     const turnId=decodeURIComponent(req.url.split('/')[5]||'');
     res.end(JSON.stringify({code:0,data:{turnId,canvasId:turnCanvas.get(turnId)||'canvas',permissionMode:'canvas',open:true}}));return;
   }
-  const body=await readJSON(req);seen.push({path:req.url,body,turn:req.headers['x-beeftv-agent-turn']});
+  const body=await readJSON(req);seen.push({path:req.url,body,turn:req.headers['x-siflux-agent-turn']});
   if(req.url==='/api/ops/asset.get'&&Object.keys(body.params||{}).some(k=>k!=='assetId')){
     res.writeHead(400).end(JSON.stringify({code:400,reason:'invalid_params',msg:'unknown field in asset.get'}));return;
   }
@@ -59,7 +59,7 @@ const results=[];
 const turnCanvas=new Map();
 async function request(route,body) {
   if(body&&body.turnId&&body.canvasId)turnCanvas.set(body.turnId,body.canvasId);
-  const response=await fetch(base+route,{method:body===undefined?'GET':'POST',headers:{'content-type':'application/json','X-Beeftv-Agent-Token':hostAuth},body:body===undefined?undefined:JSON.stringify(body),signal:AbortSignal.timeout(25000)});
+  const response=await fetch(base+route,{method:body===undefined?'GET':'POST',headers:{'content-type':'application/json','x-siflux-Agent-Token':hostAuth},body:body===undefined?undefined:JSON.stringify(body),signal:AbortSignal.timeout(25000)});
   const text=await response.text();let events=[];try{events=text.trim().split('\n').filter(Boolean).map(line=>JSON.parse(line));}catch{}
   return {status:response.status,events,text};
 }

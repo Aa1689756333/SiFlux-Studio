@@ -32,7 +32,7 @@ func TestBeefAPIVideoDeliveryKeepsTaskAcrossPendingAndExpiredBackup(t *testing.T
 			t.Run(model+"/resumed="+strconv.FormatBool(resumed), func(t *testing.T) {
 				creates, polls, direct, backup, signed := 0, 0, 0, 0, 0
 				media := httptest.NewServer(http.HandlerFunc(func(w http.ResponseWriter, r *http.Request) {
-					if r.Header.Get("Authorization") != "" || r.Header.Get("X-Gateway-Secret") != "" || r.Header.Get("X-Beeftv-Owner") != "" || r.Header.Get(beefAPIVideoDeliveryHeader) != "" {
+					if r.Header.Get("Authorization") != "" || r.Header.Get("X-Gateway-Secret") != "" || r.Header.Get("x-siflux-Owner") != "" || r.Header.Get(beefAPIVideoDeliveryHeader) != "" {
 						t.Error("media request leaked gateway headers")
 					}
 					if r.URL.Path == "/tos.mp4" {
@@ -114,7 +114,7 @@ func TestBeefAPIVideoDeliveryKeepsTaskAcrossPendingAndExpiredBackup(t *testing.T
 				result, err := RunVideoTaskWithPolicy(ctx, Input{Mode: "video", Prompt: "test", Config: Config{
 					BaseURL: server.URL, APIKey: "test-key", InterfaceType: "newapi", Model: model,
 					VideoSeconds: "4", VQuality: "480P", Size: "16:9",
-					Headers: []outbound.OutboundHeader{{Name: "X-Gateway-Secret", Value: "private-value"}, {Name: "X-Beeftv-Owner", Value: "private-owner"}},
+					Headers: []outbound.OutboundHeader{{Name: "X-Gateway-Secret", Value: "private-value"}, {Name: "x-siflux-Owner", Value: "private-owner"}},
 				}}, policy)
 				if err != nil {
 					t.Fatal(err)

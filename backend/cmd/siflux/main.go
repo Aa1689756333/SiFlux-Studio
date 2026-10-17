@@ -165,11 +165,11 @@ func (c *client) do(ctx context.Context, method, path string, body any) (json.Ra
 	}
 	req.Header.Set("Content-Type", "application/json")
 	if c.clientID != "" {
-		req.Header.Set("X-Beeftv-Client", c.clientID)
+		req.Header.Set("x-siflux-Client", c.clientID)
 		req.Header.Set("Authorization", "Bearer "+c.token)
 	}
 	if c.ownerToken != "" {
-		req.Header.Set("X-Beeftv-Owner", c.ownerToken)
+		req.Header.Set("x-siflux-Owner", c.ownerToken)
 	}
 	if c.desktopToken != "" {
 		req.Header.Set("X-Desktop-Token", c.desktopToken)

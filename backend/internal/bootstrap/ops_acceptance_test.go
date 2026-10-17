@@ -81,7 +81,7 @@ func TestOpsAcceptanceReadOnlyCannotEscalateOrWrite(t *testing.T) {
 		t.Run(tc.op, func(t *testing.T) {
 			w := h.call(requestOptions{method: "POST", path: "/ops/" + tc.op, clientID: client.ID, clientToken: token,
 				body:         acceptanceJSON(t, map[string]any{"opId": "denied-" + tc.op, "params": tc.params, "readOnly": false, "mode": "read-write"}),
-				extraHeaders: map[string]string{"X-Beeftv-Read-Only": "false"}})
+				extraHeaders: map[string]string{"x-siflux-Read-Only": "false"}})
 			if _, reason := decodeEnvelope(t, w); w.Code != http.StatusForbidden || reason != "read_only_client" {
 				t.Fatalf("write denial: %d %s", w.Code, w.Body.String())
 			}

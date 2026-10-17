@@ -29,7 +29,7 @@ function timingSafeMatch(got, expected) {
 
 function instanceOK(req) {
   if (!INSTANCE_NONCE) return true;
-  return timingSafeMatch(req.headers['x-beeftv-instance-nonce'] || '', INSTANCE_NONCE);
+  return timingSafeMatch(req.headers['x-siflux-instance-nonce'] || '', INSTANCE_NONCE);
 }
 
 if (DATA_DIR) {

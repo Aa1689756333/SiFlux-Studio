@@ -97,7 +97,7 @@ func failAgentOps(c *gin.Context, err error) {
 // requireDesktopUITrust 复用签发内置 UI 会话的同一条信任链。
 // 外部客户端凭据在这里没有任何作用：它只能操作工作区，不能签发或吊销凭据。
 func requireDesktopUITrust(c *gin.Context, svc *app.Service, desktopTrust func(*http.Request) bool) bool {
-	if strings.TrimSpace(c.GetHeader("X-Beeftv-Client")) != "" {
+	if strings.TrimSpace(c.GetHeader("x-siflux-Client")) != "" {
 		fail(c, http.StatusForbidden, app.BadAuthRequest("外部客户端不能管理客户端凭据"))
 		return false
 	}
@@ -105,7 +105,7 @@ func requireDesktopUITrust(c *gin.Context, svc *app.Service, desktopTrust func(*
 		fail(c, http.StatusForbidden, app.BadAuthRequest("只接受本机同源请求"))
 		return false
 	}
-	ownerOK := agentops.OwnerTokenMatches(svc.DataDir(), strings.TrimSpace(c.GetHeader("X-Beeftv-Owner")))
+	ownerOK := agentops.OwnerTokenMatches(svc.DataDir(), strings.TrimSpace(c.GetHeader("x-siflux-Owner")))
 	devBootstrap := strings.TrimSpace(os.Getenv("SIFLUX_UI_BOOTSTRAP")) == "1"
 	desktopShell := desktopTrust != nil && desktopTrust(c.Request)
 	if !ownerOK && !devBootstrap && !desktopShell {

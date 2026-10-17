@@ -32,7 +32,7 @@ func lifecycleRequest(router http.Handler, method, path, owner, body string) *ht
 	request.RemoteAddr = "127.0.0.1:12345"
 	request.Header.Set("Content-Type", "application/json")
 	if owner != "" {
-		request.Header.Set("X-Beeftv-Owner", owner)
+		request.Header.Set("x-siflux-Owner", owner)
 	}
 	recorder := httptest.NewRecorder()
 	router.ServeHTTP(recorder, request)

@@ -143,7 +143,7 @@ test('health requires instance nonce and omits the secret; stdin EOF shuts down'
         const denied = await fetch(base + '/health', { signal: AbortSignal.timeout(500) });
         expect(denied.status).toBe(403);
         const ok = await fetch(base + '/health', {
-          headers: { 'X-Beeftv-Instance-Nonce': nonce, 'X-Beeftv-Agent-Token': hostToken },
+          headers: { 'x-siflux-Instance-Nonce': nonce, 'x-siflux-Agent-Token': hostToken },
           signal: AbortSignal.timeout(500),
         });
         if (ok.ok) {
@@ -162,18 +162,18 @@ test('health requires instance nonce and omits the secret; stdin EOF shuts down'
     expect(malformed.length).toBe(nonce.length);
     expect(Buffer.from(malformed).length).not.toBe(Buffer.from(nonce).length);
     const badNonce = await fetch(base + '/health', {
-      headers: { 'X-Beeftv-Instance-Nonce': malformed },
+      headers: { 'x-siflux-Instance-Nonce': malformed },
       signal: AbortSignal.timeout(2000),
     });
     expect(badNonce.status).toBe(403);
     const malformedToken = hostToken.slice(0, -1) + '\u00ff';
     const badToken = await fetch(base + '/sessions?canvasId=x', {
-      headers: { 'X-Beeftv-Instance-Nonce': nonce, 'X-Beeftv-Agent-Token': malformedToken },
+      headers: { 'x-siflux-Instance-Nonce': nonce, 'x-siflux-Agent-Token': malformedToken },
       signal: AbortSignal.timeout(2000),
     });
     expect(badToken.status).toBe(403);
     const stillOk = await fetch(base + '/health', {
-      headers: { 'X-Beeftv-Instance-Nonce': nonce, 'X-Beeftv-Agent-Token': hostToken },
+      headers: { 'x-siflux-Instance-Nonce': nonce, 'x-siflux-Agent-Token': hostToken },
       signal: AbortSignal.timeout(2000),
     });
     expect(stillOk.ok).toBe(true);
@@ -348,7 +348,7 @@ test('stdin EOF with an idle HTTP keepalive socket still shuts down promptly', a
       if (child.exitCode !== null) throw new Error('host exited: ' + spawned.getLog());
       try {
         const response = await fetch(`http://127.0.0.1:${port}/health`, {
-          headers: { 'X-Beeftv-Instance-Nonce': nonce, 'X-Beeftv-Agent-Token': hostToken },
+          headers: { 'x-siflux-Instance-Nonce': nonce, 'x-siflux-Agent-Token': hostToken },
           signal: AbortSignal.timeout(500),
         });
         if (response.ok) { healthy = true; break; }
@@ -362,8 +362,8 @@ test('stdin EOF with an idle HTTP keepalive socket still shuts down promptly', a
         port,
         path: '/health',
         headers: {
-          'X-Beeftv-Instance-Nonce': nonce,
-          'X-Beeftv-Agent-Token': hostToken,
+          'x-siflux-Instance-Nonce': nonce,
+          'x-siflux-Agent-Token': hostToken,
           Connection: 'keep-alive',
         },
         agent,

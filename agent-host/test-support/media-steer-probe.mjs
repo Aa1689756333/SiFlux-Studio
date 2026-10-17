@@ -55,13 +55,13 @@ function part(bytes, mimeType, type, bad = false) {
 }
 const ops = createServer(async (req, res) => {
   res.setHeader('content-type', 'application/json');
-  if (req.headers['x-beeftv-agent-token'] !== hostAuth) return res.writeHead(403).end('{}');
+  if (req.headers['x-siflux-agent-token'] !== hostAuth) return res.writeHead(403).end('{}');
   if (req.method === 'GET' && req.url === '/api/ops') return res.end(JSON.stringify({ code: 0, data: { ops: descriptors } }));
   if (req.url.startsWith('/api/assistant/runtime/turns/')) {
     const turnId = decodeURIComponent(req.url.split('/')[5] || '');
     return res.end(JSON.stringify({ code: 0, data: { turnId, canvasId: turnCanvas.get(turnId) || 'canvas', permissionMode: 'canvas', open: true } }));
   }
-  const body = await readJSON(req); seen.push({ path: req.url, body, turn: req.headers['x-beeftv-agent-turn'] });
+  const body = await readJSON(req); seen.push({ path: req.url, body, turn: req.headers['x-siflux-agent-turn'] });
   const result = req.url.endsWith('media.overview') ? { content: [part(jpeg, 'image/jpeg', 'image', mode === 'bad-hash')] }
     : req.url.endsWith('media.inspect') ? { content: [mode === 'video' ? part(video, 'video/mp4', 'media') : part(wav, 'audio/wav', 'media')] } : { nodeId: 'n1', revision: 2 };
   res.end(JSON.stringify({ code: 0, data: { op: req.url.split('/').at(-1), replayed: false, result } }));
@@ -69,7 +69,7 @@ const ops = createServer(async (req, res) => {
 async function request(route, body) {
   if (body && body.turnId && body.canvasId) turnCanvas.set(body.turnId, body.canvasId);
   const response = await fetch(base + route, { method: body === undefined ? 'GET' : 'POST',
-    headers: { 'content-type': 'application/json', 'X-Beeftv-Agent-Token': hostAuth },
+    headers: { 'content-type': 'application/json', 'x-siflux-Agent-Token': hostAuth },
     body: body === undefined ? undefined : JSON.stringify(body), signal: AbortSignal.timeout(25000) });
   const text = await response.text();
   let events = []; try { events = text.trim().split('\n').filter(Boolean).map(line => JSON.parse(line)); } catch {}

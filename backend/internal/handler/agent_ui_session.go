@@ -75,14 +75,14 @@ func (s *uiSessionStore) verify(token, userID string) (uiSession, bool) {
 // 2) 内置 UI 会话凭据 → 读写（绑定签发时的用户）；
 // 其他一律未认证。
 func resolveAgentCapability(c *gin.Context, svc *app.Service, clients *agentops.ClientRegistry, ui *uiSessionStore, userID string) (readOnly bool, identity string, ok bool, reason string) {
-	if strings.TrimSpace(c.GetHeader("X-Beeftv-Client")) != "" {
+	if strings.TrimSpace(c.GetHeader("x-siflux-Client")) != "" {
 		readOnly, label, err := resolveClientMode(c, svc, clients)
 		if err != nil {
 			return true, "", false, err.Error()
 		}
 		return readOnly, label, true, ""
 	}
-	if _, found := ui.verify(strings.TrimSpace(c.GetHeader("X-Beeftv-Ui-Session")), userID); found {
+	if _, found := ui.verify(strings.TrimSpace(c.GetHeader("x-siflux-Ui-Session")), userID); found {
 		return false, "ui-session", true, ""
 	}
 	return true, "", false, "缺少内置 UI 会话凭据或已登记客户端凭据"
@@ -91,7 +91,7 @@ func resolveAgentCapability(c *gin.Context, svc *app.Service, clients *agentops.
 // RegisterAgentUISessionRoutes 只在本机同源且能出示 owner 凭据（或显式开发引导）时签发 UI 会话。
 func RegisterAgentUISessionRoutes(r gin.IRouter, svc *app.Service, ui *uiSessionStore, desktopTrust func(*http.Request) bool) {
 	r.POST("/assistant/ui-session", func(c *gin.Context) {
-		if strings.TrimSpace(c.GetHeader("X-Beeftv-Client")) != "" {
+		if strings.TrimSpace(c.GetHeader("x-siflux-Client")) != "" {
 			fail(c, http.StatusForbidden, app.BadAuthRequest("外部客户端不能签发界面会话"))
 			return
 		}
@@ -104,7 +104,7 @@ func RegisterAgentUISessionRoutes(r gin.IRouter, svc *app.Service, ui *uiSession
 			failService(c, err)
 			return
 		}
-		ownerOK := agentops.OwnerTokenMatches(svc.DataDir(), strings.TrimSpace(c.GetHeader("X-Beeftv-Owner")))
+		ownerOK := agentops.OwnerTokenMatches(svc.DataDir(), strings.TrimSpace(c.GetHeader("x-siflux-Owner")))
 		devBootstrap := strings.TrimSpace(os.Getenv("SIFLUX_UI_BOOTSTRAP")) == "1"
 		// The UI bootstrap secret comes through the Wails binding, separately from entry credentials.
 		desktopShell := desktopTrust != nil && desktopTrust(c.Request)

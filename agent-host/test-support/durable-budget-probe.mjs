@@ -60,7 +60,7 @@ async function start(dir, limit) {
 async function chat(canvasId = 'test') {
   const turnId = `budget-${++turnSeq}`;
   turnCanvas.set(turnId, canvasId);
-  const res = await fetch(base + '/chat', { method: 'POST', headers: { 'content-type': 'application/json', 'X-Beeftv-Agent-Token': token }, body: JSON.stringify({ canvasId, message: 'Reply ok', turnId }), signal: AbortSignal.timeout(20000) });
+  const res = await fetch(base + '/chat', { method: 'POST', headers: { 'content-type': 'application/json', 'x-siflux-Agent-Token': token }, body: JSON.stringify({ canvasId, message: 'Reply ok', turnId }), signal: AbortSignal.timeout(20000) });
   const text = await res.text(); assert.equal(res.status, 200, text);
   const end = text.trim().split('\n').map(JSON.parse).find(event => event.type === 'turn_end');
   assert(end, text); return end;
