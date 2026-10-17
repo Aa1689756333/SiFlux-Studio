@@ -115,7 +115,8 @@ export function ModelPicker({
         if (nextOpen) window.dispatchEvent(new CustomEvent("model-picker-open", { detail: pickerId }));
         if (nextOpen) {
             setPreviewedModel(current || options[0] || "");
-            setActiveGroupKey(null);
+            // 只有一个渠道时没有品牌选择这一层，直接进入模型列表。
+            setActiveGroupKey(optionGroups.length === 1 ? optionGroups[0].key : null);
         }
         setOpen(nextOpen);
     };
@@ -188,14 +189,14 @@ export function ModelPicker({
                         })}
                     </div>
                 ) : <div className="canvas-model-picker-two-pane">
-                    <div className="canvas-model-picker-brand-rail" aria-label="模型品牌">
+                    {optionGroups.length > 1 && <div className="canvas-model-picker-brand-rail" aria-label="模型品牌">
                         {optionGroups.map((group) => {
                             return <button key={group.key} type="button" className={cn("canvas-model-picker-brand", activeGroupKey === group.key && "is-active")} aria-expanded={activeGroupKey === group.key} onClick={() => toggleGroup(group)}>
                                 <span className="canvas-model-picker-brand-copy"><strong>{group.label}</strong></span>
                                 <ChevronDown className="canvas-model-picker-brand-arrow" aria-hidden="true" />
                             </button>;
                         })}
-                    </div>
+                    </div>}
                     {optionGroups.filter((group) => group.key === activeGroupKey).map((group) => <section key={group.key} className="canvas-model-picker-group canvas-model-picker-model-pane min-w-0 overflow-hidden">
                         <div className="canvas-model-picker-options grid min-w-0 gap-1">
                             {group.models.map((modelGroup) => {
