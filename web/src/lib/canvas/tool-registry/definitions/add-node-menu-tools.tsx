@@ -3,6 +3,7 @@ import { Clock3, Folder, FolderOpen, Layers3, Palette, UploadCloud, UserRound, W
 import { getNodeIcon, getNodeLabel } from "@/lib/canvas/node-registry";
 import { CANVAS_DEVELOPING_LABEL, getCanvasNodeCreationDisabledReason } from "@/lib/canvas/canvas-feature-availability";
 import { registerAddNodeMenuCommands, type AddNodeMenuCommand } from "@/lib/canvas/tool-registry";
+import { IMAGE_ONLY_RELEASE } from "@/lib/release-flags";
 import { CanvasNodeType } from "@/types/canvas";
 
 /** 真正创建节点的命令，文案与图标统一取自节点注册表。 */
@@ -10,7 +11,7 @@ function nodeCommand(type: CanvasNodeType, rest: Omit<AddNodeMenuCommand, "id" |
     return { id: type, label: getNodeLabel(type), icon: getNodeIcon(type), section: "node", ...rest };
 }
 
-export const addNodeMenuCommands: AddNodeMenuCommand[] = [
+const allAddNodeMenuCommands: AddNodeMenuCommand[] = [
     // 项目级动作不占用节点网格，创作节点保持统一排列。
     { id: "style", label: "项目画风", icon: <Palette />, section: "project", defaultOrder: 10, applicable: (ctx) => !ctx.isProjectLinked, run: (ctx) => ctx.handlers.onChooseStyle() },
     // 创作节点
@@ -34,5 +35,19 @@ export const addNodeMenuCommands: AddNodeMenuCommand[] = [
     { id: "generation-history", label: "从生成历史选择", icon: <Clock3 />, section: "resource", defaultOrder: 30, run: (ctx) => ctx.handlers.onOpenGenerationHistory() },
     { id: "assets", label: "素材库", icon: <FolderOpen />, section: "resource", defaultOrder: 40, applicable: (ctx) => !ctx.isProjectLinked, run: (ctx) => ctx.handlers.onOpenMyAssets() },
 ];
+
+
+
+// 首发只开放生图：隐藏视频、音频、导演台与工作流入口。
+const RELEASE_HIDDEN_NODE_COMMANDS = new Set<string>([
+    CanvasNodeType.Video,
+    CanvasNodeType.Audio,
+    "director",
+    "workflow",
+]);
+
+export const addNodeMenuCommands: AddNodeMenuCommand[] = IMAGE_ONLY_RELEASE
+    ? allAddNodeMenuCommands.filter((command) => !RELEASE_HIDDEN_NODE_COMMANDS.has(command.id))
+    : allAddNodeMenuCommands;
 
 registerAddNodeMenuCommands(addNodeMenuCommands);
