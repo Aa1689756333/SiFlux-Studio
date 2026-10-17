@@ -194,7 +194,7 @@ func preserveBuiltinRelayConnection(incoming, existing map[string]any) {
 			continue
 		}
 		original, exists := stored[id]
-		for _, key := range []string{"baseUrl", "apiFormat", "name"} {
+		for _, key := range []string{"baseUrl", "apiFormat", "name", "referenceAssetOrigin", "secretKey"} {
 			if exists {
 				if value, ok := original[key]; ok {
 					channel[key] = value
@@ -210,6 +210,8 @@ func preserveBuiltinRelayConnection(incoming, existing map[string]any) {
 				channel[key] = "openai"
 			case "name":
 				channel[key] = "SiFlux 中转站"
+			case "referenceAssetOrigin", "secretKey":
+				channel[key] = ""
 			}
 		}
 	}
