@@ -3,7 +3,6 @@ package generation
 import (
 	"errors"
 	"net/http"
-	"strings"
 )
 
 // ErrImageOwnerMissing is returned when a recoverable BeefAPI image POST has
@@ -18,10 +17,7 @@ func RecoverableImageEndpoint(req *http.Request) bool {
 	if req == nil || req.URL == nil || req.Method != http.MethodPost || req.URL.Scheme != "https" || req.URL.User != nil || req.URL.RawQuery != "" || (req.URL.Port() != "" && req.URL.Port() != "443") {
 		return false
 	}
-	switch strings.ToLower(req.URL.Hostname()) {
-	case "beeftv.app", "beefapi.com", "enterprise.beefapi.com", "global.beefapi.com":
-	default:
-		return false
-	}
-	return req.URL.Path == "/v1/images/generations" || req.URL.Path == "/v1/images/edits"
+	// The managed channel's hosts are gone; no request can be a recoverable paid image
+	// create any more. The submission layer is now unreachable and is removed next.
+	return false
 }
