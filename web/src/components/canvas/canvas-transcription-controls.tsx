@@ -1,7 +1,5 @@
 import { useEffect, useRef, useState } from "react";
 import { Button, Select } from "antd";
-import { getTranscriptionModels } from "@/services/api/timeline-tasks";
-import { captureUserScope, isUserScopeAbandonedError } from "@/lib/user-scope-guard";
 import {
     attachLocalExecutorResult,
     beginLocalExecutorSession,
@@ -53,21 +51,13 @@ export function CanvasTranscriptionControls({
     }, [onRunningChange]);
 
     const refresh = async () => {
-        const request = ++requestRef.current;
-        setLoading(true);
+        // 云端转写随托管渠道一并停用：不再请求模型列表，直接给出明确状态，
+        // 避免对已下线接口发起注定失败的调用。
+        requestRef.current++;
+        setLoading(false);
         setModels([]);
         setModel("");
-        setStatus("");
-        try {
-            const result = await getTranscriptionModels({ expectedScope: captureUserScope() });
-            if (!mountedRef.current || request !== requestRef.current) return;
-            setModels(result.map((item) => ({ value: item.id, label: `${item.displayName || item.id} · SiFlux` })));
-            if (!result.length) setStatus("当前连接没有可用的云端转写模型");
-        } catch (error) {
-            if (mountedRef.current && request === requestRef.current && !isUserScopeAbandonedError(error)) setStatus(error instanceof Error ? error.message : "读取转写模型失败");
-        } finally {
-            if (mountedRef.current && request === requestRef.current) setLoading(false);
-        }
+        setStatus("云端转写已停用");
     };
 
     const transcribe = async () => {
