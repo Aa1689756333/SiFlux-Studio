@@ -1,12 +1,11 @@
 package modelcatalog
 
 import (
+	"infinite-canvas/backend/internal/beefapi"
 	"encoding/json"
 	"errors"
 	"strings"
 	"testing"
-
-	"infinite-canvas/backend/internal/beefapi"
 	"infinite-canvas/backend/internal/kernel"
 	"infinite-canvas/backend/internal/model"
 )

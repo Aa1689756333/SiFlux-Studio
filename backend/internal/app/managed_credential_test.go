@@ -1,11 +1,10 @@
 package app
 
 import (
+	"infinite-canvas/backend/internal/beefapi"
 	"context"
 	"os"
 	"testing"
-
-	"infinite-canvas/backend/internal/beefapi"
 	"infinite-canvas/backend/internal/protocol"
 )
 

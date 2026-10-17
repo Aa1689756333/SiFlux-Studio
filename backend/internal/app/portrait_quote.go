@@ -1,11 +1,10 @@
 package app
 
 import (
+	"infinite-canvas/backend/internal/beefapi"
 	"encoding/json"
 	"maps"
 	"strings"
-
-	"infinite-canvas/backend/internal/beefapi"
 	"infinite-canvas/backend/internal/modelcatalog"
 	"infinite-canvas/backend/internal/workspace"
 )

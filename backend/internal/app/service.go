@@ -1,6 +1,7 @@
 package app
 
 import (
+	"infinite-canvas/backend/internal/beefapi"
 	"context"
 	"errors"
 	"fmt"
@@ -13,7 +14,6 @@ import (
 	"infinite-canvas/backend/internal/appearance"
 	localasset "infinite-canvas/backend/internal/asset"
 	"infinite-canvas/backend/internal/assistantturns"
-	"infinite-canvas/backend/internal/beefapi"
 	"infinite-canvas/backend/internal/canvas"
 	"infinite-canvas/backend/internal/depthcapture"
 	"infinite-canvas/backend/internal/diagnostics"

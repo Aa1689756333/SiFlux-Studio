@@ -1,10 +1,10 @@
 package modelcatalog
 
 import (
+	"infinite-canvas/backend/internal/beefapi"
 	"strings"
 
 	"infinite-canvas/backend/internal/assistant"
-	"infinite-canvas/backend/internal/beefapi"
 	"infinite-canvas/backend/internal/protocol"
 )
 

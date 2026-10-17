@@ -1,6 +1,8 @@
 package providerpreset
 
-import "testing"
+import (
+	"testing"
+)
 
 func TestEveryDeclaredVideoContractHasKnownProtocolAndValidLimits(t *testing.T) {
 	seen := map[string]bool{}

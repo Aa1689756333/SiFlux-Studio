@@ -1,6 +1,8 @@
 package assistant
 
-import "testing"
+import (
+	"testing"
+)
 
 func TestProviderFingerprintTracksEveryField(t *testing.T) {
 	base := Provider{ChannelID: "beefapi", Model: "MiniMax-M3",

@@ -1,6 +1,7 @@
 package app
 
 import (
+	"infinite-canvas/backend/internal/beefapi"
 	"context"
 	"encoding/json"
 	"net/http"
@@ -8,8 +9,6 @@ import (
 	"strings"
 	"sync/atomic"
 	"testing"
-
-	"infinite-canvas/backend/internal/beefapi"
 	"infinite-canvas/backend/internal/model"
 )
 

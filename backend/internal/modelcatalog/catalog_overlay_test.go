@@ -1,13 +1,12 @@
 package modelcatalog
 
 import (
+	"infinite-canvas/backend/internal/beefapi"
 	"bytes"
 	"context"
 	"encoding/json"
 	"strings"
 	"testing"
-
-	"infinite-canvas/backend/internal/beefapi"
 )
 
 func officialCatalogVideo(t *testing.T) json.RawMessage {

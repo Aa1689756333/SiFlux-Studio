@@ -1,13 +1,12 @@
 package app
 
 import (
+	"infinite-canvas/backend/internal/beefapi"
 	"context"
 	"errors"
 	"net/http"
 	"strings"
 	"testing"
-
-	"infinite-canvas/backend/internal/beefapi"
 	"infinite-canvas/backend/internal/model"
 )
 

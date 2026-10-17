@@ -1,6 +1,7 @@
 package generation
 
 import (
+	"infinite-canvas/backend/internal/beefapi"
 	"bytes"
 	"context"
 	"encoding/json"
@@ -20,8 +21,6 @@ import (
 	"sync"
 	"testing"
 	"time"
-
-	"infinite-canvas/backend/internal/beefapi"
 	"infinite-canvas/backend/internal/modelcatalog"
 	"infinite-canvas/backend/internal/providerpreset"
 )

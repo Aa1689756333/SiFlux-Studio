@@ -1,11 +1,10 @@
 package app
 
 import (
+	"infinite-canvas/backend/internal/beefapi"
 	"encoding/json"
 	"net/url"
 	"strings"
-
-	"infinite-canvas/backend/internal/beefapi"
 )
 
 const managedBeefAPIRef = beefapi.CredentialRef

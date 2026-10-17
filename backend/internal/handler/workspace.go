@@ -1,13 +1,13 @@
 package handler
 
 import (
+	"infinite-canvas/backend/internal/beefapi"
 	"encoding/json"
 	"errors"
 	"io"
 	"net/http"
 
 	"infinite-canvas/backend/internal/app"
-	"infinite-canvas/backend/internal/beefapi"
 	"infinite-canvas/backend/internal/workspace"
 
 	"github.com/gin-gonic/gin"
@@ -140,12 +140,7 @@ func redactModelConfig(c *gin.Context, svc *app.Service, config map[string]any) 
 	if _, external := externalBusiness(c); external {
 		config = redactExternalConfig(config)
 	}
-	managed := false
-	if connection, err := requestBeefAPI(c, svc); err == nil && connection != nil {
-		managed = connection.HasManagedCredential()
-		return connection.RedactConfig(config)
-	}
-	return beefapi.RedactConfig(config, managed)
+	return beefapi.RedactConfig(config, false)
 }
 
 func preserveManagedModelConfig(c *gin.Context, svc *app.Service, raw json.RawMessage) json.RawMessage {
@@ -160,16 +155,10 @@ func preserveManagedModelConfig(c *gin.Context, svc *app.Service, raw json.RawMe
 			existing = effective.Config
 		}
 	}
-	managed := false
 	if _, external := externalBusiness(c); external {
 		preserveExternalConfigSecrets(incoming, existing)
 	}
-	if connection, err := requestBeefAPI(c, svc); err == nil && connection != nil {
-		managed = connection.HasManagedCredential()
-		connection.PreserveWrite(incoming, existing)
-	} else {
-		beefapi.PreserveManagedChannel(incoming, existing, managed)
-	}
+	beefapi.PreserveManagedChannel(incoming, existing, false)
 	encoded, err := json.Marshal(incoming)
 	if err != nil {
 		return raw

@@ -16,7 +16,6 @@ import (
 
 	"infinite-canvas/backend/internal/app"
 	"infinite-canvas/backend/internal/assistantruntime"
-	"infinite-canvas/backend/internal/beefapi"
 	"infinite-canvas/backend/internal/buildinfo"
 	"infinite-canvas/backend/internal/conversation"
 	"infinite-canvas/backend/internal/database"
@@ -43,7 +42,6 @@ type Runtime struct {
 	status           *systemStatus
 	launchToken      string
 	uiBootstrapToken string
-	beefAPI          *beefapi.Service
 	assistantHost    *assistantruntime.Host
 	listener         net.Listener
 	httpServer       *http.Server
@@ -120,39 +118,6 @@ func Open(_ context.Context, raw Config) (result *Runtime, openErr error) {
 		cleanupService()
 		return nil, configErr
 	}
-	beefAPIConnection, beefAPIErr := beefapi.New(beefapi.Options{
-		DataDir: cfg.DataDir, Provider: providerConfig, ClientVersion: buildinfo.Current().Version,
-		FetchCatalog: func(apiKey, baseURL string) ([]beefapi.CatalogModel, error) {
-			owner, ownerErr := svc.LocalWorkspaceOwner()
-			if ownerErr != nil {
-				return nil, ownerErr
-			}
-			items, catalogErr := svc.FetchChannelModelCatalog(context.Background(), owner, app.ChannelModelsRequest{
-				BaseURL: baseURL, APIKey: apiKey, APIFormat: "openai", ChannelID: beefapi.ChannelID, CredentialRef: beefapi.CredentialRef,
-			})
-			if catalogErr != nil {
-				return nil, catalogErr
-			}
-			models := make([]beefapi.CatalogModel, 0, len(items))
-			for _, item := range items {
-				version := ""
-				if item.VideoCapabilitiesVersion != nil {
-					version = *item.VideoCapabilitiesVersion
-				}
-				models = append(models, beefapi.CatalogModel{
-					ID: item.ID, DisplayName: item.DisplayName, ModelType: item.ModelType, SupportedEndpointTypes: item.SupportedEndpointTypes,
-					VideoCapabilities: item.VideoCapabilities, VideoCapabilitiesVersion: version,
-					VideoPricing: item.VideoPricing,
-				})
-			}
-			return models, nil
-		},
-	})
-	if beefAPIErr != nil {
-		cleanupService()
-		return nil, beefAPIErr
-	}
-	svc.SetBeefAPI(beefAPIConnection)
 	localKernel := app.NewLocalKernel(svc)
 	assetService := svc.ResourceService()
 	projectService := svc.ProjectService()
@@ -218,7 +183,6 @@ func Open(_ context.Context, raw Config) (result *Runtime, openErr error) {
 		Projects:           localRoot.Projects,
 		Tasks:              localRoot.Tasks,
 		Generation:         localRoot.Generation,
-		BeefAPI:            beefAPIConnection,
 		AssistantHost:      assistantHost,
 		Conversations:      conversation.New(conversation.NewStore(repo)),
 		TextReplay:         svc.TextReplay(),
@@ -298,7 +262,6 @@ func Open(_ context.Context, raw Config) (result *Runtime, openErr error) {
 		status:           status,
 		launchToken:      launchToken,
 		uiBootstrapToken: uiBootstrapToken,
-		beefAPI:          beefAPIConnection,
 		assistantHost:    assistantHost,
 		serveErr:         make(chan error, 1),
 	}, nil
@@ -372,9 +335,6 @@ func (r *Runtime) Start() error {
 			}
 		}
 	}
-	if r.beefAPI != nil {
-		_ = r.beefAPI.Recover(context.Background())
-	}
 	r.status.markStarted()
 	return nil
 }
@@ -415,9 +375,6 @@ func (r *Runtime) Close(ctx context.Context) error {
 	r.closeOnce.Do(func() {
 		r.closed.Store(true)
 		r.status.beginDrain()
-		if r.beefAPI != nil {
-			r.beefAPI.Close()
-		}
 		var failures []error
 		// 干净退出先撤掉运行时地址：留着会让下一次发现连到一个已经不在的端口。
 		if r.cfg.Profile == ProfileDesktop {

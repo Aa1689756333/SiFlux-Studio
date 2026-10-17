@@ -1,11 +1,10 @@
 package modelcatalog
 
 import (
+	"infinite-canvas/backend/internal/beefapi"
 	"encoding/json"
 	"sort"
 	"strings"
-
-	"infinite-canvas/backend/internal/beefapi"
 )
 
 // OverlayCatalogVideoCapabilities applies the official BeefAPI/WhatsToken
