@@ -4,7 +4,6 @@ import (
 	"context"
 	"errors"
 	"fmt"
-	"infinite-canvas/backend/internal/beefapi"
 	"path/filepath"
 	"strings"
 	"sync"
@@ -79,7 +78,6 @@ type Service struct {
 	playbackOnce             sync.Once
 	depthCapture             *depthcapture.Service
 	depthCaptureOnce         sync.Once
-	beefAPI                  *beefapi.Service
 	generationDeliveryMedia  taskdelivery.Media
 	generationDelivery       *taskdelivery.Deliverer
 	deliveryMu               sync.Mutex

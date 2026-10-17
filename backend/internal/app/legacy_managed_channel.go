@@ -9,7 +9,10 @@ import (
 
 // A legacy channel written by the retired managed channel. It is no longer created or offered;
 // these helpers only keep already-stored configs redacted on read and intact on save.
-const legacyManagedChannelID = "beefapi"
+const (
+	legacyManagedChannelID     = "beefapi"
+	legacyManagedCredentialRef = "beefapi-enterprise"
+)
 
 func cloneAnyMap(value map[string]any) (map[string]any, error) {
 	if value == nil {

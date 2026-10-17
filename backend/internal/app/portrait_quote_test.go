@@ -3,7 +3,6 @@ package app
 import (
 	"context"
 	"encoding/json"
-	"infinite-canvas/backend/internal/beefapi"
 	"infinite-canvas/backend/internal/model"
 	"net/http"
 	"net/http/httptest"
@@ -96,10 +95,10 @@ func TestPortraitQuoteTaskAdmission(t *testing.T) {
 
 func TestPortraitQuoteManagedAdmission(t *testing.T) {
 	s, _, _, _ := creationTestService(t)
-	savePortraitTestCatalog(t, s, beefapi.ChannelID, "seedance-2.0-portrait", portraitTestQuote)
+	savePortraitTestCatalog(t, s, legacyManagedChannelID, "seedance-2.0-portrait", portraitTestQuote)
 	req := portraitTestRequest("seedance-2.0-portrait")
 	config := req.Input["config"].(map[string]any)
-	config["channelId"], config["credentialRef"], config["apiKey"] = beefapi.ChannelID, beefapi.CredentialRef, ""
+	config["channelId"], config["credentialRef"], config["apiKey"] = legacyManagedChannelID, legacyManagedCredentialRef, ""
 	if _, err := s.TaskService().CreateTask("user", toTaskCreateRequest(req)); err != nil {
 		t.Fatal(err)
 	}

@@ -1,4 +1,4 @@
-package beefapi
+package modelcatalog
 
 import (
 	"encoding/json"

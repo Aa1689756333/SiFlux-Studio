@@ -3,7 +3,6 @@ package app
 import (
 	"context"
 	"errors"
-	"infinite-canvas/backend/internal/beefapi"
 	"infinite-canvas/backend/internal/model"
 	"net/http"
 	"strings"
@@ -44,7 +43,7 @@ func TestFetchChannelModelCatalogRejectsCredentialsWithoutNetwork(t *testing.T) 
 		t.Fatalf("empty key error = %v", err)
 	}
 	if _, err := svc.FetchChannelModelCatalog(ctx, actor, ChannelModelsRequest{
-		BaseURL: "https://enterprise.beefapi.com/v1", ChannelID: beefapi.ChannelID, CredentialRef: beefapi.CredentialRef,
+		BaseURL: "https://enterprise.beefapi.com/v1", ChannelID: legacyManagedChannelID, CredentialRef: legacyManagedCredentialRef,
 	}); err == nil || !strings.Contains(err.Error(), "API Key") {
 		t.Fatalf("missing BeefAPI credential error = %v", err)
 	}

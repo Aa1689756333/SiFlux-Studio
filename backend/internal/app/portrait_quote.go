@@ -2,7 +2,6 @@ package app
 
 import (
 	"encoding/json"
-	"infinite-canvas/backend/internal/beefapi"
 	"infinite-canvas/backend/internal/modelcatalog"
 	"infinite-canvas/backend/internal/workspace"
 	"maps"
@@ -88,7 +87,7 @@ func (s *Service) validatePortraitTaskQuote(input map[string]any) error {
 			if profile.Model != modelID {
 				continue
 			}
-			pricing, valid := beefapi.NormalizeCatalogVideoPricing(profile.VideoPricing)
+			pricing, valid := modelcatalog.NormalizeCatalogVideoPricing(profile.VideoPricing)
 			if valid && pricing["mode"] == "tokens" {
 				rates := pricing["rates"].(map[string]any)
 				_, quoted = rates[resolution]
