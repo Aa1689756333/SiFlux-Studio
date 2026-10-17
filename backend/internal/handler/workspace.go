@@ -156,8 +156,9 @@ func preserveManagedModelConfig(c *gin.Context, svc *app.Service, raw json.RawMe
 	}
 	if _, external := externalBusiness(c); external {
 		preserveExternalConfigSecrets(incoming, existing)
+	} else {
+		preserveBuiltinRelayConnection(incoming, existing)
 	}
-	preserveBuiltinRelayConnection(incoming, existing)
 	encoded, err := json.Marshal(incoming)
 	if err != nil {
 		return raw
@@ -184,6 +185,31 @@ func preserveBuiltinRelayConnection(incoming, existing map[string]any) {
 	if !ok {
 		return
 	}
+	// 本地配置只允许存在内置中转站：其他渠道一律丢弃，没有时补回中转站。
+	filtered := make([]any, 0, 1)
+	for _, item := range list {
+		if channel, ok := item.(map[string]any); ok {
+			if id, _ := channel["id"].(string); id == builtinRelayChannelID {
+				filtered = append(filtered, item)
+			}
+		}
+	}
+	if len(filtered) == 0 {
+		if original, exists := stored[builtinRelayChannelID]; exists {
+			copied := make(map[string]any, len(original))
+			for key, value := range original {
+				copied[key] = value
+			}
+			filtered = append(filtered, copied)
+		} else {
+			filtered = append(filtered, map[string]any{
+				"id": builtinRelayChannelID, "name": "SiFlux 中转站",
+				"baseUrl": "https://api.siflux.cn/v1", "apiFormat": "openai",
+			})
+		}
+	}
+	incoming["channels"] = filtered
+	list = filtered
 	for _, item := range list {
 		channel, ok := item.(map[string]any)
 		if !ok {

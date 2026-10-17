@@ -18,9 +18,8 @@ func TestPreserveBuiltinRelayConnectionPinsStoredValues(t *testing.T) {
 	if relay["baseUrl"] != "https://api.siflux.cn/v1" || relay["apiFormat"] != "openai" || relay["name"] != "SiFlux 中转站" {
 		t.Fatalf("relay was not pinned: %v", relay)
 	}
-	custom := channels[1].(map[string]any)
-	if custom["baseUrl"] != "https://api.example.com/v1" {
-		t.Fatalf("custom channel must stay editable: %v", custom)
+	if len(channels) != 1 {
+		t.Fatalf("only the relay may remain, got %d channels", len(channels))
 	}
 }
 
