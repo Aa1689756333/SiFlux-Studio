@@ -162,7 +162,7 @@ export function ModelServiceEditor({ initial, onClose, onSave }: { initial: Mode
             </ol>
         </div>
         <div className="model-service-body" aria-busy={busy} inert={busy}>
-            {step === 0 ? <div className="model-service-connection">
+            {step === 0 ? <div className={lockedConnection ? "model-service-connection model-service-connection--solo" : "model-service-connection"}>
                 {!lockedConnection && <aside className="model-service-providers" aria-label="选择服务商">
                     <p className="model-service-label">选择服务商</p>
                     {MODEL_SERVICE_PRESETS.map((preset) => <button key={preset.id} type="button" disabled={busy || lockedConnection} aria-pressed={presetId === preset.id} className="model-service-provider" onClick={() => choosePreset(preset.id)}>

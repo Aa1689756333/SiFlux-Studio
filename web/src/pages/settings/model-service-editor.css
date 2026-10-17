@@ -67,3 +67,7 @@
  .model-service-catalog-header { align-items:flex-start; }
  .model-service-model { gap:8px; }
 }
+
+/* 内置中转站不显示服务商列表时，表单独占整行，避免被 270px 列挤窄。 */
+.model-service-connection--solo { grid-template-columns:minmax(0,1fr); }
+.model-service-connection--solo .model-service-fields { max-width:860px; }
