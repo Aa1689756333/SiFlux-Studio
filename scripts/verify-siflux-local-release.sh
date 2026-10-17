@@ -20,7 +20,7 @@ if ! command -v node >/dev/null 2>&1; then
 fi
 
 echo "Checking local network audit syntax"
-node --check "$ROOT_DIR/web/scripts/beeftv-local-network-audit.mjs"
+node --check "$ROOT_DIR/web/scripts/siflux-local-network-audit.mjs"
 
 echo "Checking desktop route isolation"
 (
@@ -43,7 +43,7 @@ echo "Checking local frontend contracts"
 )
 
 echo "Checking default release size budget"
-node "$ROOT_DIR/scripts/report-beeftv-release-size.mjs" "$ROOT_DIR/web/dist"
+node "$ROOT_DIR/scripts/report-siflux-release-size.mjs" "$ROOT_DIR/web/dist"
 
 echo "Checking repository diff"
 git -C "$ROOT_DIR" diff --check

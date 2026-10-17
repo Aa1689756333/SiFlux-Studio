@@ -79,7 +79,7 @@ AI Native 自由画布
 ```bash
 git clone https://github.com/glanderness/BeefTV.git
 cd BeefTV
-./scripts/build-beeftv-release.sh
+./scripts/build-siflux-release.sh
 ```
 
 详细环境要求、Windows 构建与本地开发方式见 [`QUICKSTART.md`](QUICKSTART.md) 和[桌面发布文档](docs/desktop-release.md)。首次启动后，添加自己的模型渠道即可开始创作。

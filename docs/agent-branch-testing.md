@@ -31,7 +31,7 @@ export PATH="$SIFLUX_NODE_RUNTIME/bin:$PATH"
 bun scripts/package-agent-host.mjs darwin/arm64 --verify-runtime
 (cd web && bun install --frozen-lockfile)
 ./plugin-packages/build-packages.sh
-./scripts/update-local-beeftv-app.sh
+./scripts/update-local-siflux-app.sh
 open /Applications/BeefTV.app
 ```
 
@@ -44,7 +44,7 @@ Intel Mac 使用 `node-v24.15.0-darwin-x64` 和 `darwin/amd64`。安装脚本会
 ```powershell
 $env:SIFLUX_NODE_RUNTIME = "C:\path\to\node-v24.15.0-win-x64"
 bun scripts/package-agent-host.mjs windows/amd64 --verify-runtime
-powershell -NoProfile -ExecutionPolicy Bypass -File .\scripts\build-beeftv-windows-release.ps1
+powershell -NoProfile -ExecutionPolicy Bypass -File .\scripts\build-siflux-windows-release.ps1
 ```
 
 构建完成后启动 `backend\cmd\desktop\build\bin\BeefTV.exe`。需要复制到测试安装目录时，复制整个 `build\bin` 目录，保留 `agent-host`、`plugin-packages` 和 `cli`；仅复制 exe 无法运行助手。不要覆盖尚未退出的正式应用。

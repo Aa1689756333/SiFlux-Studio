@@ -145,7 +145,7 @@ jobs:
           bun install --frozen-lockfile
 
       - name: Local release contract gate
-        run: ./scripts/verify-beeftv-local-release.sh
+        run: ./scripts/verify-siflux-local-release.sh
 
       - name: Create draft GitHub release
         env:

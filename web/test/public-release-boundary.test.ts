@@ -39,7 +39,7 @@ describe("public release boundary", () => {
         fixtureFile(source, "backend/go.mod", "module example.invalid/beeftv/backend\n");
         fixtureFile(source, "web/package.json", '{"name":"beeftv"}\n');
         fixtureFile(source, "web/src/main.tsx", "export {};\n");
-        fixtureFile(source, "web/scripts/beeftv-local-network-audit.mjs", "export {};\n");
+        fixtureFile(source, "web/scripts/siflux-local-network-audit.mjs", "export {};\n");
         fixtureFile(source, "web/scripts/private-audit.mjs", "export {};\n");
         fixtureFile(source, ".git/config");
         fixtureFile(source, ".worktrees/private/HEAD");
@@ -62,7 +62,7 @@ describe("public release boundary", () => {
 
         expect(result.status).toBe(0);
         expect(existsSync(join(destination, "web/src/main.tsx"))).toBe(true);
-        expect(existsSync(join(destination, "web/scripts/beeftv-local-network-audit.mjs"))).toBe(true);
+        expect(existsSync(join(destination, "web/scripts/siflux-local-network-audit.mjs"))).toBe(true);
         expect(existsSync(join(destination, "web/scripts/private-audit.mjs"))).toBe(false);
         expect(existsSync(join(destination, ".git"))).toBe(false);
         expect(existsSync(join(destination, ".worktrees"))).toBe(false);

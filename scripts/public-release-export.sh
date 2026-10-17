@@ -72,7 +72,7 @@ rsync -a \
     --exclude='web/.reference-*' \
     --exclude='web/.canvas-probe-*' \
     --exclude='web/test/.agent-reliability-*' \
-    --include='web/scripts/beeftv-local-network-audit.mjs' \
+    --include='web/scripts/siflux-local-network-audit.mjs' \
     --exclude='web/scripts/*audit*' \
     --exclude='web/scripts/*probe*' \
     --exclude='web/scripts/*smoke*' \
