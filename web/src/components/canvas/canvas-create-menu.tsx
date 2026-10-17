@@ -1,3 +1,4 @@
+import { IMAGE_ONLY_RELEASE } from "@/lib/release-flags";
 import { motion, useReducedMotion } from "motion/react";
 import { Search, X } from "lucide-react";
 import { useMemo, useState, type CSSProperties, type ReactNode } from "react";
@@ -23,9 +24,12 @@ export function CanvasCreateMenu({ commands, layout = "grid", title = "添加节
     const [query, setQuery] = useState("");
     const normalizedQuery = query.trim().toLocaleLowerCase();
     const visibleCommands = useMemo(() => {
-        const filtered = normalizedQuery
-            ? commands.filter((command) => `${command.label} ${command.badge || ""}`.toLocaleLowerCase().includes(normalizedQuery))
+        const releaseFiltered = IMAGE_ONLY_RELEASE
+            ? commands.filter((command) => !/视频|音频|文本|导演台|工作流/.test(command.label))
             : commands;
+        const filtered = normalizedQuery
+            ? releaseFiltered.filter((command) => `${command.label} ${command.badge || ""}`.toLocaleLowerCase().includes(normalizedQuery))
+            : releaseFiltered;
         // LibTV's default list keeps the primary creation/import flow compact.
         // Advanced node types remain available through the same search box, so
         // hiding them here changes presentation without removing capability.

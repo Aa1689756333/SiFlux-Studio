@@ -42,6 +42,7 @@ const allAddNodeMenuCommands: AddNodeMenuCommand[] = [
 const RELEASE_HIDDEN_NODE_COMMANDS = new Set<string>([
     CanvasNodeType.Video,
     CanvasNodeType.Audio,
+    CanvasNodeType.Text,
     "director",
     "workflow",
 ]);
