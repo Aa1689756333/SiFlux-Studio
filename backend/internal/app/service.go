@@ -1,10 +1,10 @@
 package app
 
 import (
-	"infinite-canvas/backend/internal/beefapi"
 	"context"
 	"errors"
 	"fmt"
+	"infinite-canvas/backend/internal/beefapi"
 	"path/filepath"
 	"strings"
 	"sync"

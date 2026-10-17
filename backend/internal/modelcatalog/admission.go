@@ -1,11 +1,11 @@
 package modelcatalog
 
 import (
-	"infinite-canvas/backend/internal/beefapi"
 	"fmt"
-	"strings"
+	"infinite-canvas/backend/internal/beefapi"
 	"infinite-canvas/backend/internal/kernel"
 	"infinite-canvas/backend/internal/model"
+	"strings"
 )
 
 // TaskSelectRequest is the typed admission input. App supplies the live

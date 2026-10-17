@@ -1,7 +1,6 @@
 package generation
 
 import (
-	"infinite-canvas/backend/internal/beefapi"
 	"bytes"
 	"context"
 	"encoding/json"
@@ -9,6 +8,9 @@ import (
 	"fmt"
 	"image"
 	_ "image/jpeg"
+	"infinite-canvas/backend/internal/beefapi"
+	"infinite-canvas/backend/internal/modelcatalog"
+	"infinite-canvas/backend/internal/providerpreset"
 	"mime/multipart"
 	"net/http"
 	"os"
@@ -21,8 +23,6 @@ import (
 	"sync"
 	"testing"
 	"time"
-	"infinite-canvas/backend/internal/modelcatalog"
-	"infinite-canvas/backend/internal/providerpreset"
 )
 
 type auditLiveReceipts struct {

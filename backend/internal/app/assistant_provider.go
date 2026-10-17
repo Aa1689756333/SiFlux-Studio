@@ -1,8 +1,8 @@
 package app
 
 import (
-	"infinite-canvas/backend/internal/beefapi"
 	"encoding/json"
+	"infinite-canvas/backend/internal/beefapi"
 	"strings"
 
 	"infinite-canvas/backend/internal/assistant"

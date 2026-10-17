@@ -1,11 +1,11 @@
 package app
 
 import (
-	"infinite-canvas/backend/internal/beefapi"
 	"context"
+	"infinite-canvas/backend/internal/beefapi"
+	"infinite-canvas/backend/internal/protocol"
 	"os"
 	"testing"
-	"infinite-canvas/backend/internal/protocol"
 )
 
 func TestManagedGeminiCatalogCredentialProviderChain(t *testing.T) {

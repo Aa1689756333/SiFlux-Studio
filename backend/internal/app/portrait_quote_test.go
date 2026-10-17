@@ -1,15 +1,15 @@
 package app
 
 import (
-	"infinite-canvas/backend/internal/beefapi"
 	"context"
 	"encoding/json"
+	"infinite-canvas/backend/internal/beefapi"
+	"infinite-canvas/backend/internal/model"
 	"net/http"
 	"net/http/httptest"
 	"strings"
 	"sync/atomic"
 	"testing"
-	"infinite-canvas/backend/internal/model"
 )
 
 const portraitTestQuote = `{"currency":"CNY","mode":"tokens","rates":{"720p":{"output":69,"reference_video":42}}}`

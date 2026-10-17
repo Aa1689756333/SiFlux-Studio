@@ -1,8 +1,8 @@
 package modelcatalog
 
 import (
-	"infinite-canvas/backend/internal/beefapi"
 	"encoding/json"
+	"infinite-canvas/backend/internal/beefapi"
 	"sort"
 	"strings"
 )

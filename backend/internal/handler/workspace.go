@@ -1,9 +1,9 @@
 package handler
 
 import (
-	"infinite-canvas/backend/internal/beefapi"
 	"encoding/json"
 	"errors"
+	"infinite-canvas/backend/internal/beefapi"
 	"io"
 	"net/http"
 

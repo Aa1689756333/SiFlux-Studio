@@ -1,13 +1,13 @@
 package app
 
 import (
-	"infinite-canvas/backend/internal/beefapi"
 	"context"
 	"errors"
+	"infinite-canvas/backend/internal/beefapi"
+	"infinite-canvas/backend/internal/model"
 	"net/http"
 	"strings"
 	"testing"
-	"infinite-canvas/backend/internal/model"
 )
 
 func TestChannelCatalogErrorsHaveStableReasons(t *testing.T) {
