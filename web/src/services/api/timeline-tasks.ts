@@ -20,15 +20,6 @@ function transcriptionTransportError(error: unknown, submitting: boolean): unkno
         { cause, status: error instanceof ApiError ? error.status : undefined });
 }
 
-export async function getTranscriptionModels(config?: HttpRequestConfig) {
-    const connectionEpoch = 0;
-    try {
-        const result = await http.post<{ models: ChannelModelCatalogItem[] }>("/beefapi/connection/models", {}, { timeout: TRANSCRIPTION_ADMISSION_TIMEOUT_MS, ...config });
-        if (connectionEpoch !== 0) throw new UserScopeAbandonedError();
-        return result.models.filter(item => item.supportedEndpointTypes?.includes("audio.transcriptions"));
-    } catch (error) { throw transcriptionTransportError(error, false); }
-}
-
 // 时间线字幕转写任务 API。
 // 创建入参与后端 TimelineTranscriptionCreateRequest 保持同名字段，结果由任务中心统一查询。
 

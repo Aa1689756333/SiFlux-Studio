@@ -199,7 +199,7 @@ async function materializeExternalMedia(url: string) {
                 } catch {
                     return false;
                 }
-            }) || config.channels.find((item) => /beefapi/i.test(`${item.id} ${item.name} ${item.baseUrl}`));
+            });
         if (!channel) return url;
         const blob = await createChannelTransport(
             {
@@ -207,7 +207,7 @@ async function materializeExternalMedia(url: string) {
                 apiKey: channel.credentialRef ? "" : channel.apiKey,
                 apiFormat: channel.apiFormat,
                 headers: channel.headers,
-                credentialRef: channel.credentialRef || (channel.id === "beefapi" ? "beefapi-enterprise" : undefined),
+                credentialRef: channel.credentialRef,
             },
             "video",
         ).getBlob(url);
