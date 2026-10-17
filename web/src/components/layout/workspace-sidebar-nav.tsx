@@ -1,3 +1,4 @@
+import { IMAGE_ONLY_RELEASE } from "@/lib/release-flags";
 import { ChevronLeft, ChevronRight, Home, Plug, Plus, Settings2, HardDrive, Sun, Moon } from "lucide-react";
 import { LayoutGroup, motion, useReducedMotion } from "motion/react";
 import { useEffect, useMemo, useRef, useState, type ComponentType, type CSSProperties } from "react";
@@ -57,6 +58,10 @@ function buildNav(features: FeatureAvailability): { groups: WorkspaceNavGroup[];
             ],
         },
     ];
+
+    if (IMAGE_ONLY_RELEASE) {
+        groups[1].items = groups[1].items.filter((item) => item.id !== "agents");
+    }
 
     // 管理、设置和退出登录不再占据参考站式侧栏底部，而是通过用户卡片菜单进入。
     // 路由和写操作仍保留，避免把用户端导航变成无法访问的装饰。

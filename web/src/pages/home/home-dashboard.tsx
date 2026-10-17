@@ -2,6 +2,7 @@ import { ArrowRight, Plus, RefreshCw } from "lucide-react";
 import { Link, useNavigate } from "react-router";
 import type { CanvasLibrarySummary } from "@/services/api/workspace-data";
 import { ProjectPreview } from "@/components/canvas/canvas-project-card";
+import { IMAGE_ONLY_RELEASE } from "@/lib/release-flags";
 import { beefTVCapabilityItems } from "./home-data";
 function formatDate(value: string) {
     const date = new Date(value);
@@ -13,7 +14,7 @@ export function HomeDashboard({ projects, loading, error, onRetry }: { projects:
     const navigate = useNavigate();
     return (
         <main className="siflux-home" aria-label="SiFlux Studio 首页">
-            <section className="siflux-home-hero" aria-label="新建画布">
+            {!IMAGE_ONLY_RELEASE && <section className="siflux-home-hero" aria-label="新建画布">
                 <span className="siflux-home-dot-base" aria-hidden />
                 <span className="siflux-home-dot-flow" aria-hidden />
                 <span className="siflux-home-dot-flow siflux-home-dot-flow-delay" aria-hidden />
@@ -21,7 +22,7 @@ export function HomeDashboard({ projects, loading, error, onRetry }: { projects:
                     <span className="siflux-home-create-icon"><Plus /></span>
                     <span className="siflux-home-create-title">新建画布创作</span>
                 </button>
-            </section>
+            </section>}
 
             <nav className="siflux-capabilities" aria-label="创作能力">
                 {beefTVCapabilityItems.map(({ id, label, detail, to, icon: Icon, disabled }) => (

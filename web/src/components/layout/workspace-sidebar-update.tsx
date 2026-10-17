@@ -5,6 +5,7 @@ import { Download, LoaderCircle, RotateCcw } from "lucide-react";
 import { AppModal } from "@/components/ui/product/app-modal";
 
 import { AppChangelogButton, APP_VERSION } from "@/components/layout/app-changelog-modal";
+import { IMAGE_ONLY_RELEASE } from "@/lib/release-flags";
 import { cn } from "@/lib/utils";
 import {
     desktopUpdateActionLabel,
@@ -44,6 +45,7 @@ function statusLine(state: DesktopUpdateState, persistBusy: boolean, latest: str
 }
 
 export function WorkspaceSidebarUpdate({ collapsed }: { collapsed: boolean }) {
+    if (IMAGE_ONLY_RELEASE) return null;
     const reducedMotion = useReducedMotion();
     const updater = useDesktopUpdate();
     const { state, persistBusy, actionBusy, runtime } = updater;
