@@ -113,7 +113,11 @@ export function ChannelSettingsPane({ onOpenDiagnostics, onOpenModels, onOpenRun
         }
         return beginBeefConnection();
     };
-    const userChannels = config.channels.filter((channel) => channel.scope !== "system");
+    // 托管渠道已下线，且项目尚未发布、没有存量用户：不在列表里展示这类条目。
+    // 配置文件里的数据保持原样，不做迁移或删除。
+    const userChannels = config.channels.filter(
+        (channel) => channel.scope !== "system" && !isBuiltinBeefAPIChannel(channel),
+    );
     const runningHubReady = Boolean(config.runningHub.enabled && config.runningHub.baseUrl.trim() && config.runningHub.apiKey.trim() && config.runningHub.workflowId.trim());
 
     const updateChannels = (channels: ModelChannel[], baseConfig = config) => {
