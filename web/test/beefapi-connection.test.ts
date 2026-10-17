@@ -26,12 +26,11 @@ test("connection labels stay user-facing and distinct", () => {
     }
 });
 
-test("starting authorization waits beyond the backend connection budget and preserves cancellation", async () => {
-    const controller = new AbortController();
-    const post = spyOn(http, "post").mockResolvedValue({ state: "pending", hasCredential: false });
+test("starting authorization is retired and never reaches the network", async () => {
+    const post = spyOn(http, "post");
     try {
-        await startBeefAPIConnection(controller.signal);
-        expect(post).toHaveBeenCalledWith("/beefapi/connection/start", {}, { signal: controller.signal, timeout: 35_000 });
+        await expect(startBeefAPIConnection()).rejects.toThrow("托管渠道已下线");
+        expect(post).not.toHaveBeenCalled();
     } finally {
         post.mockRestore();
     }

@@ -1,4 +1,3 @@
-import { http } from "@/services/api/request";
 
 let connectionEpoch = 0;
 export function getBeefAPIConnectionEpoch() {
@@ -32,28 +31,34 @@ export type BeefAPIConnectionSummary = {
     hasCredential?: boolean;
 };
 
-export function getBeefAPIConnection(signal?: AbortSignal) {
-    return http.get<BeefAPIConnectionSummary>("/beefapi/connection", { signal });
+const RETIRED = "托管渠道已下线，连接的接口已删除";
+
+function retiredSummary(): BeefAPIConnectionSummary {
+    return { state: "disconnected", hasCredential: false };
 }
 
-export function startBeefAPIConnection(signal?: AbortSignal) {
+/** 托管渠道已下线：不再发起请求，直接报告未连接。 */
+export function getBeefAPIConnection(_signal?: AbortSignal) {
+    return Promise.resolve(retiredSummary());
+}
+
+export function startBeefAPIConnection(_signal?: AbortSignal): Promise<BeefAPIConnectionSummary> {
     connectionEpoch++;
-    // Authorization may need a proxy handshake and one safe direct attempt.
-    return http.post<BeefAPIConnectionSummary>("/beefapi/connection/start", {}, { signal, timeout: 35_000 });
+    return Promise.reject(new Error(RETIRED));
 }
 
-export function cancelBeefAPIConnection(signal?: AbortSignal) {
+export function cancelBeefAPIConnection(_signal?: AbortSignal) {
     connectionEpoch++;
-    return http.post<BeefAPIConnectionSummary>("/beefapi/connection/cancel", {}, { signal });
+    return Promise.resolve(retiredSummary());
 }
 
-export function disconnectBeefAPIConnection(signal?: AbortSignal) {
+export function disconnectBeefAPIConnection(_signal?: AbortSignal) {
     connectionEpoch++;
-    return http.post<BeefAPIConnectionSummary>("/beefapi/connection/disconnect", {}, { signal });
+    return Promise.resolve(retiredSummary());
 }
 
-export function openBeefAPIWallet(signal?: AbortSignal) {
-    return http.post<{ opened: boolean }>("/beefapi/connection/open-wallet", {}, { signal });
+export function openBeefAPIWallet(_signal?: AbortSignal): Promise<{ opened: boolean }> {
+    return Promise.reject(new Error(RETIRED));
 }
 
 export function beefAPIConnectionLabel(summary: BeefAPIConnectionSummary | null | undefined) {
