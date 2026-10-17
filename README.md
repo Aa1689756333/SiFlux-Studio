@@ -23,10 +23,6 @@
 
 <p align="center">
   <a href="https://github.com/Aa1689756333/SiFlux-Studio/releases/latest"><strong>⬇ 下载最新版</strong></a>
-  &nbsp;·&nbsp;
-  <a href="#从源码构建">从源码构建</a>
-  &nbsp;·&nbsp;
-  <a href="#当前版本">当前版本</a>
 </p>
 
 ## 当前版本
