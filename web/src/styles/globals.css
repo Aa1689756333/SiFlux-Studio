@@ -21410,3 +21410,16 @@ main[data-libtv-readonly-dense="true"] .canvas-floating-dock {
 .canvas-model-picker-description {
     display: none !important;
 }
+
+/* 模型名称下缘被裁切：放宽行高，并允许文字溢出固定高度盒。 */
+.creation-model-picker-menu .canvas-model-picker-option {
+    height: auto !important;
+    min-height: 44px !important;
+    overflow: visible;
+}
+.creation-model-picker-menu .canvas-model-picker-option > .canvas-model-picker-option-content,
+.creation-model-picker-menu .canvas-model-picker-option > .canvas-model-picker-option-content > .canvas-model-picker-option-name {
+    height: auto !important;
+    overflow: visible !important;
+    line-height: 1.5 !important;
+}
