@@ -82,29 +82,8 @@ export function ChannelSettingsPane({ onOpenDiagnostics, onOpenModels, onOpenRun
         }
     };
 
-    useEffect(() => {
-        let cancelled = false;
-        void getBeefAPIConnection()
-            .then((summary) => {
-                if (!cancelled) void applyBeefConnection(summary, undefined);
-            })
-            .catch(() => undefined);
-        return () => {
-            cancelled = true;
-        };
-    }, []);
-
-    useEffect(() => {
-        if (beefConnection?.state !== "pending" && beefConnection?.state !== "connecting") return;
-        let active = true;
-        const timer = window.setInterval(() => {
-            void getBeefAPIConnection()
-                .then((summary) => { if (active) void applyBeefConnection(summary, beefConnection?.state); })
-                .catch(() => undefined);
-        }, 2000);
-        return () => { active = false; window.clearInterval(timer); };
-    }, [beefConnection?.state]);
-
+    // 托管渠道已下线：/beefapi/connection 路由不存在，原先的挂载请求与 2 秒轮询
+    // 只会持续产生 404。这里只保留用户主动点击卡片时的显式动作。
     const runBeefAction = async (action: () => Promise<BeefAPIConnectionSummary>, fallback: string) => {
         setBeefBusy(true);
         const previousConnection = beefConnection;
