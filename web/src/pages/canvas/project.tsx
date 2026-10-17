@@ -1,3 +1,4 @@
+import { IMAGE_ONLY_RELEASE } from "@/lib/release-flags";
 import { localAssetToInsertPayload } from "@/components/canvas/asset-picker-modal";
 import { isCanvasNodeGenerating } from "@/lib/canvas/canvas-node-task-state";
 import { CanvasAssistantSidebar } from "./canvas-assistant-sidebar";
@@ -706,7 +707,7 @@ function InfiniteCanvasPage() {
     });
     const canvasMainRef = useRef<HTMLElement>(null);
     const assistantDockable = useCanvasAssistantDockable(canvasMainRef);
-    const rightPanel = resolveCanvasRightPanel(assistant.open, versions.open);
+    const rightPanel = resolveCanvasRightPanel(!IMAGE_ONLY_RELEASE && assistant.open, versions.open);
     const openVersions = () => { assistant.setOpen(false); setVersionCompareRootId(null); versions.show(); };
     const toggleVersions = () => {
         if (!versions.open) assistant.setOpen(false);
@@ -1878,7 +1879,7 @@ function InfiniteCanvasPage() {
 
     useCanvasKeyboard({
         enabled: projectLoaded && !versions.preview && !directorNodeId,
-        onToggleAssistant: focusMode ? undefined : toggleAssistant,
+        onToggleAssistant: focusMode || IMAGE_ONLY_RELEASE ? undefined : toggleAssistant,
         nodesRef,
         selectedNodeIdsRef,
         selectedConnectionId,
@@ -2574,7 +2575,7 @@ function InfiniteCanvasPage() {
                                 versionsOpen={versions.open}
                                 onToggleVersions={toggleVersions}
                                 assistantOpen={rightPanel === "assistant"}
-                                onToggleAssistant={toggleAssistant}
+                                onToggleAssistant={IMAGE_ONLY_RELEASE ? undefined : toggleAssistant}
                                 // LibTV 的画布工作区使用“未命名工作区”作为首屏默认标题；
                                 // 项目库仍保留“未命名项目”，因此只在画布顶栏做显示层映射。
                                 title={workspaceProject?.title === "未命名项目" || !workspaceProject?.title ? "未命名工作区" : workspaceProject.title}
