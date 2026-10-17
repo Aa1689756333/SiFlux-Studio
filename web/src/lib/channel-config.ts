@@ -2,7 +2,8 @@ import { mergeFetchedChannelModelProfiles } from "@/lib/channel-model-catalog";
 import { seedancePortraitModel } from "@/lib/seedance-portrait";
 import type { ChannelModelFetchResult } from "@/services/api/image";
 import { getTransportFailureKind } from "@/services/api/request";
-import type { BeefAPIConnectionSummary } from "@/services/api/beefapi-connection";
+
+type BeefAPIConnectionSummary = { state?: string };
 import { channelHasGenerationCredential, channelHasManagedBeefAPICredential, filterModelsByCapability, isBuiltinBeefAPIChannel, modelOptionsFromChannels, type AiConfig, type ModelChannel } from "@/stores/use-config-store";
 
 /**

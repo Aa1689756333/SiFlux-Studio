@@ -22,8 +22,10 @@ import { getLocalModelConfig } from "@/services/api/workspace";
 import { commitModelConfig, flushModelConfig, getModelConfigPersistenceState, subscribeModelConfigPersistence, type ModelConfigPersistenceState } from "@/services/model-config-repository";
 import { createChannelCatalogRequests } from "@/services/channel-catalog-requests";
 import { modelCatalogRequestURL } from "@/lib/model-service-presets";
-import { beefAPIConnectionLabel, cancelBeefAPIConnection, disconnectBeefAPIConnection, getBeefAPIConnection, openBeefAPIWallet, startBeefAPIConnection, type BeefAPIConnectionSummary } from "@/services/api/beefapi-connection";
 import { recordChannelDelete, recordChannelDeleteConfirmOpen } from "./model-settings-diagnostics";
+
+// 托管渠道已下线；该分支不会再渲染，仅保留签名所需的结构类型。
+type BeefAPIConnectionSummary = { state?: string; balance?: string };
 
 type UserChannelConnection = "openai" | "gemini";
 type ChannelSettingsPaneProps = {
@@ -41,11 +43,7 @@ export function ChannelSettingsPane({ onOpenDiagnostics, onOpenModels, onOpenRun
     const [loadingChannelIds, setLoadingChannelIds] = useState<string[]>([]);
     const [editingChannelId, setEditingChannelId] = useState<string | null>(null);
     const [serviceEditor, setServiceEditor] = useState<ModelChannel | undefined>(undefined);
-    const [beefConnection, setBeefConnection] = useState<BeefAPIConnectionSummary | null>(null);
-    const [beefBusy, setBeefBusy] = useState(false);
     const appliedConnectionState = useRef<string | undefined>(undefined);
-    const catalogSync = useRef<{ state: string; selection: string; adopt: boolean } | null>(null);
-    const [catalogSyncFailed, setCatalogSyncFailed] = useState(false);
     const requests = useRef(createChannelCatalogRequests());
     const deleting = useRef(new Set<string>());
     const [deleteFailures, setDeleteFailures] = useState<Record<string, string>>({});
@@ -55,66 +53,6 @@ export function ChannelSettingsPane({ onOpenDiagnostics, onOpenModels, onOpenRun
         setLoadingChannelIds((items) => items.filter((item) => item !== id));
     };
 
-    const applyBeefConnection = async (summary: BeefAPIConnectionSummary, previousState = beefConnection?.state) => {
-        setBeefConnection(summary);
-        const retry = catalogSync.current?.state === summary.state ? catalogSync.current : null;
-        if (appliedConnectionState.current === summary.state && !retry) return;
-        appliedConnectionState.current = summary.state;
-        if (!retry && !shouldRefreshBeefAPICatalog(previousState, summary.state)) {
-            catalogSync.current = null;
-            setCatalogSyncFailed(false);
-            return;
-        }
-        const intent = retry || { state: summary.state, selection: useConfigStore.getState().config.assistantModel, adopt: summary.state === "connected" && Boolean(previousState && previousState !== "connected") };
-        catalogSync.current = intent;
-        try {
-            const result = await getLocalModelConfig();
-            if (catalogSync.current !== intent) return;
-            const current = useConfigStore.getState().config;
-            replaceConfig(localWorkspaceConfig(normalizeConfigSnapshot({
-                config: mergeManagedBeefAPICatalog(current, result.config, intent.adopt && current.assistantModel === intent.selection),
-            }).config));
-            catalogSync.current = null;
-            setCatalogSyncFailed(false);
-        } catch {
-            if (catalogSync.current === intent) setCatalogSyncFailed(true);
-            // Keep the connection status even if the catalog refresh fails.
-        }
-    };
-
-    // 托管渠道已下线：/beefapi/connection 路由不存在，原先的挂载请求与 2 秒轮询
-    // 只会持续产生 404。这里只保留用户主动点击卡片时的显式动作。
-    const runBeefAction = async (action: () => Promise<BeefAPIConnectionSummary>, fallback: string) => {
-        setBeefBusy(true);
-        const previousConnection = beefConnection;
-        const previousState = beefConnection?.state;
-        try {
-            const summary = await action();
-            await applyBeefConnection(summary, previousState);
-        } catch (error) {
-            try {
-                await applyBeefConnection(await getBeefAPIConnection(), previousState);
-            } catch {
-                setBeefConnection(previousConnection);
-            }
-            message.error(error instanceof Error ? error.message : fallback);
-        } finally {
-            setBeefBusy(false);
-        }
-    };
-    const beginBeefConnection = () => {
-        setBeefConnection({ state: "connecting", hasCredential: beefConnection?.hasCredential || false });
-        return startBeefAPIConnection();
-    };
-    const retryBeefConnection = async () => {
-        const state = beefConnection?.state;
-        if (state === "expired" || state === "revoked" || state === "rejected") {
-            await disconnectBeefAPIConnection();
-        }
-        return beginBeefConnection();
-    };
-    // 托管渠道已下线，且项目尚未发布、没有存量用户：不在列表里展示这类条目。
-    // 配置文件里的数据保持原样，不做迁移或删除。
     const userChannels = config.channels.filter(
         (channel) => channel.scope !== "system" && !isBuiltinBeefAPIChannel(channel),
     );
@@ -205,7 +143,7 @@ export function ChannelSettingsPane({ onOpenDiagnostics, onOpenModels, onOpenRun
     };
 
     const refreshChannelModels = async (channel: ModelChannel) => {
-        const connectionError = channelConnectionError(channel, isBuiltinBeefAPIChannel(channel) ? beefConnection : null);
+        const connectionError = channelConnectionError(channel, null);
         if (connectionError) {
             message.error(`${channel.name || "当前渠道"}：${connectionError}`);
             return;
@@ -240,10 +178,10 @@ export function ChannelSettingsPane({ onOpenDiagnostics, onOpenModels, onOpenRun
     };
 
     const refreshAllModels = async () => {
-        const runnable = userChannels.filter((channel) => !channelConnectionError(channel, isBuiltinBeefAPIChannel(channel) ? beefConnection : null));
-        const skipped = userChannels.filter((channel) => channelConnectionError(channel, isBuiltinBeefAPIChannel(channel) ? beefConnection : null));
+        const runnable = userChannels.filter((channel) => !channelConnectionError(channel, null));
+        const skipped = userChannels.filter((channel) => channelConnectionError(channel, null));
         if (!runnable.length) {
-            const detail = skipped.map((channel) => `${channel.name || "未命名渠道"}：${channelConnectionError(channel, isBuiltinBeefAPIChannel(channel) ? beefConnection : null)}`).join("；");
+            const detail = skipped.map((channel) => `${channel.name || "未命名渠道"}：${channelConnectionError(channel, null)}`).join("；");
             message.error(detail || "没有可拉取的个人模型渠道，请先填写有效 Base URL 和 API Key");
             return;
         }
@@ -288,7 +226,7 @@ export function ChannelSettingsPane({ onOpenDiagnostics, onOpenModels, onOpenRun
             const warnings = [
                 ...failed.map((item) => `${item.channel.name || "未命名渠道"}：${item.error || "未返回模型"}`),
                 ...stale.map((item) => `${item.channel.name || "未命名渠道"}：连接配置已改变，已忽略旧结果`),
-                ...skipped.map((channel) => `${channel.name || "未命名渠道"}：${channelConnectionError(channel, isBuiltinBeefAPIChannel(channel) ? beefConnection : null)}`),
+                ...skipped.map((channel) => `${channel.name || "未命名渠道"}：${channelConnectionError(channel, null)}`),
             ];
             if (warnings.length) message.warning(`${warnings.join("；")}。未更新的渠道已保留原有模型列表`);
         } catch (error) {
@@ -359,7 +297,7 @@ export function ChannelSettingsPane({ onOpenDiagnostics, onOpenModels, onOpenRun
                                             ) : (
                                                 <span>{channelProtocolLabel(channel)} · 已保存 {channel.models.length} 个模型</span>
                                             )}
-                                            <ChannelStatus channel={channel} persistence={persistence} connection={builtinBeefAPI ? beefConnection : null} />
+                                            <ChannelStatus channel={channel} persistence={persistence} connection={null} />
                                         </div>
                                         {!builtinBeefAPI && <p className="mt-1 break-all text-xs text-foreground/50">模型目录地址：{modelCatalogRequestURL(channel)}</p>}
                                     </div>
@@ -369,7 +307,7 @@ export function ChannelSettingsPane({ onOpenDiagnostics, onOpenModels, onOpenRun
                                             size="small"
                                             icon={<RefreshCw className="size-3.5" />}
                                             loading={loadingChannelIds.includes(channel.id)}
-                                            disabled={loadingChannelIds.includes("all") || (builtinBeefAPI && beefConnection?.state !== "connected")}
+                                            disabled={loadingChannelIds.includes("all")}
                                             onClick={() => void refreshChannelModels(channel)}
                                         >
                                             拉取模型
@@ -460,8 +398,8 @@ export function ChannelSettingsPane({ onOpenDiagnostics, onOpenModels, onOpenRun
                                                     </Form.Item>
                                                     {builtinBeefAPI ? (
                                                         <Form.Item label="账号连接" className="mb-0 sm:col-span-2">
-                                                            <p className="m-0 text-sm leading-6 text-foreground/80">{beefAPIConnectionLabel(beefConnection)}</p>
-                                                            {beefConnection?.balance === "zero" ? <p className="mt-1 text-xs leading-5 text-foreground/55">余额为 0 时仍可查看模型。生成时会提示余额不足。</p> : null}
+                                                            <p className="m-0 text-sm leading-6 text-foreground/80">{"已停用"}</p>
+                                                            {null}
                                                         </Form.Item>
                                                     ) : (
                                                         <>
@@ -633,8 +571,8 @@ export function mergeManagedBeefAPICatalog(current: AiConfig, server: AiConfig, 
 
 export function modelConfigChannelStatusLabel(channel: ModelChannel, persistence: ModelConfigPersistenceState, connection?: BeefAPIConnectionSummary | null) {
     if (isBuiltinBeefAPIChannel(channel)) {
-        if (connection?.state === "connected") return beefAPIConnectionLabel(connection);
-        if (connection?.state && connection.state !== "disconnected") return beefAPIConnectionLabel(connection);
+        if (connection?.state === "connected") return "已停用";
+        if (connection?.state && connection.state !== "disconnected") return "已停用";
         if (channelHasManagedBeefAPICredential(channel)) return "待确认连接";
         return "未连接";
     }

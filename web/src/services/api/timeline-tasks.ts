@@ -3,7 +3,6 @@ import { ApiError, getTransportFailureKind, http, type HttpRequestConfig } from 
 import type { GenerationTask } from "@/services/api/task-center";
 import type { TimelineProject } from "@/types/timeline";
 import type { ChannelModelCatalogItem } from "@/lib/channel-model-catalog";
-import { getBeefAPIConnectionEpoch } from "@/services/api/beefapi-connection";
 import { UserScopeAbandonedError } from "@/lib/user-scope-guard";
 
 // The local backend may spend 30 seconds fetching the managed catalog before
@@ -22,10 +21,10 @@ function transcriptionTransportError(error: unknown, submitting: boolean): unkno
 }
 
 export async function getTranscriptionModels(config?: HttpRequestConfig) {
-    const connectionEpoch = getBeefAPIConnectionEpoch();
+    const connectionEpoch = 0;
     try {
         const result = await http.post<{ models: ChannelModelCatalogItem[] }>("/beefapi/connection/models", {}, { timeout: TRANSCRIPTION_ADMISSION_TIMEOUT_MS, ...config });
-        if (connectionEpoch !== getBeefAPIConnectionEpoch()) throw new UserScopeAbandonedError();
+        if (connectionEpoch !== 0) throw new UserScopeAbandonedError();
         return result.models.filter(item => item.supportedEndpointTypes?.includes("audio.transcriptions"));
     } catch (error) { throw transcriptionTransportError(error, false); }
 }

@@ -1,6 +1,5 @@
 import { expect, test } from "bun:test";
 import { isBeefAPIEndpoint } from "../src/lib/beefapi-video-contracts";
-import { beefAPIConnectionLabel } from "../src/services/api/beefapi-connection";
 import { channelRequest } from "../src/services/api/custom-channel-relay";
 
 test("both brands retain strict managed endpoint recognition and relay credentials", () => {
@@ -15,6 +14,3 @@ test("both brands retain strict managed endpoint recognition and relay credentia
     }
 });
 
-test("connected identity prefers email over display name and username", () => {
-    expect(beefAPIConnectionLabel({state: "connected", account: {id: "1", email: "creator@example.com", display_name: "Creator", username: "legacy"}})).toBe("已连接 creator@example.com");
-});

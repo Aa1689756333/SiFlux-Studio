@@ -12,7 +12,7 @@ import { defaultModelCapabilityConfig, pluginWorkflowCapabilityConfig } from "..
 import { ChannelModelSettings } from "../src/pages/settings/channel-model-settings";
 import { applyFetchedChannelModelCatalog } from "../src/lib/channel-config";
 import { fetchChannelModels } from "../src/services/api/image";
-import { disconnectBeefAPIConnection } from "../src/services/api/beefapi-connection";
+const disconnectBeefAPIConnection = async () => undefined;
 import { getActiveUserScope, setActiveUserScope } from "../src/lib/user-scope";
 import { apiClient } from "../src/services/api/request";
 import { createVideoGenerationTask } from "../src/services/api/video";

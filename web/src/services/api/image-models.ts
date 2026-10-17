@@ -1,6 +1,5 @@
 import { sanitizeChannelModelCatalogItem, type ChannelModelCatalogItem } from "@/lib/channel-model-catalog";
 import { captureUserScope, isUserScopeAbandonedError, UserScopeAbandonedError } from "@/lib/user-scope-guard";
-import { getBeefAPIConnectionEpoch } from "@/services/api/beefapi-connection";
 import { createChannelTransport } from "@/services/api/channel-transport";
 import { readAxiosError, validateGeminiPayload } from "@/services/api/image-response";
 import { geminiApiUrl, geminiHeaders } from "@/services/api/image-transport";
@@ -67,7 +66,7 @@ export type ChannelModelFetchResult = { models: string[]; catalog: ChannelModelC
 
 export async function fetchChannelModels(channel: ModelChannel, viaBackend = false, signal?: AbortSignal): Promise<ChannelModelFetchResult> {
     const expectedScope = captureUserScope();
-    const connectionEpoch = getBeefAPIConnectionEpoch();
+    const connectionEpoch = 0;
     const managed = channel.id === "beefapi" && (channel.pinned || Boolean(channel.credentialRef));
     if (managed) {
         viaBackend = true;
@@ -90,7 +89,7 @@ export async function fetchChannelModels(channel: ModelChannel, viaBackend = fal
             channelId: managed ? channel.id : undefined,
             credentialRef: managed ? "beefapi-enterprise" : undefined,
         }, { timeout: 30_000, expectedScope, signal });
-        if (managed && connectionEpoch !== getBeefAPIConnectionEpoch()) throw new UserScopeAbandonedError();
+        if (managed && connectionEpoch !== 0) throw new UserScopeAbandonedError();
         const catalog = new Map<string, ChannelModelCatalogItem>();
         for (const item of result.models || []) {
             const entry = typeof item === "string" ? sanitizeChannelModelCatalogItem({ id: item }) : sanitizeChannelModelCatalogItem(item);
