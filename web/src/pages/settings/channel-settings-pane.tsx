@@ -364,20 +364,6 @@ export function ChannelSettingsPane({ onOpenDiagnostics, onOpenModels, onOpenRun
                                         {!builtinBeefAPI && <p className="mt-1 break-all text-xs text-foreground/50">模型目录地址：{modelCatalogRequestURL(channel)}</p>}
                                     </div>
                                     <div className="flex w-full flex-wrap justify-end gap-2 sm:w-auto sm:shrink-0">
-                                        {builtinBeefAPI && catalogSyncFailed ? <Button loading={beefBusy} onClick={() => void runBeefAction(getBeefAPIConnection, "无法更新模型列表")}>重试更新模型列表</Button> : null}
-                                        {builtinBeefAPI ? (
-                                            <BeefAPIConnectionActions
-                                                connection={beefConnection}
-                                                busy={beefBusy}
-                                                onConnect={() => void runBeefAction(beginBeefConnection, "无法开始连接")}
-                                                onCancel={() => void runBeefAction(cancelBeefAPIConnection, "无法取消连接")}
-                                                onRetry={() => void runBeefAction(retryBeefConnection, "无法重新连接")}
-                                                onDisconnect={() => void runBeefAction(disconnectBeefAPIConnection, "无法断开连接")}
-                                                onWallet={() => {
-                                                    void openBeefAPIWallet().catch((error) => message.error(error instanceof Error ? error.message : "无法打开 BeefTV 账户"));
-                                                }}
-                                            />
-                                        ) : null}
                                         <Button
                                             className="h-10 sm:h-8"
                                             size="small"
@@ -657,75 +643,6 @@ export function modelConfigChannelStatusLabel(channel: ModelChannel, persistence
     if (persistence.status === "error") return "保存失败";
     if (persistence.status === "saved") return "已保存 · 尚未测试";
     return "尚未测试";
-}
-
-export function BeefAPIConnectionActions({
-    connection,
-    busy,
-    onConnect,
-    onCancel,
-    onRetry,
-    onDisconnect,
-    onWallet,
-}: {
-    connection: BeefAPIConnectionSummary | null;
-    busy: boolean;
-    onConnect: () => void;
-    onCancel: () => void;
-    onRetry: () => void;
-    onDisconnect: () => void;
-    onWallet: () => void;
-}) {
-    const state = connection?.state || "disconnected";
-    const buttonClass = "h-10 sm:h-8";
-    if (state === "connecting") {
-        return <Button className={buttonClass} size="small" loading disabled>正在连接</Button>;
-    }
-    if (state === "pending") {
-        return (
-            <>
-                <Button className={buttonClass} size="small" loading={busy} onClick={onCancel}>
-                    取消
-                </Button>
-            </>
-        );
-    }
-    if (state === "connected") {
-        return (
-            <>
-                <Button className={buttonClass} size="small" onClick={onWallet}>
-                    打开 BeefTV 账户
-                </Button>
-                <Button className={buttonClass} size="small" loading={busy} onClick={onDisconnect}>
-                    断开连接
-                </Button>
-            </>
-        );
-    }
-    if (state === "catalog_failed") {
-        return (
-            <>
-                <Button className={buttonClass} size="small" type="primary" loading={busy} onClick={onRetry}>
-                    重新连接
-                </Button>
-                <Button className={buttonClass} size="small" loading={busy} onClick={onDisconnect}>
-                    断开连接
-                </Button>
-            </>
-        );
-    }
-    if (state === "expired" || state === "revoked" || state === "rejected" || state === "store_error" || state === "connection_error" || state === "cancelled") {
-        return (
-            <Button data-onboarding="official-connect" className={buttonClass} size="small" type="primary" loading={busy} onClick={onRetry}>
-                重新连接
-            </Button>
-        );
-    }
-    return (
-        <Button data-onboarding="official-connect" className={buttonClass} size="small" type="primary" loading={busy} onClick={onConnect}>
-            连接 BeefTV
-        </Button>
-    );
 }
 
 export function modelConfigChannelPresentation(channel: ModelChannel) {
