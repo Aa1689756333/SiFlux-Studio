@@ -157,11 +157,62 @@ func preserveManagedModelConfig(c *gin.Context, svc *app.Service, raw json.RawMe
 	if _, external := externalBusiness(c); external {
 		preserveExternalConfigSecrets(incoming, existing)
 	}
+	preserveBuiltinRelayConnection(incoming, existing)
 	encoded, err := json.Marshal(incoming)
 	if err != nil {
 		return raw
 	}
 	return encoded
+}
+
+const builtinRelayChannelID = "siflux"
+
+// preserveBuiltinRelayConnection pins the built-in relay's connection fields to
+// the stored values, so writing the config directly cannot retarget the relay.
+func preserveBuiltinRelayConnection(incoming, existing map[string]any) {
+	stored := map[string]map[string]any{}
+	if list, ok := existing["channels"].([]any); ok {
+		for _, item := range list {
+			if channel, ok := item.(map[string]any); ok {
+				if id, _ := channel["id"].(string); id != "" {
+					stored[id] = channel
+				}
+			}
+		}
+	}
+	list, ok := incoming["channels"].([]any)
+	if !ok {
+		return
+	}
+	for _, item := range list {
+		channel, ok := item.(map[string]any)
+		if !ok {
+			continue
+		}
+		id, _ := channel["id"].(string)
+		if id != builtinRelayChannelID {
+			continue
+		}
+		original, exists := stored[id]
+		for _, key := range []string{"baseUrl", "apiFormat", "name"} {
+			if exists {
+				if value, ok := original[key]; ok {
+					channel[key] = value
+					continue
+				}
+				delete(channel, key)
+				continue
+			}
+			switch key {
+			case "baseUrl":
+				channel[key] = "https://api.siflux.cn/v1"
+			case "apiFormat":
+				channel[key] = "openai"
+			case "name":
+				channel[key] = "SiFlux 中转站"
+			}
+		}
+	}
 }
 
 func workspaceForLocalRequest(c *gin.Context, svc *app.Service) (workspace.Context, error) {

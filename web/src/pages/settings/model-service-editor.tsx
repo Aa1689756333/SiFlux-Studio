@@ -10,7 +10,7 @@ import { mergeFetchedChannelModelProfiles, type ChannelModelCatalogItem } from "
 import { CAPABILITY_LABELS, MODEL_SERVICE_PRESETS, modelCatalogRequestURL, serviceConnectionError, serviceModelProfile, servicePresetFor, type ModelServicePresetId } from "@/lib/model-service-presets";
 import type { ModelProtocolDefinition } from "@/lib/model-protocols";
 import { seedancePortraitLabel } from "@/lib/seedance-portrait";
-import { createModelChannel, type ModelCapability, type ModelChannel } from "@/stores/use-config-store";
+import { createModelChannel, isBuiltinRelayChannel, type ModelCapability, type ModelChannel } from "@/stores/use-config-store";
 import { ChannelModelSettings } from "./channel-model-settings";
 import { currentModelConnectionReceipt, useModelConnectionTests } from "@/stores/use-model-connection-tests";
 import "./model-service-editor.css";
@@ -26,6 +26,8 @@ function connectionReady(channel: ModelChannel) {
 export function ModelServiceEditor({ initial, onClose, onSave }: { initial: ModelChannel; onClose: () => void; onSave: (channel: ModelChannel) => Promise<void> }) {
     const [draft, setDraft] = useState<ModelChannel>(() => structuredClone(initial));
     const [presetId, setPresetId] = useState<ModelServicePresetId>(() => servicePresetFor(initial));
+    // 内置中转站的连接目标是产品的一部分，不允许在编辑界面改服务商或上游地址。
+    const lockedConnection = isBuiltinRelayChannel(initial);
     const [step, setStep] = useState(() => (connectionReady(initial) ? 1 : 0));
     const [advanced, setAdvanced] = useState(false);
     const [catalog, setCatalog] = useState<ChannelModelCatalogItem[]>(() => (initial.models || []).map((id) => ({ id })));
@@ -161,25 +163,25 @@ export function ModelServiceEditor({ initial, onClose, onSave }: { initial: Mode
         </div>
         <div className="model-service-body" aria-busy={busy} inert={busy}>
             {step === 0 ? <div className="model-service-connection">
-                <aside className="model-service-providers" aria-label="选择服务商">
+                {!lockedConnection && <aside className="model-service-providers" aria-label="选择服务商">
                     <p className="model-service-label">选择服务商</p>
-                    {MODEL_SERVICE_PRESETS.map((preset) => <button key={preset.id} type="button" disabled={busy} aria-pressed={presetId === preset.id} className="model-service-provider" onClick={() => choosePreset(preset.id)}>
+                    {MODEL_SERVICE_PRESETS.map((preset) => <button key={preset.id} type="button" disabled={busy || lockedConnection} aria-pressed={presetId === preset.id} className="model-service-provider" onClick={() => choosePreset(preset.id)}>
                         <ModelLogo icon={preset.icon} size={24} />
                         <span><strong>{preset.name}</strong><small>{preset.subtitle}</small></span>
                         {presetId === preset.id && <Check size={15} />}
                     </button>)}
                     <div className="model-service-note"><ShieldCheck size={16} /><p>密钥保存在这台设备上。<br />生成费用由服务商结算。</p></div>
-                </aside>
+                </aside>}
                 <Form layout="vertical" requiredMark={false} className="model-service-fields" disabled={busy} onFinish={() => void fetchModels()}>
-                    <div className="model-service-form-title"><ModelLogo icon={selectedPreset.icon} size={28} /><div><h3>{selectedPreset.name}</h3>{presetId === "compatible" && <p>用户可以自行添加第三方模型服务，但是 SiFlux 无法确保所有第三方模型服务的兼容性</p>}</div></div>
-                    <Form.Item label="连接名称"><Input aria-label="连接名称" placeholder="例如：我的创作账号" value={draft.name} onChange={(event) => patch({ name: event.target.value })} /></Form.Item>
+                    <div className="model-service-form-title"><ModelLogo icon={selectedPreset.icon} size={28} /><div><h3>{lockedConnection ? "SiFlux 中转站" : selectedPreset.name}</h3>{!lockedConnection && presetId === "compatible" && <p>用户可以自行添加第三方模型服务，但是 SiFlux 无法确保所有第三方模型服务的兼容性</p>}</div></div>
+                    {!lockedConnection && <Form.Item label="连接名称"><Input aria-label="连接名称" placeholder="例如：我的创作账号" value={draft.name} onChange={(event) => patch({ name: event.target.value })} /></Form.Item>}
                     <Form.Item label="API Key"><Input.Password prefix={<KeyRound size={15} />} aria-label="API Key" autoComplete="new-password" placeholder="粘贴你的 API Key" value={draft.apiKey} onChange={(event) => patch({ apiKey: event.target.value })} /></Form.Item>
-                    <Form.Item label="服务地址"><Input aria-label="服务地址" inputMode="url" placeholder="https://api.example.com/v1" value={draft.baseUrl} onChange={(event) => patch({ baseUrl: event.target.value })} /></Form.Item>
+                    {!lockedConnection && <Form.Item label="服务地址"><Input aria-label="服务地址" inputMode="url" placeholder="https://api.example.com/v1" value={draft.baseUrl} onChange={(event) => patch({ baseUrl: event.target.value })} /></Form.Item>}
                     {modelCatalogRequestURL(draft) && <div className="model-service-url"><span>模型目录地址</span><code>{modelCatalogRequestURL(draft).split("/").map((part, index) => <Fragment key={index}>{index > 0 && <>/<wbr /></>}{part}</Fragment>)}</code></div>}
                     <button type="button" className="model-service-advanced" aria-expanded={advanced} onClick={() => setAdvanced(!advanced)}><Settings2 size={15} />高级设置<ChevronDown size={14} /></button>
                     {advanced && <div className="model-service-advanced-fields">
-                        <Form.Item label="素材服务地址（可选）" help="仅在服务商使用独立素材域名时填写。留空时只接受同域素材。"><Input aria-label="素材服务地址" inputMode="url" placeholder="https://assets.example.com" value={draft.referenceAssetOrigin || ""} onChange={(event) => patch({ referenceAssetOrigin: event.target.value })} /></Form.Item>
-                        <Form.Item label="目录接口格式"><Select aria-label="目录接口格式" value={draft.apiFormat} options={[{ value: "openai", label: "OpenAI 兼容" }, { value: "gemini", label: "Gemini 原生" }]} onChange={(apiFormat) => patch({ apiFormat })} /></Form.Item>
+                        <Form.Item label="素材服务地址（可选）" help="仅在服务商使用独立素材域名时填写。留空时只接受同域素材。"><Input aria-label="素材服务地址" inputMode="url" disabled={lockedConnection} placeholder="https://assets.example.com" value={draft.referenceAssetOrigin || ""} onChange={(event) => patch({ referenceAssetOrigin: event.target.value })} /></Form.Item>
+                        <Form.Item label="目录接口格式"><Select aria-label="目录接口格式" disabled={lockedConnection} value={draft.apiFormat} options={[{ value: "openai", label: "OpenAI 兼容" }, { value: "gemini", label: "Gemini 原生" }]} onChange={(apiFormat) => patch({ apiFormat })} /></Form.Item>
                         <Form.Item label="Secret Key（按需填写）"><Input.Password aria-label="Secret Key" autoComplete="new-password" value={draft.secretKey} onChange={(event) => patch({ secretKey: event.target.value })} /></Form.Item>
                         <ChannelHeadersEditor value={draft.headers} onChange={(headers) => patch({ headers })} />
                     </div>}
