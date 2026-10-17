@@ -98,11 +98,6 @@ func ProviderDownloadURL(baseURL string, rawURL string) string {
 	if baseErr != nil || targetErr != nil || !strings.EqualFold(base.Scheme, "https") || !strings.EqualFold(target.Scheme, "https") {
 		return rawURL
 	}
-	if isBeefAPIHost(base.Hostname()) && isBeefAPIHost(target.Hostname()) {
-		target.Scheme = base.Scheme
-		target.Host = base.Host
-		return target.String()
-	}
 	return rawURL
 }
 
