@@ -138,6 +138,8 @@ func (c *Runtime) persistedRecordsForGC() ([]RegistryRecord, error) {
 	return c.readRegistry()
 }
 
+const legacyPluginPackageExtension = ".beeftv-plugin"
+
 func blobFileName(hash string) string {
 	hash = strings.TrimSpace(hash)
 	if hash == "" {
@@ -391,7 +393,9 @@ func validateRecordPackageIdentity(record RegistryRecord) error {
 	if !validPackageSHA256(hash) {
 		return fmt.Errorf("包哈希无效")
 	}
-	if blobFileName(hash) != path {
+	// 旧版本把插件包写成 .beeftv-plugin；改名后仍要能读取既有安装，
+	// 否则老用户升级会直接卡在启动。
+	if blobFileName(hash) != path && hash+legacyPluginPackageExtension != path {
 		return fmt.Errorf("包路径与哈希不一致")
 	}
 	return nil
