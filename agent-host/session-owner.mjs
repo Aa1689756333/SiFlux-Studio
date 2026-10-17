@@ -12,6 +12,8 @@ import crypto from 'node:crypto';
 import { SessionManager } from '@earendil-works/pi-coding-agent';
 import { projectTurnHistory, sessionTitle } from './canvas-turn.mjs';
 
+// On-disk tag of custom entries in existing JSONL sessions. This runtime only reads them
+// (the writing runtime is retired), so renaming the tag would make old history unreadable.
 export const TURN_ENTRY_TYPE = 'beeftv.canvas.turn';
 export const HANDOFF_MESSAGE_LIMIT = 20;
 export const HANDOFF_CHAR_LIMIT = 8000;
