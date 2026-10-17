@@ -45,7 +45,6 @@ function statusLine(state: DesktopUpdateState, persistBusy: boolean, latest: str
 }
 
 export function WorkspaceSidebarUpdate({ collapsed }: { collapsed: boolean }) {
-    if (IMAGE_ONLY_RELEASE) return null;
     const reducedMotion = useReducedMotion();
     const updater = useDesktopUpdate();
     const { state, persistBusy, actionBusy, runtime } = updater;
@@ -88,15 +87,15 @@ export function WorkspaceSidebarUpdate({ collapsed }: { collapsed: boolean }) {
     return (
         <div className={cn("app-workspace-update", collapsed && "is-collapsed")} data-desktop-update-status={state.status} data-desktop-update-runtime={runtime}>
             <AppChangelogButton className="app-workspace-update-version" showIcon={false} showVersion version={installed} versionClassName="tabular-nums" ariaLabel={installed ? `当前版本 ${installed}，查看更新日志` : "查看更新日志"} />
-                <Popover open={collapsed && Boolean(line)} content={collapsed ? statusContent : null} placement="rightBottom" arrow={false} rootClassName="app-workspace-update-popover">
+                {!IMAGE_ONLY_RELEASE && <Popover open={collapsed && Boolean(line)} content={collapsed ? statusContent : null} placement="rightBottom" arrow={false} rootClassName="app-workspace-update-popover">
                 <div className="app-workspace-update-progress" role="status" aria-live="polite">
                     {!line ? <span className="sr-only">{updateLabel}</span> : null}
                     <button type="button" className={cn("app-workspace-update-action", showControls && "has-update", busy && "is-busy")} disabled={!enabled || busy} onClick={() => void handleUpdate()} aria-label={updateLabel} title={tooltip}>
                         {busy ? <LoaderCircle className="size-4 animate-spin" strokeWidth={1.8} aria-hidden="true" /> : state.status === "error" ? <RotateCcw className="size-4" strokeWidth={1.8} aria-hidden="true" /> : <Download className="size-4" strokeWidth={1.8} aria-hidden="true" />}
                     </button>
                 </div>
-                </Popover>
-                {!collapsed ? statusContent : null}
+                </Popover>}
+                {!IMAGE_ONLY_RELEASE && (!collapsed ? statusContent : null)}
             <AppModal
                 open={saveWarningOpen && updater.canForceInstall}
                 title="保存未完成，是否仍然更新？"
