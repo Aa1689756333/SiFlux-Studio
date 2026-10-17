@@ -2,7 +2,6 @@ package generation
 
 import (
 	"context"
-	"errors"
 	"io"
 	"net/http"
 	"net/http/httptest"
