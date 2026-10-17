@@ -71,3 +71,20 @@
 /* 内置中转站不显示服务商列表时，表单独占整行，避免被 270px 列挤窄。 */
 .model-service-connection--solo { grid-template-columns:minmax(0,1fr); }
 .model-service-connection--solo .model-service-fields { max-width:860px; }
+
+/* 单列模式改为两列：API Key 与目录地址并排，高级字段内部同样两列。 */
+.model-service-connection--solo .model-service-fields {
+    display:grid; grid-template-columns:repeat(2,minmax(0,1fr)); column-gap:24px;
+    max-width:none; align-content:start;
+}
+.model-service-connection--solo .model-service-form-title,
+.model-service-connection--solo .model-service-advanced-fields { grid-column:1 / -1; }
+.model-service-connection--solo .model-service-url { margin-top:0; align-self:center; }
+.model-service-connection--solo .model-service-advanced-fields {
+    display:grid; grid-template-columns:repeat(2,minmax(0,1fr)); column-gap:24px; align-items:start;
+}
+.model-service-connection--solo .model-service-advanced-fields > :last-child { grid-column:1 / -1; }
+@media (max-width:820px) {
+    .model-service-connection--solo .model-service-fields,
+    .model-service-connection--solo .model-service-advanced-fields { grid-template-columns:minmax(0,1fr); }
+}
