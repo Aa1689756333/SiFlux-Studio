@@ -1,7 +1,6 @@
 package modelcatalog
 
 import (
-	"infinite-canvas/backend/internal/beefapi"
 	"strings"
 
 	"infinite-canvas/backend/internal/assistant"
@@ -23,7 +22,7 @@ var assistantProtocols = map[string]string{
 	"openai-response": "responses",
 }
 
-var managedAssistantModels = []string{beefapi.DefaultManagedAssistantModel, "claude-opus-5-5", "deepseek-v4.1-flash", "glm-5.3", "gemini-3.8-flash"}
+var managedAssistantModels = []string{"gpt-6-astra", "claude-opus-5-5", "deepseek-v4.1-flash", "glm-5.3", "gemini-3.8-flash"}
 
 type AssistantModelProfile struct {
 	Model      string `json:"model"`

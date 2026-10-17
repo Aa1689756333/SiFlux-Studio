@@ -2,7 +2,6 @@ package modelcatalog
 
 import (
 	"fmt"
-	"infinite-canvas/backend/internal/beefapi"
 	"infinite-canvas/backend/internal/kernel"
 	"infinite-canvas/backend/internal/model"
 	"strings"
@@ -250,6 +249,13 @@ func CapabilityOptionsFromConfig(capability string, config map[string]any, decla
 	return options
 }
 
+// Identifiers of the retired managed channel. They only appear in already-stored configs;
+// keeping them here lets admission still recognize those configs without the vendor package.
+const (
+	legacyManagedChannelID     = "beefapi"
+	legacyManagedCredentialRef = "beefapi-enterprise"
+)
+
 func TaskInputUsesCustomChannel(input map[string]any) bool {
 	if TaskInputUsesWorkflowProvider(input) {
 		return false
@@ -262,7 +268,7 @@ func TaskInputUsesCustomChannel(input map[string]any) bool {
 	baseURL, _ := config["baseUrl"].(string)
 	apiKey, _ := config["apiKey"].(string)
 	credentialRef, _ := config["credentialRef"].(string)
-	if strings.EqualFold(strings.TrimSpace(credentialRef), beefapi.CredentialRef) || strings.TrimSpace(channelID) == beefapi.ChannelID {
+	if strings.EqualFold(strings.TrimSpace(credentialRef), legacyManagedCredentialRef) || strings.TrimSpace(channelID) == legacyManagedChannelID {
 		return strings.TrimSpace(baseURL) != "" && strings.TrimSpace(apiKey) != ""
 	}
 	if strings.TrimSpace(channelID) != "" || SystemChannelIDFromBaseURL(baseURL) != "" {
