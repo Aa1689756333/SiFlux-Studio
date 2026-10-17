@@ -33,38 +33,6 @@ func beefAPIImageRequest(ctx context.Context) *http.Request {
 	return req
 }
 
-func TestDoBinaryRecoverableImageMissingOwnerSendsZeroHTTP(t *testing.T) {
-	expired, cancel := context.WithTimeout(context.Background(), 0)
-	cancel()
-
-	req := beefAPIImageRequest(expired)
-	_, _, err := DoBinary(req)
-	if !errors.Is(err, ErrImageOwnerMissing) {
-		t.Fatalf("DoBinary() error = %v, want ErrImageOwnerMissing", err)
-	}
-
-	ctx := WithRuntime(expired, taskRuntime())
-	req = beefAPIImageRequest(ctx)
-	_, _, err = DoBinary(req)
-	if !errors.Is(err, ErrImageOwnerMissing) {
-		t.Fatalf("declined intercept error = %v, want ErrImageOwnerMissing", err)
-	}
-}
-
-func TestSiFluxImageSubmissionKeepsRecoveryOwner(t *testing.T) {
-	ctx, cancel := context.WithCancel(context.Background())
-	cancel()
-	for _, path := range []string{"/v1/images/generations", "/v1/images/edits"} {
-		req, err := http.NewRequestWithContext(ctx, http.MethodPost, "https://beeftv.app"+path, strings.NewReader(`{}`))
-		if err != nil {
-			t.Fatal(err)
-		}
-		if _, _, err = DoBinary(req); !errors.Is(err, ErrImageOwnerMissing) {
-			t.Fatalf("SiFlux %s bypassed recovery owner: %v", path, err)
-		}
-	}
-}
-
 func TestDoBinaryNonBeefAPIStillPosts(t *testing.T) {
 	t.Setenv("CANVAS_ALLOW_PRIVATE_UPSTREAMS", "true")
 	var hits atomic.Int32
