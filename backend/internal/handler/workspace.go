@@ -139,7 +139,7 @@ func redactModelConfig(c *gin.Context, svc *app.Service, config map[string]any) 
 	if _, external := externalBusiness(c); external {
 		config = redactExternalConfig(config)
 	}
-	return app.RedactLegacyManagedChannel(config)
+	return config
 }
 
 func preserveManagedModelConfig(c *gin.Context, svc *app.Service, raw json.RawMessage) json.RawMessage {
@@ -157,7 +157,6 @@ func preserveManagedModelConfig(c *gin.Context, svc *app.Service, raw json.RawMe
 	if _, external := externalBusiness(c); external {
 		preserveExternalConfigSecrets(incoming, existing)
 	}
-	app.PreserveLegacyManagedChannel(incoming, existing)
 	encoded, err := json.Marshal(incoming)
 	if err != nil {
 		return raw
