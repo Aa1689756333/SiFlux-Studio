@@ -3,7 +3,6 @@ package handler
 import (
 	"encoding/json"
 	"errors"
-	"infinite-canvas/backend/internal/beefapi"
 	"io"
 	"net/http"
 
@@ -140,7 +139,7 @@ func redactModelConfig(c *gin.Context, svc *app.Service, config map[string]any) 
 	if _, external := externalBusiness(c); external {
 		config = redactExternalConfig(config)
 	}
-	return beefapi.RedactConfig(config, false)
+	return app.RedactLegacyManagedChannel(config)
 }
 
 func preserveManagedModelConfig(c *gin.Context, svc *app.Service, raw json.RawMessage) json.RawMessage {
@@ -158,7 +157,7 @@ func preserveManagedModelConfig(c *gin.Context, svc *app.Service, raw json.RawMe
 	if _, external := externalBusiness(c); external {
 		preserveExternalConfigSecrets(incoming, existing)
 	}
-	beefapi.PreserveManagedChannel(incoming, existing, false)
+	app.PreserveLegacyManagedChannel(incoming, existing)
 	encoded, err := json.Marshal(incoming)
 	if err != nil {
 		return raw
