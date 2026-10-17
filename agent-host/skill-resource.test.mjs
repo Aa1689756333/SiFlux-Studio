@@ -74,7 +74,7 @@ test('catalog mirrors available_skills, is bounded, and stays byte-stable across
   let fail = false; let calls = 0;
   const cache = {};
   const section = createSkillCatalogSection({ cache, readCatalog: async () => { calls++; if (fail) throw new Error('offline'); return { skills: items.slice(0, 2) }; } });
-  assert.equal(section.key, 'beeftv_skill_catalog');
+  assert.equal(section.key, 'siflux_skill_catalog');
   const first = await section.render({}, {});
   assert.equal(await section.render({}, {}), first);
   fail = true;

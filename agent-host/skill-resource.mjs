@@ -128,7 +128,7 @@ export function formatSkillCatalog(items) {
 // good text so a transient error never removes and re-adds the section.
 export function createSkillCatalogSection({ readCatalog, cache = {} }) {
   if (typeof readCatalog !== 'function') throw fail('skill_service_unavailable');
-  return section('beeftv_skill_catalog', async (_input, context) => {
+  return section('siflux_skill_catalog', async (_input, context) => {
     try {
       cache.items = normalizeSkillCatalog(await readCatalog(context?.signal));
       cache.text = formatSkillCatalog(cache.items);
