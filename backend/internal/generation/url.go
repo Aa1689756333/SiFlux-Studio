@@ -101,15 +101,6 @@ func ProviderDownloadURL(baseURL string, rawURL string) string {
 	return rawURL
 }
 
-func IsBeefAPIHost(host string) bool {
-	return isBeefAPIHost(host)
-}
-
-func isBeefAPIHost(host string) bool {
-	host = strings.ToLower(strings.TrimSpace(host))
-	return host == "beeftv.app" || host == "beefapi.com" || strings.HasSuffix(host, ".beefapi.com")
-}
-
 func SameProviderOrigin(baseURL string, rawURL string) bool {
 	base, baseErr := url.Parse(strings.TrimSpace(baseURL))
 	target, targetErr := url.Parse(strings.TrimSpace(rawURL))

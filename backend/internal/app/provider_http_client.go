@@ -91,10 +91,6 @@ func providerDownloadURL(baseURL string, rawURL string) string {
 	return generation.ProviderDownloadURL(baseURL, rawURL)
 }
 
-func isBeefAPIHost(host string) bool {
-	return generation.IsBeefAPIHost(host)
-}
-
 func sameProviderOrigin(baseURL string, rawURL string) bool {
 	return generation.SameProviderOrigin(baseURL, rawURL)
 }
