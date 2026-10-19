@@ -59,7 +59,7 @@ func swapWindows(req HelperRequest) error {
 		return err
 	}
 	for _, name := range windowsSidecarEntries {
-		if name == "media-runtime" && !pathExists(filepath.Join(req.StagedPath, name)) {
+		if !pathExists(filepath.Join(req.StagedPath, name)) {
 			continue
 		}
 		target := filepath.Join(targetDir, name)
@@ -78,7 +78,7 @@ func swapWindows(req HelperRequest) error {
 		return errors.Join(err, restoreWindows(req))
 	}
 	for _, name := range windowsSidecarEntries {
-		if name == "media-runtime" && !pathExists(filepath.Join(req.StagedPath, name)) {
+		if !pathExists(filepath.Join(req.StagedPath, name)) {
 			continue
 		}
 		if err := retryIO(func() error { return renamePath(filepath.Join(req.StagedPath, name), filepath.Join(targetDir, name)) }); err != nil {

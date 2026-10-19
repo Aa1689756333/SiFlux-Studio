@@ -95,10 +95,16 @@ func validateDarwinLayout(root string) error {
 }
 
 func validateWindowsLayout(root string) error {
-	if err := validateAgentHost(filepath.Join(root, "agent-host"), "runtime/node.exe", false); err != nil {
-		return err
-	}
 	exe := filepath.Join(root, windowsExeName)
+	if err := requireRegularFile(exe, false); err != nil {
+		return fmt.Errorf("更新包缺少 SiFlux.exe")
+	}
+	agent := filepath.Join(root, "agent-host")
+	if pathExists(agent) {
+		if err := validateAgentHost(agent, "runtime/node.exe", false); err != nil {
+			return err
+		}
+	}
 	// Nest new media in agent-host so old helpers replace it with that sidecar.
 	// Accept the earlier standalone layout too, but require complete resources.
 	for _, media := range []string{filepath.Join(root, "agent-host", "media-runtime"), filepath.Join(root, "media-runtime")} {
@@ -112,32 +118,33 @@ func validateWindowsLayout(root string) error {
 			return err
 		}
 	}
-	if err := requireRegularFile(exe, false); err != nil {
-		return fmt.Errorf("更新包缺少 SiFlux.exe")
-	}
-	if err := requireRegularFile(filepath.Join(root, cliDirName, windowsCLIName), false); err != nil {
-		return fmt.Errorf("更新包缺少随包 siflux CLI: %w", err)
+	if pathExists(filepath.Join(root, cliDirName)) {
+		if err := requireRegularFile(filepath.Join(root, cliDirName, windowsCLIName), false); err != nil {
+			return fmt.Errorf("更新包缺少随包 siflux CLI: %w", err)
+		}
 	}
 	plugins := filepath.Join(root, pluginDirName)
 	info, err := os.Lstat(plugins)
 	if err != nil || !info.IsDir() {
 		return fmt.Errorf("更新包缺少 plugin-packages")
 	}
-	entries, err := os.ReadDir(plugins)
-	if err != nil {
-		return err
-	}
 	foundPlugin := false
-	for _, entry := range entries {
+	if err := filepath.WalkDir(plugins, func(path string, entry fs.DirEntry, walkErr error) error {
+		if walkErr != nil {
+			return walkErr
+		}
 		if entry.IsDir() {
-			return fmt.Errorf("官方插件目录布局无效")
+			return nil
 		}
 		if strings.HasSuffix(strings.ToLower(entry.Name()), pluginExtension) {
-			if err := requireRegularFile(filepath.Join(plugins, entry.Name()), false); err != nil {
+			if err := requireRegularFile(path, false); err != nil {
 				return err
 			}
 			foundPlugin = true
 		}
+		return nil
+	}); err != nil {
+		return err
 	}
 	if !foundPlugin {
 		return fmt.Errorf("更新包缺少官方插件")

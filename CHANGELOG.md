@@ -9,6 +9,13 @@ All notable public changes to BeefTV are documented in this file.
 - Added reproducible local builds, automated quality checks, and multi-architecture container publishing.
 - Standardized public artifacts, runtime identifiers, documentation, and repository links on the BeefTV name.
 
+## v1.0.3
+
+- 恢复应用内更新入口：安装本版本后，可通过 GitHub Release 检查并安装后续版本，无需卸载重装。
+- 更新包经 ghclone.com 加速下载，并校验签名与文件哈希。
+- 安装改为当前用户目录，后续覆盖更新不需要管理员权限。
+- 图片生成最长等待 30 分钟；超时后可继续取回原任务，不会重复扣费。
+
 ## v1.7.23
 
 - 修复画布内旧版未入库媒体节点拦截新生成结果回写，以及点击「继续取回」闪一下又退回报错的问题；生成完成或继续取回时自动补齐画布素材绑定。

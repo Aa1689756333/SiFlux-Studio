@@ -166,10 +166,10 @@ func addWindowsLayout(zw *zip.Writer, root string, visited map[string]struct{}) 
 	if err := addTree(zw, root, pluginDir, pluginDirName, visited); err != nil {
 		return err
 	}
-	if err := addTree(zw, root, filepath.Join(root, "cli"), "cli", visited); err != nil {
+	if err := addOptionalTree(zw, root, filepath.Join(root, "cli"), "cli", visited); err != nil {
 		return err
 	}
-	if err := addTree(zw, root, filepath.Join(root, "agent-host"), "agent-host", visited); err != nil {
+	if err := addOptionalTree(zw, root, filepath.Join(root, "agent-host"), "agent-host", visited); err != nil {
 		return err
 	}
 	media := filepath.Join(root, "media-runtime")
@@ -179,6 +179,15 @@ func addWindowsLayout(zw *zip.Writer, root string, visited map[string]struct{}) 
 		return err
 	}
 	return addTree(zw, root, media, "media-runtime", visited)
+}
+
+func addOptionalTree(zw *zip.Writer, bundleParent, absPath, zipName string, visited map[string]struct{}) error {
+	if _, err := os.Lstat(absPath); os.IsNotExist(err) {
+		return nil
+	} else if err != nil {
+		return err
+	}
+	return addTree(zw, bundleParent, absPath, zipName, visited)
 }
 
 func addTree(zw *zip.Writer, bundleParent, absPath, zipName string, visited map[string]struct{}) error {
@@ -312,6 +321,8 @@ func validateArchive(platform, zipPath string) error {
 		cliPath = linuxBundleName + "/cli/siflux"
 	}
 	pluginCount := 0
+	cliSeen := false
+	agentFilesSeen := false
 	agentPrefix := "agent-host/"
 	nodeRelative := "runtime/node.exe"
 	if strings.HasPrefix(platform, "darwin-") {
@@ -337,7 +348,11 @@ func validateArchive(platform, zipPath string) error {
 				}
 			}
 		}
-		if name == cliPath {
+		cliPrefix := path.Dir(cliPath) + "/"
+		if name == cliPath || (strings.HasPrefix(name, cliPrefix) && !strings.HasSuffix(name, "/")) {
+			cliSeen = true
+		}
+		if strings.TrimSuffix(name, "/") == cliPath {
 			if !file.Mode().IsRegular() || file.UncompressedSize64 == 0 {
 				return fmt.Errorf("bundled CLI must be a nonempty regular file: %s", cliPath)
 			}
@@ -347,6 +362,7 @@ func validateArchive(platform, zipPath string) error {
 			hasCLI = true
 		}
 		if rel, ok := strings.CutPrefix(name, agentPrefix); ok {
+			agentFilesSeen = true
 			if _, required := requiredAgent[rel]; required && file.Mode().IsRegular() && file.UncompressedSize64 > 0 {
 				requiredAgent[rel] = true
 				if rel == nodeRelative && platform != platformWindowsAMD64 && file.Mode()&0o111 == 0 {
@@ -385,7 +401,7 @@ func validateArchive(platform, zipPath string) error {
 			pluginCount++
 		}
 	}
-	if !hasCLI {
+	if (platform != platformWindowsAMD64 || cliSeen) && !hasCLI {
 		return fmt.Errorf("archive missing bundled CLI: %s", cliPath)
 	}
 	for prefix, resources := range requiredMedia {
@@ -395,9 +411,11 @@ func validateArchive(platform, zipPath string) error {
 			}
 		}
 	}
-	for name, found := range requiredAgent {
-		if !found {
-			return fmt.Errorf("archive missing agent-host resource: %s%s", agentPrefix, name)
+	if platform != platformWindowsAMD64 || agentFilesSeen {
+		for name, found := range requiredAgent {
+			if !found {
+				return fmt.Errorf("archive missing agent-host resource: %s%s", agentPrefix, name)
+			}
 		}
 	}
 	switch platform {

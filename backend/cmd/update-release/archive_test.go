@@ -340,6 +340,12 @@ func TestPackageRejectsInvalidCLI(t *testing.T) {
 					}
 				}
 				out := filepath.Join(t.TempDir(), "out.zip")
+				if defect == "missing" && platform == platformWindowsAMD64 {
+					if err := packageBundle(platform, root, out); err != nil {
+						t.Fatalf("Windows package without CLI should succeed: %v", err)
+					}
+					return
+				}
 				if err := packageBundle(platform, root, out); err == nil {
 					t.Fatal("invalid CLI accepted")
 				}
@@ -371,6 +377,30 @@ func TestPackageRejectsMissingAgentRuntime(t *testing.T) {
 	}
 	if err := packageBundle(platformWindowsAMD64, bin, filepath.Join(t.TempDir(), "out.zip")); err == nil || !strings.Contains(err.Error(), "agent-host") {
 		t.Fatalf("missing runtime accepted: %v", err)
+	}
+}
+
+func TestPackageWindowsMinimalLayout(t *testing.T) {
+	dir := t.TempDir()
+	if err := os.MkdirAll(filepath.Join(dir, "plugin-packages", "unpacked"), 0o755); err != nil {
+		t.Fatal(err)
+	}
+	if err := os.WriteFile(filepath.Join(dir, "SiFlux.exe"), []byte("exe"), 0o755); err != nil {
+		t.Fatal(err)
+	}
+	if err := os.WriteFile(filepath.Join(dir, "plugin-packages", "core.siflux-plugin"), []byte("p"), 0o644); err != nil {
+		t.Fatal(err)
+	}
+	out := filepath.Join(t.TempDir(), "out.zip")
+	if err := packageBundle(platformWindowsAMD64, dir, out); err != nil {
+		t.Fatal(err)
+	}
+	names := zipNames(t, out)
+	if !names["SiFlux.exe"] || !names["plugin-packages/core.siflux-plugin"] {
+		t.Fatalf("minimal windows zip layout %v", names)
+	}
+	if names["cli/siflux.exe"] || names["agent-host/runtime/node.exe"] {
+		t.Fatalf("minimal zip should omit optional sidecars: %v", names)
 	}
 }
 
