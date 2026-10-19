@@ -17,9 +17,9 @@ import (
 	"infinite-canvas/backend/internal/model"
 )
 
-const imageRecoveryMaxSends = 12
+const imageRecoveryMaxSends = 40
 const imageRecoveryLifetime = 23 * time.Hour
-const imageRecoveryWait = 10 * time.Minute
+const imageRecoveryWait = 30 * time.Minute
 const imageRequestMaxBytes = 64 << 20
 
 type imageAttemptContext struct{}
@@ -308,7 +308,7 @@ func (s *Service) sendImageSubmissionWith(ctx context.Context, task model.Task, 
 		if (!row.ResponseAccepted && row.SendCount >= imageRecoveryMaxSends) || (row.ResponseAccepted && row.SendCount-initialSendCount >= 3) {
 			return nil, "", imageRecoveryError{sendErr}
 		}
-		delay := time.Second * time.Duration(1<<min(row.SendCount, 5))
+		delay := time.Second * time.Duration(1<<min(row.SendCount, 6))
 		var upstream providerHTTPError
 		if errors.As(sendErr, &upstream) && upstream.RetryAfter > delay {
 			delay = upstream.RetryAfter

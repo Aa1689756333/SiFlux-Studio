@@ -1,6 +1,7 @@
 package app
 
 import (
+	"context"
 	"errors"
 
 	"infinite-canvas/backend/internal/generation"
@@ -25,6 +26,10 @@ func applyAppFailureWrappers(err error, failure generation.Failure) generation.F
 		failure.Uncertain = true
 		failure.Reason = "图片结果尚未确认，自动恢复已停止"
 		failure.Action = "请保留任务记录并联系支持查询结果，不要重复提交"
+		if errors.Is(err, context.DeadlineExceeded) {
+			failure.Reason = "等待模型返回超时，图片结果尚未确认"
+			failure.Action = "可稍后重新生成；若担心重复扣费，请先联系支持查询结果"
+		}
 		var preparation imagePreparationError
 		if errors.As(err, &preparation) {
 			failure.Reason = "图片提交记录无法确认，自动恢复已停止"
