@@ -4,6 +4,7 @@ import (
 	"errors"
 	"net/http"
 	"net/url"
+	"os"
 	"strings"
 
 	"infinite-canvas/backend/internal/providerpreset"
@@ -19,6 +20,10 @@ var ErrImageOwnerMissing = errors.New("图片请求缺少恢复所有者")
 // relays that acknowledge Idempotency-Key, so every other host stays on the
 // normal POST path.
 func RecoverableImageEndpoint(req *http.Request) bool {
+	// 重放依赖中转站按 Idempotency-Key 去重，未验证前保持关闭。
+	if os.Getenv("CANVAS_IMAGE_IDEMPOTENT_REPLAY") != "1" {
+		return false
+	}
 	if req == nil || req.URL == nil || req.Method != http.MethodPost || req.URL.Scheme != "https" || req.URL.User != nil || req.URL.RawQuery != "" || (req.URL.Port() != "" && req.URL.Port() != "443") {
 		return false
 	}

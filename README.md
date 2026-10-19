@@ -40,7 +40,7 @@
 ## 下载与安装
 
 1. 打开 [Releases](https://github.com/Aa1689756333/SiFlux-Studio/releases/latest)
-2. 下载 `SiFlux-1.0.1-amd64-installer.exe`
+2. 下载 `SiFlux-1.0.2-amd64-installer.exe`
 3. 运行安装程序
 
 要求 Windows 10/11 x64，系统需具备 WebView2（Win11 自带，Win10 安装程序会提示）。
