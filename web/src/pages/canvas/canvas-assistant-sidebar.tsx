@@ -176,7 +176,7 @@ export function CanvasAssistantSidebar(props: Props) {
                 <Dropdown trigger={["click"]} placement="bottomRight" menu={{ items: sessionItems, selectedKeys: assistant.sessionId ? [assistant.sessionId] : [] }}>
                     <Button type="text" size="small" aria-label="历史对话" disabled={assistant.streaming || assistant.sessionBusy} icon={<History className="size-4" />} />
                 </Dropdown>
-                <Tooltip title="关闭 Agent">
+<Tooltip title="关闭 Agent">
                     <Button type="text" size="small" aria-label="关闭 Agent" icon={<X className="size-4" />} onClick={() => assistant.setOpen(false)} />
                 </Tooltip>
             </header>

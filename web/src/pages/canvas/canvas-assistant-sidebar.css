@@ -286,8 +286,9 @@
 .canvas-assistant-composer-footer {
     display: flex;
     align-items: center;
-    gap: 8px;
+    gap: 4px;
 }
+.canvas-assistant-composer-spacer { flex: 1 1 auto; min-width: 8px; }
 .canvas-assistant-composer-tools { display: flex; align-items: center; gap: 4px; }
 .canvas-assistant-composer-settings { display: flex; flex: 1; min-width: 0; align-items: center; gap: 2px; flex-wrap: wrap; }
 .canvas-assistant-composer-actions { display: flex; flex-shrink: 0; align-items: center; gap: 6px; }
@@ -305,13 +306,16 @@
 .canvas-assistant-picker button { text-align: left; padding: 6px; border-radius: var(--radius-sm); overflow-wrap: anywhere; }
 .canvas-assistant-picker button[aria-pressed="true"] { background: var(--muted); font-weight: 500; }
 .canvas-assistant-model {
-    flex: 1;
+    flex: 0 0 auto;
+    width: 148px;
+    max-width: 148px;
     min-width: 0;
     font-size: 12px;
     color: var(--muted-foreground);
 }
 .canvas-assistant-model.ant-select {
-    max-width: calc(100% - 48px);
+    width: 148px;
+    max-width: 148px;
 }
 .canvas-assistant-panel button:focus-visible {
     outline: 2px solid var(--ring);

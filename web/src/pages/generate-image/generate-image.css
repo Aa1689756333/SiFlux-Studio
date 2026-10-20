@@ -1,0 +1,343 @@
+.siflux-image-gen {
+    --image-gen-border: var(--user-border);
+    height: 100%;
+    min-height: 0;
+    display: grid;
+    grid-template-rows: auto 1fr auto;
+    color: var(--user-ink);
+    background: var(--user-page-bg);
+}
+.siflux-image-gen-header {
+    display: flex;
+    align-items: flex-end;
+    justify-content: space-between;
+    gap: 16px;
+    padding: 28px 32px 12px;
+}
+.siflux-image-gen-header h1 {
+    margin: 0;
+    font-size: 22px;
+    line-height: 30px;
+    font-weight: 600;
+}
+.siflux-image-gen-header p {
+    margin: 4px 0 0;
+    color: var(--user-ink-muted);
+    font-size: 13px;
+    line-height: 20px;
+}
+.siflux-image-gen-body {
+    min-height: 0;
+    display: grid;
+    grid-template-columns: minmax(0, 1fr) 280px;
+    gap: 16px;
+    padding: 0 32px 16px;
+}
+.siflux-image-gen-results,
+.siflux-image-gen-history {
+    min-height: 0;
+    overflow: auto;
+    border: 1px solid var(--image-gen-border);
+    border-radius: 18px;
+    background: var(--user-surface);
+}
+.siflux-image-gen-results {
+    padding: 16px;
+}
+.siflux-image-gen-empty {
+    height: 100%;
+    min-height: 220px;
+    display: grid;
+    place-items: center;
+    color: var(--user-ink-muted);
+    text-align: center;
+}
+.siflux-image-gen-empty strong {
+    display: block;
+    color: var(--user-ink);
+    font-size: 16px;
+    font-weight: 500;
+}
+.siflux-image-gen-empty span {
+    display: block;
+    margin-top: 6px;
+    font-size: 13px;
+}
+.siflux-image-gen-grid {
+    display: grid;
+    grid-template-columns: repeat(auto-fill, minmax(220px, 1fr));
+    gap: 12px;
+}
+.siflux-image-gen-card {
+    position: relative;
+    overflow: hidden;
+    border-radius: 14px;
+    background: var(--user-surface-muted);
+    aspect-ratio: 1;
+}
+.siflux-image-gen-card img {
+    width: 100%;
+    height: 100%;
+    object-fit: cover;
+}
+.siflux-image-gen-card-missing {
+    display: grid;
+    height: 100%;
+    place-items: center;
+    color: var(--user-ink-soft);
+    font-size: 13px;
+}
+.siflux-image-gen-download {
+    position: absolute;
+    right: 10px;
+    bottom: 10px;
+    display: inline-flex;
+    align-items: center;
+    gap: 6px;
+    border: 0;
+    border-radius: 999px;
+    padding: 6px 10px;
+    background: color-mix(in srgb, var(--user-page-bg) 82%, transparent);
+    color: var(--user-ink);
+    cursor: pointer;
+}
+.siflux-image-gen-status,
+.siflux-image-gen-error {
+    margin: 0 0 12px;
+}
+.siflux-image-gen-status {
+    color: var(--user-ink-muted);
+    font-size: 13px;
+}
+.siflux-image-gen-history {
+    display: flex;
+    flex-direction: column;
+}
+.siflux-image-gen-history header {
+    display: flex;
+    align-items: center;
+    justify-content: space-between;
+    padding: 14px 14px 8px;
+    font-size: 13px;
+    color: var(--user-ink-muted);
+}
+.siflux-image-gen-history ul {
+    margin: 0;
+    padding: 0 8px 12px;
+    list-style: none;
+}
+.siflux-image-gen-history-item {
+    display: grid;
+    grid-template-columns: minmax(0, 1fr) auto;
+    gap: 8px;
+    width: 100%;
+    margin: 0 0 6px;
+    border: 0;
+    border-radius: 12px;
+    padding: 10px;
+    background: transparent;
+    color: inherit;
+    text-align: left;
+    cursor: pointer;
+}
+.siflux-image-gen-history-item.is-active,
+.siflux-image-gen-history-item:hover {
+    background: var(--user-surface-hover);
+}
+.siflux-image-gen-history-item strong,
+.siflux-image-gen-history-item small {
+    display: block;
+    overflow: hidden;
+    text-overflow: ellipsis;
+    white-space: nowrap;
+}
+.siflux-image-gen-history-item strong {
+    font-size: 13px;
+    font-weight: 500;
+}
+.siflux-image-gen-history-item small {
+    margin-top: 4px;
+    color: var(--user-ink-muted);
+    font-size: 12px;
+}
+.siflux-image-gen-history-delete {
+    border: 0;
+    background: none;
+    color: var(--user-ink-muted);
+    cursor: pointer;
+}
+.siflux-image-gen-composer {
+    display: grid;
+    gap: 10px;
+    margin: 0 32px 28px;
+    border: 1px solid var(--image-gen-border);
+    border-radius: 20px;
+    padding: 14px;
+    background: var(--user-surface);
+}
+.siflux-image-gen-refs {
+    display: flex;
+    flex-wrap: wrap;
+    gap: 8px;
+}
+.siflux-image-gen-ref {
+    position: relative;
+    width: 56px;
+    height: 56px;
+    overflow: hidden;
+    border-radius: 10px;
+    background: var(--user-surface-muted);
+}
+.siflux-image-gen-ref img {
+    width: 100%;
+    height: 100%;
+    object-fit: cover;
+}
+.siflux-image-gen-ref button {
+    position: absolute;
+    top: 2px;
+    right: 2px;
+    width: 18px;
+    height: 18px;
+    border: 0;
+    border-radius: 999px;
+    background: color-mix(in srgb, var(--user-page-bg) 80%, transparent);
+    color: var(--user-ink);
+    cursor: pointer;
+}
+.siflux-image-gen-prompt {
+    width: 100%;
+    min-height: 88px;
+    resize: vertical;
+    border: 0;
+    background: transparent;
+    color: inherit;
+    font: inherit;
+    outline: none;
+}
+.siflux-image-gen-toolbar {
+    display: flex;
+    flex-wrap: wrap;
+    align-items: center;
+    gap: 8px;
+}
+.siflux-image-gen-toolbar .creation-chat-control,
+.siflux-image-gen-toolbar .siflux-image-gen-model.canvas-composer-model-picker,
+.siflux-image-gen-action {
+    display: inline-flex;
+    align-items: center;
+    gap: 6px;
+    height: auto;
+    min-height: 0;
+    min-width: 0;
+    width: auto;
+    max-width: min(240px, 46vw);
+    border: 1px solid var(--image-gen-border);
+    border-radius: 999px;
+    padding: 7px 12px;
+    background: var(--user-surface-muted);
+    box-shadow: none;
+    color: inherit;
+    font: inherit;
+    line-height: 1.2;
+    cursor: pointer;
+}
+.siflux-image-gen-toolbar .siflux-image-gen-model.canvas-composer-model-picker:hover,
+.siflux-image-gen-toolbar .siflux-image-gen-model.canvas-composer-model-picker[aria-expanded="true"] {
+    background: var(--user-surface-hover);
+    box-shadow: none;
+}
+.siflux-image-gen-toolbar .siflux-image-gen-model .canvas-model-picker-chevron {
+    width: 14px;
+    height: 14px;
+    flex: 0 0 auto;
+}
+.siflux-image-gen-action.is-primary {
+    margin-left: auto;
+    border-color: transparent;
+    background: var(--user-ink);
+    color: var(--user-page-bg);
+}
+.siflux-image-gen-action:disabled {
+    opacity: 0.5;
+    cursor: not-allowed;
+}
+.siflux-image-gen-size-count {
+    display: grid;
+    gap: 6px;
+    margin-top: 2px;
+    padding-top: 8px;
+    border-top: 1px solid var(--image-gen-border);
+}
+.siflux-image-gen-size-count header {
+    display: flex;
+    align-items: center;
+    justify-content: space-between;
+    color: var(--user-ink-muted);
+    font-size: 12px;
+}
+.siflux-image-gen-size-count header strong {
+    color: var(--user-ink);
+    font-weight: 500;
+}
+.siflux-image-gen-count {
+    display: grid;
+    grid-template-columns: repeat(4, minmax(0, 1fr));
+    gap: 4px;
+}
+.siflux-image-gen-count button {
+    min-height: 32px;
+    border: 0;
+    border-radius: 8px;
+    padding: 6px 8px;
+    background: var(--user-surface-muted);
+    color: inherit;
+    cursor: pointer;
+}
+.siflux-image-gen-count button.is-selected {
+    background: var(--user-surface-hover);
+}
+.siflux-image-gen-size-menu {
+    width: 280px;
+    max-height: none;
+    overflow: visible;
+}
+.siflux-image-gen-size-menu .image-size-picker {
+    gap: 6px;
+}
+.siflux-image-gen-size-menu .image-size-ratios {
+    grid-template-columns: repeat(4, minmax(0, 1fr));
+    gap: 4px;
+}
+.siflux-image-gen-size-menu .image-size-ratios button {
+    min-height: 44px;
+    gap: 4px;
+    padding: 4px;
+}
+.siflux-image-gen-size-menu .image-size-hint {
+    display: none;
+}
+.siflux-image-gen-size-menu .image-size-output {
+    padding: 6px 8px;
+}
+.creation-control-popover:has(.siflux-image-gen-size-menu) .ant-popover-inner,
+.creation-control-popover:has(.siflux-image-gen-size-menu) .ant-popover-inner-content {
+    max-height: none;
+    overflow: visible;
+}
+@media (max-width: 980px) {
+    .siflux-image-gen-header,
+    .siflux-image-gen-body,
+    .siflux-image-gen-composer {
+        margin-inline: 16px;
+        padding-inline: 16px;
+    }
+    .siflux-image-gen-header { padding-left: 0; padding-right: 0; }
+    .siflux-image-gen-body {
+        grid-template-columns: 1fr;
+        padding-left: 0;
+        padding-right: 0;
+    }
+    .siflux-image-gen-history { max-height: 220px; }
+    .siflux-image-gen-composer { margin-inline: 16px; }
+}

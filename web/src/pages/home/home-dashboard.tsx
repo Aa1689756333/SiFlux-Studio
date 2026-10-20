@@ -1,45 +1,59 @@
-import { ArrowRight, Plus, RefreshCw } from "lucide-react";
+import { ArrowRight, AudioLines, HardDrive, Image as ImageIcon, Plus, RefreshCw, Video } from "lucide-react";
 import { Link, useNavigate } from "react-router";
 import type { CanvasLibrarySummary } from "@/services/api/workspace-data";
 import { ProjectPreview } from "@/components/canvas/canvas-project-card";
 import { IMAGE_ONLY_RELEASE } from "@/lib/release-flags";
-import { beefTVCapabilityItems } from "./home-data";
+
+export type HomeUsageOverview = {
+    imageOutputs: number;
+    videoOutputs: number;
+    audioOutputs: number;
+    storageUsed: string;
+    storageHint: string;
+    loading: boolean;
+};
+
 function formatDate(value: string) {
     const date = new Date(value);
     if (Number.isNaN(date.getTime())) return "刚刚更新";
     return new Intl.DateTimeFormat("zh-CN", { year: "numeric", month: "2-digit", day: "2-digit" }).format(date).replaceAll("/", "-");
 }
 
-export function HomeDashboard({ projects, loading, error, onRetry }: { projects: CanvasLibrarySummary[]; loading: boolean; error: boolean; onRetry: () => void }) {
+function OverviewCard({ to, icon: Icon, label, value, hint }: { to: string; icon: typeof ImageIcon; label: string; value: string; hint: string }) {
+    return (
+        <Link to={to} className="siflux-home-stat">
+            <span className="siflux-home-stat-icon"><Icon /></span>
+            <span className="siflux-home-stat-copy">
+                <small>{label}</small>
+                <strong>{value}</strong>
+                <em>{hint}</em>
+            </span>
+        </Link>
+    );
+}
+
+export function HomeDashboard({
+    projects, loading, error, onRetry, usage,
+}: {
+    projects: CanvasLibrarySummary[];
+    loading: boolean;
+    error: boolean;
+    onRetry: () => void;
+    usage: HomeUsageOverview;
+}) {
     const navigate = useNavigate();
+    const pending = usage.loading ? "…" : undefined;
     return (
         <main className="siflux-home" aria-label="SiFlux Studio 首页">
-            {!IMAGE_ONLY_RELEASE && <section className="siflux-home-hero" aria-label="新建画布">
-                <span className="siflux-home-dot-base" aria-hidden />
-                <span className="siflux-home-dot-flow" aria-hidden />
-                <span className="siflux-home-dot-flow siflux-home-dot-flow-delay" aria-hidden />
-                <button type="button" className="siflux-home-create" onClick={() => navigate("/canvas?mode=new")}>
-                    <span className="siflux-home-create-icon"><Plus /></span>
-                    <span className="siflux-home-create-title">新建画布创作</span>
-                </button>
-            </section>}
-
-            <nav className="siflux-capabilities" aria-label="创作能力">
-                {beefTVCapabilityItems.map(({ id, label, detail, to, icon: Icon, disabled }) => (
-                    disabled ? (
-                        <span key={id} className="siflux-capability is-disabled" aria-disabled="true" title={`${label}：${detail}`}>
-                            <span className="siflux-capability-icon"><Icon /></span>
-                            <strong>{label}</strong>
-                        </span>
-                    ) : (
-                        <Link key={id} to={to} className="siflux-capability" title={detail}>
-                            <span className="siflux-capability-icon"><Icon /></span>
-                            <strong>{label}</strong>
-                        </Link>
-                    )
-                ))}
-            </nav>
-
+            <section className="siflux-home-section siflux-usage-overview">
+                <header className="siflux-section-heading"><h2>用量概览</h2><Link to="/usage">查看全部 <ArrowRight /></Link></header>
+                <div className="siflux-home-stats">
+                    <OverviewCard to="/usage" icon={ImageIcon} label="图片产出" value={pending ?? String(usage.imageOutputs)} hint="近 7 天 · 张" />
+                    {!IMAGE_ONLY_RELEASE ? <OverviewCard to="/usage" icon={Video} label="视频产出" value={pending ?? String(usage.videoOutputs)} hint="近 7 天 · 条" /> : null}
+                    {!IMAGE_ONLY_RELEASE ? <OverviewCard to="/usage" icon={AudioLines} label="音频产出" value={pending ?? String(usage.audioOutputs)} hint="近 7 天 · 条" /> : null}
+                    <OverviewCard to="/usage" icon={HardDrive} label="存储占用" value={pending && !usage.storageUsed ? "…" : usage.storageUsed} hint={usage.storageHint} />
+                </div>
+            </section>
             <section className="siflux-home-section siflux-recents">
                 <header className="siflux-section-heading"><h2>最近项目</h2><Link to="/project">查看全部 <ArrowRight /></Link></header>
                 {error ? (

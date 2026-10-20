@@ -19,4 +19,12 @@ func TestCompareStableRejectsEqualAndDowngrade(t *testing.T) {
 	if err != nil || cmp >= 0 {
 		t.Fatalf("dev = %d %v", cmp, err)
 	}
+	cmp, err = compareStable("1.5.1", "v1.5.1")
+	if err != nil || cmp != 0 {
+		t.Fatalf("unprefixed equal = %d %v", cmp, err)
+	}
+	cmp, err = compareStable("1.5.1", "v1.5.2")
+	if err != nil || cmp >= 0 {
+		t.Fatalf("unprefixed upgrade = %d %v", cmp, err)
+	}
 }

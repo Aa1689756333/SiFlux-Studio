@@ -167,6 +167,27 @@ const defaultGenerationTaskListDependencies: GenerationTaskListDependencies = {
     }),
 };
 
+export type TaskUsageCall = {
+    id: string;
+    taskId?: string;
+    model?: string;
+    channelName?: string;
+    capability?: string;
+    status?: string;
+    requestKind?: string;
+    inputTokens?: number;
+    outputTokens?: number;
+    cachedTokens?: number;
+    usageAvailable?: boolean;
+    durationMs?: number;
+    createdAt: string;
+};
+
+export async function listTaskUsageCalls(limit = 300, signal?: AbortSignal) {
+    const bounded = Number.isFinite(limit) ? Math.max(1, Math.min(500, Math.trunc(limit))) : 300;
+    return http.get<TaskUsageCall[]>("/tasks/usage-calls", { params: { limit: bounded }, signal });
+}
+
 export async function listGenerationTasks(limit = 30, options?: { projectId?: string; activeOnly?: boolean }, dependencies: GenerationTaskListDependencies = defaultGenerationTaskListDependencies, signal?: AbortSignal) {
     if (signal?.aborted) throw new DOMException("Aborted", "AbortError");
     const boundedLimit = Number.isFinite(limit) ? Math.max(1, Math.min(10_000, Math.trunc(limit))) : 30;

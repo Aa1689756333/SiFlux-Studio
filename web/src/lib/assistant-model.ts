@@ -1,5 +1,5 @@
 import type { ModelProtocol } from "@/lib/model-protocols";
-import { decodeChannelModel, encodeChannelModel, isBuiltinBeefAPIChannel, normalizeModelOptionValue, type AiConfig, type ModelChannel } from "@/stores/use-config-store";
+import { compareModelNames, decodeChannelModel, encodeChannelModel, isBuiltinBeefAPIChannel, normalizeModelOptionValue, type AiConfig, type ModelChannel } from "@/stores/use-config-store";
 
 export const MANAGED_ASSISTANT_MODELS = ["gpt-6-astra", "claude-opus-5-5", "deepseek-v4.1-flash", "glm-5.3", "gemini-3.8-flash"] as const;
 
@@ -48,7 +48,7 @@ export function assistantModelOptions(config: AiConfig): string[] {
             options.push(option);
         }
     }
-    return options;
+    return options.sort(compareModelNames);
 }
 
 /**

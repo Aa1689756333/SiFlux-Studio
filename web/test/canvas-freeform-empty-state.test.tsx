@@ -66,14 +66,14 @@ describe("BeefTV freeform canvas empty state", () => {
             },
         };
         const labels = resolveAddNodeMenuCommands(context).filter((command) => command.section === "node").slice(0, 8).map((command) => command.label);
-        expect(labels).toEqual(["文本", "图片", "视频", "音频", "导演台", "智能剪辑", "逐帧拉片", "脚本"]);
+        expect(labels).toEqual(["文本", "图片", "视频", "音频", "智能剪辑", "逐帧拉片", "脚本", "绘图"]);
         const commandsByLabel = new Map(resolveAddNodeMenuCommands(context).map((command) => [command.label, command]));
         for (const label of ["智能剪辑", "逐帧拉片", "脚本"]) {
             expect(commandsByLabel.get(label)?.disabledReason).toBe("正在开发");
         }
     });
 
-    test("opens the existing director templates from the professional add-node menu", () => {
+    test("hides director from the professional add-node menu while the release flag is on", () => {
         let opened = false;
         const noop = () => {};
         const context: AddNodeMenuContext = {
@@ -86,11 +86,8 @@ describe("BeefTV freeform canvas empty state", () => {
             },
         };
         const director = resolveAddNodeMenuCommands(context).find((command) => command.id === "director");
-        expect(director).toBeDefined();
-        expect(director?.disabledReason).toBeUndefined();
-        expect(director?.badge).toBeUndefined();
-        director?.run(context);
-        expect(opened).toBe(true);
+        expect(director).toBeUndefined();
+        expect(opened).toBe(false);
         expect(resolveAddNodeMenuCommands({ ...context, workspaceMode: "simple" }).some((command) => command.id === "director")).toBe(false);
     });
 });

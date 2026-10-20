@@ -269,6 +269,25 @@ func (e *Engine) DownloadUpdate(ctx context.Context) (UpdateState, error) {
 		e.fail(ErrNotAvailable.Error())
 		return e.snapshot(), ErrNotAvailable
 	}
+	cmp, err := compareStable(e.currentVersion, verified.payload.Version)
+	if err != nil {
+		e.fail("更新版本号无效。")
+		return e.snapshot(), err
+	}
+	if cmp >= 0 {
+		e.mu.Lock()
+		e.verified = nil
+		e.mu.Unlock()
+		e.set(func(state *UpdateState) {
+			state.Status = StatusIdle
+			state.LatestVersion = verified.payload.Version
+			state.ReleaseNotes = verified.payload.Notes
+			state.DownloadedBytes = 0
+			state.TotalBytes = 0
+			state.Error = ""
+		})
+		return e.snapshot(), ErrNotAvailable
+	}
 	e.set(func(state *UpdateState) {
 		state.InstallPrepared = false
 		state.Status = StatusDownloading

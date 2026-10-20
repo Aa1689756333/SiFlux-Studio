@@ -56,6 +56,9 @@ func (s *Service) Undo(userID, canvasID, turnID string) (int64, error) {
 	if err := requireActor(userID, canvasID); err != nil {
 		return 0, err
 	}
+	if IsWorkspaceConversation(canvasID) {
+		return 0, &Error{Reason: ReasonNoChange, Message: "独立对话没有可撤销的画布改动"}
+	}
 	id := NormalizeTurnID(turnID)
 	if id == "" {
 		return 0, errNotFound()

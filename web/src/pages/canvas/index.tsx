@@ -347,7 +347,7 @@ export default function CanvasPage() {
                                 <div className="libtv-create-project-icon"><Plus /></div>
                                 <strong>开始创作</strong>
                             </article>
-                            <p className="libtv-create-project-subtitle">创建新的视频项目</p>
+                            <p className="libtv-create-project-subtitle">创建新的项目</p>
                         </div>
                         {visibleFolders.map((folder) => <CanvasLibraryFolderTile key={folder.id} folder={folder} onOpen={() => setFolderFilter(folder.id)} onRename={() => { setFolderName(folder.name); setEditingFolderId(folder.id); setFolderDialogOpen(true); }} onDelete={() => setDeletingFolder({ id: folder.id, name: folder.name, scope: captureUserScope() })} onCoverChange={(dataUrl) => {
                             void persistCanvasFolderCover(folder.id, dataUrl).then(() => {

@@ -93,24 +93,22 @@ function collectSourceFiles(directory: string): string[] {
 }
 
 describe("旧内置 Agent 页面入口退场", () => {
-    test("首页不再提供 Agent 能力入口，手工创作入口仍然指向真实画布路径", () => {
+    test("首页展示用量概览和最近项目，不再展示能力入口", () => {
         const markup = renderToStaticMarkup(
             <MemoryRouter>
-                <HomeDashboard projects={[]} loading={false} error={false} onRetry={() => {}} />
+                <HomeDashboard projects={[]} loading={false} error={false} onRetry={() => {}} usage={{ imageOutputs: 0, videoOutputs: 0, audioOutputs: 0, storageUsed: "0 B", storageHint: "0% · 0 B", loading: false }} />
             </MemoryRouter>,
         );
         expect(markup).not.toContain("BeefTV Agent");
         expect(markup).not.toContain('data-mode="agent"');
-        expect(markup).toContain("新建画布创作");
-        for (const [label, href] of [
-            ["自由画布", "/canvas?mode=new"],
-            ["视频生成", "/canvas?mode=new&amp;add=video"],
-            ["图片生成", "/canvas?mode=new&amp;add=image"],
-            ["音频生成", "/canvas?mode=new&amp;add=audio"],
-        ] as const) {
-            expect(markup).toContain(label);
-            expect(markup).toContain(href);
-        }
+        expect(markup).not.toContain("新建画布创作");
+        expect(markup).not.toContain("siflux-home-hero");
+        expect(markup).not.toContain("siflux-capabilities");
+        expect(markup).not.toContain("Agent助手");
+        expect(markup).toContain("用量概览");
+        expect(markup).toContain("/usage");
+        expect(markup).toContain("最近项目");
+        expect(markup).toContain("/project");
     });
 
     test("创作页模式切换只剩图片/视频/文本，不再渲染 Agent 模式", () => {

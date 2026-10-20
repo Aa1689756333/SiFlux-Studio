@@ -1,0 +1,52 @@
+.siflux-agent-page {
+    min-height: 0;
+}
+.siflux-agent-shell {
+    display: flex;
+    flex-direction: column;
+    height: 100%;
+    min-height: 0;
+    background: var(--user-page-bg, var(--background));
+    color: var(--user-ink, var(--foreground));
+}
+.siflux-agent-header {
+    display: flex;
+    align-items: flex-end;
+    justify-content: space-between;
+    gap: 16px;
+    padding: 28px 32px 12px;
+}
+.siflux-agent-header h1 {
+    margin: 0;
+    font-size: 22px;
+    line-height: 30px;
+    font-weight: 600;
+}
+.siflux-agent-header p {
+    margin: 4px 0 0;
+    color: var(--user-ink-muted, var(--muted-foreground));
+    font-size: 13px;
+    line-height: 20px;
+}
+.siflux-agent-header-actions {
+    display: flex;
+    gap: 4px;
+}
+.siflux-agent-log {
+    flex: 1 1 auto;
+    min-height: 0;
+    margin: 0 32px 12px;
+    padding: 16px;
+    overflow: auto;
+    border: 1px solid var(--user-border, var(--border));
+    border-radius: 18px;
+    background: var(--user-surface, var(--background));
+}
+.siflux-agent-shell .canvas-assistant-composer {
+    margin: 0 32px 24px;
+    border: 1px solid var(--user-border, var(--border));
+    border-radius: 18px;
+}
+.siflux-agent-shell .canvas-assistant-permission {
+    display: none;
+}

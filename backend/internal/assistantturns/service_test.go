@@ -868,3 +868,45 @@ func contains(values []string, want string) bool {
 	}
 	return false
 }
+
+func TestBeginWorkspaceAgentDoesNotNeedCanvas(t *testing.T) {
+	fx := openTurnFixture(t)
+	turnID := "aabbccdd112233ee"
+	if _, err := fx.turns.Begin(fx.userID, assistantturns.WorkspaceAgentConversationID, turnID, assistantturns.Input{PermissionMode: assistantturns.PermissionCanvas}); err == nil {
+		t.Fatal("workspace conversation must refuse canvas permission")
+	}
+	rev, err := fx.turns.Begin(fx.userID, assistantturns.WorkspaceAgentConversationID, turnID, assistantturns.Input{PermissionMode: assistantturns.PermissionReadOnly})
+	if err != nil {
+		t.Fatal(err)
+	}
+	if rev != 0 {
+		t.Fatalf("workspace conversation snapshot revision = %d", rev)
+	}
+	if _, err := fx.canvas.UserCanvasProject(fx.userID, assistantturns.WorkspaceAgentConversationID); err == nil {
+		t.Fatal("workspace conversation must not create a canvas project")
+	}
+	if _, err := fx.turns.Undo(fx.userID, assistantturns.WorkspaceAgentConversationID, turnID); err == nil {
+		t.Fatal("workspace conversation undo must fail")
+	}
+}
+
+func TestBeginWorkspaceChatDoesNotNeedCanvas(t *testing.T) {
+	fx := openTurnFixture(t)
+	turnID := "aabbccdd112233ef"
+	if _, err := fx.turns.Begin(fx.userID, assistantturns.WorkspaceChatConversationID, turnID, assistantturns.Input{PermissionMode: assistantturns.PermissionCanvas}); err == nil {
+		t.Fatal("workspace chat must refuse canvas permission")
+	}
+	rev, err := fx.turns.Begin(fx.userID, assistantturns.WorkspaceChatConversationID, turnID, assistantturns.Input{PermissionMode: assistantturns.PermissionReadOnly})
+	if err != nil {
+		t.Fatal(err)
+	}
+	if rev != 0 {
+		t.Fatalf("workspace chat snapshot revision = %d", rev)
+	}
+	if _, err := fx.canvas.UserCanvasProject(fx.userID, assistantturns.WorkspaceChatConversationID); err == nil {
+		t.Fatal("workspace chat must not create a canvas project")
+	}
+	if _, err := fx.turns.Undo(fx.userID, assistantturns.WorkspaceChatConversationID, turnID); err == nil {
+		t.Fatal("workspace chat undo must fail")
+	}
+}

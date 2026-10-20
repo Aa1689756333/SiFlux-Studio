@@ -376,6 +376,13 @@ func (s *Service) APICallLogs(actor *model.User, limit int) ([]model.ApiCallLog,
 	return s.repo.ApiCallLogs(actor.ID, actor.Role == model.UserRoleAdmin, limit)
 }
 
+func (s *Service) GenerationUsageCalls(actor *model.User, limit int) ([]model.ApiCallLog, error) {
+	if actor == nil {
+		return nil, Unauthorized("请先登录")
+	}
+	return s.repo.UserGenerationUsageLogs(actor.ID, limit)
+}
+
 func uniqueNonEmpty(values []string) []string {
 	return kernel.UniqueNonEmpty(values)
 }

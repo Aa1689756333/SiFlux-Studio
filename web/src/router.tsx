@@ -2,18 +2,25 @@ import { lazy, Suspense, type ReactNode } from "react";
 import { Navigate, Outlet, useLocation, useParams } from "react-router";
 
 import { createWorkspaceRouter } from "@/lib/app-routing";
+import { hideAgentDirectorMcp } from "@/lib/release-flags";
 import { FullScreenLoader, WorkspaceRouteLoader } from "@/components/ui/aceternity/full-screen-loader";
-import { loadAgentsPage, loadAssetsPage, loadCanvasPage, loadCanvasProjectPage, loadCreatePage, loadHomePage, loadProjectDetailPage } from "@/lib/workspace-route-modules";
+import { loadAgentPage, loadAgentsPage, loadAssetsPage, loadCanvasPage, loadCanvasProjectPage, loadChatPage, loadCreatePage, loadGenerateAudioPage, loadGenerateImagePage, loadGenerateVideoPage, loadHomePage, loadProjectDetailPage, loadUsagePage } from "@/lib/workspace-route-modules";
 import { CanvasRefreshShell } from "@/pages/canvas/canvas-refresh-shell";
 import RouteErrorPage from "@/pages/route-error";
 import { isLocalWorkspaceMode } from "@/services/workspace-mode";
 
+const AgentPage = lazy(loadAgentPage);
+const ChatPage = lazy(loadChatPage);
+const UsagePage = lazy(loadUsagePage);
 const AgentsPage = lazy(loadAgentsPage);
 const AssetsPage = lazy(loadAssetsPage);
 const HomePage = lazy(loadHomePage);
 const CanvasPage = lazy(loadCanvasPage);
 const CanvasProjectPage = lazy(loadCanvasProjectPage);
 const CreatePage = lazy(loadCreatePage);
+const GenerateImagePage = lazy(loadGenerateImagePage);
+const GenerateAudioPage = lazy(loadGenerateAudioPage);
+const GenerateVideoPage = lazy(loadGenerateVideoPage);
 const NotFound = lazy(() => import("@/pages/not-found"));
 const PluginsPage = lazy(() => import("@/pages/plugins"));
 const EagleLibraryPage = lazy(() => import("@/pages/plugins/eagle"));
@@ -77,6 +84,9 @@ export const router = createWorkspaceRouter([
         children: [
             { path: "/", element: deferred(<HomePage />) },
             { path: "/create", element: deferred(<CreatePage />) },
+            { path: "/generate/image", element: deferred(<GenerateImagePage />) },
+            { path: "/generate/audio", element: deferred(<GenerateAudioPage />) },
+            { path: "/generate/video", element: deferred(<GenerateVideoPage />) },
             {
                 path: "/tasks",
                 // 任务页暂不开放，保留路由以避免旧链接进入半成品界面。
@@ -95,7 +105,10 @@ export const router = createWorkspaceRouter([
                 element: <RequireFeature feature="pluginCenterEnabled">{deferred(<EagleLibraryPage />)}</RequireFeature>,
             },
             { path: "/settings", element: deferred(<SettingsPage />) },
-            { path: "/agents", element: deferred(<AgentsPage />) },
+            { path: "/agent", element: hideAgentDirectorMcp() ? <Navigate to="/" replace /> : deferred(<AgentPage />) },
+            { path: "/chat", element: deferred(<ChatPage />) },
+            { path: "/usage", element: deferred(<UsagePage />) },
+            { path: "/agents", element: hideAgentDirectorMcp() ? <Navigate to="/" replace /> : deferred(<AgentsPage />) },
             { path: "/test-voice-recording", element: deferred(<TestVoiceRecording />) },
             {
                 path: "/projects",

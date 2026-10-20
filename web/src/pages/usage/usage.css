@@ -1,0 +1,160 @@
+.siflux-usage-page .app-page-header { margin-bottom: 18px; }
+.siflux-usage-toolbar { display: flex; gap: 8px; margin-bottom: 20px; }
+.siflux-usage-toolbar button {
+    height: 32px;
+    padding: 0 12px;
+    border: 1px solid var(--user-border, var(--border));
+    border-radius: 999px;
+    background: var(--user-surface, var(--background));
+    color: var(--user-ink-muted, var(--muted-foreground));
+    font-size: 13px;
+}
+.siflux-usage-toolbar button.is-active {
+    border-color: var(--user-ink, var(--foreground));
+    color: var(--user-ink, var(--foreground));
+    font-weight: 500;
+}
+.siflux-usage-hero {
+    display: grid;
+    grid-template-columns: repeat(4, minmax(0, 1fr));
+    gap: 12px;
+    margin-bottom: 20px;
+}
+.siflux-usage-hero article {
+    display: flex;
+    min-height: 112px;
+    flex-direction: column;
+    gap: 6px;
+    padding: 16px 18px;
+    border: 1px solid var(--user-border, var(--border));
+    border-radius: 20px;
+    background: var(--user-surface, var(--background));
+}
+.siflux-usage-hero small { color: var(--user-ink-muted, var(--muted-foreground)); font-size: 13px; }
+.siflux-usage-hero strong {
+    overflow: hidden;
+    font-size: 22px;
+    line-height: 28px;
+    font-weight: 600;
+    text-overflow: ellipsis;
+    white-space: nowrap;
+}
+.siflux-usage-hero em { color: var(--user-ink-muted, var(--muted-foreground)); font-size: 12px; font-style: normal; }
+@media (max-width: 1080px) {
+    .siflux-usage-hero { grid-template-columns: repeat(2, minmax(0, 1fr)); }
+}
+.siflux-usage-panel {
+    margin-bottom: 20px;
+    padding: 16px 18px;
+    border: 1px solid var(--user-border, var(--border));
+    border-radius: 20px;
+    background: var(--user-surface, var(--background));
+}
+.siflux-usage-panel-heading { display: flex; align-items: baseline; justify-content: space-between; gap: 12px; margin-bottom: 14px; }
+.siflux-usage-panel-heading h2 { margin: 0; font-size: 15px; font-weight: 500; }
+.siflux-usage-panel-heading p { margin: 0; color: var(--user-ink-muted, var(--muted-foreground)); font-size: 13px; }
+.siflux-usage-heatmap-modes { display: flex; gap: 14px; }
+.siflux-usage-heatmap-modes button {
+    border: 0;
+    padding: 0;
+    background: none;
+    color: var(--user-ink-muted, var(--muted-foreground));
+    font-size: 13px;
+    font-weight: 500;
+}
+.siflux-usage-heatmap-modes button.is-active { color: var(--user-ink, var(--foreground)); }
+.siflux-usage-heatmap {
+    --weeks: 53;
+    width: 100%;
+    min-width: 0;
+    overflow-x: auto;
+    padding-bottom: 2px;
+}
+.siflux-usage-heatmap-months {
+    display: grid;
+    grid-template-columns: repeat(var(--weeks), minmax(8px, 1fr));
+    gap: 3px;
+    width: 100%;
+    margin: 0 0 6px;
+    color: var(--user-ink-muted, var(--muted-foreground));
+    font-size: 11px;
+    line-height: 16px;
+    white-space: nowrap;
+}
+.siflux-usage-heatmap-months span { overflow: visible; }
+.siflux-usage-heatmap-grid {
+    display: grid;
+    grid-template-rows: repeat(7, auto);
+    grid-auto-flow: column;
+    grid-auto-columns: minmax(8px, 1fr);
+    grid-template-columns: repeat(var(--weeks), minmax(8px, 1fr));
+    gap: 3px;
+    width: 100%;
+}
+.siflux-usage-heat {
+    width: 100%;
+    aspect-ratio: 1;
+    height: auto;
+    min-width: 0;
+    border-radius: 2px;
+    background: color-mix(in srgb, var(--user-ink, var(--foreground)) 7%, var(--user-surface, var(--background)));
+}
+.siflux-usage-heat.is-l1 { background: #c6f6d5; }
+.siflux-usage-heat.is-l2 { background: #68d391; }
+.siflux-usage-heat.is-l3 { background: #38a169; }
+.siflux-usage-heat.is-l4 { background: #276749; }
+.siflux-usage-filters { display: flex; gap: 12px; margin-bottom: 12px; }
+.siflux-usage-filters label { display: flex; align-items: center; gap: 8px; color: var(--user-ink-muted, var(--muted-foreground)); font-size: 13px; }
+.siflux-usage-filters select {
+    height: 32px;
+    padding: 0 10px;
+    border: 1px solid var(--user-border, var(--border));
+    border-radius: 10px;
+    background: var(--user-surface, var(--background));
+    color: var(--user-ink, var(--foreground));
+}
+.siflux-usage-table-wrap { overflow-x: auto; }
+.siflux-usage-pager { display: flex; align-items: center; justify-content: flex-end; gap: 12px; margin-top: 12px; color: var(--user-ink-muted, var(--muted-foreground)); font-size: 13px; }
+.siflux-usage-pager button {
+    height: 28px;
+    padding: 0 10px;
+    border: 1px solid var(--user-border, var(--border));
+    border-radius: 8px;
+    background: var(--user-surface, var(--background));
+    color: inherit;
+}
+.siflux-usage-pager button:disabled { opacity: 0.4; }
+.siflux-usage-kinds { display: grid; grid-template-columns: repeat(3, minmax(0, 1fr)); gap: 12px; margin-bottom: 20px; }
+.siflux-usage-kind {
+    padding: 16px 18px;
+    border: 1px solid var(--user-border, var(--border));
+    border-radius: 20px;
+    background: var(--user-surface, var(--background));
+}
+.siflux-usage-kind header { display: flex; align-items: center; justify-content: space-between; margin-bottom: 12px; }
+.siflux-usage-kind h2 { margin: 0; font-size: 15px; font-weight: 500; }
+.siflux-usage-kind a { color: var(--user-ink-muted, var(--muted-foreground)); font-size: 13px; text-decoration: none; }
+.siflux-usage-kind dl { display: grid; grid-template-columns: 1fr 1fr; gap: 10px 16px; margin: 0; }
+.siflux-usage-kind dt { color: var(--user-ink-muted, var(--muted-foreground)); font-size: 12px; }
+.siflux-usage-kind dd { margin: 2px 0 0; font-size: 16px; font-weight: 500; }
+.siflux-usage-table { width: 100%; border-collapse: collapse; font-size: 13px; }
+.siflux-usage-table th, .siflux-usage-table td { padding: 8px 16px 8px 0; text-align: left; border-bottom: 1px solid var(--user-border, var(--border)); white-space: nowrap; }
+.siflux-usage-table th:last-child, .siflux-usage-table td:last-child { padding-right: 0; }
+.siflux-usage-table th { color: var(--user-ink-muted, var(--muted-foreground)); font-weight: 400; }
+.siflux-usage-col-model { width: 1%; white-space: nowrap; }
+.siflux-usage-note {
+    margin: 0 0 16px;
+    padding: 10px 14px;
+    border-radius: 12px;
+    background: var(--user-surface-muted, var(--muted));
+    color: var(--user-ink-muted, var(--muted-foreground));
+    font-size: 13px;
+}
+.siflux-usage-empty, .siflux-usage-retry { color: var(--user-ink-muted, var(--muted-foreground)); font-size: 13px; }
+.siflux-usage-retry { border: 0; background: none; cursor: pointer; text-decoration: underline; }
+@media (max-width: 1100px) {
+    .siflux-usage-hero, .siflux-usage-kinds { grid-template-columns: repeat(2, minmax(0, 1fr)); }
+}
+@media (max-width: 720px) {
+    .siflux-usage-hero, .siflux-usage-kinds { grid-template-columns: 1fr; }
+}

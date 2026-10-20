@@ -17,6 +17,7 @@ import (
 	"strings"
 	"time"
 
+	"infinite-canvas/backend/internal/assistantturns"
 	"infinite-canvas/backend/internal/editing"
 )
 
@@ -115,28 +116,11 @@ func resolveMediaResource(ctx *Context, args mediaArgs) (string, error) {
 	if strings.TrimSpace(args.CanvasID) == "" || (args.NodeID == "") == (args.AssetID == "") {
 		return "", InvalidArg("invalid_media_target", "指定 canvasId 和一个 nodeId 或 assetId")
 	}
-	// Read the owned canvas even for asset targets; scope authorization is enforced
-	// by the registry before this function, not by model-provided claims.
-	raw, err := ctx.Domain.UserCanvasProject(ctx.UserID, args.CanvasID)
-	if err != nil {
-		return "", mapDomainError(err)
-	}
-	var doc map[string]any
-	if err := json.Unmarshal(raw, &doc); err != nil {
-		return "", AsError(err)
-	}
 	var target any
-	if args.NodeID != "" {
-		for _, candidate := range canvasNodes(doc) {
-			if node, ok := candidate.(map[string]any); ok && node["id"] == args.NodeID {
-				target = node
-				break
-			}
+	if assistantturns.IsWorkspaceConversation(args.CanvasID) {
+		if args.NodeID != "" {
+			return "", PermissionDenied("node_not_in_canvas", "独立对话没有画布节点")
 		}
-		if target == nil {
-			return "", PermissionDenied("node_not_in_canvas", "节点不属于指定画布")
-		}
-	} else {
 		asset, err := ctx.Domain.OwnedAsset(ctx.UserID, args.AssetID)
 		if err != nil {
 			return "", mapDomainError(err)
@@ -146,6 +130,39 @@ func resolveMediaResource(ctx *Context, args mediaArgs) (string, error) {
 		}
 		if err := json.Unmarshal([]byte(asset.PayloadJSON), &target); err != nil {
 			return "", PreconditionFailed("media_reference_unreadable", "素材引用无法读取", nil)
+		}
+	} else {
+		// Read the owned canvas even for asset targets; scope authorization is enforced
+		// by the registry before this function, not by model-provided claims.
+		raw, err := ctx.Domain.UserCanvasProject(ctx.UserID, args.CanvasID)
+		if err != nil {
+			return "", mapDomainError(err)
+		}
+		var doc map[string]any
+		if err := json.Unmarshal(raw, &doc); err != nil {
+			return "", AsError(err)
+		}
+		if args.NodeID != "" {
+			for _, candidate := range canvasNodes(doc) {
+				if node, ok := candidate.(map[string]any); ok && node["id"] == args.NodeID {
+					target = node
+					break
+				}
+			}
+			if target == nil {
+				return "", PermissionDenied("node_not_in_canvas", "节点不属于指定画布")
+			}
+		} else {
+			asset, err := ctx.Domain.OwnedAsset(ctx.UserID, args.AssetID)
+			if err != nil {
+				return "", mapDomainError(err)
+			}
+			if asset == nil {
+				return "", NotFound("asset_not_found", "素材不存在")
+			}
+			if err := json.Unmarshal([]byte(asset.PayloadJSON), &target); err != nil {
+				return "", PreconditionFailed("media_reference_unreadable", "素材引用无法读取", nil)
+			}
 		}
 	}
 	ids := map[string]bool{}

@@ -101,13 +101,10 @@ export function CanvasAssistantComposer({
 
             {disabled && disabledReason ? <span className="canvas-assistant-meta">{disabledReason}</span> : null}
 
-            <div className="canvas-assistant-composer-tools">
+            <div className="canvas-assistant-composer-footer">
                 {onFiles ? <Tooltip title="添加参考素材"><Button type="text" size="small" aria-label="添加参考素材" disabled={disabled || inputBusy} icon={<Paperclip size={15} />} onClick={() => fileInput.current?.click()} /></Tooltip> : null}
                 {onOpenSkills ? <Tooltip title="选择技能"><Button type="text" size="small" aria-label="选择技能" disabled={disabled} icon={<Sparkles size={15} />} onClick={onOpenSkills} /></Tooltip> : null}
                 {onOpenReferences ? <Button type="text" size="small" disabled={disabled} onClick={onOpenReferences}>画布素材</Button> : null}
-            </div>
-            <div className="canvas-assistant-composer-footer">
-                <div className="canvas-assistant-composer-settings">
                 <CanvasAssistantModelPicker busy={disabled || streaming || Boolean(modelBusy)} />
                 {onPermissionChange ? <Tooltip title={permissionLocked ? "本轮权限已固定，结束后可更改" : "选择助手可访问和修改的范围"}>
                     <Select className="canvas-assistant-permission" size="small" variant="borderless" aria-label="助手权限" value={permissionMode} disabled={disabled || permissionLocked}
@@ -117,8 +114,7 @@ export function CanvasAssistantComposer({
                             { value: "full-access", label: "完全访问", title: "查看素材，可修改所有画布" },
                         ]} />
                 </Tooltip> : null}
-                </div>
-                <div className="canvas-assistant-composer-actions">
+                <span className="canvas-assistant-composer-spacer" aria-hidden />
                 {streaming ? (
                     <>
                         <Button size="small" disabled={!canSend} loading={supplementBusy} onClick={onSend}>补充</Button>
@@ -129,7 +125,6 @@ export function CanvasAssistantComposer({
                         <Button className="canvas-assistant-send" shape="circle" type="primary" aria-label="发送" disabled={!canSend} icon={<ArrowUp className="size-4" />} onClick={onSend} />
                     </Tooltip>
                 )}
-                </div>
             </div>
         </footer>
     );

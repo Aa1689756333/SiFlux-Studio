@@ -1,10 +1,9 @@
-import { IMAGE_ONLY_RELEASE } from "@/lib/release-flags";
-import { ChevronLeft, ChevronRight, Home, Plug, Plus, Settings2, HardDrive, Sun, Moon } from "lucide-react";
+import { hideAgentDirectorMcp, IMAGE_ONLY_RELEASE } from "@/lib/release-flags";
+import { AudioLines, BarChart3, Bot, Box, ChevronRight, Home, Image as ImageIcon, MessageSquare, Plug, Plus, Settings2, HardDrive, Sun, Moon, Video } from "lucide-react";
 import { LayoutGroup, motion, useReducedMotion } from "motion/react";
 import { useEffect, useMemo, useRef, useState, type ComponentType, type CSSProperties } from "react";
 import { Link, useLocation, useNavigate, useSearchParams } from "react-router";
 
-import { BrandLogoFrame } from "@/components/brand/brand-logo";
 import { WorkspaceSidebarUpdate } from "@/components/layout/workspace-sidebar-update";
 import { WorkspaceSidebarSocialLinks } from "@/components/layout/workspace-sidebar-social-links";
 import { Kbd } from "@/components/ui/base/kbd";
@@ -13,7 +12,6 @@ import { aceternityMotion } from "@/lib/aceternity-motion";
 import { cn } from "@/lib/utils";
 import { preloadWorkspaceRoute } from "@/lib/workspace-route-modules";
 import { useUserStore, type FeatureAvailability } from "@/stores/use-user-store";
-import { useAppearanceStore } from "@/stores/use-appearance-store";
 import { useThemeStore } from "@/stores/use-theme-store";
 import { getDesktopAppBinding } from "@/services/desktop-runtime";
 import { AnimatedThemeToggler } from "@/components/ui/animated-theme-toggler";
@@ -44,58 +42,38 @@ function buildNav(features: FeatureAvailability): { groups: WorkspaceNavGroup[];
     const groups: WorkspaceNavGroup[] = [
         {
             items: [
-                { id: "new", title: "新建项目", icon: Plus, to: "/canvas?mode=new" },
+                { id: "new", title: "新建画布", icon: Plus, to: "/canvas?mode=new" },
             ],
         },
         {
             items: [
                 { id: "home", title: "首页", icon: Home, to: "/" },
-                { ...toolItem("canvas", "/project"), title: "项目" },
+                { id: "agent", title: "Agent助手", icon: Bot, to: "/agent" },
+                { id: "chat", title: "文本对话", icon: MessageSquare, to: "/chat" },
+                { id: "image", title: "图片生成", icon: ImageIcon, to: "/generate/image" },
+                { id: "audio", title: "音频生成", icon: AudioLines, to: "/generate/audio" },
+                { id: "video", title: "视频生成", icon: Video, to: "/generate/video" },
+                { id: "director", title: "3D 导演台", icon: Box, to: "/canvas?mode=new&start=director" },
+                { ...toolItem("canvas", "/project"), title: "项目库" },
                 { ...toolItem("assets", "/assets"), title: "资产" },
                 { id: "settings:channels", title: "模型配置", icon: Settings2, to: "/settings?section=channels" },
+                { id: "usage", title: "用量统计", icon: BarChart3, to: "/usage" },
                 ...(getDesktopAppBinding()?.StorageSettings ? [{ id: "settings:storage", title: "存储设置", icon: HardDrive, to: "/settings?section=storage" }] : []),
-                { id: "agents", title: "SiFlux MCP", icon: Plug, to: "/agents" },
+                { id: "agents", title: "MCP", icon: Plug, to: "/agents" },
             ],
         },
     ];
 
+    if (hideAgentDirectorMcp()) {
+        groups[1].items = groups[1].items.filter((item) => item.id !== "agents" && item.id !== "agent" && item.id !== "director");
+    }
     if (IMAGE_ONLY_RELEASE) {
-        groups[1].items = groups[1].items.filter((item) => item.id !== "agents");
+        groups[1].items = groups[1].items.filter((item) => item.id !== "chat" && item.id !== "audio" && item.id !== "video");
     }
 
     // 管理、设置和退出登录不再占据参考站式侧栏底部，而是通过用户卡片菜单进入。
     // 路由和写操作仍保留，避免把用户端导航变成无法访问的装饰。
     return { groups, footer: [] };
-}
-
-function WorkspaceSwitcher({ collapsed, onNavigate, onExpand, onCollapse }: { collapsed: boolean; onNavigate: () => void; onExpand: () => void; onCollapse: () => void }) {
-    const appearance = useAppearanceStore((state) => state.appearance);
-
-    if (collapsed) {
-        return (
-            <div className="app-workspace-sidebar-rail-header shrink-0">
-                <button type="button" className="app-workspace-sidebar-rail-button" aria-label="展开侧栏菜单" title="展开侧栏菜单" onClick={onExpand}>
-                    <ChevronRight className="size-4" strokeWidth={1.7} />
-                </button>
-            </div>
-        );
-    }
-
-    return (
-        <div className="app-workspace-sidebar-brand-row relative shrink-0 px-3 pt-3">
-            <Link to="/" onClick={onNavigate} className="app-workspace-sidebar-brand-button group" aria-label={`${appearance.brandName}首页`}>
-                <span className="flex min-w-0 items-center gap-2">
-                    {appearance.logoConfigured ? <BrandLogoFrame className="app-workspace-brand-mark grid size-8 shrink-0 place-items-center rounded-[var(--r-sm)] shadow-sm" logoClassName="size-5 object-contain" alt="" fallback={<span className="app-workspace-brand-placeholder" aria-hidden>B</span>} /> : null}
-                    <span className="flex min-w-0">
-                        <span className="app-workspace-brand-wordmark truncate text-[var(--fs-body)] leading-none font-semibold">{appearance.brandName}</span>
-                    </span>
-                </span>
-            </Link>
-            <button type="button" className="app-workspace-sidebar-collapse-button" aria-label="收起侧栏" title="收起侧栏" onClick={onCollapse}>
-                <ChevronLeft className="size-4" strokeWidth={1.7} />
-            </button>
-        </div>
-    );
 }
 
 function NavItem({
@@ -257,17 +235,18 @@ function NavGroup({ group, activeId, onNavigate, onOpenSearch, collapsed }: { gr
     );
 }
 
-export function WorkspaceSidebarNav({ collapsed, onNavigate, onOpenSearch, onExpand, onCollapse }: { collapsed: boolean; onNavigate: () => void; onOpenSearch: () => void; onExpand: () => void; onCollapse: () => void }) {
+export function WorkspaceSidebarNav({ onNavigate, onOpenSearch }: { onNavigate: () => void; onOpenSearch: () => void }) {
     const theme = useThemeStore((state) => state.theme);
     const setTheme = useThemeStore((state) => state.setTheme);
     const { pathname } = useLocation();
     const [searchParams] = useSearchParams();
+    const collapsed = false;
     const features = useUserStore((state) => state.features);
     const { groups, footer } = useMemo(() => buildNav(features), [features]);
 
     const rawSlug = pathname.split("/").filter(Boolean)[0] || "home";
     // `/project` is the LibTV-compatible alias for the existing canvas library route.
-    const slug = rawSlug === "project" ? "canvas" : rawSlug;
+    const slug = pathname.startsWith("/agents") ? "agents" : pathname.startsWith("/agent") ? "agent" : pathname.startsWith("/usage") ? "usage" : pathname.startsWith("/chat") ? "chat" : pathname.startsWith("/generate/audio") ? "audio" : pathname.startsWith("/generate/video") ? "video" : pathname.startsWith("/generate/image") ? "image" : pathname.startsWith("/canvas") && searchParams.get("start") === "director" ? "director" : rawSlug === "project" ? "canvas" : rawSlug;
     const section = searchParams.get("section");
     const activeId = slug === "settings" && section ? `settings:${section}` : slug;
 
@@ -287,9 +266,7 @@ export function WorkspaceSidebarNav({ collapsed, onNavigate, onOpenSearch, onExp
     }, [groups]);
 
     return (
-        <div className={cn("app-workspace-sidebar-nav flex h-full shrink-0 flex-col", collapsed && "is-collapsed")}>
-            <WorkspaceSwitcher collapsed={collapsed} onNavigate={onNavigate} onExpand={onExpand} onCollapse={onCollapse} />
-
+        <div className={cn("app-workspace-sidebar-nav flex h-full min-w-0 w-full flex-col", collapsed && "is-collapsed")}>
             <LayoutGroup id="workspace-sidebar-nav">
             <div
                 ref={scrollRef}

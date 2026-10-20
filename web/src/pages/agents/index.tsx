@@ -1,4 +1,4 @@
-import { IMAGE_ONLY_RELEASE } from "@/lib/release-flags";
+import { hideAgentDirectorMcp } from "@/lib/release-flags";
 import { useQuery } from "@tanstack/react-query";
 import { App, Button, Popconfirm } from "antd";
 import { Plug } from "lucide-react";
@@ -16,7 +16,7 @@ import { AgentConnectPanel } from "./agent-connect-panel";
 const AGENT_CLIENTS_QUERY_KEY = ["agent-clients"] as const;
 
 export default function AgentsPage() {
-    if (IMAGE_ONLY_RELEASE) return null;
+    if (hideAgentDirectorMcp()) return null;
     const { message } = App.useApp();
     const copyText = useCopyText();
     const [connecting, setConnecting] = useState<AgentClientKind | null>(null);

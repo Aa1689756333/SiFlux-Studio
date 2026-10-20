@@ -24,6 +24,11 @@ export function assistantPermissionMode(value: unknown): AssistantPermissionMode
     return value === "read-only" || value === "full-access" ? value : "canvas";
 }
 
+/** 独立 agent 页的会话分区键。不是画布项目 ID。 */
+export const WORKSPACE_AGENT_CONVERSATION_ID = "workspace-agent";
+/** 独立文本对话页的会话分区键。不是画布项目 ID，也不启用工具和技能。 */
+export const WORKSPACE_CHAT_CONVERSATION_ID = "workspace-chat";
+
 export type AgentHostStatus = {
     available: boolean;
     reason?: string;

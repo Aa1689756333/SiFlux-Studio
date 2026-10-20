@@ -1,4 +1,4 @@
-import { IMAGE_ONLY_RELEASE } from "@/lib/release-flags";
+import { hideAgentDirectorMcp, IMAGE_ONLY_RELEASE } from "@/lib/release-flags";
 import { motion, useReducedMotion } from "motion/react";
 import { Search, X } from "lucide-react";
 import { useMemo, useState, type CSSProperties, type ReactNode } from "react";
@@ -26,7 +26,9 @@ export function CanvasCreateMenu({ commands, layout = "grid", title = "添加节
     const visibleCommands = useMemo(() => {
         const releaseFiltered = IMAGE_ONLY_RELEASE
             ? commands.filter((command) => !/视频|音频|文本|导演台|工作流/.test(command.label))
-            : commands;
+            : hideAgentDirectorMcp()
+                ? commands.filter((command) => command.id !== "director" && command.label !== "导演台")
+                : commands;
         const filtered = normalizedQuery
             ? releaseFiltered.filter((command) => `${command.label} ${command.badge || ""}`.toLocaleLowerCase().includes(normalizedQuery))
             : releaseFiltered;

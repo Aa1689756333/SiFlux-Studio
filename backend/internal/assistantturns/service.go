@@ -111,6 +111,9 @@ func (s *Service) Begin(userID, canvasID, turnID string, input Input) (int64, er
 	if !ValidMode(input.PermissionMode) {
 		return 0, &Error{Reason: "invalid_permission_mode", Message: "助手权限无效"}
 	}
+	if IsWorkspaceConversation(canvasID) && Mode(input.PermissionMode) != PermissionReadOnly {
+		return 0, &Error{Reason: "invalid_permission_mode", Message: "独立对话只能只读"}
+	}
 	err := s.store.DB().Transaction(func(tx *gorm.DB) error {
 		existing, found, resolveErr := s.resolveIdentity(tx, id)
 		if resolveErr != nil {
@@ -130,9 +133,15 @@ func (s *Service) Begin(userID, canvasID, turnID string, input Input) (int64, er
 			rec = existing
 			return nil
 		}
-		raw, canvasErr := s.canvas.BoundTo(tx).UserCanvasProject(userID, canvasID)
-		if canvasErr != nil {
-			return canvasErr
+		var raw json.RawMessage
+		if IsWorkspaceConversation(canvasID) {
+			raw = WorkspaceConversationDocument(canvasID)
+		} else {
+			var canvasErr error
+			raw, canvasErr = s.canvas.BoundTo(tx).UserCanvasProject(userID, canvasID)
+			if canvasErr != nil {
+				return canvasErr
+			}
 		}
 		var doc map[string]any
 		if err := json.Unmarshal(raw, &doc); err != nil {

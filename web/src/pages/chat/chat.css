@@ -1,0 +1,396 @@
+.siflux-chat-page { height: 100%; min-height: 0; }
+.siflux-chat {
+    --chat-border: var(--user-border, var(--border));
+    height: 100%;
+    min-height: 0;
+    display: grid;
+    grid-template-columns: 260px minmax(0, 1fr);
+    color: var(--user-ink, var(--foreground));
+    background: var(--user-page-bg, var(--background));
+}
+.siflux-chat-sidebar {
+    display: flex;
+    min-height: 0;
+    flex-direction: column;
+    gap: 10px;
+    padding: 18px 14px;
+    border-right: 1px solid var(--chat-border);
+    background: color-mix(in srgb, var(--user-surface, var(--background)) 92%, transparent);
+}
+.siflux-chat-brand {
+    padding: 2px 4px 8px;
+}
+.siflux-chat-brand strong,
+.siflux-chat-brand span {
+    display: block;
+}
+.siflux-chat-brand strong {
+    font-size: 15px;
+    font-weight: 600;
+}
+.siflux-chat-brand span,
+.siflux-chat-sidebar-empty {
+    margin: 4px 0 0;
+    color: var(--user-ink-muted, var(--muted-foreground));
+    font-size: 12px;
+    line-height: 18px;
+}
+.siflux-chat-sidebar-empty {
+    padding: 8px 4px;
+}
+.siflux-chat-new {
+    display: inline-flex;
+    align-items: center;
+    justify-content: center;
+    gap: 8px;
+    width: 100%;
+    border: 1px solid var(--chat-border);
+    border-radius: 12px;
+    padding: 9px 12px;
+    background: var(--user-surface, var(--background));
+    color: inherit;
+    font-size: 13px;
+    cursor: pointer;
+}
+.siflux-chat-sidebar ul {
+    margin: 0;
+    padding: 0;
+    overflow: auto;
+    list-style: none;
+}
+.siflux-chat-history-item {
+    display: grid;
+    grid-template-columns: minmax(0, 1fr) auto;
+    align-items: center;
+    gap: 4px;
+    margin: 0 0 2px;
+}
+.siflux-chat-history-item button:first-child {
+    display: block;
+    width: 100%;
+    border: 0;
+    border-radius: 10px;
+    padding: 9px 10px;
+    background: transparent;
+    color: inherit;
+    text-align: left;
+    cursor: pointer;
+}
+.siflux-chat-history-item.is-active button:first-child,
+.siflux-chat-history-item button:first-child:hover {
+    background: var(--user-surface-hover, var(--muted));
+}
+.siflux-chat-history-item strong,
+.siflux-chat-history-item small {
+    display: block;
+    overflow: hidden;
+    text-overflow: ellipsis;
+    white-space: nowrap;
+}
+.siflux-chat-history-item strong {
+    font-size: 13px;
+    font-weight: 500;
+}
+.siflux-chat-history-item small {
+    margin-top: 4px;
+    color: var(--user-ink-muted, var(--muted-foreground));
+    font-size: 12px;
+}
+.siflux-chat-history-delete {
+    border: 0;
+    background: none;
+    color: var(--user-ink-muted, var(--muted-foreground));
+    cursor: pointer;
+}
+.siflux-chat-main {
+    display: grid;
+    min-width: 0;
+    min-height: 0;
+    grid-template-rows: auto minmax(0, 1fr) auto;
+}
+.siflux-chat-top {
+    display: flex;
+    align-items: flex-end;
+    justify-content: space-between;
+    gap: 16px;
+    padding: 20px 28px 12px;
+    border-bottom: 1px solid var(--chat-border);
+}
+.siflux-chat-top h1 {
+    margin: 0;
+    font-size: 18px;
+    line-height: 26px;
+    font-weight: 600;
+}
+.siflux-chat-thread {
+    min-height: 0;
+    overflow: auto;
+    display: flex;
+    flex-direction: column;
+}
+.siflux-chat-empty {
+    margin: auto;
+    max-width: 520px;
+    padding: 32px 24px;
+    color: var(--user-ink-muted, var(--muted-foreground));
+    text-align: center;
+}
+.siflux-chat-empty strong {
+    display: block;
+    color: var(--user-ink, var(--foreground));
+    font-size: 26px;
+    line-height: 34px;
+    font-weight: 600;
+}
+.siflux-chat-empty span {
+    display: block;
+    margin-top: 10px;
+    font-size: 13px;
+    line-height: 20px;
+}
+.siflux-chat-starters {
+    display: grid;
+    grid-template-columns: 1fr 1fr;
+    gap: 8px;
+    margin-top: 22px;
+}
+.siflux-chat-starters button {
+    border: 1px solid var(--chat-border);
+    border-radius: 14px;
+    padding: 12px 14px;
+    background: var(--user-surface, var(--background));
+    color: inherit;
+    text-align: left;
+    cursor: pointer;
+}
+.siflux-chat-messages {
+    display: flex;
+    flex-direction: column;
+    gap: 22px;
+    width: min(820px, 100%);
+    margin: 0 auto;
+    padding: 24px 28px 16px;
+}
+.siflux-chat-row {
+    display: grid;
+    grid-template-columns: 36px minmax(0, 1fr);
+    align-items: start;
+    gap: 12px;
+}
+.siflux-chat-row.is-user {
+    grid-template-columns: minmax(0, 1fr) 36px;
+}
+.siflux-chat-row.is-user .siflux-chat-avatar { grid-column: 2; grid-row: 1; }
+.siflux-chat-row.is-user .siflux-chat-row-main { grid-column: 1; grid-row: 1; text-align: right; }
+.siflux-chat-avatar {
+    display: grid;
+    place-items: center;
+    width: 36px;
+    height: 36px;
+    border-radius: 12px;
+    background: var(--user-surface-muted, var(--muted));
+    font-size: 12px;
+    font-weight: 600;
+}
+.siflux-chat-row.is-user .siflux-chat-avatar {
+    background: var(--user-ink, var(--foreground));
+    color: var(--user-page-bg, var(--background));
+}
+.siflux-chat-row-main header {
+    display: flex;
+    flex-wrap: wrap;
+    align-items: center;
+    gap: 8px;
+    margin-bottom: 6px;
+    color: var(--user-ink-muted, var(--muted-foreground));
+    font-size: 12px;
+}
+.siflux-chat-row.is-user .siflux-chat-row-main header { justify-content: flex-end; }
+.siflux-chat-row-main header strong {
+    color: var(--user-ink, var(--foreground));
+    font-weight: 600;
+}
+.siflux-chat-user-text {
+    display: inline-block;
+    max-width: min(640px, 100%);
+    margin: 0;
+    border-radius: 16px 16px 6px 16px;
+    padding: 10px 14px;
+    background: var(--user-ink, var(--foreground));
+    color: var(--user-page-bg, var(--background));
+    white-space: pre-wrap;
+    word-break: break-word;
+    font-size: 15px;
+    line-height: 24px;
+    text-align: left;
+}
+.siflux-chat-row.is-failed .siflux-chat-row-main .ai-message-markdown,
+.siflux-chat-placeholder {
+    color: var(--user-ink-muted, var(--muted-foreground));
+}
+.siflux-chat-placeholder {
+    margin: 0;
+    font-size: 14px;
+}
+.siflux-chat-generating {
+    display: inline-flex;
+    align-items: center;
+    gap: 8px;
+    color: var(--user-ink, var(--foreground));
+}
+.siflux-chat-generating-time {
+    color: var(--user-ink-muted, var(--muted-foreground));
+    font-variant-numeric: tabular-nums;
+}
+.siflux-chat-placeholder.is-working {
+    display: flex;
+    flex-direction: column;
+    gap: 10px;
+    max-width: min(420px, 100%);
+}
+.siflux-chat-skeleton {
+    display: flex;
+    flex-direction: column;
+    gap: 8px;
+    width: 100%;
+}
+.siflux-chat-skeleton span {
+    display: block;
+    height: 10px;
+    border-radius: 999px;
+    background: linear-gradient(90deg, color-mix(in srgb, var(--user-ink, var(--foreground)) 8%, transparent) 0%, color-mix(in srgb, var(--user-ink, var(--foreground)) 18%, transparent) 45%, color-mix(in srgb, var(--user-ink, var(--foreground)) 8%, transparent) 100%);
+    background-size: 180% 100%;
+    animation: siflux-chat-shimmer 1.2s ease-in-out infinite;
+}
+.siflux-chat-skeleton span:nth-child(1) { width: 78%; }
+.siflux-chat-skeleton span:nth-child(2) { width: 54%; }
+.siflux-chat-skeleton span:nth-child(3) { width: 66%; }
+.siflux-chat-row.is-streaming .siflux-chat-avatar {
+    animation: siflux-chat-avatar-pulse 1.4s ease-in-out infinite;
+}
+@keyframes siflux-chat-shimmer {
+    0% { background-position: 100% 0; }
+    100% { background-position: 0 0; }
+}
+@keyframes siflux-chat-avatar-pulse {
+    0%, 100% { opacity: 0.55; }
+    50% { opacity: 1; }
+}
+@media (prefers-reduced-motion: reduce) {
+    .siflux-chat-skeleton span,
+    .siflux-chat-row.is-streaming .siflux-chat-avatar {
+        animation: none;
+    }
+}
+.siflux-chat-row-main .ai-message-markdown {
+    font-size: 15px;
+    line-height: 1.7;
+}
+.siflux-chat-row-actions {
+    display: flex;
+    flex-wrap: wrap;
+    gap: 4px;
+    margin-top: 8px;
+}
+.siflux-chat-row-actions button {
+    display: inline-flex;
+    align-items: center;
+    gap: 4px;
+    border: 0;
+    border-radius: 8px;
+    padding: 4px 8px;
+    background: transparent;
+    color: var(--user-ink-muted, var(--muted-foreground));
+    font-size: 12px;
+    cursor: pointer;
+}
+.siflux-chat-row-actions button:hover {
+    background: var(--user-surface-muted, var(--muted));
+    color: inherit;
+}
+.siflux-chat-row-actions button:disabled {
+    opacity: 0.5;
+    cursor: not-allowed;
+}
+.siflux-chat-composer {
+    display: grid;
+    gap: 8px;
+    width: min(820px, calc(100% - 40px));
+    margin: 0 auto 20px;
+    border: 1px solid var(--chat-border);
+    border-radius: 22px;
+    padding: 12px 14px 10px;
+    background: var(--user-surface, var(--background));
+    box-shadow: 0 10px 28px color-mix(in srgb, var(--user-ink, var(--foreground)) 6%, transparent);
+}
+.siflux-chat-prompt {
+    width: 100%;
+    min-height: 72px;
+    max-height: 180px;
+    resize: none;
+    border: 0;
+    background: transparent;
+    color: inherit;
+    font: inherit;
+    outline: none;
+}
+.siflux-chat-toolbar {
+    display: flex;
+    flex-wrap: wrap;
+    align-items: center;
+    gap: 8px;
+}
+.siflux-chat-toolbar .siflux-chat-model.canvas-composer-model-picker,
+.siflux-chat-action {
+    display: inline-flex;
+    align-items: center;
+    gap: 6px;
+    height: auto;
+    min-height: 0;
+    min-width: 0;
+    width: auto;
+    max-width: min(280px, 46vw);
+    border: 1px solid var(--chat-border);
+    border-radius: 999px;
+    padding: 7px 12px;
+    background: var(--user-surface-muted, var(--muted));
+    box-shadow: none;
+    color: inherit;
+    font: inherit;
+    line-height: 1.2;
+    cursor: pointer;
+}
+.siflux-chat-action.is-primary {
+    margin-left: auto;
+    border-color: transparent;
+    background: var(--user-ink, var(--foreground));
+    color: var(--user-page-bg, var(--background));
+}
+.siflux-chat-action:disabled {
+    opacity: 0.5;
+    cursor: not-allowed;
+}
+@media (max-width: 840px) {
+    .siflux-chat {
+        grid-template-columns: 1fr;
+        grid-template-rows: 168px minmax(0, 1fr);
+    }
+    .siflux-chat-sidebar {
+        border-right: 0;
+        border-bottom: 1px solid var(--chat-border);
+    }
+    .siflux-chat-starters {
+        grid-template-columns: 1fr;
+    }
+    .siflux-chat-row,
+    .siflux-chat-row.is-user {
+        grid-template-columns: 32px minmax(0, 1fr);
+    }
+    .siflux-chat-row.is-user .siflux-chat-avatar,
+    .siflux-chat-row.is-user .siflux-chat-row-main {
+        grid-column: auto;
+        grid-row: auto;
+        text-align: left;
+    }
+    .siflux-chat-row.is-user .siflux-chat-row-main header { justify-content: flex-start; }
+}

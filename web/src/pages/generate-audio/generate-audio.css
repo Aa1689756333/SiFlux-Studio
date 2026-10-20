@@ -1,0 +1,98 @@
+@import "../generate-image/generate-image.css";
+
+.siflux-audio-gen-list {
+    display: grid;
+    gap: 12px;
+}
+.siflux-audio-gen-card {
+    display: grid;
+    gap: 12px;
+    border-radius: 14px;
+    padding: 16px;
+    background: var(--user-surface-muted);
+}
+.siflux-audio-gen-card audio {
+    width: 100%;
+}
+.siflux-audio-gen-card-missing {
+    display: grid;
+    min-height: 88px;
+    place-items: center;
+    border-radius: 14px;
+    background: var(--user-surface-muted);
+    color: var(--user-ink-soft);
+    font-size: 13px;
+}
+.siflux-audio-gen-card-meta {
+    display: flex;
+    align-items: center;
+    justify-content: space-between;
+    gap: 12px;
+    color: var(--user-ink-muted);
+    font-size: 13px;
+}
+.siflux-audio-gen-card-meta strong {
+    color: var(--user-ink);
+    font-weight: 500;
+}
+.siflux-audio-settings {
+    width: 320px;
+    display: grid;
+    gap: 8px;
+}
+.siflux-audio-settings section {
+    display: grid;
+    gap: 6px;
+}
+.siflux-audio-settings header {
+    display: flex;
+    align-items: center;
+    justify-content: space-between;
+    color: var(--user-ink-muted);
+    font-size: 12px;
+}
+.siflux-audio-settings header strong {
+    color: var(--user-ink);
+    font-weight: 500;
+}
+.siflux-audio-settings-grid {
+    display: grid;
+    grid-template-columns: repeat(4, minmax(0, 1fr));
+    gap: 4px;
+}
+.siflux-audio-settings-grid.is-format {
+    grid-template-columns: repeat(3, minmax(0, 1fr));
+}
+.siflux-audio-settings-grid button {
+    min-height: 32px;
+    border: 0;
+    border-radius: 8px;
+    padding: 6px 4px;
+    background: var(--user-surface-muted);
+    color: inherit;
+    font: inherit;
+    font-size: 12px;
+    cursor: pointer;
+}
+.siflux-audio-settings-grid button.is-selected {
+    background: var(--user-surface-hover);
+}
+.siflux-audio-settings details {
+    color: var(--user-ink-muted);
+    font-size: 12px;
+}
+.siflux-audio-settings textarea,
+.siflux-audio-settings input[type="number"] {
+    width: 100%;
+    border: 0;
+    border-radius: 8px;
+    padding: 8px 10px;
+    background: var(--user-surface-muted);
+    color: inherit;
+    font: inherit;
+    outline: none;
+}
+.siflux-audio-settings textarea {
+    min-height: 64px;
+    resize: vertical;
+}

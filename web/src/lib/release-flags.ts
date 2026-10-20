@@ -1,3 +1,9 @@
-// 首发版本只开放生图入口。发布完成后把这里改回 false 即可恢复全部功能，
-// 其余界面都只读这一个开关，不需要逐处回滚。
-export const IMAGE_ONLY_RELEASE = true;
+// 首发曾只开放生图。改为 false 后恢复视频、音频等入口。
+export const IMAGE_ONLY_RELEASE = false;
+
+// 与 1.0.2 一样先藏起 Agent 助手、3D 导演台和 MCP；文本/图片/音视频入口保持可见。
+export const HIDE_AGENT_DIRECTOR_MCP = true;
+
+export function hideAgentDirectorMcp() {
+    return IMAGE_ONLY_RELEASE || HIDE_AGENT_DIRECTOR_MCP;
+}

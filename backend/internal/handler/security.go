@@ -78,10 +78,13 @@ func authorizeCustomRelay(method string, target *url.URL, apiFormat string, cont
 		} else if apiFormat == "gemini" {
 			allowed = allowed || customGeminiOperationPath.MatchString(requestPath)
 		}
-		if len(query) != 0 || !allowed {
-			return errors.New("自定义渠道不允许访问该上游接口")
+		if allowed && len(query) == 0 {
+			return nil
 		}
-		return nil
+		if apiFormat == "openai" && authorizeNewAPIUsageGet(requestPath, query) == nil {
+			return nil
+		}
+		return errors.New("自定义渠道不允许访问该上游接口")
 	}
 	if method != http.MethodPost {
 		return errors.New("自定义渠道不允许使用该请求方法")
@@ -119,6 +122,64 @@ func authorizeCustomRelay(method string, target *url.URL, apiFormat string, cont
 	return errors.New("自定义渠道不允许使用该查询参数")
 }
 
+func authorizeNewAPIUsageGet(requestPath string, query url.Values) error {
+	switch {
+	case hasPathSuffix(requestPath, "/dashboard/billing/subscription"):
+		if len(query) != 0 {
+			return errors.New("自定义渠道不允许使用该查询参数")
+		}
+		return nil
+	case hasPathSuffix(requestPath, "/dashboard/billing/usage"):
+		for key := range query {
+			switch strings.ToLower(strings.TrimSpace(key)) {
+			case "start_date", "end_date":
+			default:
+				return errors.New("自定义渠道不允许使用该查询参数")
+			}
+		}
+		return nil
+	case hasPathSuffix(requestPath, "/api/status"), hasPathSuffix(requestPath, "/api/pricing"):
+		if len(query) != 0 {
+			return errors.New("自定义渠道不允许使用该查询参数")
+		}
+		return nil
+	case hasPathSuffix(requestPath, "/api/usage/token"), hasPathSuffix(requestPath, "/api/user/self/token"):
+		if len(query) != 0 {
+			return errors.New("自定义渠道不允许使用该查询参数")
+		}
+		return nil
+	case hasPathSuffix(requestPath, "/api/log/token"):
+		for key := range query {
+			switch strings.ToLower(strings.TrimSpace(key)) {
+			case "p", "page", "page_size", "pagesize", "size", "type", "start_timestamp", "end_timestamp", "token_name", "model_name":
+			default:
+				return errors.New("自定义渠道不允许使用该查询参数")
+			}
+		}
+		return nil
+	case hasPathSuffix(requestPath, "/api/user/self"):
+		if len(query) != 0 {
+			return errors.New("自定义渠道不允许使用该查询参数")
+		}
+		return nil
+	case hasPathSuffix(requestPath, "/api/log/self"):
+		for key := range query {
+			switch strings.ToLower(strings.TrimSpace(key)) {
+			case "p", "page", "page_size", "pagesize", "size", "type", "start_timestamp", "end_timestamp", "token_name", "model_name":
+			default:
+				return errors.New("自定义渠道不允许使用该查询参数")
+			}
+		}
+		return nil
+	default:
+		return errors.New("自定义渠道不允许访问该上游接口")
+	}
+}
+
+func hasPathSuffix(requestPath, suffix string) bool {
+	return requestPath == suffix || strings.HasSuffix(requestPath, suffix)
+}
+
 func normalizedCustomRelayPath(value string) (string, error) {
 	if len(value) > 2048 {
 		return "", errors.New("自定义渠道请求路径过长")
@@ -128,7 +189,11 @@ func normalizedCustomRelayPath(value string) (string, error) {
 		return "", errors.New("自定义渠道请求路径无效")
 	}
 	cleaned := path.Clean("/" + strings.TrimPrefix(decoded, "/"))
-	if cleaned != decoded && cleaned != "/"+strings.TrimPrefix(decoded, "/") {
+	trimmed := strings.TrimSuffix(decoded, "/")
+	if trimmed == "" {
+		trimmed = "/"
+	}
+	if cleaned != decoded && cleaned != "/"+strings.TrimPrefix(decoded, "/") && cleaned != trimmed && cleaned != "/"+strings.TrimPrefix(trimmed, "/") {
 		return "", errors.New("自定义渠道请求路径无效")
 	}
 	return cleaned, nil
@@ -257,7 +322,11 @@ func normalizedProxyPath(value string) (string, error) {
 		return "", errors.New("系统渠道请求路径无效")
 	}
 	cleaned := path.Clean("/" + strings.TrimPrefix(decoded, "/"))
-	if cleaned != decoded && cleaned != "/"+strings.TrimPrefix(decoded, "/") {
+	trimmed := strings.TrimSuffix(decoded, "/")
+	if trimmed == "" {
+		trimmed = "/"
+	}
+	if cleaned != decoded && cleaned != "/"+strings.TrimPrefix(decoded, "/") && cleaned != trimmed && cleaned != "/"+strings.TrimPrefix(trimmed, "/") {
 		return "", errors.New("系统渠道请求路径无效")
 	}
 	return cleaned, nil

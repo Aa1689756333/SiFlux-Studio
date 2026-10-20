@@ -214,6 +214,10 @@ describe("回合上下文", () => {
 
     test("引用只作为模型可见上下文，素材与额外画布分别标注", () => {
         expect(turnContextPrefix({ canvasId: "c1" })).toBe("[当前画布 c1｜可修改当前画布，其他画布只读]");
+        expect(turnContextPrefix({ canvasId: "workspace-agent", permissionMode: "read-only" }))
+            .toBe("[独立对话，没有绑定画布｜只能阅读工作区素材并对话，不能改画布或生成]");
+        expect(turnContextPrefix({ canvasId: "workspace-chat", permissionMode: "read-only" }))
+            .toBe("[独立文本对话，没有工具和技能｜只能用文字回复，不能调用工具、技能或改画布]");
         expect(turnContextPrefix({ canvasId: "c1", selectedNodeIds: ["n1", "n2"] }))
             .toBe("[当前画布 c1｜可修改当前画布，其他画布只读｜选中对象: n1, n2]");
         expect(turnContextPrefix({ canvasId: "c1", references: [

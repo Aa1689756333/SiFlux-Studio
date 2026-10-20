@@ -183,6 +183,22 @@ func (r *Repository) HasAPICallLogForTask(taskID string) (bool, error) {
 	return count > 0, err
 }
 
+func (r *Repository) UserGenerationUsageLogs(userID string, limit int) ([]model.ApiCallLog, error) {
+	if strings.TrimSpace(userID) == "" {
+		return nil, nil
+	}
+	if limit <= 0 || limit > 500 {
+		limit = 300
+	}
+	var logs []model.ApiCallLog
+	err := r.db.Where("user_id = ? AND (request_kind = ? OR request_kind = ?)", userID, "create", "").
+		Order("created_at desc").
+		Limit(limit).
+		Omit("RequestBody", "ResponseBody").
+		Find(&logs).Error
+	return logs, err
+}
+
 func visibleAPICallLogQuery(query *gorm.DB) *gorm.DB {
 	// 轮询属于一次生成调用的内部状态查询，管理端不单独展示。
 	return query.Where("api_call_logs.request_kind <> ?", "poll")

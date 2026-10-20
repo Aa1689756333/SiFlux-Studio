@@ -16,6 +16,7 @@ import {
     formatDesktopUpdateRemaining,
     hasResumableDesktopUpdate,
     formatDesktopVersionLabel,
+    isNewerDesktopVersion,
     hasDesktopUpdateBinding,
     parseDesktopUpdateState,
     resetSharedDesktopUpdateController,
@@ -405,6 +406,9 @@ describe("desktop update parsing", () => {
         });
         expect(parseDesktopUpdateState({ status: "nope", error: "boom" }).status).toBe("error");
         expect(formatDesktopVersionLabel("1.5.1")).toBe("v1.5.1");
+        expect(isNewerDesktopVersion("v1.5.1", "1.5.1")).toBe(false);
+        expect(isNewerDesktopVersion("v1.5.2", "1.5.1")).toBe(true);
+        expect(isNewerDesktopVersion("v1.5.2", "dev")).toBe(true);
         expect(desktopUpdateActionLabel("available")).toBe("下载更新");
         expect(desktopUpdateActionLabel("ready")).toBe("安装更新");
         expect(desktopUpdateProgressLabel(state({ status: "downloading", downloadedBytes: 12 * 1024 * 1024, totalBytes: 40 * 1024 * 1024 }))).toBe("12 MB / 40 MB");
@@ -703,6 +707,17 @@ describe("desktop update controller", () => {
         await controller.check();
         expect(mock.calls.check).toBe(2);
         expect(controller.getSnapshot().state.latestVersion).toBe("v1.5.3");
+        controller.dispose();
+    });
+
+    test("download is refused when the installed version matches the feed", async () => {
+        const mock = mockBinding(state({ status: "available", currentVersion: "1.0.3", latestVersion: "v1.0.3" }));
+        const controller = createDesktopUpdateController({ getBinding: () => mock.binding, isDesktopRuntime: () => true, scheduler: { interval: () => () => {} } });
+        await controller.start();
+        await controller.download();
+        expect(mock.calls.download).toBe(0);
+        expect(controller.getSnapshot().state.status).toBe("idle");
+        expect(shouldShowDesktopUpdaterControls(controller.getSnapshot())).toBe(false);
         controller.dispose();
     });
 

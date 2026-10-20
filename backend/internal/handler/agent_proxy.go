@@ -262,6 +262,9 @@ func RegisterAgentProxyRoutes(r gin.IRouter, svc *app.Service, clients *agentops
 			fail(c, http.StatusBadRequest, app.BadAuthRequest("canvasId 必填"))
 			return nil, false
 		}
+		if assistantturns.IsWorkspaceConversation(canvasID) {
+			return assistantturns.WorkspaceConversationDocument(canvasID), true
+		}
 		raw, err := svc.UserCanvasProject(c.GetString("agentUserId"), canvasID)
 		if err != nil {
 			fail(c, http.StatusNotFound, app.BadAuthRequest("画布不存在或不属于当前工作区"))
@@ -428,6 +431,14 @@ func RegisterAgentProxyRoutes(r gin.IRouter, svc *app.Service, clients *agentops
 			fail(c, http.StatusBadRequest, app.BadAuthRequest("canvasId 与 message 必填"))
 			return
 		}
+		if assistantturns.IsWorkspaceConversation(payload.CanvasID) {
+			payload.PermissionMode = assistantturns.PermissionReadOnly
+			payload.SelectedNodeIDs = nil
+		}
+		if assistantturns.IsWorkspaceChatConversation(payload.CanvasID) && len(payload.Skills) > 0 {
+			fail(c, http.StatusBadRequest, app.BadAuthRequest("文本对话不能使用技能"))
+			return
+		}
 		canvasRaw, allowed := requireOwnedCanvas(c, payload.CanvasID)
 		if !allowed {
 			return
@@ -509,6 +520,9 @@ func RegisterAgentProxyRoutes(r gin.IRouter, svc *app.Service, clients *agentops
 			var trusted map[string]any
 			_ = json.Unmarshal(forwarded, &trusted)
 			trusted["permissionMode"] = input.PermissionMode
+			if assistantturns.IsWorkspaceConversation(payload.CanvasID) {
+				trusted["selectedNodeIds"] = []string{}
+			}
 			forwarded, err = json.Marshal(trusted)
 		}
 		if err != nil {

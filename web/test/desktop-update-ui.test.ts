@@ -31,7 +31,10 @@ describe("desktop update UI contract", () => {
         expect(shell).toContain("useDesktopUpdateBootstrap");
         expect(update).toContain("AppChangelogButton");
         expect(update).toContain("showVersion");
-        expect(update).toContain("updater.downloadAndInstall()");
+        expect(update).not.toContain("updater.downloadAndInstall()");
+        expect(update).toContain("updater.download()");
+        expect(update).toContain("updater.install()");
+        expect(update).toContain("已是最新版本");
         expect(update).toContain("AppModal");
         expect(update).toContain("仍然更新");
         expect(update).toContain("尚未保存的修改可能丢失");

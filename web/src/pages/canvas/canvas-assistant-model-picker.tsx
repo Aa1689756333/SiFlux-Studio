@@ -16,6 +16,7 @@ export function CanvasAssistantModelPicker({ busy }: { busy: boolean }) {
             aria-label="助手模型"
             size="small"
             variant="borderless"
+            style={{ width: 148 }}
             value={selected || undefined}
             placeholder={options.length ? "选择助手模型" : "暂无可用模型"}
             options={options}

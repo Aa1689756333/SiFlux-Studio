@@ -34,7 +34,7 @@ test("models-only fallback keeps channel and explicit profile restrictions", () 
 });
 
 test("managed assistant list is curated and requires actual catalog membership", () => {
-    expect(assistantModelOptions(config)).toEqual(MANAGED_ASSISTANT_MODELS.map(m => `beefapi::${m}`));
+    expect(assistantModelOptions(config)).toEqual([...MANAGED_ASSISTANT_MODELS].sort((a, b) => a.localeCompare(b, undefined, { numeric: true, sensitivity: "base" })).map((m) => `beefapi::${m}`));
     expect(assistantModelOptions({ ...config, channels: [{ ...channel, models: models.filter(m => m !== "gpt-6.1-sol") }] })).not.toContain("beefapi::gpt-6.1-sol");
     expect(resolveAssistantModel(config)).toBe("");
     expect(resolveAssistantModel({ ...config, assistantModel: "beefapi::qwen3.8-flash", textModel: "beefapi::gpt-6-astra" })).toBe("");

@@ -4,10 +4,10 @@
 
 <h1 align="center">SiFlux Studio</h1>
 
-<p align="center"><strong>本地优先的 AI 图片创作工作台</strong></p>
+<p align="center"><strong>本地优先的 AI 创作工作台</strong></p>
 
 <p align="center">
-  在一个自由画布里完成构思、生成与整理。<br>
+  在本地工作区完成图片、视频、音频生成与画布创作。<br>
   项目与素材保存在本机，模型经内置 SiFlux 中转站调用。
 </p>
 
@@ -27,20 +27,22 @@
 
 ## 当前版本
 
-**1.0.3** 只开放**图片生成**。视频、音频、3D 导演台、Agent 助手与 MCP 集成仍在开发中，界面上暂不显示。安装本版本后，可在软件内检查并安装后续更新。
+**1.1.0** 开放图片、视频、音频生成与文本对话；首页展示项目与用量。Agent 助手、3D 导演台与 MCP 仍隐藏。安装后可在软件内先检查更新，确认后再下载。
 
 ## 能做什么
 
 - **画布生图**：提示词直接生成，结果落在画布节点上，可继续引用、重绘、组合
+- **视频与音频**：在画布中生成视频、配音与声音素材
+- **文本对话**：单独的对话页
+- **用量统计**：查看近期生成次数与本地存储
 - **参考图**：以已有图片作为参考，控制风格与构图
-- **批量与比例**：一次多张，预设常见画幅
 - **项目库**：项目、画布与素材保存在本机，随时继续
 - **本地优先**：数据在本地，只有生成请求会发往中转站
 
 ## 下载与安装
 
 1. 打开 [Releases](https://github.com/Aa1689756333/SiFlux-Studio/releases/latest)
-2. 下载 `SiFlux-1.0.2-amd64-installer.exe`
+2. 下载 `SiFlux-amd64-installer.exe`
 3. 运行安装程序
 
 要求 Windows 10/11 x64，系统需具备 WebView2（Win11 自带，Win10 安装程序会提示）。
@@ -103,14 +105,13 @@ scripts/             构建与发布脚本
 
 ## 版本开关
 
-首发版本用一个编译期开关控制可见功能：
+界面可见功能由编译期开关控制：
 
 ```ts
 // web/src/lib/release-flags.ts
-export const IMAGE_ONLY_RELEASE = true;
+export const IMAGE_ONLY_RELEASE = false;
+export const HIDE_AGENT_DIRECTOR_MCP = true;
 ```
-
-改为 `false` 后重新构建，即可恢复全部入口，不需要回滚界面代码。
 
 ## 许可证
 

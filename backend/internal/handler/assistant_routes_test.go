@@ -435,6 +435,27 @@ func TestAssistantSessionsAndHistoryAreProxiedWithScopeCheck(t *testing.T) {
 	}
 }
 
+func TestWorkspaceAgentSessionsDoNotRequireCanvas(t *testing.T) {
+	env := newAssistantTestEnv(t, func(env *assistantTestEnv) http.Handler {
+		return http.HandlerFunc(func(w http.ResponseWriter, r *http.Request) {
+			env.hostHits[r.URL.Path]++
+			if r.URL.Query().Get("canvasId") != "workspace-agent" && r.Method == http.MethodGet {
+				w.WriteHeader(http.StatusBadRequest)
+				return
+			}
+			w.Header().Set("Content-Type", "application/json")
+			_, _ = w.Write([]byte(`{"currentSessionId":"w1","sessions":[]}`))
+		})
+	})
+	data := decodeEnvelope(t, env.call(t, http.MethodGet, "/assistant/sessions?canvasId=workspace-agent", ""))
+	if data["currentSessionId"] != "w1" {
+		t.Fatalf("workspace conversation sessions should proxy without a canvas project: %#v", data)
+	}
+	if env.hostHits["/sessions"] != 1 {
+		t.Fatalf("workspace conversation should reach the host, hits %d", env.hostHits["/sessions"])
+	}
+}
+
 func TestAssistantStatusBusyOldModelAfterProviderChange(t *testing.T) {
 	running := assistant.Provider{
 		ChannelID: "env", Model: "old-model", BaseURL: "https://relay.example.com/v1",
@@ -596,4 +617,25 @@ func canvasNodeIDs(t *testing.T, service *app.Service, userID, canvasID string) 
 		out = append(out, node.ID)
 	}
 	return out
+}
+
+func TestWorkspaceChatSessionsDoNotRequireCanvas(t *testing.T) {
+	env := newAssistantTestEnv(t, func(env *assistantTestEnv) http.Handler {
+		return http.HandlerFunc(func(w http.ResponseWriter, r *http.Request) {
+			env.hostHits[r.URL.Path]++
+			if r.URL.Query().Get("canvasId") != "workspace-chat" && r.Method == http.MethodGet {
+				w.WriteHeader(http.StatusBadRequest)
+				return
+			}
+			w.Header().Set("Content-Type", "application/json")
+			_, _ = w.Write([]byte(`{"currentSessionId":"c1","sessions":[]}`))
+		})
+	})
+	data := decodeEnvelope(t, env.call(t, http.MethodGet, "/assistant/sessions?canvasId=workspace-chat", ""))
+	if data["currentSessionId"] != "c1" {
+		t.Fatalf("workspace chat sessions should proxy without a canvas project: %#v", data)
+	}
+	if env.hostHits["/sessions"] != 1 {
+		t.Fatalf("workspace chat should reach the host, hits %d", env.hostHits["/sessions"])
+	}
 }

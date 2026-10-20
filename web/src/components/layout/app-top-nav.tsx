@@ -4,7 +4,7 @@ import { PanelLeftOpen } from "lucide-react";
 
 import { ModelSetupGuide } from "@/components/layout/model-setup-guide";
 import { WorkspaceSidebarNav } from "@/components/layout/workspace-sidebar-nav";
-import { readWorkspaceSidebarCollapsed, writeWorkspaceSidebarCollapsed } from "@/components/layout/workspace-sidebar-state";
+
 import { useDesktopUpdateBootstrap } from "@/hooks/use-desktop-update";
 import { cn } from "@/lib/utils";
 import { isSpatialWorkbenchPath } from "@/lib/workspace-routes";
@@ -17,7 +17,6 @@ export function AppWorkspaceShell({ children }: { children: ReactNode }) {
     const { pathname } = useLocation();
     const navigate = useNavigate();
     const [mobileSidebarExpanded, setMobileSidebarExpanded] = useState(false);
-    const [desktopSidebarCollapsed, setDesktopSidebarCollapsed] = useState(readWorkspaceSidebarCollapsed);
     const [paletteOpen, setPaletteOpen] = useState(false);
     const sessionHydrated = useUserStore((state) => state.hydrated);
     const storageMode = useUserStore((state) => state.storageMode);
@@ -32,25 +31,7 @@ export function AppWorkspaceShell({ children }: { children: ReactNode }) {
     const isMobileViewport = () => window.innerWidth < 1024;
 
     const toggleSidebar = () => {
-        if (isMobileViewport()) {
-            setMobileSidebarExpanded((current) => !current);
-            return;
-        }
-        setDesktopSidebarCollapsed((current) => {
-            const next = !current;
-            writeWorkspaceSidebarCollapsed(next);
-            return next;
-        });
-    };
-
-    const expandDesktopSidebar = () => {
-        setDesktopSidebarCollapsed(false);
-        writeWorkspaceSidebarCollapsed(false);
-    };
-
-    const collapseDesktopSidebar = () => {
-        setDesktopSidebarCollapsed(true);
-        writeWorkspaceSidebarCollapsed(true);
+        if (isMobileViewport()) setMobileSidebarExpanded((current) => !current);
     };
 
     const handleNavClick = () => {
@@ -91,15 +72,11 @@ export function AppWorkspaceShell({ children }: { children: ReactNode }) {
                             className={cn(
                                 "app-workspace-sidebar flex h-full shrink-0 flex-col overflow-hidden",
                                 mobileSidebarExpanded && "is-mobile-expanded",
-                                desktopSidebarCollapsed && "is-collapsed",
                             )}
                         >
                             <WorkspaceSidebarNav
-                                collapsed={desktopSidebarCollapsed}
                                 onNavigate={handleNavClick}
                                 onOpenSearch={() => setPaletteOpen(true)}
-                                onExpand={expandDesktopSidebar}
-                                onCollapse={collapseDesktopSidebar}
                             />
                         </aside>
                     ) : null}

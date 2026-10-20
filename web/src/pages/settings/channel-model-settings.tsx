@@ -11,7 +11,7 @@ import { type ModelCapabilityChoice } from "@/components/model-protocol-picker";
 import { defaultModelCapabilityConfig } from "@/lib/model-capabilities";
 import { defaultProtocolForCapability, defaultProtocolForModel, inferProtocolCapabilityFromModel, modelProtocolCapability, modelProtocolDefinition, type ModelProtocol, type ModelProtocolDefinition } from "@/lib/model-protocols";
 import { fetchPluginProviderCatalog } from "@/services/api/plugin-catalog";
-import { modelOptionName, type ModelChannel } from "@/stores/use-config-store";
+import { compareModelNames, modelOptionName, type ModelChannel } from "@/stores/use-config-store";
 import { currentModelConnectionReceipt, useModelConnectionTests } from "@/stores/use-model-connection-tests";
 
 type ModelProfile = NonNullable<ModelChannel["modelProfiles"]>[number];
@@ -87,7 +87,7 @@ export function ChannelModelSettings({ channel, onChange, draft = false }: { cha
                 <span className="text-[var(--fs-tiny)] text-foreground/35">{channel.models.length} 个模型</span>
             </div>
             <div className="space-y-2">
-                {channel.models.map((rawModel) => {
+                {[...channel.models].sort(compareModelNames).map((rawModel) => {
                     const model = modelOptionName(rawModel);
                     const profile = channel.modelProfiles?.find((item) => item.model === model);
                     const protocol = profile?.protocol || defaultProtocolForModel(model, availableProtocols);

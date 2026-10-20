@@ -88,7 +88,7 @@ test("picker keyboard selection persists, respects busy and fits both themes at 
     await page.goto(server.url.toString());
     const picker = page.getByRole("combobox", { name: "助手模型" });
     await picker.focus(); await picker.press("ArrowDown");
-    expect(await page.locator('.ant-select-item-option-content').allTextContents()).toEqual(["gpt-6-astra", "claude-opus-5-5", "deepseek-v4.1-flash", "glm-5.3"]);
+    expect(await page.locator('.ant-select-item-option-content').allTextContents()).toEqual(["claude-opus-5-5", "deepseek-v4.1-flash", "glm-5.3", "gpt-6-astra"]);
     await picker.press("ArrowUp"); await picker.press("Enter");
     await page.waitForTimeout(100);
     expect(saved.assistantModel).toBe("beefapi::gpt-6-astra");

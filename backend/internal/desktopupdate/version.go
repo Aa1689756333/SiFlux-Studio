@@ -8,6 +8,7 @@ import (
 )
 
 var stableVersion = regexp.MustCompile(`^v(0|[1-9][0-9]*)\.(0|[1-9][0-9]*)\.(0|[1-9][0-9]*)$`)
+var unprefixedStableVersion = regexp.MustCompile(`^(0|[1-9][0-9]*)\.(0|[1-9][0-9]*)\.(0|[1-9][0-9]*)$`)
 var gitSHA = regexp.MustCompile(`^[0-9a-fA-F]{40}$`)
 var sha256Hex = regexp.MustCompile(`^[0-9a-fA-F]{64}$`)
 
@@ -32,12 +33,20 @@ func parseStableVersion(value string) (versionTriple, error) {
 	return versionTriple{major: major, minor: minor, patch: patch}, nil
 }
 
+func normalizeInstalledVersion(value string) string {
+	value = strings.TrimSpace(value)
+	if unprefixedStableVersion.MatchString(value) {
+		return "v" + value
+	}
+	return value
+}
+
 func compareStable(current, latest string) (int, error) {
 	latestTriple, err := parseStableVersion(latest)
 	if err != nil {
 		return 0, err
 	}
-	currentTriple, err := parseStableVersion(current)
+	currentTriple, err := parseStableVersion(normalizeInstalledVersion(current))
 	if err != nil {
 		// Non-release builds (dev) may move forward onto a published tag.
 		return -1, nil

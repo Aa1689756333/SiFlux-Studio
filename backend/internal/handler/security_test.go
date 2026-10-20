@@ -55,6 +55,16 @@ func TestAuthorizeCustomRelayAllowsModelsAndAgentEndpoints(t *testing.T) {
 		{method: http.MethodPost, target: "https://generativelanguage.googleapis.com/v1beta/models/gemini-2.5-pro:streamGenerateContent?alt=sse", apiFormat: "gemini", contentType: "application/json"},
 		{method: http.MethodPost, target: "https://generativelanguage.googleapis.com/v1beta/models/veo-3.0-generate-preview:predictLongRunning", apiFormat: "gemini", contentType: "application/json"},
 		{method: http.MethodGet, target: "https://generativelanguage.googleapis.com/v1beta/operations/operation-1", apiFormat: "gemini"},
+			{method: http.MethodGet, target: "https://relay.example.com/v1/dashboard/billing/subscription", apiFormat: "openai"},
+			{method: http.MethodGet, target: "https://relay.example.com/v1/dashboard/billing/usage?start_date=2026-10-12&end_date=2026-10-19", apiFormat: "openai"},
+			{method: http.MethodGet, target: "https://relay.example.com/api/user/self", apiFormat: "openai"},
+				{method: http.MethodGet, target: "https://relay.example.com/api/status", apiFormat: "openai"},
+				{method: http.MethodGet, target: "https://relay.example.com/api/pricing", apiFormat: "openai"},
+				{method: http.MethodGet, target: "https://relay.example.com/api/usage/token", apiFormat: "openai"},
+					{method: http.MethodGet, target: "https://relay.example.com/api/usage/token/", apiFormat: "openai"},
+				{method: http.MethodGet, target: "https://relay.example.com/api/log/token", apiFormat: "openai"},
+				{method: http.MethodGet, target: "https://relay.example.com/api/log/token?p=1&page_size=100", apiFormat: "openai"},
+			{method: http.MethodGet, target: "https://relay.example.com/api/log/self?p=1&page_size=50&type=2", apiFormat: "openai"},
 	}
 	for _, test := range tests {
 		target, err := url.Parse(test.target)
@@ -107,6 +117,9 @@ func TestAuthorizeCustomRelayRejectsArbitraryRequestsAndCredentialQueries(t *tes
 		{method: http.MethodPost, target: "https://api.example.com/v1/models/gemini:streamGenerateContent?alt=sse&token=secret", apiFormat: "gemini", contentType: "application/json"},
 		{method: http.MethodGet, target: "https://api.novita.ai/v3/async/task-result?task_id=task-1&api_key=secret", apiFormat: "openai"},
 		{method: http.MethodGet, target: "https://api.novita.ai/v3/async/task-result", apiFormat: "openai"},
+			{method: http.MethodGet, target: "https://relay.example.com/api/log", apiFormat: "openai"},
+			{method: http.MethodGet, target: "https://relay.example.com/api/user", apiFormat: "openai"},
+			{method: http.MethodGet, target: "https://relay.example.com/v1/dashboard/billing/usage?token=secret", apiFormat: "openai"},
 	}
 	for _, test := range tests {
 		target, err := url.Parse(test.target)

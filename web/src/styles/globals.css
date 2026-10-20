@@ -20546,8 +20546,12 @@ html:not(.dark) .creation-home .creation-user-message-copy-wrap { box-shadow: 0 
 
 /* Navigation rail: 20% wider than the previous 180 / 58 compact track. */
 .app-user-workspace .app-workspace-sidebar {
-    width: var(--workspace-reference-sidebar) !important;
-    flex-basis: var(--workspace-reference-sidebar) !important;
+    box-sizing: border-box;
+    flex: 0 0 auto !important;
+    width: max-content !important;
+    min-width: 168px !important;
+    max-width: 200px !important;
+    overflow: hidden;
     background: var(--user-page-bg) !important;
     border-right: 0 !important;
     transition: width var(--user-motion);
@@ -20558,8 +20562,9 @@ html:not(.dark) .creation-home .creation-user-message-copy-wrap { box-shadow: 0 
     background: var(--user-surface) !important;
 }
 .app-user-workspace .app-workspace-sidebar.is-collapsed {
+    flex: 0 0 var(--workspace-reference-collapsed) !important;
     width: var(--workspace-reference-collapsed) !important;
-    flex-basis: var(--workspace-reference-collapsed) !important;
+    max-width: var(--workspace-reference-collapsed) !important;
 }
 .app-user-workspace .app-workspace-sidebar-scroll-area { padding: 22px 12px 12px !important; gap: 24px !important; }
 .app-user-workspace .app-workspace-sidebar-footer { padding: 12px 12px 14px !important; border-top: 0 !important; }

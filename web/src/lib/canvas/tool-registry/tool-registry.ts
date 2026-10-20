@@ -4,6 +4,7 @@ import { createElement } from "react";
 import type { FloatingDockEntry } from "@/components/ui/aceternity/floating-dock";
 import { ART_CRITIQUE_NODE_TYPE } from "@/lib/art-critique/contracts";
 import { listCreatableNodeDefinitions } from "@/lib/canvas/node-registry";
+import { hideAgentDirectorMcp } from "@/lib/release-flags";
 
 import type { AddNodeMenuCommand, AddNodeMenuContext, NodeToolbarGroup, ToolCategory, ToolContext, ToolDefinition, ToolbarId, ToolbarPrefs } from "./tool-definition";
 
@@ -116,7 +117,8 @@ export function resolveNodeToolbarPlacement(tool: ToolDefinition, ctx: ToolConte
 
 /** 解析添加节点菜单命令——合并插件节点后按 applicable 过滤并排序。 */
 export function resolveAddNodeMenuCommands(ctx: AddNodeMenuContext): AddNodeMenuCommand[] {
-    return [...getAddNodeMenuCommands(), ...getPluginNodeMenuCommands()].filter((command) => !command.applicable || command.applicable(ctx)).sort((a, b) => a.defaultOrder - b.defaultOrder);
+    const commands = [...getAddNodeMenuCommands(), ...getPluginNodeMenuCommands()].filter((command) => !command.applicable || command.applicable(ctx)).sort((a, b) => a.defaultOrder - b.defaultOrder);
+    return hideAgentDirectorMcp() ? commands.filter((command) => command.id !== "director") : commands;
 }
 
 /**

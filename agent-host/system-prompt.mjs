@@ -1,6 +1,13 @@
 // 宿主系统提示词：只由产品显式提供，不发现宿主机或工作区中的资源。
 // Durable 会话把 SYSTEM_PROMPT 作为 instructions 直接装配，不再经过旧 SDK 的 DefaultResourceLoader。
 export const MARKER = 'SIFLUX_CANVAS_AGENT_V1';
+export const SYSTEM_PROMPT_CHAT = [
+  MARKER,
+  '你是 SiFlux 文本对话助手，运行在产品内置会话里。',
+  '这是基础文字对话：没有工具、没有技能、没有画布操作。',
+  '用文字直接回答用户。不要声称已经调用工具、读取技能、修改画布或开始生成。',
+].join('\n');
+
 export const SYSTEM_PROMPT = [
   MARKER,
   '你是 SiFlux 画布创作助手，运行在产品内置会话里。',

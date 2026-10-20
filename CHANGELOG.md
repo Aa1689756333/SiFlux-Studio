@@ -2,6 +2,14 @@
 
 All notable public changes to BeefTV are documented in this file.
 
+## v1.1.0
+
+- 新增独立的图片、视频、音频生成页，可查看本页历史，生成可在后台继续。
+- 首页改为项目与近 7 天用量概览。
+- 文本对话独立成页；新增用量统计。
+- 应用内更新改为先检查、再下载、后安装；本地与 GitHub 版本相同时不会下载。
+- 识别无 `v` 前缀的安装版本（如 1.0.3），已安装 1.0.3 可通过应用内更新升到本版本。
+
 ## Unreleased
 
 - Built-in BeefAPI can be connected from the desktop app without pasting a key.

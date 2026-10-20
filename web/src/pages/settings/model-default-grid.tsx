@@ -5,6 +5,7 @@ import { useEffect, useRef } from "react";
 import { assistantModelOptions, normalizeAssistantModel } from "@/lib/assistant-model";
 import { groupModelsByDisplayName } from "@/lib/model-selection";
 import {
+    compareModelNames,
     filterModelsByCapability,
     isBuiltinBeefAPIChannel,
     modelDisplayName,
@@ -65,7 +66,7 @@ export function ModelDefaultGrid({ config, onChange, onOpenChannels }: { config:
                     const modelChannel = resolveModelChannel(config, model);
                     const channel = isBuiltinBeefAPIChannel(modelChannel) ? "BeefTV" : modelChannel.name || "未命名渠道";
                     return { value: model, label, searchLabel: `${label} ${channel}`, channel };
-                });
+                }).sort((a, b) => compareModelNames(a.label, b.label));
                 if (isAssistant) options.unshift({ value: "", label: "跟随默认文本模型", searchLabel: "跟随默认文本模型", channel: "" });
                 const unavailable = isAssistant ? Boolean(config.assistantModel && !selected) : Boolean(selected && !options.some((option) => option.value === selected));
                 const value = unavailable ? undefined : isAssistant && !config.assistantModel ? "" : options.some((option) => option.value === selected) ? selected : undefined;

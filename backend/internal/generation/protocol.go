@@ -234,7 +234,7 @@ func tryStreamingDeclarativeTextCreate(ctx context.Context, input Input, adapter
 		if reasoning := strings.TrimSpace(stringField(parsed, "reasoning")); reasoning != "" {
 			result["reasoning"] = reasoning
 		}
-		return result, true, nil
+		return withUsage(result, usageFromPayload(parsed)), true, nil
 	}
 	created, err := adapter.ParseCreate(ctx, data)
 	if err != nil {

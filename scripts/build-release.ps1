@@ -52,7 +52,7 @@ if (-not (Test-Path $publicKeyFile)) { throw "missing $publicKeyFile" }
 $publicKey = ([System.IO.File]::ReadAllText($publicKeyFile)).Trim()
 if (-not $publicKey) { throw "scripts/desktop-updater.pub is empty" }
 $feedURL = "https://ghclone.com/https://github.com/Aa1689756333/SiFlux-Studio/releases/latest/download/desktop-update.json"
-$ldflags = "-X infinite-canvas/backend/internal/buildinfo.Version=$Version -X infinite-canvas/backend/internal/desktopupdate.FeedURL=$feedURL -X infinite-canvas/backend/internal/desktopupdate.PublicKey=$publicKey"
+$ldflags = "-X infinite-canvas/backend/internal/buildinfo.Version=v$Version -X infinite-canvas/backend/internal/desktopupdate.FeedURL=$feedURL -X infinite-canvas/backend/internal/desktopupdate.PublicKey=$publicKey"
 
 Push-Location $Desktop
 try {

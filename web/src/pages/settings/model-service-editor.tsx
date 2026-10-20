@@ -10,7 +10,7 @@ import { mergeFetchedChannelModelProfiles, type ChannelModelCatalogItem } from "
 import { CAPABILITY_LABELS, MODEL_SERVICE_PRESETS, modelCatalogRequestURL, serviceConnectionError, serviceModelProfile, servicePresetFor, type ModelServicePresetId } from "@/lib/model-service-presets";
 import type { ModelProtocolDefinition } from "@/lib/model-protocols";
 import { seedancePortraitLabel } from "@/lib/seedance-portrait";
-import { createModelChannel, isBuiltinRelayChannel, type ModelCapability, type ModelChannel } from "@/stores/use-config-store";
+import { compareModelNames, createModelChannel, isBuiltinRelayChannel, type ModelCapability, type ModelChannel } from "@/stores/use-config-store";
 import { ChannelModelSettings } from "./channel-model-settings";
 import { currentModelConnectionReceipt, useModelConnectionTests } from "@/stores/use-model-connection-tests";
 import "./model-service-editor.css";
@@ -150,8 +150,25 @@ export function ModelServiceEditor({ initial, onClose, onSave }: { initial: Mode
     const visibleModels = catalog.filter((item) => {
         const profile = serviceModelProfile(draft, item, protocols);
         return `${item.id} ${seedancePortraitLabel(item.id) || item.displayName || ""}`.toLowerCase().includes(query.toLowerCase()) && (filter === "all" || profile.capability === filter);
-    });
+    }).sort((a, b) => compareModelNames(seedancePortraitLabel(a.id) || a.displayName || a.id, seedancePortraitLabel(b.id) || b.displayName || b.id));
     const selectedPreset = MODEL_SERVICE_PRESETS.find((item) => item.id === presetId)!;
+    const visibleSelected = visibleModels.filter((item) => draft.models.includes(item.id)).length;
+    const selectVisibleModels = () => {
+        if (!visibleModels.length) return;
+        setDraft((current) => {
+            const models = [...new Set([...current.models, ...visibleModels.map((item) => item.id)])];
+            const profiles = [...(current.modelProfiles || [])];
+            for (const item of visibleModels) {
+                if (!profiles.some((profile) => profile.model === item.id)) profiles.push(serviceModelProfile(current, item, protocols));
+            }
+            return { ...current, models, modelProfiles: profiles };
+        });
+        setError("");
+    };
+    const clearSelectedModels = () => {
+        setDraft((current) => ({ ...current, models: [] }));
+        setError("");
+    };
 
     return <AppModal open centered width={1000} flush footer={null} title={null} closable={!saving} keyboard={!saving} mask={{ closable: false }} onCancel={() => { catalogRequest.current?.abort(); onClose(); }} rootClassName="model-service-modal">
         <div className="model-service-header">
@@ -189,7 +206,7 @@ export function ModelServiceEditor({ initial, onClose, onSave }: { initial: Mode
             </div> : <div className="model-service-models">
                 <div className="model-service-catalog-header"><div><h3>选择你要使用的模型</h3><p>{draft.name || "我的模型服务"} · {catalogRead ? "目录已读取" : "支持手动添加模型"}</p></div><Button icon={<Search size={14} />} loading={busy} disabled={protocolLoading} onClick={() => void fetchModels()}>读取模型</Button></div>
                 <Input aria-label="搜索模型" prefix={<Search size={16} />} placeholder="搜索模型名称" value={query} onChange={(event) => setQuery(event.target.value)} allowClear />
-                <div className="model-service-filter"><Segmented value={filter} onChange={(value) => setFilter(String(value))} options={[{ label: "全部", value: "all" }, ...Object.entries(CAPABILITY_LABELS).map(([value, label]) => ({ value, label }))]} /><span>已选 {draft.models.length} 个</span></div>
+                <div className="model-service-filter"><Segmented value={filter} onChange={(value) => setFilter(String(value))} options={[{ label: "全部", value: "all" }, ...Object.entries(CAPABILITY_LABELS).map(([value, label]) => ({ value, label }))]} /><div className="model-service-filter-actions"><span>已选 {draft.models.length} 个</span><Button size="small" disabled={busy || protocolLoading || !visibleModels.length || visibleSelected === visibleModels.length} onClick={selectVisibleModels}>全选</Button><Button size="small" disabled={busy || !draft.models.length} onClick={clearSelectedModels}>移除全部</Button></div></div>
                 <div className="model-service-catalog">
                     {protocolLoading ? <Spin /> : visibleModels.length ? visibleModels.map((item) => {
                         const profile = serviceModelProfile(draft, item, protocols);

@@ -110,6 +110,25 @@ export function formatDesktopVersionLabel(version: string): string {
     return raw.startsWith("v") ? raw : `v${raw.replace(/^v/, "")}`;
 }
 
+function parseDesktopVersionTriple(version: string): [number, number, number] | null {
+    const match = formatDesktopVersionLabel(version).match(/^v(\d+)\.(\d+)\.(\d+)$/);
+    if (!match) return null;
+    return [Number(match[1]), Number(match[2]), Number(match[3])];
+}
+
+/** True when latest is a strictly newer stable release than current. Unprefixed 1.0.3 equals v1.0.3. */
+export function isNewerDesktopVersion(latest: string, current: string): boolean {
+    const next = parseDesktopVersionTriple(latest);
+    if (!next) return false;
+    const installed = parseDesktopVersionTriple(current);
+    if (!installed) return true;
+    for (let i = 0; i < 3; i++) {
+        if (next[i] > installed[i]) return true;
+        if (next[i] < installed[i]) return false;
+    }
+    return false;
+}
+
 export function hasDesktopUpdateBinding(binding: DesktopRuntimeBinding | undefined): binding is Required<Pick<DesktopRuntimeBinding, "UpdateStatus" | "CheckForUpdate" | "DownloadUpdate" | "InstallUpdate">> & DesktopRuntimeBinding {
     return typeof binding?.UpdateStatus === "function" && typeof binding?.CheckForUpdate === "function" && typeof binding?.DownloadUpdate === "function" && typeof binding?.InstallUpdate === "function";
 }
@@ -222,8 +241,9 @@ export function userFacingDesktopUpdateError(error: string): string {
 
 export function shouldShowDesktopUpdaterControls(snapshot: DesktopUpdateSnapshot): boolean {
     if (snapshot.runtime !== "desktop") return false;
-    if (["available", "downloading", "ready", "installing"].includes(snapshot.state.status)) return true;
-    return snapshot.state.status === "error" && Boolean(snapshot.state.latestVersion) && formatDesktopVersionLabel(snapshot.state.latestVersion) !== formatDesktopVersionLabel(snapshot.state.currentVersion);
+    if (snapshot.state.status === "available") return isNewerDesktopVersion(snapshot.state.latestVersion, snapshot.state.currentVersion);
+    if (["downloading", "ready", "installing"].includes(snapshot.state.status)) return true;
+    return snapshot.state.status === "error" && Boolean(snapshot.state.latestVersion) && isNewerDesktopVersion(snapshot.state.latestVersion, snapshot.state.currentVersion);
 }
 
 function bindingErrorMessage(error: unknown): string {
@@ -403,6 +423,10 @@ export function createDesktopUpdateController(options: DesktopUpdateControllerOp
         const binding = getBinding();
         if (!hasDesktopUpdateBinding(binding) || runtimeKind() !== "desktop") return;
         if (state.status !== "available" && !(state.status === "error" && (lastAction === "download" || Boolean(state.latestVersion)))) return;
+        if (!isNewerDesktopVersion(state.latestVersion, state.currentVersion)) {
+            apply({ ...state, status: "idle", error: "" }, { actionBusy: false });
+            return;
+        }
         lastAction = "download";
         actionBusy = true;
         apply({ ...state, status: "downloading", error: "" }, { actionBusy: true });

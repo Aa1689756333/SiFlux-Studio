@@ -43,7 +43,9 @@ export function groupModelsByDisplayName(config: AiConfig, models: string[]): Di
         if (current) current.models.push(model);
         else groups.set(key, { key, label, models: [model] });
     });
-    return Array.from(groups.values()).map((group) => ({ ...group, models: [...group.models].sort((a, b) => Number(Boolean(seedancePortraitModel(a))) - Number(Boolean(seedancePortraitModel(b)))) }));
+    return Array.from(groups.values())
+        .map((group) => ({ ...group, models: [...group.models].sort((a, b) => Number(Boolean(seedancePortraitModel(a))) - Number(Boolean(seedancePortraitModel(b))) || a.localeCompare(b, undefined, { numeric: true, sensitivity: "base" })) }))
+        .sort((a, b) => a.label.localeCompare(b.label, undefined, { numeric: true, sensitivity: "base" }));
 }
 
 export function configuredModelDisplayName(config: AiConfig, value: string) {

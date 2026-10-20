@@ -331,7 +331,7 @@ func ParseAgentToolPayload(payload map[string]interface{}, protocol string) (map
 			calls = append(calls, map[string]interface{}{"id": firstNonEmpty(stringField(item, "call_id"), stringField(item, "id")), "type": "function", "function": map[string]interface{}{"name": stringField(item, "name"), "arguments": stringField(item, "arguments")}})
 		}
 		result["toolCalls"] = calls
-		return result, nil
+		return withUsage(result, usageFromPayload(payload)), nil
 	}
 	if protocol == "claude-api" {
 		content := InterfaceSlice(payload["content"])
@@ -355,7 +355,7 @@ func ParseAgentToolPayload(payload map[string]interface{}, protocol string) (map
 		if result["text"] == "" && len(calls) == 0 {
 			return nil, errors.New("Claude Agent 接口没有返回内容")
 		}
-		return result, nil
+		return withUsage(result, usageFromPayload(payload)), nil
 	}
 	choices := InterfaceSlice(payload["choices"])
 	if len(choices) == 0 {
@@ -374,7 +374,7 @@ func ParseAgentToolPayload(payload map[string]interface{}, protocol string) (map
 		calls = append(calls, map[string]interface{}{"id": stringField(item, "id"), "type": "function", "function": map[string]interface{}{"name": stringField(function, "name"), "arguments": stringField(function, "arguments")}})
 	}
 	result["toolCalls"] = calls
-	return result, nil
+	return withUsage(result, usageFromPayload(payload)), nil
 }
 
 func PostStreamingAgent(ctx context.Context, config Config, path string, body map[string]interface{}, protocol string, onDelta func(string), onReasoning ...func(string)) (map[string]interface{}, error) {
@@ -417,6 +417,7 @@ type StreamingAgentParser struct {
 	toolCalls     map[int]*StreamingAgentToolCall
 	toolCallByID  map[string]int
 	completed     map[string]interface{}
+	usage         map[string]interface{}
 	err           error
 	emit          func(string)
 	emitReasoning func(string)
@@ -480,6 +481,7 @@ func (p *StreamingAgentParser) consumeFrame(frame string) {
 		p.err = err
 		return
 	}
+	p.captureUsage(payload)
 	switch p.protocol {
 	case "responses":
 		p.consumeResponsesEvent(eventName, payload)
@@ -642,7 +644,7 @@ func (p *StreamingAgentParser) Result() (map[string]interface{}, error) {
 		if p.reasoning.Len() > 0 {
 			result["reasoning"] = p.reasoning.String()
 		}
-		return result, nil
+		return withUsage(result, p.usage), nil
 	}
 	result := map[string]interface{}{"mode": "text", "text": p.text.String(), "toolCalls": []interface{}{}}
 	if p.reasoning.Len() > 0 {
@@ -673,7 +675,55 @@ func (p *StreamingAgentParser) Result() (map[string]interface{}, error) {
 	if p.text.Len() == 0 && len(calls) == 0 {
 		return nil, errors.New("画布 Agent 接口没有返回内容")
 	}
-	return result, nil
+	return withUsage(result, p.usage), nil
+}
+
+func (p *StreamingAgentParser) captureUsage(payload map[string]interface{}) {
+	if usage, ok := payload["usage"].(map[string]interface{}); ok {
+		p.usage = mergeUsageMaps(p.usage, usage)
+	}
+	if meta, ok := payload["usageMetadata"].(map[string]interface{}); ok {
+		p.usage = mergeUsageMaps(p.usage, meta)
+	}
+	if response, ok := payload["response"].(map[string]interface{}); ok {
+		if usage, ok := response["usage"].(map[string]interface{}); ok {
+			p.usage = mergeUsageMaps(p.usage, usage)
+		}
+	}
+}
+
+func mergeUsageMaps(dst, src map[string]interface{}) map[string]interface{} {
+	if len(src) == 0 {
+		return dst
+	}
+	if dst == nil {
+		out := make(map[string]interface{}, len(src))
+		for key, value := range src {
+			out[key] = value
+		}
+		return out
+	}
+	for key, value := range src {
+		dst[key] = value
+	}
+	return dst
+}
+
+func withUsage(result map[string]interface{}, usage map[string]interface{}) map[string]interface{} {
+	if len(usage) > 0 {
+		result["usage"] = usage
+	}
+	return result
+}
+
+func usageFromPayload(payload map[string]interface{}) map[string]interface{} {
+	if usage, ok := payload["usage"].(map[string]interface{}); ok {
+		return usage
+	}
+	if meta, ok := payload["usageMetadata"].(map[string]interface{}); ok {
+		return meta
+	}
+	return nil
 }
 
 func IntField(value map[string]interface{}, key string, fallback int) int {
@@ -845,6 +895,7 @@ func NormalizeAgentToolChoice(body map[string]interface{}, input Input, protocol
 type ProviderTextResult struct {
 	Text      string
 	Reasoning string
+	Usage     map[string]interface{}
 }
 
 func ProviderTextTaskResult(result ProviderTextResult) map[string]interface{} {
@@ -852,7 +903,7 @@ func ProviderTextTaskResult(result ProviderTextResult) map[string]interface{} {
 	if strings.TrimSpace(result.Reasoning) != "" {
 		payload["reasoning"] = result.Reasoning
 	}
-	return payload
+	return withUsage(payload, result.Usage)
 }
 
 func ApplyTextOutputLimit(body map[string]interface{}, limit int, field string) {
@@ -998,7 +1049,7 @@ func RequestTextProvider(ctx context.Context, config Config, path string, body m
 	if err != nil {
 		return ProviderTextResult{}, err
 	}
-	result := ProviderTextResult{Text: stringField(parsed, "text"), Reasoning: stringField(parsed, "reasoning")}
+	result := ProviderTextResult{Text: stringField(parsed, "text"), Reasoning: stringField(parsed, "reasoning"), Usage: usageFromPayload(parsed)}
 	if result.Text == "" {
 		return ProviderTextResult{}, errors.New("文本接口没有返回内容")
 	}
@@ -1016,7 +1067,7 @@ func PostStreamingTextResult(ctx context.Context, config Config, path string, bo
 	if err != nil {
 		return ProviderTextResult{}, err
 	}
-	result := ProviderTextResult{Text: stringField(parsed, "text"), Reasoning: stringField(parsed, "reasoning")}
+	result := ProviderTextResult{Text: stringField(parsed, "text"), Reasoning: stringField(parsed, "reasoning"), Usage: usageFromPayload(parsed)}
 	if result.Text == "" {
 		return ProviderTextResult{}, errors.New("流式文本接口没有返回内容")
 	}

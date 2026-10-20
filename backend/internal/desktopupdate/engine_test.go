@@ -178,6 +178,24 @@ func TestCheckRejectsDowngradeEqualWrongPlatformTimeoutAndHash(t *testing.T) {
 		if state.Status != StatusIdle || state.LatestVersion != "v1.5.1" {
 			t.Fatalf("%+v", state)
 		}
+		if _, err := engine.DownloadUpdate(context.Background()); !errors.Is(err, ErrNotAvailable) {
+			t.Fatalf("download equal = %v", err)
+		}
+	})
+
+	t.Run("equal-without-v-prefix", func(t *testing.T) {
+		server := signedFeedServer(t, priv, testPayload("v1.5.1", "darwin-arm64", "", hex.EncodeToString(sum[:]), int64(len(zipBytes)), ""), zipBytes)
+		engine := testEngine(t, pub, server, "1.5.1", "darwin-arm64")
+		state, err := engine.CheckForUpdate(context.Background())
+		if err != nil {
+			t.Fatal(err)
+		}
+		if state.Status != StatusIdle || state.LatestVersion != "v1.5.1" {
+			t.Fatalf("%+v", state)
+		}
+		if _, err := engine.DownloadUpdate(context.Background()); !errors.Is(err, ErrNotAvailable) {
+			t.Fatalf("download unprefixed equal = %v", err)
+		}
 	})
 
 	t.Run("downgrade", func(t *testing.T) {

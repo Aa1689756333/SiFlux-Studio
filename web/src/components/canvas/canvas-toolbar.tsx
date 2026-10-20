@@ -1,3 +1,4 @@
+import { hideAgentDirectorMcp } from "@/lib/release-flags";
 import { AnimatePresence, motion } from "motion/react";
 import { useEffect, useRef, useState, type MouseEvent as ReactMouseEvent, type ReactNode } from "react";
 import { Hand, MousePointer2, ScanFace } from "lucide-react";
@@ -333,7 +334,7 @@ export function CanvasToolbar({
                 className="canvas-floating-dock libtv-main-dock pointer-events-auto max-w-full"
                 style={canvasDockStyle(theme)}
             />
-            {libtvChrome ? (
+            {libtvChrome && !hideAgentDirectorMcp() ? (
                 <button type="button" className="canvas-libtv-director-entry pointer-events-auto" onClick={onOpenDirector} aria-label="TV Director">
                     <span className="canvas-libtv-director-orb" aria-hidden="true" />
                     <span>TV Director</span>

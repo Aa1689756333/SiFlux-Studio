@@ -10,7 +10,7 @@ import { Harness, createRegistry, defineDoc, defineExtension, defineTool, watchE
 import { openNodeSqliteStorage } from '@earendil-works/pi-durable/storage/sqlite/node';
 import { canvasKey } from './session-owner.mjs';
 import { newTurnAccumulator, resetTurnAccumulator, turnChange, sessionTitle } from './canvas-turn.mjs';
-import { SYSTEM_PROMPT } from './system-prompt.mjs';
+import { SYSTEM_PROMPT, SYSTEM_PROMPT_CHAT } from './system-prompt.mjs';
 import { SKILL_LOAD_PARAMETERS, createSkillCatalogSection, expandSkillContent, loadPinnedSkills, loadedSkillRecord,
   normalizeSkillCatalog, sameSkillPin, skillsToLoad } from './skill-resource.mjs';
 
@@ -205,7 +205,8 @@ export function createDurableSessionStore({ sessionRoot, workspaceRoot, getModel
     const registry = createRegistry();
     entry.generation.persistEffects = () => persistEffects(entry);
     entry.generation.permissionMode='full-access';
-    const tools = [...buildTools(canvasId, entry.log, entry.generation, entry.turn, sessionId), ...hostTools(entry)].map((tool) => defineTool({
+    const chatOnly = canvasId === 'workspace-chat';
+    const tools = (chatOnly ? [] : [...buildTools(canvasId, entry.log, entry.generation, entry.turn, sessionId), ...hostTools(entry)]).map((tool) => defineTool({
       name: tool.name, description: tool.description, parameters: tool.parameters,
       replay: durableToolReplay(tool), executionMode: 'sequential',
       ...(['media.overview', 'media.inspect', 'media.check'].includes(tool.label) ? { outputLimits: { maxBytes: 64 * 1024 * 1024, maxLines: 100000 } } : {}),
@@ -258,14 +259,14 @@ export function createDurableSessionStore({ sessionRoot, workspaceRoot, getModel
     registry.install(operationExtension);
     entry.configurePermission=async mode=>{
       entry.generation.permissionMode=mode;
-      const projected=[...buildTools(canvasId,entry.log,entry.generation,entry.turn,sessionId),...hostTools(entry)];
+      const projected=chatOnly ? [] : [...buildTools(canvasId,entry.log,entry.generation,entry.turn,sessionId),...hostTools(entry)];
       const byName=new Map(projected.map(t=>[t.name,t]));
-      const selected=tools.filter(t=>byName.has(t.name)).map(t=>({...t,parameters:byName.get(t.name).parameters}));
+      const selected=chatOnly ? [] : tools.filter(t=>byName.has(t.name)).map(t=>({...t,parameters:byName.get(t.name).parameters}));
       entry.toolNames = selected.map((tool) => tool.name);
       registry.install(defineExtension({...operationExtension,tools:selected}));
-      if(entry.root) await entry.root.configure({tools:selected,instructions:`${SYSTEM_PROMPT}\n${mode==='read-only'?'只能读取工作区内容，不能修改或生成。':mode==='full-access'?'可读取和修改本工作区的所有画布。付费生成必须等待用户确认。':'仅修改当前画布；其他画布只读。'}`},CTX);
+      if(entry.root) await entry.root.configure({tools:selected,instructions: chatOnly ? SYSTEM_PROMPT_CHAT : `${SYSTEM_PROMPT}\n${mode==='read-only'?'只能读取工作区内容，不能修改或生成。':mode==='full-access'?'可读取和修改本工作区的所有画布。付费生成必须等待用户确认。':'仅修改当前画布；其他画布只读。'}`},CTX);
     };
-    if (skills) registry.install(defineExtension({ name: 'siflux.skills.v1', sections: [createSkillCatalogSection({
+    if (skills && !chatOnly) registry.install(defineExtension({ name: 'siflux.skills.v1', sections: [createSkillCatalogSection({
       readCatalog: (signal) => skills.readCatalog(entry, signal, entry.turn.turnId), cache: entry.skillCatalog })] }));
     for (const extension of await extensions(entry)) registry.install(extension);
     entry.harness = await Harness.open(await openNodeSqliteStorage(path.join(dir, `${uuid}.sqlite`)), {
@@ -275,7 +276,7 @@ export function createDurableSessionStore({ sessionRoot, workspaceRoot, getModel
     }, CTX);
     try {
       entry.root = await entry.harness.root(CTX, { agent: { model: await getModelRef(entry), tools,
-        instructions: SYSTEM_PROMPT, thinkingLevel, cwd } });
+        instructions: chatOnly ? SYSTEM_PROMPT_CHAT : SYSTEM_PROMPT, thinkingLevel, cwd } });
       let hostState = await state(entry);
       if (!hostState) {
         await update(entry, (doc) => { doc.canvasId = canvasId; doc.sessionId = sessionId; });

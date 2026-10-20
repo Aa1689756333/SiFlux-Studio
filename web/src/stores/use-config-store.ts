@@ -1178,6 +1178,12 @@ function normalizeChannelInterfaceType(value: unknown): ChannelInterfaceType | u
     return normalizeModelProtocol(value);
 }
 
+export function compareModelNames(a: string, b: string) {
+    const left = modelOptionName(a);
+    const right = modelOptionName(b);
+    return left.localeCompare(right, undefined, { numeric: true, sensitivity: "base" }) || a.localeCompare(b, undefined, { numeric: true, sensitivity: "base" });
+}
+
 function uniqueRawModels(models: string[]) {
     return Array.from(new Set((models || []).map(normalizeRawModelName).filter(Boolean)));
 }

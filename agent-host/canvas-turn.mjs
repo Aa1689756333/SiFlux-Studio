@@ -157,8 +157,11 @@ export function sessionTitle(turns) {
 // 这里只是「告诉模型可以引用什么」，真正的授权仍在后端按回合记录裁决：
 // 模型即使编造别的 assetId/canvasId，工具调用也会在共享操作层被 scope_denied 拒绝。
 export function turnContextPrefix({ canvasId, selectedNodeIds = [], references = [], permissionMode = 'canvas' }) {
-  const parts = [`当前画布 ${canvasId}`];
-  parts.push(permissionMode==='read-only' ? '只能读取工作区内容，不能修改或生成' : permissionMode==='full-access' ? '可以读取和修改本工作区的画布；付费生成仍需用户确认' : '可修改当前画布，其他画布只读');
+  const parts = canvasId === 'workspace-chat'
+    ? ['独立文本对话，没有工具和技能', '只能用文字回复，不能调用工具、技能或改画布']
+    : canvasId === 'workspace-agent'
+    ? ['独立对话，没有绑定画布', '只能阅读工作区素材并对话，不能改画布或生成']
+    : [`当前画布 ${canvasId}`, permissionMode==='read-only' ? '只能读取工作区内容，不能修改或生成' : permissionMode==='full-access' ? '可以读取和修改本工作区的画布；付费生成仍需用户确认' : '可修改当前画布，其他画布只读'];
   const selected = selectedNodeIds.map((id) => String(id)).filter(Boolean);
   if (selected.length > 0) parts.push(`选中对象: ${selected.join(', ')}`);
   const assets = references.filter((item) => item?.kind === 'asset' && item.id).map((item) => String(item.id));
