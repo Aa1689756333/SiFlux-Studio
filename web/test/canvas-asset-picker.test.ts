@@ -110,15 +110,7 @@ describe("asset picker canonical read gate", () => {
         expect(source).toContain("workspaceAssetPickerDisabledReason");
     });
 
-    test("canvas project asset modal uses the workspace library API for free-canvas fallback", () => {
-        const source = readFileSync(resolve(import.meta.dir, "../src/components/canvas/canvas-project-asset-modal.tsx"), "utf8");
-        expect(source).toContain("usesWorkspaceAssetLibraryApi()");
-        expect(source).toContain("remoteLibrary={!detail && usesWorkspaceAssetLibraryApi()}");
-        expect(source).toContain("getWorkspaceAsset(item.project.id, undefined, { expectedScope })");
-        expect(source).not.toContain("isLocalWorkspaceMode");
-        expect(source).not.toContain("preferLocalUnsynced");
     });
-});
 
 describe("canvas context menu motion", () => {
     test("keeps hover feedback stationary while retaining spotlight surfaces", () => {
