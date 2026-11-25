@@ -25,7 +25,7 @@ import (
 
 func imageSubmissionFixture(t *testing.T, multipartBody bool) (*Service, *gorm.DB, model.Task, *model.ImageSubmission, []byte) {
 	t.Helper()
-	s, db, _, _ := creationTestService(t)
+	s, db := imageTaskTestService(t)
 	s.workerID = newID()
 	task := model.Task{ID: "image-task", UserID: "user", Type: "canvas_image", Status: model.TaskStatusRunning, LeaseOwner: "owner", InputJSON: `{"mode":"image"}`}
 	expires := time.Now().Add(time.Hour)

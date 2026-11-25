@@ -5,7 +5,6 @@ import (
 	"strings"
 
 	"infinite-canvas/backend/internal/model"
-	"infinite-canvas/backend/internal/playback"
 	"infinite-canvas/backend/internal/taskdelivery"
 )
 
@@ -41,7 +40,6 @@ func (s *Service) generatedMediaIngestor() *taskdelivery.Ingestor {
 	return taskdelivery.NewIngestor(taskdelivery.IngestDeps{
 		Store:      taskdelivery.NewAssetInlineStore(s.resourceDomain()),
 		MaxBytes:   s.generatedMediaMaxBytes,
-		ProbeVideo: playback.ProbeGeneratedVideoMedia,
 	})
 }
 

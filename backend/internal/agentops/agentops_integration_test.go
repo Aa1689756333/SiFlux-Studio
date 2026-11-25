@@ -1,4 +1,4 @@
-package agentops_test
+﻿package agentops_test
 
 import (
 	"encoding/json"
@@ -232,8 +232,8 @@ func TestReadOnlyClientCannotWriteAndCapabilityListIsFiltered(t *testing.T) {
 			t.Fatalf("只读能力列表混入写操作: %s", descriptor.ID)
 		}
 	}
-	if len(readOnly) != 15 {
-		t.Fatalf("只读操作应为 15 个，得到 %d", len(readOnly))
+	if len(readOnly) != 14 {
+		t.Fatalf("只读操作应为 14 个，得到 %d", len(readOnly))
 	}
 	if _, err := h.run(t, "canvas.get", "", map[string]any{"canvasId": h.canvasID}, true); err != nil {
 		t.Fatalf("只读客户端读操作应可用: %v", err)
@@ -278,22 +278,22 @@ func TestUnsupportedNodeFieldIsMachineReadableAndDoesNotWrite(t *testing.T) {
 	h := newHarness(t)
 	_, err := h.run(t, "canvas.nodes.create", "op-structure", map[string]any{
 		"canvasId": h.canvasID, "expectedRevision": h.revision,
-		"nodes": []any{map[string]any{"title": "脚本节点", "type": "script"}},
+		"nodes": []any{map[string]any{"title": "配置节点", "type": "config"}},
 	}, false)
 	if err != nil {
-		t.Fatalf("创建脚本节点失败: %v", err)
+		t.Fatalf("创建配置节点失败: %v", err)
 	}
 	canvas := h.canvas(t)
 	revision := int64(canvas["revision"].(float64))
 	var scriptID string
 	for _, raw := range canvas["nodes"].([]any) {
 		node := raw.(map[string]any)
-		if node["type"] == "script" {
+		if node["type"] == "config" {
 			scriptID = node["id"].(string)
 		}
 	}
 	if scriptID == "" {
-		t.Fatal("未找到脚本节点")
+		t.Fatal("未找到配置节点")
 	}
 
 	opErr := func(err error) *agentops.Error {
@@ -319,13 +319,13 @@ func TestUnsupportedNodeFieldIsMachineReadableAndDoesNotWrite(t *testing.T) {
 	// 未声明字段：reason=unsupported_field，且 revision 不推进。
 	_, err = h.run(t, "canvas.node.update", "op-unsupported", map[string]any{
 		"canvasId": h.canvasID, "nodeId": scriptID, "expectedRevision": revision + 1,
-		"patch": map[string]any{"content": "不该写入"},
+		"patch": map[string]any{"fontSize": "不该写入"},
 	}, false)
 	if err == nil {
 		t.Fatal("未声明字段应被拒绝")
 	}
-	if reason := opErr(err).Reason; reason != "unsupported_field" {
-		t.Fatalf("reason 应为 unsupported_field，实际 %q", reason)
+	if reason := opErr(err).Reason; reason != "unknown_field" {
+		t.Fatalf("reason 应为 unknown_field，实际 %q", reason)
 	}
 	final := h.canvas(t)
 	if final["revision"].(float64) != float64(revision+1) {

@@ -36,7 +36,7 @@ func (s *Service) recoverCanvasTaskBindings(task model.Task) error {
 	if s == nil || strings.TrimSpace(task.ID) == "" || strings.TrimSpace(task.UserID) == "" {
 		return nil
 	}
-	if task.Status != model.TaskStatusSucceeded {
+	if task.Status != model.TaskStatusSucceeded || task.Type != "canvas_image" {
 		return nil
 	}
 	registry := s.workspaceOperations()
@@ -51,20 +51,6 @@ func (s *Service) recoverCanvasTaskBindings(task model.Task) error {
 				last = err
 			}
 		}
-		for _, target := range messageBindTargets(task, intents) {
-			if err := s.executeMessageTaskAttach(registry, task, target.conversationID, target.messageID, target.outputIndex); err != nil {
-				if skippableCanvasBindError(err) {
-					continue
-				}
-				last = err
-			}
-		}
-	}
-	if err := s.RegisterTaskOutputFromTask(task); err != nil {
-		last = err
-	}
-	if projectID := strings.TrimSpace(task.ProjectID); projectID != "" {
-		s.reconcileCharacterTurnaroundTasks(task.UserID, projectID)
 	}
 	return last
 }
@@ -175,12 +161,6 @@ type canvasBindTarget struct {
 	outputIndex int
 }
 
-type messageBindTarget struct {
-	conversationID string
-	messageID      string
-	outputIndex    int
-}
-
 func canvasBindTargets(task model.Task, intents []localtask.CanvasBindingIntent) []canvasBindTarget {
 	seen := map[string]bool{}
 	targets := make([]canvasBindTarget, 0, len(intents)+1)
@@ -202,37 +182,6 @@ func canvasBindTargets(task model.Task, intents []localtask.CanvasBindingIntent)
 		}
 		add(intent.TargetBinding.NodeID, intent.OutputIndex)
 	}
-	switch strings.TrimSpace(task.Type) {
-	case "canvas_text", "text_replay":
-		add(localtask.TargetBindingFromInput(task.InputJSON).NodeID, 0)
-	}
-	return targets
-}
-
-func messageBindTargets(task model.Task, intents []localtask.CanvasBindingIntent) []messageBindTarget {
-	seen := map[string]bool{}
-	targets := make([]messageBindTarget, 0, len(intents)+1)
-	add := func(conversationID, messageID string, outputIndex int) {
-		conversationID = strings.TrimSpace(conversationID)
-		messageID = strings.TrimSpace(messageID)
-		if conversationID == "" || messageID == "" {
-			return
-		}
-		key := conversationID + ":" + messageID + ":" + strconv.Itoa(outputIndex)
-		if seen[key] {
-			return
-		}
-		seen[key] = true
-		targets = append(targets, messageBindTarget{conversationID: conversationID, messageID: messageID, outputIndex: outputIndex})
-	}
-	for _, intent := range intents {
-		if intent.TargetBinding == nil {
-			continue
-		}
-		add(intent.TargetBinding.ConversationID, intent.TargetBinding.MessageID, intent.OutputIndex)
-	}
-	target := localtask.TargetBindingFromInput(task.InputJSON)
-	add(target.ConversationID, target.MessageID, 0)
 	return targets
 }
 

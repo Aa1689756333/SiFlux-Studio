@@ -426,9 +426,6 @@ func (a manifestAdapter) AgentAvailable() bool {
 }
 func (a manifestAdapter) ResultAvailable() bool { return a.manifest.ResultOperation != nil }
 func (a manifestAdapter) BuildCreate(_ context.Context, c RequestContext) (RequestSpec, error) {
-	if a.manifest.Metadata.ID == "volcengine-ark-seedance" || a.manifest.Metadata.ID == "volcengine-ark-video" || a.manifest.Metadata.ID == "volcengine-ark-agent-plan-video" || a.manifest.Metadata.ID == "seedance-videos-compatible" {
-		c.Request = NormalizeSeedanceTaskOptions(c.Request)
-	}
 	if len(a.manifest.Contributes.Providers) == 0 {
 		return RequestSpec{}, fmt.Errorf("plugin %s does not provide a provider", a.manifest.Metadata.ID)
 	}
@@ -438,35 +435,6 @@ func (a manifestAdapter) BuildCreate(_ context.Context, c RequestContext) (Reque
 	spec, err := buildManifestOperation(a.manifest.Create, a.manifest.Auth, c.Request, "")
 	if err != nil {
 		return RequestSpec{}, err
-	}
-	if a.manifest.Metadata.ID == "volcengine-ark-seedance" || a.manifest.Metadata.ID == "volcengine-ark-video" || a.manifest.Metadata.ID == "volcengine-ark-agent-plan-video" || a.manifest.Metadata.ID == "seedance-videos-compatible" {
-		if kind := SeedanceOmniTaskType(c.Request); kind != "" {
-			if body, ok := spec.Body.(map[string]any); ok {
-				body["omni_reference_task_type"] = kind
-			}
-		}
-	}
-	// Some NewAPI-compatible gateways validate the prompt under input.content
-	// even though the historical channel-1 contract used input.prompt. Keep the
-	// legacy field and add the canonical content alias for that shipped profile.
-	if a.manifest.Metadata.ID == "newapi-channel-1" && c.Request.Capability == CapabilityVideo {
-		if body, ok := spec.Body.(map[string]any); ok {
-			if input, ok := body["input"].(map[string]any); ok {
-				if _, exists := input["content"]; !exists {
-					if prompt, ok := input["prompt"]; ok && strings.TrimSpace(fmt.Sprint(prompt)) != "" {
-						input["content"] = []any{map[string]any{"type": "text", "text": fmt.Sprint(prompt)}}
-					}
-				}
-				if content, ok := input["content"]; ok {
-					// WhatsToken's gateway validates the ByteDance-compatible
-					// content array at the top level, while older NewAPI channels
-					// keep it under input. Send both projections during migration.
-					if _, exists := body["content"]; !exists {
-						body["content"] = content
-					}
-				}
-			}
-		}
 	}
 	return spec, nil
 }

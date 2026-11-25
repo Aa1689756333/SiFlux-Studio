@@ -235,7 +235,7 @@ func TestRegistryGenerationModesAreStableAndResolveUniquely(t *testing.T) {
 
 func TestBuiltinMediaCapabilitiesUpdateDraftWithoutOverwritingGeneratedAssets(t *testing.T) {
 	registry := BuiltinRegistry()
-	for _, nodeType := range []string{"image", "video", "audio"} {
+	for _, nodeType := range []string{"image"} {
 		t.Run(nodeType, func(t *testing.T) {
 			descriptor, ok := registry.Resolve(nodeType)
 			if !ok || !descriptor.CanUpdate {

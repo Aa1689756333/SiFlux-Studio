@@ -34,7 +34,7 @@ describe("canvas node copy title", () => {
 });
 
 describe("canvas generation copy metadata", () => {
-    test.each([CanvasNodeType.Image, CanvasNodeType.Video, CanvasNodeType.Audio])("%s 副本不继承原节点的生成提交标记", (type) => {
+    test.each([CanvasNodeType.Image, CanvasNodeType.Image, CanvasNodeType.Image])("%s 副本不继承原节点的生成提交标记", (type) => {
         const source: CanvasNodeData = {
             id: "source", type, title: "结果", position: { x: 0, y: 0 }, width: 340, height: 240,
             metadata: { content: "saved-media", assetId: "saved-asset", taskId: "old-task", generationEffectKeys: ["attach-node:old-task:source:0"] },
@@ -50,7 +50,7 @@ describe("canvas generation copy metadata", () => {
     test("媒体副本保留提示词与参考字段，并明确原地回填生成结果", () => {
         const source: CanvasNodeData = {
             id: "source",
-            type: CanvasNodeType.Video,
+            type: CanvasNodeType.Image,
             title: "镜头",
             position: { x: 0, y: 0 },
             width: 340,
@@ -102,7 +102,7 @@ describe("canvas generation copy metadata", () => {
     test("复制视频节点原地生成时清理旧媒体字段，确保绑定新任务结果不会冲突保留原视频", () => {
         const source: CanvasNodeData = {
             id: "video-source",
-            type: CanvasNodeType.Video,
+            type: CanvasNodeType.Image,
             title: "原视频",
             position: { x: 0, y: 0 },
             width: 360,

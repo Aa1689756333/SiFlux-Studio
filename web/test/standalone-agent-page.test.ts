@@ -6,28 +6,27 @@ const root = resolve(import.meta.dir, "..");
 const read = (relative: string) => readFileSync(resolve(root, relative), "utf8");
 
 describe("standalone agent page", () => {
-    test("home and sidebar hide Agent until the release flag is turned off", () => {
+    test("sidebar exposes Agent next to 生图 and registers the standalone route", () => {
         const sidebar = read("src/components/layout/workspace-sidebar-nav.tsx");
-        const flags = read("src/lib/release-flags.ts");
         const router = read("src/router.tsx");
-        expect(flags).toContain("HIDE_AGENT_DIRECTOR_MCP = true");
-        expect(sidebar).toContain('item.id !== "agent"');
-        expect(sidebar).toContain('item.id !== "director"');
-        expect(sidebar).toContain('item.id !== "agents"');
-        expect(sidebar).not.toContain("Beef Agent");
+        expect(sidebar).toContain('{ id: "image", title: "生图", icon: ImageIcon, to: "/generate/image" }');
+        expect(sidebar).toContain('{ id: "agent", title: "Agent", icon: Bot, to: "/agent" }');
         expect(sidebar).not.toContain("/canvas?mode=new&start=agent");
         expect(router).toContain('path: "/agent"');
-        expect(router).toContain("hideAgentDirectorMcp()");
+        expect(router).toContain("loadAgentPage");
     });
 
-    test("sidebar puts 新建画布 first and follows the requested menu order", () => {
+    test("sidebar groups creative entries before the workspace and Agent configuration", () => {
         const sidebar = read("src/components/layout/workspace-sidebar-nav.tsx");
-        expect(sidebar).toContain('title: "新建画布"');
-        expect(sidebar).not.toContain('title: "新建项目"');
-        const titles = [...sidebar.matchAll(/title: "([^"]+)"/g)].map((match) => match[1]);
-        const menu = titles.filter((title) => ["首页", "Agent助手", "文本对话", "图片生成", "音频生成", "视频生成", "3D 导演台", "项目库", "资产", "模型配置", "用量统计", "MCP"].includes(title));
-        expect(menu).toEqual(["首页", "Agent助手", "文本对话", "图片生成", "音频生成", "视频生成", "3D 导演台", "项目库", "资产", "模型配置", "用量统计", "MCP"]);
-        expect(sidebar).toContain("hideAgentDirectorMcp()");
+        let cursor = -1;
+        for (const token of ['id: "image"', 'id: "agent"', 'heading: "工作区"', 'toolItem("canvas", "/canvas")', 'toolItem("assets", "/assets")', 'id: "settings"', 'heading: "Agent 配置"', 'toolItem("skills", "/skills")', 'toolItem("agents", "/agents")']) {
+            const index = sidebar.indexOf(token);
+            expect(index).toBeGreaterThan(cursor);
+            cursor = index;
+        }
+        for (const removed of ["新建项目", "项目库", "用量统计", "文本对话", "音频生成", "视频生成", "3D 导演台"]) {
+            expect(sidebar).not.toContain(removed);
+        }
     });
 
     test("standalone page is a workspace conversation, not a canvas panel", () => {

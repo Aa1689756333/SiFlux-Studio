@@ -1,5 +1,4 @@
 import { assetResourceId, canvasNodeResourceId, canvasNodeToAsset, declaredCanvasNodeAssetCategory, findCanvasNodeAsset, type CanvasAssetSource } from "@/lib/canvas/canvas-node-asset";
-import { canvasVideoAssetPreviewUrl } from "@/lib/canvas/canvas-media-preview";
 import { readImageMeta } from "@/lib/image-utils";
 import { parseAssetRecord } from "@/lib/asset-record";
 import { parseBackendGenerationResult, type BackendGenerationResult } from "@/services/api/generation-task";
@@ -22,8 +21,6 @@ import { flushAssetStorePersistence, useAssetStore, type Asset, type AssetCatego
 import type { CanvasNodeData } from "@/types/canvas";
 import { persistWorkspaceAssetLink } from "@/services/workspace-asset-repository";
 import { usesBrowserLocalResourceStore, workspaceAssetHasCanonicalMediaPersist } from "@/services/workspace-resource-storage";
-import { bindBackendConversationMessageResult, type BindBackendConversationMessageRuntime } from "@/services/conversation-generation-consumer";
-import type { StoredCreationConversation } from "@/services/creation-conversation-store";
 
 function throwIfAborted(signal?: AbortSignal) {
     if (signal?.aborted) throw new DOMException("The operation was aborted", "AbortError");
@@ -211,7 +208,7 @@ async function persistCanvasNodeAsset(options: EnsureCanvasNodeAssetOptions): Pr
 function generationTaskResult(task: GenerationTask): BackendGenerationResult {
     if (task.resultJson) return parseBackendGenerationResult(task);
     if (!task.previewUrl) return {};
-    return task.previewKind === "video" ? { mode: "video", video: { dataUrl: task.previewUrl } } : { mode: "image", images: [{ dataUrl: task.previewUrl }] };
+    return { mode: "image", images: [{ dataUrl: task.previewUrl }] };
 }
 
 export function projectGenerationTaskResult(task: GenerationTask, result?: BackendGenerationResult): GenerationTask {
@@ -222,23 +219,7 @@ export function projectGenerationTaskResult(task: GenerationTask, result?: Backe
               mediaType: "image" as const,
               ...(image.storageKey ? { providerArtifactRef: image.storageKey } : {}),
           }))
-        : projectedResult.video
-          ? [
-                {
-                    outputIndex: 0,
-                    mediaType: "video" as const,
-                    ...(projectedResult.video.storageKey ? { providerArtifactRef: projectedResult.video.storageKey } : {}),
-                },
-            ]
-          : projectedResult.audio
-            ? [
-                  {
-                      outputIndex: 0,
-                      mediaType: "audio" as const,
-                      ...(projectedResult.audio.storageKey ? { providerArtifactRef: projectedResult.audio.storageKey } : {}),
-                  },
-              ]
-            : (task.outputs?.map((output) => ({ ...output })) ?? []);
+        : (task.outputs?.map((output) => ({ ...output })) ?? []);
     const delivered = new Map((task.outputs || []).map((output) => [output.outputIndex, output]));
     const outputs = projectedOutputs.map((output) => {
         const existing = delivered.get(output.outputIndex);
@@ -410,93 +391,7 @@ async function generationOutputAsset(input: Parameters<MaterializeGenerationTask
         };
     }
 
-    if (input.output.mediaType === "video") {
-        const video = result.video;
-        if (!video) throw new Error("生成任务缺少视频输出");
-        const stored = video.storageKey
-            ? {
-                  url: await resolveMediaUrl(video.storageKey, video.dataUrl),
-                  storageKey: video.storageKey,
-                  width: video.width || 0,
-                  height: video.height || 0,
-                  durationMs: video.durationMs,
-                  bytes: video.bytes || 0,
-                  mimeType: video.mimeType || "video/mp4",
-              }
-            : await storedGenerationMedia(
-                  video.dataUrl,
-                  input.effectKey,
-                  "video",
-                  {
-                      width: video.width,
-                      height: video.height,
-                      durationMs: video.durationMs,
-                      bytes: video.bytes,
-                      mimeType: video.mimeType || "video/mp4",
-                  },
-                  scope,
-                  input.signal,
-              );
-        if (!stored.url) throw new Error("视频结果资源不可用");
-        return {
-            kind: "video",
-            title: "生成视频",
-            coverUrl: canvasVideoAssetPreviewUrl(stored.url),
-            tags: ["生成"],
-            status: "confirmed",
-            source: "生成任务",
-            metadata,
-            data: {
-                url: stored.url,
-                storageKey: stored.storageKey,
-                width: stored.width || 0,
-                height: stored.height || 0,
-                durationMs: stored.durationMs,
-                bytes: stored.bytes,
-                mimeType: stored.mimeType || "video/mp4",
-            },
-        };
-    }
-
-    const audio = result.audio;
-    if (!audio) throw new Error("生成任务缺少音频输出");
-    const stored = audio.storageKey
-        ? {
-              url: await resolveMediaUrl(audio.storageKey, audio.dataUrl),
-              storageKey: audio.storageKey,
-              durationMs: audio.durationMs,
-              bytes: audio.bytes || 0,
-              mimeType: audio.mimeType || "audio/mpeg",
-          }
-        : await storedGenerationMedia(
-              audio.dataUrl,
-              input.effectKey,
-              "audio",
-              {
-                  durationMs: audio.durationMs,
-                  bytes: audio.bytes,
-                  mimeType: audio.mimeType || "audio/mpeg",
-              },
-              scope,
-              input.signal,
-          );
-    if (!stored.url) throw new Error("音频结果资源不可用");
-    return {
-        kind: "audio",
-        title: "生成音频",
-        coverUrl: "",
-        tags: ["生成"],
-        status: "confirmed",
-        source: "生成任务",
-        metadata,
-        data: {
-            url: stored.url,
-            storageKey: stored.storageKey,
-            durationMs: stored.durationMs,
-            bytes: stored.bytes,
-            mimeType: stored.mimeType || "audio/mpeg",
-        },
-    };
+    throw new Error("生成任务只支持图片输出");
 }
 
 const materializeGenerationOutput: MaterializeGenerationTaskOutput = createIdempotentMaterializeOutput({
@@ -619,91 +514,6 @@ export async function consumeGenerationTaskAgent(
         dependencies.signal,
     );
     return materialized;
-}
-
-export async function consumeGenerationTaskMessage(
-    task: GenerationTask,
-    messageId: string,
-    consumer: (input: {
-        task: GenerationTask;
-        resultUrls: string[];
-        effectKey: string;
-        signal?: AbortSignal;
-        content?: string;
-        conversation?: StoredCreationConversation;
-        revision?: number;
-        bindingStatus?: string;
-    }) => Promise<void> | void,
-    dependencies: {
-        signal?: AbortSignal;
-        managed?: true;
-        materialize?: typeof materializeGenerationTaskAssets;
-        materializedUrls?: typeof generationTaskMaterializedUrls;
-        attachMessage?: typeof attachGenerationTaskMessage;
-        bindMessage?: BindBackendConversationMessageRuntime;
-    } = {},
-): Promise<GenerationTask> {
-    if (!dependencies.managed) {
-        return runGenerationConsumer(dependencies.signal, (signal) => consumeGenerationTaskMessage(task, messageId, consumer, { ...dependencies, signal, managed: true }));
-    }
-    const materialized = hasBackendDeliveredGenerationOutputs(task)
-        ? await (async () => {
-              await hydrateBackendGeneratedOutputs(task, dependencies.signal);
-              return task;
-          })()
-        : await (dependencies.materialize ?? materializeGenerationTaskAssets)(task, dependencies.signal);
-    const conversationId = materialized.clientContext?.conversationId?.trim() || "";
-    if (conversationId && materialized.status === "succeeded") {
-        for (const outputIndex of conversationMessageAttachIndexes(materialized)) {
-            const bound = await bindBackendConversationMessageResult({
-                conversationId,
-                messageId,
-                task: materialized,
-                outputIndex,
-                signal: dependencies.signal,
-                runtime: dependencies.bindMessage,
-            });
-            await consumer({
-                task: materialized,
-                resultUrls: bound.resultUrls,
-                effectKey: bound.effectKey,
-                signal: dependencies.signal,
-                content: bound.content,
-                conversation: bound.conversation,
-                revision: bound.receipt.revision,
-                bindingStatus: bound.receipt.bindingStatus,
-            });
-        }
-        return materialized;
-    }
-    const resultUrls = (dependencies.materializedUrls ?? generationTaskMaterializedUrls)(materialized);
-    const attach = dependencies.attachMessage ?? attachGenerationTaskMessage;
-    const outputs = materialized.outputs?.filter((output) => output.materializedAssetId) ?? [];
-    for (const output of outputs) {
-        await attach(
-            materialized,
-            messageId,
-            output.outputIndex,
-            async ({ effectKey, signal }) => {
-                await consumer({ task: materialized, resultUrls, effectKey, signal });
-            },
-            dependencies.signal,
-        );
-    }
-    return materialized;
-}
-
-function conversationMessageAttachIndexes(task: GenerationTask): number[] {
-    switch (task.type) {
-        case "text":
-        case "canvas_text":
-        case "text_replay":
-            return [0];
-        default:
-            break;
-    }
-    const indexes = (task.outputs || []).map((output) => output.outputIndex);
-    return indexes.length ? indexes : [0];
 }
 
 export function generationTaskMaterializedUrls(task: GenerationTask): string[] {

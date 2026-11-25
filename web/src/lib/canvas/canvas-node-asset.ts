@@ -1,5 +1,4 @@
 import { getDataUrlByteSize } from "@/lib/image-utils";
-import { canvasNodeVideoPreviewUrl } from "@/lib/canvas/canvas-media-preview";
 import { assetResourceId, bindCanvasNodeResourceAsset, canvasNodeResourceId, extractOwnedResourceId } from "@/lib/canvas/canvas-resource-id";
 import type { Asset, AssetCategory, NewAsset } from "@/stores/use-asset-store";
 import { CanvasNodeType, type CanvasNodeData, type CanvasNodeTypeId } from "@/types/canvas";
@@ -18,7 +17,7 @@ export function canvasNodeToAsset(node: CanvasNodeData, options: CanvasNodeAsset
     const content = node.metadata?.content?.trim() || "";
     const inferredResourceId = extractOwnedResourceId(node.metadata?.storageKey, content);
     const storageKey = node.metadata?.storageKey?.trim() || (inferredResourceId ? `resource:${inferredResourceId}` : undefined);
-    const isMedia = node.type === CanvasNodeType.Image || node.type === CanvasNodeType.Video || node.type === CanvasNodeType.Audio;
+    const isMedia = node.type === CanvasNodeType.Image;
 
     // 文本素材必须直接携带正文；媒体则允许只有持久 storageKey。后者常见于页面重载后：
     // blob/object URL 已失效，但资源定位符仍可从后端重新换取可访问地址，不能因此丢掉素材记录。
@@ -38,7 +37,7 @@ export function canvasNodeToAsset(node: CanvasNodeData, options: CanvasNodeAsset
     const mediaUrl = content || canonicalResourceUrl;
     const base = {
         title,
-        coverUrl: node.type === CanvasNodeType.Image ? mediaUrl : node.type === CanvasNodeType.Video ? canvasNodeVideoPreviewUrl(node) : "",
+        coverUrl: node.type === CanvasNodeType.Image ? mediaUrl : "",
         tags: node.metadata?.assetTags || [],
         category: canvasNodeAssetCategory(node),
         status: "confirmed" as const,
@@ -61,35 +60,6 @@ export function canvasNodeToAsset(node: CanvasNodeData, options: CanvasNodeAsset
                 height: node.metadata?.naturalHeight || node.height,
                 bytes: node.metadata?.bytes || getDataUrlByteSize(dataUrl),
                 mimeType: node.metadata?.mimeType || "image/png",
-            },
-        };
-    }
-    if (node.type === CanvasNodeType.Video) {
-        return {
-            ...base,
-            kind: "video",
-            data: {
-                url: mediaUrl,
-                storageKey,
-                width: node.metadata?.naturalWidth || node.width,
-                height: node.metadata?.naturalHeight || node.height,
-                durationMs: node.metadata?.durationMs,
-                hasAudio: node.metadata?.hasAudio,
-                bytes: node.metadata?.bytes || 0,
-                mimeType: node.metadata?.mimeType || "video/mp4",
-            },
-        };
-    }
-    if (node.type === CanvasNodeType.Audio) {
-        return {
-            ...base,
-            kind: "audio",
-            data: {
-                url: mediaUrl,
-                storageKey,
-                durationMs: node.metadata?.durationMs,
-                bytes: node.metadata?.bytes || 0,
-                mimeType: node.metadata?.mimeType || "audio/mpeg",
             },
         };
     }
@@ -124,7 +94,7 @@ export async function bindMissingCanvasResourceAssets(nodes: CanvasNodeData[], a
 /** Resource-backed canvas media must have an Asset binding before the whole snapshot can be synced. */
 export function canvasNodesMissingResourceAssetBinding(nodes: CanvasNodeData[]) {
     return nodes.filter((node) => {
-        if (node.type !== CanvasNodeType.Image && node.type !== CanvasNodeType.Video && node.type !== CanvasNodeType.Audio) return false;
+        if (node.type !== CanvasNodeType.Image) return false;
         if (node.metadata?.assetId) return false;
         return Boolean(canvasNodeResourceId(node));
     });
@@ -176,8 +146,6 @@ function assetStorageKey(asset: Asset) {
 
 export function declaredCanvasNodeAssetCategory(node: CanvasNodeData): AssetCategory | undefined {
     if (node.metadata?.assetCategory) return node.metadata.assetCategory;
-    if (node.metadata?.workflowKind === "character") return "character";
-    if (node.metadata?.workflowKind === "scene") return "environment";
     if (node.metadata?.workflowKind === "styleboard") return "material";
     return undefined;
 }
@@ -185,13 +153,11 @@ export function declaredCanvasNodeAssetCategory(node: CanvasNodeData): AssetCate
 export function canvasNodeAssetCategory(node: CanvasNodeData): AssetCategory {
     const declared = declaredCanvasNodeAssetCategory(node);
     if (declared) return declared;
-    if (node.type === CanvasNodeType.Image || node.type === CanvasNodeType.Video || node.type === CanvasNodeType.Audio) return "material";
+    if (node.type === CanvasNodeType.Image) return "material";
     return "other";
 }
 
 function canvasAssetFallbackTitle(type: CanvasNodeTypeId) {
     if (type === CanvasNodeType.Image) return "画布图片";
-    if (type === CanvasNodeType.Video) return "画布视频";
-    if (type === CanvasNodeType.Audio) return "画布音频";
     return "画布文本";
 }

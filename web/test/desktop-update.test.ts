@@ -414,6 +414,8 @@ describe("desktop update parsing", () => {
         expect(desktopUpdateProgressLabel(state({ status: "downloading", downloadedBytes: 12 * 1024 * 1024, totalBytes: 40 * 1024 * 1024 }))).toBe("12 MB / 40 MB");
         expect(userFacingDesktopUpdateError("Get https://github.com/glanderness/BeefTV/releases/latest/download/desktop-update.json")).toBe("更新没有完成，请再试一次。");
         expect(userFacingDesktopUpdateError("画布没有保存完成，更新没有开始。请稍后再试。")).toBe("画布没有保存完成，更新没有开始。请稍后再试。");
+        expect(userFacingDesktopUpdateError("解压更新包超时，当前版本未被替换。请重试；再次失败时请导出诊断包。")).toBe("解压更新包超时，当前版本未被替换。请重试；再次失败时请导出诊断包。");
+        expect(userFacingDesktopUpdateError("校验更新包超时，当前版本未被替换。请重试；再次失败时请导出诊断包。")).toBe("校验更新包超时，当前版本未被替换。请重试；再次失败时请导出诊断包。");
     });
 
     test("requires the four Wails update methods before treating the binding as live", () => {

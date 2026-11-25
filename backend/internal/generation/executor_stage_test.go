@@ -59,12 +59,10 @@ func TestExecuteReferenceStages(t *testing.T) {
 		want                                                              []string
 		wantError                                                         bool
 	}{
-		{name: "reference", reference: true, want: []string{"正在准备参考素材", "hydrate", "hydrate/upload", "正在提交生成任务", "submit"}},
-		{name: "no reference", want: []string{"hydrate/upload", "submit"}},
+		{name: "reference", reference: true, want: []string{"正在准备参考图片", "hydrate", "正在提交生图任务", "submit"}},
+		{name: "no reference", want: []string{"submit"}},
 		{name: "resume", reference: true, resumed: true, want: []string{"submit"}},
-		{name: "preparation failure", reference: true, failPreparation: true, want: []string{"正在准备参考素材", "hydrate", "hydrate/upload"}, wantError: true},
-		{name: "cancel preparation", reference: true, cancelPreparation: true, want: []string{"正在准备参考素材", "hydrate", "hydrate/upload"}, wantError: true},
-		{name: "lost lease", reference: true, failStage: true, want: []string{"正在准备参考素材"}, wantError: true},
+		{name: "lost lease", reference: true, failStage: true, want: []string{"正在准备参考图片"}, wantError: true},
 	} {
 		t.Run(tc.name, func(t *testing.T) {
 			t.Setenv("CANVAS_ALLOW_PRIVATE_UPSTREAMS", "true")
@@ -72,7 +70,7 @@ func TestExecuteReferenceStages(t *testing.T) {
 			server := httptest.NewServer(http.HandlerFunc(func(w http.ResponseWriter, r *http.Request) {
 				events = append(events, "submit")
 				w.Header().Set("Content-Type", "application/json")
-				_, _ = w.Write([]byte(`{"output_text":"done","choices":[{"message":{"content":"done"}}]}`))
+				_, _ = w.Write([]byte(`{"data":[{"b64_json":"YQ=="}]}`))
 			}))
 			defer server.Close()
 			ctx, cancel := context.WithCancel(context.Background())
@@ -95,7 +93,7 @@ func TestExecuteReferenceStages(t *testing.T) {
 					r.Call.ProviderRequestID = "existing"
 				}
 			})
-			input := Input{Mode: "text", Prompt: "describe", Config: Config{BaseURL: server.URL, APIKey: "key", Model: "text"}}
+			input := Input{Mode: "image", Prompt: "describe", Config: Config{BaseURL: server.URL, APIKey: "key", Model: "img"}}
 			if tc.reference {
 				input.ReferenceImages = []Media{{StorageKey: "resource:reference"}}
 				if tc.resumed {

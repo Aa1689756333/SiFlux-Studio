@@ -1,10 +1,4 @@
-import { ScanSearch, Sparkles } from "lucide-react";
-import { createElement } from "react";
-
 import type { FloatingDockEntry } from "@/components/ui/aceternity/floating-dock";
-import { ART_CRITIQUE_NODE_TYPE } from "@/lib/art-critique/contracts";
-import { listCreatableNodeDefinitions } from "@/lib/canvas/node-registry";
-import { hideAgentDirectorMcp } from "@/lib/release-flags";
 
 import type { AddNodeMenuCommand, AddNodeMenuContext, NodeToolbarGroup, ToolCategory, ToolContext, ToolDefinition, ToolbarId, ToolbarPrefs } from "./tool-definition";
 
@@ -44,28 +38,6 @@ export function getToolbarTools(toolbar: ToolbarId): ToolDefinition[] {
 /** 获取添加节点菜单全部命令（按 defaultOrder 升序） */
 export function getAddNodeMenuCommands(): AddNodeMenuCommand[] {
     return [...new Map(addNodeMenuRegistry.map((command) => [command.id, command])).values()].sort((a, b) => a.defaultOrder - b.defaultOrder);
-}
-
-/**
- * 将已注册的插件画布节点转换为添加菜单命令。
- * 这部分按需生成，避免远程/延迟加载的插件必须在工具定义模块初始化前完成注册。
- */
-function getPluginNodeMenuCommands(): AddNodeMenuCommand[] {
-    return listCreatableNodeDefinitions()
-        .filter((definition) => Boolean(definition.plugin))
-        .map((definition, index) => {
-            const pluginId = definition.plugin!.pluginId;
-            const FallbackIcon = definition.type === ART_CRITIQUE_NODE_TYPE ? ScanSearch : Sparkles;
-            return {
-                id: definition.type,
-                label: definition.label,
-                icon: definition.icon || createElement(FallbackIcon, { "aria-hidden": true }),
-                section: "node",
-                defaultOrder: 1000 + index,
-                applicable: (ctx: AddNodeMenuContext) => !ctx.enabledPluginIds || ctx.enabledPluginIds.has(pluginId),
-                run: (ctx: AddNodeMenuContext) => ctx.handlers.onAddExtensionNode(definition.type),
-            };
-        });
 }
 
 /** 默认偏好：全部工具按 defaultOrder 排列；defaultVisible 为 false 的进入 hidden */
@@ -115,10 +87,9 @@ export function resolveNodeToolbarPlacement(tool: ToolDefinition, ctx: ToolConte
     };
 }
 
-/** 解析添加节点菜单命令——合并插件节点后按 applicable 过滤并排序。 */
+/** 解析生图与基础画布命令。 */
 export function resolveAddNodeMenuCommands(ctx: AddNodeMenuContext): AddNodeMenuCommand[] {
-    const commands = [...getAddNodeMenuCommands(), ...getPluginNodeMenuCommands()].filter((command) => !command.applicable || command.applicable(ctx)).sort((a, b) => a.defaultOrder - b.defaultOrder);
-    return hideAgentDirectorMcp() ? commands.filter((command) => command.id !== "director") : commands;
+    return getAddNodeMenuCommands().filter((command) => !command.applicable || command.applicable(ctx));
 }
 
 /**

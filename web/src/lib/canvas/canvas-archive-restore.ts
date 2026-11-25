@@ -9,7 +9,6 @@ import {
     type OpenCanvasArchive,
 } from "@/lib/canvas/canvas-export";
 import { createCanvasLibraryFolder, deleteCanvasLibraryFolder, persistCanvasFolderCover } from "@/lib/canvas/canvas-folder-storage";
-import { loadCanvasDrawing, saveCanvasDrawing, type CanvasDrawingRenderDraft } from "@/lib/canvas/canvas-drawing-storage";
 import { canvasWorkspaceProjectId } from "@/lib/canvas/canvas-workspace-project";
 import { normalizeLocalCanvasProject } from "@/lib/local-workspace-migration";
 import { assertUserScope, captureUserScope, isUserScopeAbandonedError, userScopeMatches, type CapturedUserScope } from "@/lib/user-scope-guard";
@@ -24,8 +23,7 @@ import { deleteWorkspaceAsset } from "@/services/workspace-asset-repository";
 import { usesBrowserLocalResourceStore } from "@/services/workspace-resource-storage";
 import { flushCanvasStorePersistence, useCanvasStore, type CanvasProject } from "@/stores/canvas/use-canvas-store";
 import { CanvasNodeType, type CanvasNodeData } from "@/types/canvas";
-import type { CanvasDrawingExport, CanvasExportAsset } from "@/types/canvas-export";
-import type { TimelineProject } from "@/types/timeline";
+import type { CanvasExportAsset } from "@/types/canvas-export";
 
 export type RestoredMediaRef = {
     storageKey: string;
@@ -51,10 +49,8 @@ export type CanvasArchiveRestoreHost = {
     persistProject(id: string): Promise<void>;
     deleteProjects(ids: readonly string[]): Promise<void>;
     discardProjects(ids: readonly string[]): void;
-    uploadMedia(blob: Blob, kind: "image" | "video" | "audio" | "file", meta: { storageKey: string; mimeType: string; fileName?: string }): Promise<RestoredMediaRef>;
+    uploadMedia(blob: Blob, kind: "image" | "file", meta: { storageKey: string; mimeType: string; fileName?: string }): Promise<RestoredMediaRef>;
     bindMediaAsset?(options: { canvasId: string; node: CanvasNodeData }): Promise<string>;
-    saveDrawing: typeof saveCanvasDrawing;
-    loadDrawing?(projectId: string, drawingId: string): Promise<{ drawingId: string; revision: number; snapshot?: unknown; previewResourceId?: string; renderResourceId?: string } | null>;
     deleteResource?(resourceId: string): Promise<void>;
     onProjectProgress?(projectId: string, progress: CanvasArchiveProjectProgress | null): void;
 };
@@ -79,14 +75,11 @@ export async function archiveMediaIdempotencyKey(blob: Blob): Promise<string> {
 export function assertRestoredCanvasMatches(intended: Partial<CanvasProject> & Pick<CanvasProject, "id" | "nodes">, saved: CanvasProject, storage: "browser" | "backend" = "browser") {
     if (!saved?.id || saved.id !== intended.id) throw new Error("画布未保存到工作区");
     if ((saved.folderId || "") !== (intended.folderId || "")) throw new Error("画布文件夹未保存到工作区");
-    const intendedTimeline = timelineStorageKeys(intended.timeline);
-    const savedTimeline = timelineStorageKeys(saved.timeline);
-    if (intendedTimeline.join("\n") !== savedTimeline.join("\n")) throw new Error("画布时间线未保存到工作区");
-    const intendedKeys = collectStorageKeys({ nodes: intended.nodes, timeline: intended.timeline }).sort();
-    const savedKeys = collectStorageKeys({ nodes: saved.nodes, timeline: saved.timeline }).sort();
+    const intendedKeys = collectStorageKeys({ nodes: intended.nodes }).sort();
+    const savedKeys = collectStorageKeys({ nodes: saved.nodes }).sort();
     if (intendedKeys.join("\n") !== savedKeys.join("\n")) throw new Error("画布媒体未保存到工作区");
-    const intendedAssets = mediaAssetIds(intended.nodes, intended.timeline);
-    const savedAssets = mediaAssetIds(saved.nodes, saved.timeline);
+    const intendedAssets = mediaAssetIds(intended.nodes);
+    const savedAssets = mediaAssetIds(saved.nodes);
     if (intendedAssets.join("\n") !== savedAssets.join("\n")) throw new Error("画布素材引用未保存到工作区");
     // Compare every submitted document field, including new editor features.
     // Only server-owned timestamps and synchronization metadata may differ.
@@ -101,26 +94,17 @@ export function assertRestoredCanvasMatches(intended: Partial<CanvasProject> & P
     }
 }
 
-function timelineStorageKeys(timeline: TimelineProject | undefined) {
-    return (timeline?.clips || []).map((clip) => clip.directMedia?.storageKey || "").filter(Boolean).sort();
-}
-
-function mediaAssetIds(nodes: CanvasNodeData[], timeline: TimelineProject | undefined) {
+function mediaAssetIds(nodes: CanvasNodeData[]) {
     const ids: string[] = [];
     for (const node of nodes) {
         if (!isMediaNode(node.type)) continue;
         if (node.metadata?.storageKey && node.metadata.assetId) ids.push(`${node.id}:${node.metadata.assetId}`);
     }
-    for (const clip of timeline?.clips || []) {
-        const media = clip.directMedia;
-        if (!media?.storageKey || media.kind === "text") continue;
-        if (media.assetId) ids.push(`clip:${clip.id}:${media.assetId}`);
-    }
     return ids.sort();
 }
 
 function isMediaNode(type: CanvasNodeData["type"]) {
-    return type === CanvasNodeType.Image || type === CanvasNodeType.Video || type === CanvasNodeType.Audio;
+    return type === CanvasNodeType.Image;
 }
 
 export function createCanvasArchiveRestoreHost(overrides: Partial<CanvasArchiveRestoreHost> = {}, scope = captureUserScope()): CanvasArchiveRestoreHost {
@@ -197,15 +181,6 @@ export function createCanvasArchiveRestoreHost(overrides: Partial<CanvasArchiveR
             if (!result.confirmed) throw new Error("素材文件尚未保存到工作区，导入未完成");
             return result.assetId;
         },
-        saveDrawing: (projectId, drawingId, engine, snapshot, previous, preview, render) =>
-            saveCanvasDrawing(projectId, drawingId, engine, snapshot, previous, preview, render, scope),
-        loadDrawing: async (projectId, drawingId) => {
-            const saved = await loadCanvasDrawing(projectId, drawingId, scope);
-            if (usesCanonicalBackend && saved && saved.origin !== "canonical") {
-                throw new Error("画板尚未保存到工作区，导入未完成");
-            }
-            return saved ? { drawingId, revision: saved.revision, snapshot: saved.snapshot, previewResourceId: saved.previewResourceId, renderResourceId: saved.renderResourceId } : null;
-        },
         ...overrides,
         usesCanonicalBackend,
     };
@@ -234,8 +209,6 @@ function withRestoreScope(host: CanvasArchiveRestoreHost, scope: CapturedUserSco
         discardProjects: run(host.discardProjects),
         uploadMedia: run(host.uploadMedia),
         bindMediaAsset: host.bindMediaAsset ? run(host.bindMediaAsset) : undefined,
-        saveDrawing: run(host.saveDrawing),
-        loadDrawing: host.loadDrawing ? run(host.loadDrawing) : undefined,
         deleteResource: host.deleteResource ? run(host.deleteResource) : undefined,
         onProjectProgress: host.onProjectProgress ? run(host.onProjectProgress) : undefined,
     };
@@ -292,9 +265,7 @@ export async function restoreCanvasArchive(input: Blob | OpenCanvasArchive, host
                     message: localPersistence ? "正在保存本地媒体" : "正在上传媒体",
                 });
             });
-            const remappedNodes = (item.project.nodes || []).map((node) => remapArchiveNode(node, storageKeyMap, item.drawingDocuments || []));
-            const remappedTimeline = remapArchiveTimeline(item.project.timeline, storageKeyMap);
-            const directorScenes = remapArchiveDirectorScenes(item.project.directorScenes, storageKeyMap);
+            const remappedNodes = (item.project.nodes || []).map((node) => remapArchiveNode(node, storageKeyMap));
             const sourceWorkspaceProjectId = canvasWorkspaceProjectId(item.project);
             const importedProjectId = restoreHost.importProject({
                 ...normalizeLocalCanvasProject(item.project),
@@ -302,8 +273,6 @@ export async function restoreCanvasArchive(input: Blob | OpenCanvasArchive, host
                 folderId: item.project.folderId ? folderIdMap.get(item.project.folderId) : undefined,
                 title: item.project.title || "导入画布",
                 nodes: remappedNodes,
-                timeline: remappedTimeline,
-                directorScenes,
             }, importedWorkspaceProjectIds.get(sourceWorkspaceProjectId));
             projectIds.push(importedProjectId);
             if (!importedWorkspaceProjectIds.has(sourceWorkspaceProjectId)) importedWorkspaceProjectIds.set(sourceWorkspaceProjectId, importedProjectId);
@@ -315,12 +284,10 @@ export async function restoreCanvasArchive(input: Blob | OpenCanvasArchive, host
                 phase: "saving",
                 message: localPersistence ? "正在保存本地画布" : "正在保存画布",
             });
-            const bound = await bindRestoredMedia(importedProjectId, remappedNodes, remappedTimeline, restoreHost);
-            restoreHost.updateProject(importedProjectId, bound.timeline ? { nodes: bound.nodes, timeline: bound.timeline } : { nodes: bound.nodes });
+            const bound = await bindRestoredMedia(importedProjectId, remappedNodes, restoreHost);
+            restoreHost.updateProject(importedProjectId, { nodes: bound });
             try {
                 await restoreHost.persistProject(importedProjectId);
-                await restoreArchiveDrawings(importedProjectId, item.drawingDocuments || [], archive.files, restoreHost);
-                await verifyRestoredDrawings(importedProjectId, item.drawingDocuments || [], restoreHost);
             } catch (error) {
                 reportProgress(importedProjectId, {
                     projectId: importedProjectId,
@@ -355,17 +322,6 @@ export async function restoreCanvasArchive(input: Blob | OpenCanvasArchive, host
         if (userScopeMatches(scope)) {
             for (const id of progressProjectIds) restoreHost.onProjectProgress?.(id, null);
         }
-    }
-}
-
-async function verifyRestoredDrawings(projectId: string, documents: CanvasDrawingExport[], host: CanvasArchiveRestoreHost) {
-    if (!host.loadDrawing) return;
-    for (const document of documents.filter((item) => !item.engine || item.engine === "excalidraw")) {
-        const saved = await host.loadDrawing(projectId, document.drawingId);
-        if (!saved || saved.drawingId !== document.drawingId || (saved.revision || 0) < 1) throw new Error("画板未保存到工作区");
-        if (canonicalize(saved.snapshot) !== canonicalize(document.snapshot)) throw new Error("画板未保存到工作区");
-        if (host.usesCanonicalBackend && document.previewPath && !saved.previewResourceId) throw new Error("画板预览未保存到工作区");
-        if (host.usesCanonicalBackend && document.generationRender && !saved.renderResourceId) throw new Error("画板生成图未保存到工作区");
     }
 }
 
@@ -415,10 +371,9 @@ async function restoreArchiveMedia(
 async function bindRestoredMedia(
     projectId: string,
     nodes: CanvasNodeData[],
-    timeline: TimelineProject | undefined,
     host: CanvasArchiveRestoreHost,
 ) {
-    if (!host.bindMediaAsset) return { nodes, timeline };
+    if (!host.bindMediaAsset) return nodes;
     const assetIdByStorageKey = new Map<string, string>();
     const nextNodes: CanvasNodeData[] = [];
     for (const node of nodes) {
@@ -435,55 +390,17 @@ async function bindRestoredMedia(
         }
         nextNodes.push(assetId ? { ...node, metadata: { ...node.metadata, assetId } } : node);
     }
-    if (!timeline) return { nodes: nextNodes, timeline };
-    const clips: TimelineProject["clips"] = [];
-    for (const clip of timeline.clips) {
-        const media = clip.directMedia;
-        if (!media || !media.storageKey || media.kind === "text") {
-            clips.push(clip);
-            continue;
-        }
-        const content = media.url || media.dataUrl || media.content || "";
-        let assetId = assetIdByStorageKey.get(media.storageKey);
-        if (!assetId) {
-            const type = media.kind === "audio" ? CanvasNodeType.Audio : media.kind === "video" ? CanvasNodeType.Video : CanvasNodeType.Image;
-            const node: CanvasNodeData = {
-                id: media.id,
-                type,
-                title: media.title,
-                position: { x: 0, y: 0 },
-                width: media.width || 320,
-                height: media.height || (type === CanvasNodeType.Audio ? 120 : 240),
-                metadata: {
-                    content,
-                    storageKey: media.storageKey,
-                    naturalWidth: media.width,
-                    naturalHeight: media.height,
-                    durationMs: media.durationMs,
-                    bytes: media.bytes,
-                    mimeType: media.mimeType,
-                },
-            };
-            assetId = await host.bindMediaAsset({ canvasId: projectId, node });
-            if (assetId) assetIdByStorageKey.set(media.storageKey, assetId);
-        }
-        clips.push(assetId ? { ...clip, directMedia: { ...media, assetId } } : clip);
-    }
-    return { nodes: nextNodes, timeline: { ...timeline, clips } };
+    return nextNodes;
 }
 
-function mediaKind(storageKey: string, mime: string): "image" | "video" | "audio" | "file" {
+function mediaKind(storageKey: string, mime: string): "image" | "file" {
     if (mime.startsWith("image/") || storageKey.startsWith("image:")) return "image";
-    if (mime.startsWith("video/") || storageKey.startsWith("video:")) return "video";
-    if (mime.startsWith("audio/") || storageKey.startsWith("audio:")) return "audio";
     return "file";
 }
 
-function remapArchiveNode(node: CanvasNodeData, storageKeyMap: Map<string, RestoredMediaRef>, drawingDocuments: CanvasDrawingExport[]): CanvasNodeData {
-    const drawingEngineById = new Map(drawingDocuments.filter((document) => !document.engine || document.engine === "excalidraw").map((document) => [document.drawingId, "excalidraw" as const]));
+function remapArchiveNode(node: CanvasNodeData, storageKeyMap: Map<string, RestoredMediaRef>): CanvasNodeData {
     const media = isMediaNode(node.type);
     const mapped = media && node.metadata?.storageKey ? storageKeyMap.get(node.metadata.storageKey) : undefined;
-    const previewMapped = media && node.metadata?.videoPreview?.storageKey ? storageKeyMap.get(node.metadata.videoPreview.storageKey) : undefined;
     return {
         ...node,
         metadata: {
@@ -493,56 +410,7 @@ function remapArchiveNode(node: CanvasNodeData, storageKeyMap: Map<string, Resto
             storageKey: media ? mapped?.storageKey ?? dropDeadStorageKey(node.metadata?.storageKey) : node.metadata?.storageKey,
             content: media ? (mapped ? mapped.url : dropInlineMediaRef(node.metadata?.content)) : node.metadata?.content,
             previewContent: media ? (mapped ? mapped.url : dropInlineMediaRef(node.metadata?.previewContent)) : node.metadata?.previewContent,
-            videoPreview: node.metadata?.videoPreview
-                ? {
-                    ...node.metadata.videoPreview,
-                    storageKey: media ? previewMapped?.storageKey ?? dropDeadStorageKey(node.metadata.videoPreview.storageKey) : node.metadata.videoPreview.storageKey,
-                    content: media ? (previewMapped ? previewMapped.url : dropInlineMediaRef(node.metadata.videoPreview.content) || "") : node.metadata.videoPreview.content,
-                }
-                : node.metadata?.videoPreview,
-            drawingEngine: node.type === CanvasNodeType.Drawing && node.metadata?.drawingId
-                ? drawingEngineById.get(node.metadata.drawingId) || "excalidraw"
-                : node.metadata?.drawingEngine,
         },
-    };
-}
-
-function remapArchiveTimeline(timeline: TimelineProject | undefined, storageKeyMap: Map<string, RestoredMediaRef>): TimelineProject | undefined {
-    if (!timeline) return undefined;
-    return {
-        ...timeline,
-        clips: timeline.clips.map((clip) => {
-            const media = clip.directMedia;
-            if (!media) return clip;
-            if (media.kind === "text" || !media.storageKey) {
-                return { ...clip, directMedia: { ...media, assetId: undefined } };
-            }
-            const mapped = storageKeyMap.get(media.storageKey);
-            if (!mapped) {
-                return {
-                    ...clip,
-                    directMedia: {
-                        ...media,
-                        assetId: undefined,
-                        storageKey: dropDeadStorageKey(media.storageKey),
-                        url: dropInlineMediaRef(media.url) || media.url,
-                        dataUrl: dropInlineMediaRef(media.dataUrl),
-                        content: dropInlineMediaRef(media.content),
-                    },
-                };
-            }
-            return {
-                ...clip,
-                directMedia: {
-                    ...media,
-                    assetId: undefined,
-                    storageKey: mapped.storageKey,
-                    url: mapped.url,
-                    dataUrl: media.dataUrl ? mapped.url : media.dataUrl,
-                    content: media.content ? mapped.url : media.content,
-                },
-            };
-        }),
     };
 }
 
@@ -551,65 +419,11 @@ function dropDeadStorageKey(value?: string) {
     return value;
 }
 
-function remapArchiveDirectorScenes(scenes: CanvasProject["directorScenes"] | undefined, media: Map<string, RestoredMediaRef>): CanvasProject["directorScenes"] {
-    const remap = <T extends { storageKey?: string; url?: string }>(source: T): T => {
-        const mapped = source.storageKey ? media.get(source.storageKey) : undefined;
-        if (!mapped) return { ...source, url: dropInlineMediaRef(source.url) };
-        return { ...source, storageKey: mapped.storageKey, url: mapped.url };
-    };
-    return (scenes || []).map((scene) => ({
-        ...scene,
-        panorama: scene.panorama ? remap(scene.panorama) : undefined,
-        objects: scene.objects.map((object) => ({ ...remap(object), assetId: undefined })),
-        shots: scene.shots.map((shot) => ({ ...shot, screenshots: shot.screenshots?.map(remap) })),
-    }));
-}
-
 function dropInlineMediaRef(value?: string) {
     if (typeof value !== "string") return value;
     if (value.startsWith("blob:")) return "";
-    if (/^data:(image|video|audio)\//i.test(value.trim())) return "";
+    if (/^data:image\//i.test(value.trim())) return "";
     return value;
-}
-
-async function restoreArchiveDrawings(
-    projectId: string,
-    documents: CanvasDrawingExport[],
-    zip: Map<string, Blob>,
-    host: CanvasArchiveRestoreHost,
-) {
-    const results = await Promise.allSettled(
-        documents.filter((document) => !document.engine || document.engine === "excalidraw").map(async (document) => {
-            const previewFile = document.previewPath ? zip.get(document.previewPath) || zip.get(confinedArchivePath(document.previewPath)) : undefined;
-            const preview = previewFile && !previewFile.type ? previewFile.slice(0, previewFile.size, "image/png") : previewFile;
-            const renderFile = document.generationRender?.path ? zip.get(document.generationRender.path) || zip.get(confinedArchivePath(document.generationRender.path)) : undefined;
-            const renderBlob = renderFile && !renderFile.type ? renderFile.slice(0, renderFile.size, document.generationRender?.mimeType || "image/png") : renderFile;
-            const render =
-                renderBlob && document.generationRender
-                    ? ({
-                        blob: renderBlob,
-                        pageId: document.generationRender.pageId,
-                        width: document.generationRender.width,
-                        height: document.generationRender.height,
-                        mimeType: document.generationRender.mimeType,
-                        background: document.generationRender.background,
-                    } satisfies CanvasDrawingRenderDraft)
-                    : undefined;
-            const engine = "excalidraw" as const;
-            return host.saveDrawing(
-                projectId,
-                document.drawingId,
-                engine,
-                document.snapshot,
-                null,
-                preview,
-                render,
-            );
-        }),
-    );
-    // Cleanup must not race a sibling drawing that is still being persisted.
-    const failure = results.find((result): result is PromiseRejectedResult => result.status === "rejected");
-    if (failure) throw failure.reason;
 }
 
 async function cleanupCanvasArchiveAttempt(

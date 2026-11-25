@@ -2,8 +2,7 @@ import { nanoid } from "nanoid";
 
 import { getNodeSpec } from "@/constant/canvas";
 import { getNodeDefinition } from "./node-registry";
-import { isPluginEffectivelyEnabled } from "@/stores/use-plugin-store";
-import { CanvasNodeType, type CanvasNodeTypeId, type CanvasConnection, type CanvasNodeData, type CanvasNodeMetadata, type ViewportTransform } from "@/types/canvas";
+import { CanvasGenerationMode, CanvasNodeType, type CanvasNodeTypeId, type CanvasConnection, type CanvasNodeData, type CanvasNodeMetadata, type ViewportTransform } from "@/types/canvas";
 
 export type CanvasOperation =
     | { type: "add_node"; id?: string; nodeType?: CanvasNodeTypeId; title?: string; position?: { x: number; y: number }; x?: number; y?: number; width?: number; height?: number; metadata?: CanvasNodeMetadata }
@@ -13,7 +12,7 @@ export type CanvasOperation =
     | { type: "connect_nodes"; id?: string; fromNodeId: string; toNodeId: string; fromHandleId?: string; toHandleId?: string }
     | { type: "set_viewport"; viewport: ViewportTransform }
     | { type: "select_nodes"; ids: string[] }
-    | { type: "run_generation"; nodeId: string; mode?: "text" | "image" | "video" | "audio"; prompt?: string; retry?: boolean };
+    | { type: "run_generation"; nodeId: string; mode?: CanvasGenerationMode; prompt?: string; retry?: boolean };
 
 export type CanvasSnapshot = {
     projectId: string;
@@ -324,7 +323,7 @@ export function applyCanvasOperations(snapshot: CanvasSnapshot, ops?: CanvasOper
         if (op.type === "add_node") {
             const nodeType = op.nodeType || CanvasNodeType.Text;
             const definition = getNodeDefinition(nodeType);
-            if (!definition || (definition.plugin && !isPluginEffectivelyEnabled(definition.plugin.pluginId))) throw new Error(`节点类型未注册或插件不可用：${nodeType}`);
+            if (!definition) throw new Error(`节点类型未注册：${nodeType}`);
             const spec = getNodeSpec(nodeType as CanvasNodeType) || { title: definition.defaultTitle, ...definition.defaultSize, metadata: definition.defaultMetadata };
             const node: CanvasNodeData = {
                 id: op.id || `${nodeType}-${Date.now()}-${index}`,
@@ -333,7 +332,7 @@ export function applyCanvasOperations(snapshot: CanvasSnapshot, ops?: CanvasOper
                 position: op.position || { x: op.x ?? index * 36, y: op.y ?? index * 36 },
                 width: op.width || spec.width,
                 height: op.height || spec.height,
-                metadata: { ...spec.metadata, ...op.metadata, ...(definition.plugin ? { pluginId: definition.plugin.pluginId, pluginNodeId: nodeType } : {}) },
+                metadata: { ...spec.metadata, ...op.metadata },
             };
             nodes = [...nodes, node];
             selectedNodeIds = [node.id];
@@ -396,20 +395,13 @@ function opLabel(type: string) {
 
 function canvasNodeTypeLabel(type?: CanvasNodeTypeId) {
     if (type === CanvasNodeType.Image) return "图片节点";
-    if (type === CanvasNodeType.Video) return "视频节点";
-    if (type === CanvasNodeType.Audio) return "音频节点";
     if (type === CanvasNodeType.Config) return "生成配置";
-    if (type === CanvasNodeType.Script) return "分镜脚本";
     if (type === CanvasNodeType.Frame) return "背板";
-    if (type === CanvasNodeType.Drawing) return "绘图节点";
-    if (type === CanvasNodeType.Skill) return "技能节点";
     return type ? `${getNodeDefinition(type)?.label || type}节点` : "文本节点";
 }
 
-function generationModeLabel(mode?: "text" | "image" | "video" | "audio") {
+function generationModeLabel(mode?: CanvasGenerationMode) {
     if (mode === "text") return "文本";
-    if (mode === "video") return "视频";
-    if (mode === "audio") return "音频";
     return "图片";
 }
 

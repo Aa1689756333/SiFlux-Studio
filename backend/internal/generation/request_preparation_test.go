@@ -14,7 +14,7 @@ func TestMultipartPreparationCannotBeAnUncertainPaidSubmission(t *testing.T) {
 	if !errors.As(err, &preparation) {
 		t.Fatalf("expected pre-dispatch preparation error: %v", err)
 	}
-	classified := ClassifyError(UncertainVideoSubmission(context.Background(), err))
+	classified := ClassifyError(UncertainSubmission(context.Background(), err))
 	if classified.Uncertain || classified.Category == CategorySubmissionUncertain {
 		t.Fatalf("unsent POST classified as paid uncertainty: %#v", classified)
 	}

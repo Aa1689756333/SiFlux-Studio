@@ -9,7 +9,6 @@ import { fetchPluginProviderCatalog } from "@/services/api/plugin-catalog";
 import { mergeFetchedChannelModelProfiles, type ChannelModelCatalogItem } from "@/lib/channel-model-catalog";
 import { CAPABILITY_LABELS, MODEL_SERVICE_PRESETS, modelCatalogRequestURL, serviceConnectionError, serviceModelProfile, servicePresetFor, type ModelServicePresetId } from "@/lib/model-service-presets";
 import type { ModelProtocolDefinition } from "@/lib/model-protocols";
-import { seedancePortraitLabel } from "@/lib/seedance-portrait";
 import { compareModelNames, createModelChannel, isBuiltinRelayChannel, type ModelCapability, type ModelChannel } from "@/stores/use-config-store";
 import { ChannelModelSettings } from "./channel-model-settings";
 import { currentModelConnectionReceipt, useModelConnectionTests } from "@/stores/use-model-connection-tests";
@@ -149,8 +148,8 @@ export function ModelServiceEditor({ initial, onClose, onSave }: { initial: Mode
     };
     const visibleModels = catalog.filter((item) => {
         const profile = serviceModelProfile(draft, item, protocols);
-        return `${item.id} ${seedancePortraitLabel(item.id) || item.displayName || ""}`.toLowerCase().includes(query.toLowerCase()) && (filter === "all" || profile.capability === filter);
-    }).sort((a, b) => compareModelNames(seedancePortraitLabel(a.id) || a.displayName || a.id, seedancePortraitLabel(b.id) || b.displayName || b.id));
+        return `${item.id} ${item.displayName || ""}`.toLowerCase().includes(query.toLowerCase()) && (filter === "all" || profile.capability === filter);
+    }).sort((a, b) => compareModelNames(a.displayName || a.id, b.displayName || b.id));
     const selectedPreset = MODEL_SERVICE_PRESETS.find((item) => item.id === presetId)!;
     const visibleSelected = visibleModels.filter((item) => draft.models.includes(item.id)).length;
     const selectVisibleModels = () => {
@@ -211,7 +210,7 @@ export function ModelServiceEditor({ initial, onClose, onSave }: { initial: Mode
                     {protocolLoading ? <Spin /> : visibleModels.length ? visibleModels.map((item) => {
                         const profile = serviceModelProfile(draft, item, protocols);
                         const receipt = currentModelConnectionReceipt(receipts, draft, item.id);
-                        const displayName = seedancePortraitLabel(item.id) || item.displayName || item.id;
+                        const displayName = item.displayName || item.id;
                         return <label key={item.id} className="model-service-model"><Checkbox disabled={busy} checked={draft.models.includes(item.id)} onChange={(event) => toggleModel(item.id, event.target.checked)} /><span><strong>{displayName}</strong>{displayName !== item.id && <small>{item.id}</small>}</span><span className="model-service-kind">{CAPABILITY_LABELS[profile.capability]}</span><small title={receipt?.detail}>{receipt ? receipt.success ? "测试通过" : "测试失败" : "未测试"}</small></label>;
                     }) : <div className="model-service-empty"><Search size={23} /><strong>{query ? "没有找到匹配的模型" : "添加你的第一个模型"}</strong><p>{query ? "换个关键词，或在下方手动添加。" : "读取服务商的模型目录，或填写准确的模型 ID。"}</p></div>}
                 </div>

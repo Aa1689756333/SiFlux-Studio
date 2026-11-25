@@ -88,6 +88,12 @@ func newAssistantTestEnv(t *testing.T, host func(env *assistantTestEnv) http.Han
 	assistantHost := assistantruntime.New(assistantruntime.OptionsFromService(service))
 	t.Cleanup(func() { _ = assistantHost.Stop() })
 	env.assistantHost = assistantHost
+	// 固定一个不可用的宿主启动命令。源码目录里存在 agent-host/server.mjs 时，
+	// BundledConfig 会回退到本机 node 并真的拉起子进程，这些"没有自有宿主"的用例
+	// 就必须显式关闭该回退，否则状态会停在 host_starting。
+	if err := assistantHost.WriteConfig(assistantruntime.HostConfig{HostCommand: filepath.Join(dataDir, "missing-agent-host")}); err != nil {
+		t.Fatal(err)
+	}
 	if host != nil {
 		inner := host(env)
 		server := httptest.NewServer(http.HandlerFunc(func(w http.ResponseWriter, r *http.Request) {

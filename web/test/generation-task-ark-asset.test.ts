@@ -65,22 +65,4 @@ describe("generation-task ark asset references", () => {
         expect(images[0]?.storageKey).toBe("resource:res-1");
     });
 
-    test("agent plan Seedance video mode still prefers asset:// when arkAssetId exists", async () => {
-        const input = await prepareBackendGenerationTask({
-            mode: "video",
-            prompt: "animate this",
-            config: agentPlanVideoConfig(),
-            referenceImages: [{
-                id: "ref-1",
-                name: "ref.png",
-                type: "image/png",
-                url: "https://cdn.example.com/ref.png",
-                storageKey: "resource:res-1",
-                arkAssetId: "asset-already-synced",
-            }],
-        });
-        const images = (input.input as { referenceImages?: Array<{ url?: string }> }).referenceImages || [];
-        expect(images).toHaveLength(1);
-        expect(images[0]?.url).toBe("asset://asset-already-synced");
-    });
 });

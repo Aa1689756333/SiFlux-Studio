@@ -19,13 +19,8 @@ func TestBindAssetRealCanvasRegistryPermissionsReplayAndUndo(t *testing.T) {
 	if err != nil {
 		t.Fatal(err)
 	}
-	resources := []model.Resource{*imageResource, {ID: "ready-video", UserID: "local", Kind: "video", MimeType: "video/mp4", Status: model.ResourceStatusReady, Width: 640, Height: 360, DurationMs: 12000, Size: 100}, {ID: "ready-audio", UserID: "local", Kind: "audio", MimeType: "audio/wav", Status: model.ResourceStatusReady, DurationMs: 12000, Size: 100}}
-	for i := 1; i < len(resources); i++ {
-		if err := svc.repo.DB().Create(&resources[i]).Error; err != nil {
-			t.Fatal(err)
-		}
-	}
-	for _, r := range []model.Resource{{ID: "not-ready", UserID: "local", Kind: "image", MimeType: "image/png", Status: "pending"}, {ID: "foreign-resource", UserID: "other", Kind: "image", MimeType: "image/png", Status: model.ResourceStatusReady}} {
+	resources := []model.Resource{*imageResource}
+	for _, r := range []model.Resource{{ID: "ready-video", UserID: "local", Kind: "video", MimeType: "video/mp4", Status: model.ResourceStatusReady, Width: 640, Height: 360, DurationMs: 12000, Size: 100}, {ID: "not-ready", UserID: "local", Kind: "image", MimeType: "image/png", Status: "pending"}, {ID: "foreign-resource", UserID: "other", Kind: "image", MimeType: "image/png", Status: model.ResourceStatusReady}} {
 		if err := svc.repo.DB().Create(&r).Error; err != nil {
 			t.Fatal(err)
 		}
@@ -44,6 +39,8 @@ func TestBindAssetRealCanvasRegistryPermissionsReplayAndUndo(t *testing.T) {
 		}
 		nodes = append(nodes, map[string]any{"id": "node-" + r.Kind, "type": r.Kind, "title": "Reference", "position": map[string]any{"x": 0, "y": 0}, "metadata": map[string]any{"content": "", "custom": "keep", "naturalWidth": 9999, "naturalHeight": 8888, "durationMs": 300000}})
 	}
+	// 非图片节点仍在画布上，用来验证 bind_asset 只接受图片节点。
+	nodes = append(nodes, map[string]any{"id": "node-text", "type": "text", "title": "提示词", "position": map[string]any{"x": 0, "y": 0}, "metadata": map[string]any{"content": "手写提示词"}})
 	doc := map[string]any{"id": canvasID, "title": "Binding", "revision": canvasRevisionOf(t, svc, canvasID), "nodes": nodes, "connections": []any{}}
 	raw, _ := json.Marshal(doc)
 	if _, err := svc.UpsertUserCanvasProject("local", raw); err != nil {
@@ -51,7 +48,7 @@ func TestBindAssetRealCanvasRegistryPermissionsReplayAndUndo(t *testing.T) {
 	}
 	registry := operations.NewRegistry(svc, operations.NewStore(svc.repo.DB()))
 	operations.RegisterDefaultOps(registry)
-	scope := &agentops.AssistantScope{CanvasID: canvasID, AssetIDs: map[string]bool{"asset-image": true, "asset-video": true, "asset-audio": true, "foreign-asset": true, "pending-asset": true, "wrong-owner-resource-asset": true, "wrong-mime-asset": true}}
+	scope := &agentops.AssistantScope{CanvasID: canvasID, AssetIDs: map[string]bool{"asset-image": true, "foreign-asset": true, "pending-asset": true, "wrong-owner-resource-asset": true, "wrong-mime-asset": true}}
 	run := func(op, id, turn string, params map[string]any, caller operations.Caller) (operations.Result, error) {
 		raw, _ := json.Marshal(params)
 		return registry.Execute(operations.Request{Op: op, OpID: id, TurnID: turn, UserID: "local", Params: raw, Caller: caller})
@@ -68,7 +65,7 @@ func TestBindAssetRealCanvasRegistryPermissionsReplayAndUndo(t *testing.T) {
 		{"readonly", nil, scope, true}, {"unreferenced", nil, &agentops.AssistantScope{CanvasID: canvasID}, false},
 		{"unknown", map[string]any{"content": "https://evil.test/image"}, scope, false},
 		{"foreign-node", map[string]any{"nodeId": "missing"}, scope, false},
-		{"wrong-kind", map[string]any{"nodeId": "node-video"}, scope, false},
+		{"wrong-kind", map[string]any{"nodeId": "node-text"}, scope, false},
 		{"resource-mismatch", map[string]any{"resourceId": "ready-video"}, scope, false},
 		{"foreign-asset", map[string]any{"assetId": "foreign-asset"}, scope, false},
 		{"non-ready", map[string]any{"assetId": "pending-asset"}, scope, false},
@@ -121,15 +118,12 @@ func TestBindAssetRealCanvasRegistryPermissionsReplayAndUndo(t *testing.T) {
 		t.Fatal("readback")
 	}
 	for _, n := range persisted.Nodes {
+		if n.Type != "image" {
+			continue
+		}
 		m := n.Metadata
-		if n.Type == "image" && (m["naturalWidth"] != float64(3) || m["naturalHeight"] != float64(2) || m["durationMs"] != nil) {
+		if m["naturalWidth"] != float64(3) || m["naturalHeight"] != float64(2) || m["durationMs"] != nil {
 			t.Fatalf("stale image metadata: %#v", m)
-		}
-		if n.Type == "audio" && (m["naturalWidth"] != nil || m["naturalHeight"] != nil || m["durationMs"] != float64(12000)) {
-			t.Fatalf("stale audio metadata: %#v", m)
-		}
-		if n.Type == "video" && (m["naturalWidth"] != float64(640) || m["naturalHeight"] != float64(360) || m["durationMs"] != float64(12000)) {
-			t.Fatalf("stale video metadata: %#v", m)
 		}
 		if m["content"] == "" || m["storageKey"] == "" || m["assetId"] != "asset-"+n.Type || m["nodeRole"] != "result" || m["resultOrigin"] != "library" || m["custom"] != "keep" {
 			t.Fatalf("not a consumable reference: %#v", m)
@@ -146,6 +140,9 @@ func TestBindAssetRealCanvasRegistryPermissionsReplayAndUndo(t *testing.T) {
 	persisted.Nodes = nil
 	json.Unmarshal(restored, &persisted)
 	for _, n := range persisted.Nodes {
+		if n.Type != "image" {
+			continue
+		}
 		if n.Metadata["content"] != "" || n.Metadata["assetId"] != nil {
 			t.Fatalf("undo did not restore reference draft: %#v", n.Metadata)
 		}

@@ -50,7 +50,7 @@ export function migrateToolbarPrefs(toolbar: ToolbarId, prefs: ToolbarPrefs): To
     const legacyIds = new Set<string>(LEGACY_CANVAS_MODE_TOOL_IDS);
     const hasLegacy = prefs.order.some((id) => legacyIds.has(id)) || prefs.hidden.some((id) => legacyIds.has(id));
     if (!hasLegacy) {
-        return insertNewMainToolbarTools(prefs);
+        return prefs;
     }
 
     const order = prefs.order.filter((id) => id !== CANVAS_MODE_TOOL_ID && !legacyIds.has(id));
@@ -62,15 +62,5 @@ export function migrateToolbarPrefs(toolbar: ToolbarId, prefs: ToolbarPrefs): To
     const hidden = prefs.hidden.filter((id) => id !== CANVAS_MODE_TOOL_ID && !legacyIds.has(id));
     if (hiddenLegacy.length === LEGACY_CANVAS_MODE_TOOL_IDS.length) hidden.push(CANVAS_MODE_TOOL_ID);
 
-    return insertNewMainToolbarTools({ order, hidden });
-}
-
-/** Add newly introduced LibTV-compatible entries without resetting a user's
- * existing order or visibility choices. */
-function insertNewMainToolbarTools(prefs: ToolbarPrefs): ToolbarPrefs {
-    if (prefs.order.includes("tool-portrait-studio") || prefs.hidden.includes("tool-portrait-studio")) return prefs;
-    const order = [...prefs.order];
-    const styleIndex = order.indexOf("tool-style");
-    order.splice(styleIndex >= 0 ? styleIndex : order.length, 0, "tool-portrait-studio");
-    return { ...prefs, order };
+    return { order, hidden };
 }

@@ -1,4 +1,4 @@
-import { afterEach, expect, mock, test } from "bun:test";
+﻿import { afterEach, expect, mock, test } from "bun:test";
 import { setActiveUserScope } from "@/lib/user-scope";
 import { captureUserScope, UserScopeAbandonedError } from "@/lib/user-scope-guard";
 
@@ -11,17 +11,20 @@ let persistError: Error | undefined;
 let failedName = "";
 function resetGate() { gate = new Promise<void>((resolve) => { release = resolve; }); }
 resetGate();
-mock.module("@/services/image-storage", () => ({ uploadImage: async () => { throw new Error("unused"); } }));
-mock.module("@/services/file-storage", () => ({ uploadMediaFile: async (file: File) => {
-    uploads.push(file.name);
+mock.module("@/lib/image-utils", () => ({ readImageMeta: async () => ({ width: 640, height: 480, mimeType: "image/png" }) }));
+mock.module("@/services/image-storage", () => ({ uploadImage: async (input: string | Blob) => {
+    const file = input instanceof File ? input : undefined;
+    const name = file?.name ?? "remote";
+    uploads.push(name);
     await gate;
-    if (file.name === failedName) throw new Error("upload failed");
-    return { url: file.name, storageKey: `resource:${file.name}`, bytes: 1, mimeType: "video/mp4" };
+    if (name === failedName) throw new Error("upload failed");
+    return { url: `blob:${name}`, storageKey: `image:upload:${name}`, width: 640, height: 480, bytes: file?.size ?? 1, mimeType: file?.type || "image/png" };
 } }));
+mock.module("@/services/file-storage", () => ({ uploadMediaFile: async () => { throw new Error("unused"); } }));
 mock.module("@/services/workspace-asset-repository", () => ({ persistWorkspaceAssetChanges: async () => { persistCount++; if (persistError) throw persistError; } }));
 mock.module("@/stores/use-asset-store", () => ({ useAssetStore: { getState: () => ({ addAsset: (asset: { title: string; folderId: string }) => writes.push(asset) }) } }));
 const { uploadWorkspaceAssetFiles } = await import("@/services/workspace-asset-upload");
-const files = (prefix: string, count: number) => Array.from({ length: count }, (_, i) => new File(["x"], `${prefix}${i}.mp4`, { type: "video/mp4" }));
+const files = (prefix: string, count: number) => Array.from({ length: count }, (_, i) => new File(["x"], `${prefix}${i}.png`, { type: "image/png" }));
 afterEach(() => { writes.length = 0; uploads = []; persistCount = 0; persistError = undefined; failedName = ""; resetGate(); });
 
 test("six-file batch settles exactly once while another picker batch starts", async () => {
@@ -54,7 +57,7 @@ test("A to B to A abandons in-flight completion and queued files", async () => {
 
 test("one upload failure does not discard the remaining queue or successful settlement", async () => {
     setActiveUserScope("upload-partial");
-    failedName = "partial0.mp4";
+    failedName = "partial0.png";
     const pending = uploadWorkspaceAssetFiles(files("partial", 6), "", captureUserScope());
     release();
     expect(await pending).toMatchObject({ completed: 5, failed: 1 });

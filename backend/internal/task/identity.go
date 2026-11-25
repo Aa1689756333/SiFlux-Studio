@@ -99,10 +99,7 @@ func NormalizeInput(input map[string]any) (map[string]any, error) {
 
 func ValidateType(taskType string) error {
 	switch taskType {
-	case "text", "canvas_text", "canvas_image", "canvas_video", "canvas_audio":
-		return nil
-	}
-	if strings.HasPrefix(taskType, "video_") && strings.TrimPrefix(taskType, "video_") != "" {
+	case "canvas_image":
 		return nil
 	}
 	if taskType == "" {
@@ -111,15 +108,24 @@ func ValidateType(taskType string) error {
 	return fmt.Errorf("不支持的任务类型：%s", taskType)
 }
 
-func ValidateLocalExecutorType(taskType string) error {
-	switch taskType {
-	case model.TaskTypeTimelineTranscription, model.TaskTypeTimelineRender, model.TaskTypeDepthCapture:
-		return nil
+// ValidateImageInput closes payload aliases before idempotency lookup or execution.
+// Historical rows remain readable, but their text/media runtimes cannot be reopened.
+func ValidateImageInput(input map[string]any) error {
+	if raw, exists := input["mode"]; exists && raw != nil {
+		mode, ok := raw.(string)
+		if !ok || (mode != "" && mode != "image") {
+			return kernel.BadAuthRequest("当前任务仅支持 image 生图模式")
+		}
 	}
-	if taskType == "" {
-		return errors.New("task type is required")
+	for _, key := range []string{"agentRequests", "textHistory", "textOptions", "referenceVideos", "referenceAudios", "textReplay", "cloudAgent"} {
+		if value, exists := input[key]; exists && value != nil {
+			encoded, err := json.Marshal(value)
+			if err != nil || (string(encoded) != "[]" && string(encoded) != "{}" && string(encoded) != "null") {
+				return kernel.BadAuthRequest("生图任务不支持参数：" + key)
+			}
+		}
 	}
-	return fmt.Errorf(UnsupportedLocalExecutorTypeMessageFmt, taskType)
+	return nil
 }
 
 func compactPersistedValue(value interface{}) interface{} {

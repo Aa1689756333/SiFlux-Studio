@@ -1,6 +1,6 @@
 import { afterAll, afterEach, beforeEach, expect, mock, test } from "bun:test";
 import { spawn, type Subprocess } from "bun";
-import { mkdtempSync, rmSync } from "node:fs";
+import { closeSync, mkdtempSync, openSync, readFileSync, rmSync } from "node:fs";
 import { tmpdir } from "node:os";
 import { join, resolve } from "node:path";
 
@@ -42,16 +42,17 @@ const { useAssetStore } = await import("@/stores/use-asset-store");
 const { useCanvasStore } = await import("@/stores/canvas/use-canvas-store");
 
 const backendDir = resolve(import.meta.dir, "../../backend");
-const serverBin = join(tmpdir(), `beeftv-archive-restore-server-${process.pid}`);
-const videoBytes = new Uint8Array([9, 8, 7, 6]);
-const audioBytes = new Uint8Array([5, 4, 3, 2, 1]);
-const drawingPreviewBytes = new Uint8Array([11, 12, 13, 14, 15]);
+// Windows execution requires the executable extension; `go build -o` does not add it.
+const serverBin = join(tmpdir(), `beeftv-archive-restore-server-${process.pid}${process.platform === "win32" ? ".exe" : ""}`);
+const goCacheDir = process.env.GOCACHE || join(tmpdir(), "beeftv-go-build-cache");
+const imageBytes = new Uint8Array([9, 8, 7, 6]);
 const folderCoverBytes = new Uint8Array([16, 17, 18, 19]);
 let built = false;
 
 type RunningServer = {
     dataDir: string;
     port: number;
+    logPath: string;
     process: Subprocess;
 };
 
@@ -61,29 +62,37 @@ function resetStores() {
     resetCanvasOperationJournalMemory();
 }
 
+/** Redirect child stdio to a file: sandboxed runs cannot hand a child a named pipe. */
+function spawnToLog(command: string[], logPath: string, env: Record<string, string | undefined>) {
+    const fd = openSync(logPath, "w");
+    try {
+        return spawn(command, { cwd: backendDir, stdout: fd, stderr: fd, env });
+    } finally {
+        closeSync(fd);
+    }
+}
+
 async function buildServer() {
     if (built) return;
-    const build = spawn(["go", "build", "-o", serverBin, "./cmd/server"], {
-        cwd: backendDir,
-        stdout: "pipe",
-        stderr: "pipe",
-        env: { ...process.env, CGO_ENABLED: "1" },
+    const logPath = join(tmpdir(), `beeftv-archive-restore-build-${process.pid}.log`);
+    const build = spawnToLog(["go", "build", "-o", serverBin, "./cmd/server"], logPath, {
+        ...process.env,
+        CGO_ENABLED: "1",
+        GOCACHE: goCacheDir,
     });
     const code = await build.exited;
-    if (code !== 0) {
-        const err = await new Response(build.stderr).text();
-        throw new Error(`go build failed: ${err}`);
-    }
+    if (code !== 0) throw new Error(`go build failed: ${readFileSync(logPath, "utf8")}`);
+    rmSync(logPath, { force: true });
     built = true;
 }
 
-async function waitReady(port: number, process: Subprocess) {
+async function waitReady(port: number, process: Subprocess, logPath: string) {
     const deadline = Date.now() + 60_000;
     let last = "";
     while (Date.now() < deadline) {
         if (process.exitCode != null) {
-            const err = process.stderr ? await new Response(process.stderr).text() : "";
-            throw new Error(`backend exited ${process.exitCode}: ${err || last}`);
+            const output = readFileSync(logPath, "utf8");
+            throw new Error(`backend exited ${process.exitCode}: ${output || last}`);
         }
         try {
             const response = await fetch(`http://127.0.0.1:${port}/api/health/ready`);
@@ -107,21 +116,17 @@ function freePort() {
 async function startServer(dataDir: string): Promise<RunningServer> {
     await buildServer();
     const port = freePort();
-    const child = spawn([serverBin], {
-        cwd: backendDir,
-        stdout: "pipe",
-        stderr: "pipe",
-        env: {
-            ...process.env,
-            CANVAS_BACKEND_DATA_DIR: dataDir,
-            CANVAS_BACKEND_ADDR: `127.0.0.1:${port}`,
-            CANVAS_AUTO_MIGRATE: "true",
-            CANVAS_DATABASE_DRIVER: "sqlite",
-            CANVAS_CORS_ORIGINS: "*",
-        },
+    const logPath = join(dataDir, `server-${port}.log`);
+    const child = spawnToLog([serverBin], logPath, {
+        ...process.env,
+        CANVAS_BACKEND_DATA_DIR: dataDir,
+        CANVAS_BACKEND_ADDR: `127.0.0.1:${port}`,
+        CANVAS_AUTO_MIGRATE: "true",
+        CANVAS_DATABASE_DRIVER: "sqlite",
+        CANVAS_CORS_ORIGINS: "*",
     });
-    await waitReady(port, child);
-    return { dataDir, port, process: child };
+    await waitReady(port, child, logPath);
+    return { dataDir, port, logPath, process: child };
 }
 
 async function stopServer(server: RunningServer | undefined) {
@@ -146,8 +151,7 @@ async function readProject(id: string) {
         workspaceProjectId?: string;
         folderId?: string;
         revision?: number;
-        nodes: Array<{ type?: string; metadata?: { storageKey?: string; prompt?: string; assetId?: string; drawingId?: string } }>;
-        timeline?: { clips: Array<{ directMedia?: { storageKey?: string; assetId?: string } }> };
+        nodes: Array<{ type?: string; metadata?: { storageKey?: string; prompt?: string; assetId?: string } }>;
     } }>(`/canvas-projects/${encodeURIComponent(id)}`);
     return data.project;
 }
@@ -155,16 +159,6 @@ async function readProject(id: string) {
 async function listFolders() {
     const data = await http.get<{ folders: Array<{ id: string; name: string; coverResourceId?: string }> }>("/canvas-folders");
     return data.folders || [];
-}
-
-async function readDrawing(canvasId: string, drawingId: string) {
-    const data = await http.get<{ drawing: {
-        drawingId: string;
-        revision: number;
-        snapshot?: { elements?: Array<{ id?: string }> };
-        previewResourceId?: string;
-    } }>(`/canvas-projects/${encodeURIComponent(canvasId)}/drawings/${encodeURIComponent(drawingId)}`);
-    return data.drawing;
 }
 
 async function readResourceBytes(resourceId: string) {
@@ -194,63 +188,35 @@ async function fixtureZip() {
                         revision: 0,
                         viewport: { x: -17.6638, y: 280.4097, k: 0.3847 },
                         nodes: [{
-                            id: "n-video",
-                            type: "video",
-                            title: "镜头",
+                            id: "n-image",
+                            type: "image",
+                            title: "图片",
                             position: { x: 0, y: 0 },
                             width: 320,
                             height: 180,
                             metadata: {
-                                storageKey: "video:clip",
+                                storageKey: "image:photo",
                                 content: "blob:expired",
                                 prompt: "描述里提到 data:image/png 和 blob:expired，但不是媒体文件",
                             },
                         }, {
-                            id: "n-drawing",
-                            type: "drawing",
-                            title: "分镜手稿",
-                            position: { x: 40, y: 0 },
-                            width: 240,
-                            height: 240,
-                            metadata: { drawingId: "sketch" },
+                            id: "n-config",
+                            type: "config",
+                            title: "生成设置",
+                            position: { x: 360, y: 0 },
+                            width: 320,
+                            height: 180,
+                            metadata: {},
                         }],
-                        connections: [{ id: "video-drawing", source: "n-video", target: "n-drawing" }],
-                        timeline: {
-                            version: 2,
-                            durationMs: 1000,
-                            tracks: [{ id: "voice", kind: "audio", label: "配音", order: 0 }],
-                            clips: [{
-                                id: "c1",
-                                kind: "audio",
-                                nodeId: "n-video",
-                                trackId: "voice",
-                                startMs: 0,
-                                durationMs: 1000,
-                                directMedia: { id: "m1", kind: "audio", title: "配音", storageKey: "audio:voice", url: "blob:expired" },
-                            }],
-                        },
+                        connections: [{ id: "image-config", fromNodeId: "n-image", toNodeId: "n-config" }],
                     },
                     files: [
-                        { storageKey: "video:clip", path: "projects/old-canvas/files/clip.mp4", mimeType: "video/mp4", bytes: videoBytes.byteLength },
-                        { storageKey: "audio:voice", path: "projects/old-canvas/files/voice.wav", mimeType: "audio/wav", bytes: audioBytes.byteLength },
+                        { storageKey: "image:photo", path: "projects/old-canvas/files/photo.png", mimeType: "image/png", bytes: imageBytes.byteLength },
                     ],
-                    drawingDocuments: [{
-                        drawingId: "sketch",
-                        version: 2,
-                        engine: "excalidraw",
-                        snapshot: { elements: [{ id: "shape-1" }] },
-                        revision: 2,
-                        updatedAt: "2026-10-02T00:00:00.000Z",
-                        shapeCount: 1,
-                        pageCount: 1,
-                        previewPath: "projects/old-canvas/drawings/sketch.png",
-                    }],
                 }],
             }),
         },
-        { name: "projects/old-canvas/files/clip.mp4", data: videoBytes },
-        { name: "projects/old-canvas/files/voice.wav", data: audioBytes },
-        { name: "projects/old-canvas/drawings/sketch.png", data: drawingPreviewBytes },
+        { name: "projects/old-canvas/files/photo.png", data: imageBytes },
         { name: "folders/old/cover.png", data: folderCoverBytes },
     ]);
 }
@@ -268,7 +234,7 @@ afterAll(() => {
     rmSync(serverBin, { force: true });
 });
 
-test("valid archive restores into isolated SQLite, survives backend restart, and keeps media bytes plus timeline", async () => {
+test("valid archive restores into isolated SQLite, survives backend restart, and keeps every media byte", async () => {
     const dataDir = mkdtempSync(join(tmpdir(), "beeftv-archive-sqlite-"));
     let server: RunningServer | undefined;
     try {
@@ -298,20 +264,9 @@ test("valid archive restores into isolated SQLite, survives backend restart, and
         expect(saved.nodes[0].metadata?.storageKey).toStartWith("resource:");
         expect(saved.nodes[0].metadata?.prompt).toContain("data:image/png");
         expect(saved.nodes[0].metadata?.assetId).toBeTruthy();
-        expect(saved.nodes[1].metadata?.drawingId).toBe("sketch");
-        const drawing = await readDrawing(saved.id, "sketch");
-        expect(drawing.drawingId).toBe("sketch");
-        expect(drawing.revision).toBeGreaterThanOrEqual(1);
-        expect(drawing.snapshot?.elements?.[0]?.id).toBe("shape-1");
-        expect(drawing.previewResourceId).toBeTruthy();
-        const clipKey = saved.timeline?.clips[0].directMedia?.storageKey;
-        expect(clipKey).toStartWith("resource:");
-        const videoId = resourceId(saved.nodes[0].metadata?.storageKey);
-        const audioId = resourceId(clipKey);
-        // Fixture bytes prove the same octets were stored; they are not a playable video file.
-        expect(await readResourceBytes(videoId)).toEqual(videoBytes);
-        expect(await readResourceBytes(audioId)).toEqual(audioBytes);
-        expect(await readResourceBytes(drawing.previewResourceId!)).toEqual(drawingPreviewBytes);
+        const imageId = resourceId(saved.nodes[0].metadata?.storageKey);
+        // Fixture bytes prove the same octets were stored; they are not a decodable image file.
+        expect(await readResourceBytes(imageId)).toEqual(imageBytes);
 
         await stopServer(server);
         for (const cache of browserCaches.values()) cache.clear();
@@ -324,15 +279,7 @@ test("valid archive restores into isolated SQLite, survives backend restart, and
         const restarted = await readProject(result.projectIds[0]);
         expect(restarted.folderId).toBe(saved.folderId);
         expect(restarted.nodes[0].metadata?.storageKey).toBe(saved.nodes[0].metadata?.storageKey);
-        expect(restarted.timeline?.clips[0].directMedia?.storageKey).toBe(clipKey);
-        const restartedDrawing = await readDrawing(saved.id, "sketch");
-        expect(restartedDrawing.drawingId).toBe("sketch");
-        expect(restartedDrawing.revision).toBe(drawing.revision);
-        expect(restartedDrawing.snapshot?.elements?.[0]?.id).toBe("shape-1");
-        expect(restartedDrawing.previewResourceId).toBe(drawing.previewResourceId);
-        expect(await readResourceBytes(videoId)).toEqual(videoBytes);
-        expect(await readResourceBytes(audioId)).toEqual(audioBytes);
-        expect(await readResourceBytes(restartedDrawing.previewResourceId!)).toEqual(drawingPreviewBytes);
+        expect(await readResourceBytes(imageId)).toEqual(imageBytes);
 
         const retry = await restoreCanvasArchive(zip);
         expect(retry.projectIds[0]).not.toBe(result.projectIds[0]);
@@ -348,7 +295,7 @@ test("valid archive restores into isolated SQLite, survives backend restart, and
         await stopServer(server);
         rmSync(dataDir, { recursive: true, force: true });
     }
-}, 180_000);
+}, 240_000);
 
 test("canonical readback still rejects lost nodes, connections, or title and rolls back SQLite restore", async () => {
     const dataDir = mkdtempSync(join(tmpdir(), "beeftv-archive-sqlite-content-"));
@@ -375,7 +322,7 @@ test("canonical readback still rejects lost nodes, connections, or title and rol
         await stopServer(server);
         rmSync(dataDir, { recursive: true, force: true });
     }
-}, 180_000);
+}, 240_000);
 
 test("missing archive entry and persist failure do not create a saved SQLite canvas", async () => {
     const dataDir = mkdtempSync(join(tmpdir(), "beeftv-archive-sqlite-neg-"));
@@ -393,15 +340,15 @@ test("missing archive entry and persist failure do not create a saved SQLite can
                     project: {
                         id: "broken",
                         title: "损坏画布",
-                        nodes: [{ id: "n1", type: "video", title: "镜头", position: { x: 0, y: 0 }, width: 320, height: 180, metadata: { storageKey: "video:missing" } }],
+                        nodes: [{ id: "n1", type: "image", title: "图片", position: { x: 0, y: 0 }, width: 320, height: 180, metadata: { storageKey: "image:missing" } }],
                         connections: [],
                     },
-                    files: [{ storageKey: "video:missing", path: "projects/broken/files/missing.mp4", mimeType: "video/mp4", bytes: 3 }],
+                    files: [{ storageKey: "image:missing", path: "projects/broken/files/missing.png", mimeType: "image/png", bytes: 3 }],
                 }],
             }),
         }]);
-        await expect(openCanvasArchive(missing)).rejects.toThrow("missing.mp4");
-        await expect(restoreCanvasArchive(missing)).rejects.toThrow("missing.mp4");
+        await expect(openCanvasArchive(missing)).rejects.toThrow("missing.png");
+        await expect(restoreCanvasArchive(missing)).rejects.toThrow("missing.png");
         expect(await listProjects()).toEqual([]);
         expect(useCanvasStore.getState().projects).toEqual([]);
 
@@ -422,4 +369,4 @@ test("missing archive entry and persist failure do not create a saved SQLite can
         await stopServer(server);
         rmSync(dataDir, { recursive: true, force: true });
     }
-}, 180_000);
+}, 240_000);

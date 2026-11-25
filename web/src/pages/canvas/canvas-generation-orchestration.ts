@@ -17,18 +17,12 @@ import { CanvasOwnerAbandonedError, canvasOwnerCanPersist, canvasOwnerEpochMatch
 const NODE_STATUS_SUCCESS = "success" as const;
 
 export type CanvasNodeRetryPlan =
-    | { kind: "script"; prompt: string }
-    | { kind: "script-empty" }
     | { kind: "image-batch-root"; children: CanvasNodeData[] }
     | { kind: "image-batch-empty" }
     | { kind: "image-batch-child"; rootId: string }
     | { kind: "single" };
 
 export function canvasNodeRetryPlan(node: CanvasNodeData, nodes: CanvasNodeData[]): CanvasNodeRetryPlan {
-    if (node.type === CanvasNodeType.Script) {
-        const prompt = (node.metadata?.composerContent || node.metadata?.prompt || "").trim();
-        return prompt ? { kind: "script", prompt } : { kind: "script-empty" };
-    }
     if (node.type === CanvasNodeType.Image && node.metadata?.isBatchRoot) {
         const children = failedImageBatchChildren(node, nodes);
         return children.length ? { kind: "image-batch-root", children } : { kind: "image-batch-empty" };
@@ -154,7 +148,7 @@ export async function insertCanvasGenerationHistoryTask(input: {
     canContinueWrite?: () => boolean;
 }): Promise<{ node: CanvasNodeData; nextNodes: CanvasNodeData[]; abandoned?: boolean }> {
     const mode = generationTaskMode(input.task);
-    const nodeType = mode === "video" ? CanvasNodeType.Video : mode === "audio" ? CanvasNodeType.Audio : CanvasNodeType.Image;
+    const nodeType = mode === "text" ? CanvasNodeType.Text : CanvasNodeType.Image;
     const node = createCanvasNode(nodeType, input.center, {
         prompt: input.task.prompt,
         composerContent: input.task.prompt,
@@ -167,7 +161,7 @@ export async function insertCanvasGenerationHistoryTask(input: {
         taskCompletedAt: input.task.completedAt,
         model: input.task.model,
     });
-    node.title = mode === "video" ? "历史视频" : mode === "audio" ? "历史音频" : "历史图片";
+    node.title = mode === "text" ? "历史文本" : "历史图片";
     const applied = await (input.applyResult || applyGenerationTaskResultToNodes)([node], input.task, node.id);
     if (!applied.node) throw new Error("生成结果无法定位到画布节点");
     if (input.canContinueWrite && !input.canContinueWrite()) return { node: applied.node, nextNodes: [], abandoned: true };

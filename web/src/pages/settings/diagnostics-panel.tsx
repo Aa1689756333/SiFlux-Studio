@@ -5,8 +5,8 @@ import { useEffect, useState } from "react";
 
 import { exportDiagnosticBundle, downloadDiagnosticBundle, previewDiagnosticBundle, type DiagnosticExportInput, type DiagnosticPreview } from "@/services/diagnostics/diagnostics-api";
 import { getClientDiagnosticEvents, getDiagnosticRuntime } from "@/services/diagnostics/client-diagnostics";
-import { clearVideoPreviewCache } from "@/services/api/resources";
 import { AppModal } from "@/components/ui/product/app-modal";
+import { getDesktopAppBinding } from "@/services/desktop-runtime";
 
 type DiagnosticsPanelProps = {
     taskId?: string;
@@ -32,7 +32,8 @@ export default function DiagnosticsPanel({ taskId, projectId, open, onClose }: D
     const [loadingPreview, setLoadingPreview] = useState(false);
     const [exporting, setExporting] = useState(false);
     const [bundleId, setBundleId] = useState("");
-    const [clearingPreviews, setClearingPreviews] = useState(false);
+    const openUpdateLogs = getDesktopAppBinding()?.OpenUpdateLogDirectory;
+    const [updateLogError, setUpdateLogError] = useState("");
 
     useEffect(() => {
         if (!open) return;
@@ -105,23 +106,21 @@ export default function DiagnosticsPanel({ taskId, projectId, open, onClose }: D
                         {loadingPreview ? "正在读取日志…" : preview ? `包含 ${preview.taskCount} 个任务、${preview.apiCallCount} 次模型调用及前端日志。` : "暂时无法读取记录数量，可继续尝试导出。"}
                     </p>
                 </div>
+                {openUpdateLogs ? <div>
+                    <div className="flex flex-wrap items-center justify-between gap-3">
+                        <p className="text-sm font-medium">应用更新日志</p>
+                        <Button onClick={() => { setUpdateLogError(""); void openUpdateLogs().catch(() => setUpdateLogError("无法打开日志文件夹，请在存储设置中查看当前目录。")); }}>打开日志文件夹</Button>
+                    </div>
+                    <p className="mt-1 text-xs leading-5 text-foreground/55">{preview?.updateLog?.status === "available" ? `诊断包将包含 ${preview.updateLog.lines} 条更新记录。` : preview?.updateLog?.status === "unreadable" ? "部分更新日志无法读取，其他信息仍可导出。" : preview?.updateLog?.status === "missing" ? "未找到更新日志，其他信息仍可导出。" : "请选择覆盖更新失败时间的日志范围。"}</p>
+                    {preview?.updateLog?.truncated ? <p className="mt-1 text-xs leading-5 text-foreground/55">日志较多，仅包含最近的部分更新记录。</p> : null}
+                    <p className="mt-1 text-xs leading-5 text-foreground/55">日志位于当前数据目录，文件名为 update.log。</p>
+                    {updateLogError ? <p className="mt-1 text-xs leading-5 text-destructive" role="alert">{updateLogError}</p> : null}
+                </div> : null}
                 <div>
                     <label className="mb-3 block text-sm font-medium" htmlFor="diagnostic-description">
                         问题描述 <span className="ml-1 text-xs font-normal text-foreground/55">可选</span>
                     </label>
                     <Input.TextArea id="diagnostic-description" rows={3} maxLength={1000} value={description} onChange={(event) => setDescription(event.target.value)} placeholder="例如：生成一直停在处理中。" />
-                </div>
-                <div className="flex items-center justify-between gap-4">
-                    <div className="min-w-0">
-                        <p className="text-sm font-medium">视频预览缓存</p>
-                        <p className="mt-1 text-xs leading-5 text-foreground/55">清理预览以释放空间，原文件保留。</p>
-                    </div>
-                    <Button className="shrink-0" loading={clearingPreviews} onClick={async () => {
-                        setClearingPreviews(true);
-                        try { const result = await clearVideoPreviewCache(); message.success(`已清理 ${result.cleared} 个视频预览`); }
-                        catch (error) { message.error(error instanceof Error ? error.message : "清理失败，请重试"); }
-                        finally { setClearingPreviews(false); }
-                    }}>清理预览缓存</Button>
                 </div>
                 <div>
                     <div className="flex items-center justify-between gap-4">

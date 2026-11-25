@@ -179,6 +179,9 @@ func (s *Service) upsertUserCanvasProjectWithAssets(userID string, raw json.RawM
 		if existingErr != nil && !errors.Is(existingErr, gorm.ErrRecordNotFound) {
 			return existingErr
 		}
+		previousPayload := ""
+		if existing != nil { previousPayload = existing.PayloadJSON }
+		if err := validateWritableCanvasDocument([]byte(previousPayload), raw); err != nil { return err }
 		existingBytes := int64(0)
 		project.Revision = *version.Revision
 		project.UpdatedAt = time.Now().UTC()

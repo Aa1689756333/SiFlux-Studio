@@ -4,13 +4,12 @@ import (
 	"encoding/json"
 	"errors"
 	"strings"
-	"time"
 
 	"gorm.io/gorm"
 
 	"infinite-canvas/backend/internal/assets"
 	"infinite-canvas/backend/internal/canvas"
-	"infinite-canvas/backend/internal/conversation"
+
 	"infinite-canvas/backend/internal/model"
 	"infinite-canvas/backend/internal/operations"
 	"infinite-canvas/backend/internal/repository"
@@ -311,30 +310,6 @@ func (s *Service) DeleteUserCanvasFolder(userID, id string) error {
 	})
 }
 
-func (s *Service) UserCanvasDrawings(userID, canvasID string) ([]canvas.CanvasDrawingDocument, error) {
-	return s.canvasDomain().UserCanvasDrawings(userID, canvasID)
-}
-
-func (s *Service) UserCanvasDrawing(userID, canvasID, drawingID string) (canvas.CanvasDrawingDocument, error) {
-	return s.canvasDomain().UserCanvasDrawing(userID, canvasID, drawingID)
-}
-
-func (s *Service) UpsertUserCanvasDrawing(userID, canvasID, drawingID string, raw json.RawMessage) (canvas.CanvasDrawingDocument, error) {
-	var drawing canvas.CanvasDrawingDocument
-	err := s.runCanvasLibraryWrite(func(domain *canvas.Service) error {
-		var writeErr error
-		drawing, writeErr = domain.UpsertUserCanvasDrawing(userID, canvasID, drawingID, raw)
-		return writeErr
-	})
-	return drawing, err
-}
-
-func (s *Service) DeleteUserCanvasDrawing(userID, canvasID, drawingID string) error {
-	return s.runCanvasLibraryWrite(func(domain *canvas.Service) error {
-		return domain.DeleteUserCanvasDrawing(userID, canvasID, drawingID)
-	})
-}
-
 // runCanvasLibraryWrite 在组合根开启写事务，并把 host 绑到同一条连接。
 // 领域 withWriteTx 见到 HoldsTransaction 后不再嵌套 BEGIN。
 func (s *Service) runCanvasLibraryWrite(fn func(*canvas.Service) error) error {
@@ -361,22 +336,6 @@ func (s *Service) CanvasHistorySnapshot(userID, canvasID, snapshotID string) (*m
 
 func (s *Service) RestoreCanvasHistory(userID, canvasID, snapshotID string, revision *int64) (UserDataSummary, error) {
 	return s.canvasDomain().RestoreCanvasHistory(userID, canvasID, snapshotID, revision)
-}
-
-func saveCreationCanvasWithHistory(repo *repository.Repository, project *model.CanvasProject, previous string) error {
-	before, err := repo.CanvasProjectForUser(project.UserID, project.ID)
-	if err != nil {
-		return err
-	}
-	if before.PayloadJSON != previous || before.Revision != project.Revision {
-		return repository.ErrCreationConflict
-	}
-	project.UpdatedAt = time.Now().UTC()
-	err = canvas.SaveDocumentWithHistory(repo, before, project, "automatic")
-	if errors.Is(err, repository.ErrCanvasRevisionConflict) {
-		return repository.ErrCreationConflict
-	}
-	return err
 }
 
 func (s *Service) UserAssetsByIDs(userID string, ids []string) ([]json.RawMessage, error) {
@@ -497,18 +456,6 @@ func (s *operationSession) ConnectUserCanvasNodesAtRevision(userID string, canva
 	return s.canvas.ConnectUserCanvasNodesAtRevision(userID, canvasID, fromNodeID, toNodeID, expectedRevision)
 }
 
-func (s *operationSession) AppendUserCanvasStoryboardRows(userID string, canvasID string, nodeID string, drafts []canvas.StoryboardRowDraft, expectedRevision int64) (canvas.UserDataSummary, []canvas.StoryboardRowIdentity, error) {
-	return s.canvas.AppendUserCanvasStoryboardRows(userID, canvasID, nodeID, drafts, expectedRevision)
-}
-
-func (s *operationSession) UpdateUserCanvasStoryboardRows(userID string, canvasID string, nodeID string, patches []canvas.StoryboardRowPatch, expectedRevision int64) (canvas.UserDataSummary, []canvas.StoryboardRowIdentity, error) {
-	return s.canvas.UpdateUserCanvasStoryboardRows(userID, canvasID, nodeID, patches, expectedRevision)
-}
-
-func (s *operationSession) RemoveUserCanvasStoryboardRows(userID string, canvasID string, nodeID string, rowIDs []string, expectedRevision int64) (canvas.UserDataSummary, int, error) {
-	return s.canvas.RemoveUserCanvasStoryboardRows(userID, canvasID, nodeID, rowIDs, expectedRevision)
-}
-
 func (s *operationSession) CommitUserCanvasDocument(userID string, canvasID string, expectedRevision int64, document json.RawMessage) (canvas.UserDataSummary, json.RawMessage, error) {
 	return s.canvas.CommitUserCanvasDocument(userID, canvasID, expectedRevision, document)
 }
@@ -580,95 +527,7 @@ func (s *operationSession) OwnedAsset(userID, assetID string) (*model.Asset, err
 }
 
 func (s *operationSession) BindExistingCanvasNode(userID string, patch canvas.TaskOutputBind) (canvas.TaskOutputBindResult, error) {
-	patch.AllowEmptyVideo = false
-	patch.DepthClientOperationID = ""
-	task, err := s.repo.TaskForUser(userID, patch.TaskID)
-	if err != nil {
-		return canvas.TaskOutputBindResult{}, err
-	}
-	if task != nil && task.UserID == userID && task.ProjectID == patch.CanvasID && task.Type == model.TaskTypeTimelineRender && task.Provider == "local" && task.Model == "ffmpeg" && task.Status == model.TaskStatusSucceeded {
-		patch.AllowEmptyVideo = true
-	}
-	if task != nil && task.UserID == userID && task.ProjectID == patch.CanvasID && task.Type == model.TaskTypeDepthCapture && task.Status == model.TaskStatusSucceeded && task.ClientOperationID != nil {
-		target := localtask.TargetBindingFromInput(task.InputJSON)
-		if target.NodeID == patch.NodeID && target.Source == "canvas" {
-			patch.DepthClientOperationID = strings.TrimSpace(*task.ClientOperationID)
-		}
-	}
 	return s.canvas.BindTaskOutputToExistingNode(userID, patch)
-}
-
-func (s *operationSession) conversations() *conversation.Service {
-	if s == nil || s.repo == nil {
-		return conversation.New(nil)
-	}
-	svc := conversation.New(conversation.NewStore(s.repo))
-	if s.tx != nil {
-		return svc.WithTx(s.tx)
-	}
-	return svc
-}
-
-func (s *operationSession) UserConversation(userID, conversationID string) (taskbinding.ConversationView, error) {
-	if s == nil || s.repo == nil {
-		return taskbinding.ConversationView{}, gorm.ErrRecordNotFound
-	}
-	row, err := s.repo.CreationConversation(s.tx, userID, conversationID)
-	if err != nil {
-		return taskbinding.ConversationView{}, err
-	}
-	view := taskbinding.ConversationView{
-		ID:       row.ConversationID,
-		Revision: row.Revision,
-		Deleted:  row.Deleted,
-	}
-	if !row.Deleted {
-		view.Document = []byte(row.Document)
-	}
-	return view, nil
-}
-
-func (s *operationSession) AttachConversationMessage(userID string, input taskbinding.MessageAttachInput) (taskbinding.ConversationView, error) {
-	record, err := s.conversations().AttachMessageResult(userID, conversation.AttachInput{
-		ConversationID: input.ConversationID,
-		MessageID:      input.MessageID,
-		TaskID:         input.TaskID,
-		EffectKey:      input.EffectKey,
-		ResultURLs:     input.ResultURLs,
-		Status:         input.Status,
-		Content:        input.Content,
-	})
-	if err != nil {
-		return taskbinding.ConversationView{}, mapConversationAttachError(err)
-	}
-	return taskbinding.ConversationView{
-		ID:       record.ID,
-		Revision: record.Revision,
-		Deleted:  record.Deleted,
-		Document: record.Document,
-	}, nil
-}
-
-func mapConversationAttachError(err error) error {
-	if err == nil {
-		return nil
-	}
-	var convErr *conversation.Error
-	if !errors.As(err, &convErr) {
-		return err
-	}
-	switch convErr.Reason {
-	case conversation.ReasonNotFound:
-		return &taskbinding.Error{Status: 404, Reason: "conversation_deleted", Message: convErr.Message}
-	case conversation.ReasonDeleted:
-		return &taskbinding.Error{Status: 409, Reason: "conversation_deleted", Message: convErr.Message}
-	case conversation.ReasonMessageTaskMismatch:
-		return &taskbinding.Error{Status: 409, Reason: "message_task_mismatch", Message: convErr.Message}
-	case conversation.ReasonStaleRevision, conversation.ReasonConflict:
-		return &taskbinding.Error{Status: 409, Reason: "stale_revision", Message: convErr.Message}
-	default:
-		return &taskbinding.Error{Status: convErr.Status, Reason: convErr.Reason, Message: convErr.Message}
-	}
 }
 
 var (

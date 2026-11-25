@@ -26,6 +26,7 @@ export const GENERATION_ERROR_CATEGORIES = [
     "concurrency",
     "provider_unavailable",
     "network",
+    "request_not_sent",
     "timeout",
     "submission_uncertain",
     "async_failed",
@@ -83,7 +84,7 @@ export type GenerationFailureDiagnostics = {
     executionResult?: string;
     omittedRequests?: number;
     requests?: { operation: string; method: string; dispatched: boolean; outcome: string; httpStatus?: number; requestId?: string; providerCode?: string; summary?: string; startedAt: string; durationMs: number; requestBytes?: number; receivedBytes?: number; declaredResponseBytes?: number; responseLimitBytes?: number }[];
-    input?: { protocol?: string; model?: string; size?: string; quality?: string; count?: string; promptChars: number; imageCount: number; videoCount: number; audioCount: number; images?: { bytes: number; width: number; height: number }[]; imageLimitsRecorded?: boolean; maxImages?: number; maxImageBytes?: number };
+    input?: { protocol?: string; model?: string; size?: string; quality?: string; count?: string; promptChars: number; imageCount: number; images?: { bytes: number; width: number; height: number }[]; imageLimitsRecorded?: boolean; maxImages?: number; maxImageBytes?: number };
     summary?: string;
     providerCode?: string;
     httpStatus?: number;
@@ -123,13 +124,14 @@ const CATEGORY_COPY: Record<GenerationErrorCategory, CategoryCopy> = {
     concurrency: { reason: "同时进行的生成过多", action: "请等待已有任务完成后再试" },
     provider_unavailable: { reason: "模型服务暂时不可用", action: "请稍后重试" },
     network: { reason: "网络连接失败", action: "请检查网络并核对原任务状态后，再决定是否重新生成" },
+    request_not_sent: { reason: "请求尚未发送到模型服务", action: "可安全重试，不会重复扣费" },
     timeout: { reason: "模型服务响应超时", action: "请稍后查询原任务，不要立即重新提交" },
     submission_uncertain: { reason: "提交结果尚未确认，上游任务可能仍在执行", action: "请先查询原任务状态，不要立即重新提交" },
     async_failed: { reason: "生成任务没有完成", action: "请查看详情后决定是否重试" },
     cancelled: { reason: "任务已取消", action: "可按原输入重新提交" },
     partial_success: { reason: "部分结果已生成，其余失败", action: "请查看已有结果后再决定是否补做" },
     download_failed: { reason: "生成结果还没取回", action: "点击「继续取回」可继续下载原结果，不会重新生成" },
-    delivery_failed: { reason: "视频已生成，但暂时无法取回", action: "请联系支持恢复成片，恢复后点击「取回结果」；无需重新付费生成" },
+    delivery_failed: { reason: "图片已生成，但暂时无法取回", action: "请联系支持恢复结果，恢复后点击「取回结果」；无需重新付费生成" },
     results_missing: { reason: "任务结束但没有可用结果", action: "请查看详情后再决定是否重试" },
     malformed_response: { reason: "模型服务返回了无法解析的内容", action: "请查看详情并核对原任务状态后，再决定是否重新生成" },
     unknown: { reason: "生成失败", action: "请查看详情后再决定是否重试" },
@@ -144,7 +146,6 @@ const PROVIDER_CODE_CATEGORIES: Record<string, GenerationErrorCategory> = {
     modelnotopen: "permission",
     "operationdenied.servicenotopen": "permission",
     contentsecuritydetectionerror: "provider_unavailable",
-    invalid_reference_audio: "invalid_params",
     insufficient_user_quota: "quota_user",
     model_temporarily_unavailable: "provider_unavailable",
     no_available_channel: "provider_unavailable",
@@ -218,7 +219,6 @@ const PROVIDER_CODE_CATEGORIES: Record<string, GenerationErrorCategory> = {
     invalid_image_url: "input_inaccessible",
     file_too_large: "input_too_large",
     payload_too_large: "input_too_large",
-    video_request_body_too_large: "input_too_large",
     model_not_found: "model_missing",
     model_not_exist: "model_missing",
     invalid_model: "model_missing",
@@ -237,8 +237,6 @@ const PROVIDER_CODE_CATEGORIES: Record<string, GenerationErrorCategory> = {
     deadline_exceeded: "timeout",
     request_cancelled: "cancelled",
     provider_submission_unknown: "submission_uncertain",
-    video_submission_unknown: "submission_uncertain",
-    video_delivery_failed: "delivery_failed",
     image_result_unknown: "submission_uncertain",
     image_submission_pending: "submission_uncertain",
     image_result_expired: "submission_uncertain",
@@ -289,7 +287,7 @@ export function explainGenerationError(error: unknown, context: GenerationFailur
         taskId: sanitizeDebugId(classified.taskId || context.taskId) || undefined,
         retryable: Boolean(classified.retryable) && !uncertain && !moderation,
         uncertain,
-        blockAutomaticRetry: uncertain || moderation || !["throttled", "concurrency", "provider_unavailable", "cancelled"].includes(classified.category),
+        blockAutomaticRetry: uncertain || moderation || !["throttled", "concurrency", "provider_unavailable", "cancelled", "request_not_sent"].includes(classified.category),
         moderation,
     };
 }
@@ -402,7 +400,7 @@ function formatExecutionEvidence(evidence?: GenerationFailureDiagnostics): strin
     const input = evidence?.input;
     if (input) {
         lines.push(`任务配置（协议可能转换或省略）：协议=${diagnosticToken(input.protocol)}，模型=${diagnosticToken(input.model)}，尺寸=${diagnosticToken(input.size)}，质量=${diagnosticToken(input.quality)}，数量=${diagnosticToken(input.count)}`);
-        lines.push(`输入统计：提示词 ${number(input.promptChars)} 字；图片/视频/音频 ${number(input.imageCount)}/${number(input.videoCount)}/${number(input.audioCount)}`);
+        lines.push(`输入统计：提示词 ${number(input.promptChars)} 字；图片 ${number(input.imageCount)}`);
         if (input.imageLimitsRecorded) lines.push(`本地参考图限制：最多 ${number(input.maxImages)} 张，单图字节上限=${number(input.maxImageBytes)}（字节上限为 0 表示未设置大小限制）`);
         input.images?.slice(0, 16).forEach((media, i) => lines.push(`参考图 ${i + 1}：${number(media.width)}×${number(media.height)}，${number(media.bytes)} 字节`));
     }
@@ -441,6 +439,7 @@ type Classified = {
 
 function classifyUnknown(error: unknown, context: GenerationFailureContext): Classified {
     if (context.stage === "submission_unknown") return { category: "submission_uncertain", uncertain: true, retryable: false };
+    if (context.stage === "request_not_sent") return { category: "request_not_sent", retryable: true };
     if (!error) return { category: "unknown", retryable: false };
     if (typeof error === "object" && error) {
     const record = error as Record<string, unknown>;
@@ -484,10 +483,6 @@ function classifyHttp(status: number | undefined, body: unknown): Classified {
         const fromObject = classifyText(stringifyAllowlisted(body));
         if (fromObject.fromCode || (fromObject.category !== "unknown" && classified.category === "unknown")) classified = fromObject;
     }
-    const fields = extractProviderFields(typeof body === "string" ? body : body && typeof body === "object" ? stringifyAllowlisted(body) : "");
-    if (status === 402 && fields.code === "video_reservation_failed" && fields.message.startsWith("insufficient balance for this video request")) {
-        classified = { ...classified, category: "quota_user", fromCode: true, reason: undefined, action: undefined };
-    }
     if (classified.category !== "unknown" && !classified.fromCode && !trustProviderMessageStatus(status)) {
         classified = { category: "unknown", retryable: false };
     }
@@ -529,17 +524,6 @@ function classifyText(raw: string): Classified {
     const moderationCopy = persistedModerationCopy(text);
     if (moderationCopy) {
         return { ...moderationCopy, requestId: sanitizeDebugId(text.match(/请求 ([A-Za-z0-9._:-]{6,127})/)?.[1]), taskId: sanitizeDebugId(text.match(/任务 ([A-Za-z0-9._:-]{6,127})/)?.[1]), retryable: false };
-    }
-    const durationCopy = referenceDurationCopy(text);
-    if (durationCopy) {
-        const debug = text.match(/。排查编号：([^。]+)。?$/)?.[1] || "";
-        return {
-            category: "invalid_params",
-            ...durationCopy,
-            requestId: sanitizeDebugId(debug.match(/(?:^| · )请求 ([A-Za-z0-9._:-]{6,127})$/)?.[1]),
-            taskId: sanitizeDebugId(debug.match(/^任务 ([A-Za-z0-9._:-]{6,127})(?: · |$)/)?.[1]),
-            retryable: false,
-        };
     }
     const mediaCopy = referenceMediaConstraintCopy(text);
     if (mediaCopy) {
@@ -615,8 +599,6 @@ function specialize(classified: Classified, fields: ExtractedFields): Classified
         const moderationCopy = moderationErrorCopy(fields.code, fields.message);
         if (moderationCopy) return { ...classified, ...moderationCopy, retryable: false };
     }
-    const audioOrDuration = referenceAudioCopy(fields.message, normalizeCode(fields.code) === "invalid_reference_audio") || referenceDurationCopy(fields.message);
-    if (audioOrDuration) return { ...classified, category: "invalid_params", ...audioOrDuration, retryable: false };
     const mediaCopy = ["unknown", "invalid_params", "input_too_large", "input_inaccessible"].includes(classified.category) ? referenceMediaConstraintCopy(fields.message) : undefined;
     if (mediaCopy) return { ...classified, category: mediaCopy.reason.includes("过大") ? "input_too_large" : "invalid_params", ...mediaCopy, retryable: false };
     if (classified.category === "invalid_params") {
@@ -626,12 +608,6 @@ function specialize(classified: Classified, fields: ExtractedFields): Classified
     if (isModerationCategory(classified.category) && !["moderation_reference", "moderation_output"].includes(fields.code)) classified.category = moderationCategoryFromMessage(`${fields.message} ${fields.code}`.toLowerCase());
     const normalized = `${fields.message} ${fields.code}`.toLowerCase();
     if (classified.category === "invalid_params") {
-        const duration = fields.message.match(/duration\s+(?:must|should)\s+be\s+between\s+(\d+(?:\.\d+)?)\s*(?:seconds?|secs?|s)?\s+and\s+(\d+(?:\.\d+)?)\s*(?:seconds?|secs?|s)\b/i);
-        if (duration && Number(duration[1]) <= Number(duration[2])) {
-            const reference = fields.message.includes("素材") || /reference|audio/i.test(fields.message);
-            classified.reason = reference ? "参考素材时长不符合模型要求" : "视频时长不符合模型要求";
-            classified.action = reference ? `请检查每段参考音频和视频，将不符合要求的素材调整为 ${duration[1]}–${duration[2]} 秒后重新提交` : `请将时长调整为 ${duration[1]}–${duration[2]} 秒后重试`;
-        }
         const height = fields.message.match(/height\s+(?:must|should)\s+be\s+between\s+(\d+)\s*(?:px|pixels?)?\s+and\s+(\d+)\s*(?:px|pixels?)/i);
         if (height) {
             classified.reason = "参考素材高度不符合模型要求";
@@ -655,13 +631,12 @@ function specialize(classified: Classified, fields: ExtractedFields): Classified
     }
     if (classified.category === "input_too_large") {
         if (
-            normalizeCode(fields.code) === "video_request_body_too_large" ||
             fields.message.startsWith("整次请求的数据量超过接口上限") ||
             /(?:request\s+(?:body|entity|payload)|payload)\s+(?:is\s+)?too\s+large|(?:request|payload).{0,24}(?:exceeds?|larger than)/i.test(fields.message)
         ) {
             classified.reason = "整次请求的数据量超过接口上限";
             classified.action = "请减少参考素材，或改用可公开访问的素材链接后再提交";
-        } else if (/(?:file|image|video|audio)\s+too\s+large/i.test(fields.message)) {
+        } else if (/(?:file|image)\s+too\s+large/i.test(fields.message)) {
             classified.reason = "单个参考文件过大";
             classified.action = "请压缩或更换该素材后再提交";
         }
@@ -673,47 +648,6 @@ function specialize(classified: Classified, fields: ExtractedFields): Classified
     }
     classified.retryable = retryableCategory(classified.category);
     return classified;
-}
-
-function referenceDurationCopy(text: string): CategoryCopy | undefined {
-    const audio = referenceAudioCopy(text);
-    if (audio) return audio;
-    const numbered = text.match(/^第 (\d+) 段参考(音频|视频)时长为 (\d+(?:\.\d+)?) 秒[，。]需要 (\d+(?:\.\d+)?)–(\d+(?:\.\d+)?) 秒/);
-    if (numbered) return { reason: `第 ${numbered[1]} 段参考${numbered[2]}时长为 ${numbered[3]} 秒`, action: `需要 ${numbered[4]}–${numbered[5]} 秒；请裁剪或更换这段素材后再提交` };
-    const missing = text.match(/^第 (\d+) 段参考(音频|视频)的时长无法读取/);
-    if (missing) return { reason: `第 ${missing[1]} 段参考${missing[2]}的时长无法读取`, action: "请重新导入素材后再提交" };
-    const persisted = text.match(/^参考素材时长不符合模型要求。请检查每段参考音频和视频，将不符合要求的素材调整为 (\d+(?:\.\d+)?)–(\d+(?:\.\d+)?) 秒/);
-    if (persisted) return { reason: "参考素材时长不符合模型要求", action: `请检查每段参考音频和视频，将不符合要求的素材调整为 ${persisted[1]}–${persisted[2]} 秒后重新提交` };
-}
-
-function referenceAudioCopy(text: string, invalidAudio = false): CategoryCopy | undefined {
-    const duration = text.match(/^reference audio (\d+) is (\d+(?:\.\d+)?) seconds; use audio between (\d+(?:\.\d+)?) and (\d+(?:\.\d+)?) seconds/i);
-    if (duration) return { reason: `第 ${duration[1]} 段参考音频时长为 ${duration[2]} 秒`, action: `需要 ${duration[3]}–${duration[4]} 秒；请裁剪或更换这段素材后再提交` };
-    const total =
-        text.match(/^reference audio is (\d+(?:\.\d+)?) seconds in total; this model accepts at most (\d+(?:\.\d+)?) seconds of reference audio/i) || text.match(/^参考音频总时长为 (\d+(?:\.\d+)?) 秒[。，](?:该|当前)模型最多支持 (\d+(?:\.\d+)?) 秒/);
-    if (total) return { reason: `参考音频总时长为 ${total[1]} 秒`, action: `该模型最多支持 ${total[2]} 秒参考音频；请裁剪或减少参考音频后再提交` };
-    const numbered = text.match(/^reference audio (\d+)(?::| requires| exceeds)/i);
-    const label = numbered ? `第 ${numbered[1]} 段参考音频` : "参考音频";
-    const persisted = text.match(/^(第 \d+ 段参考音频|参考音频)(无法下载|的格式或时长无法读取|文件过大|不符合模型要求)。/);
-    const issue =
-        persisted?.[2] ||
-        (invalidAudio || numbered
-            ? /15 MiB|byte limit|at most.*MiB/i.test(text)
-                ? "文件过大"
-                : /duration could not be measured|invalid.*audio|unsupported|readable audio track/i.test(text)
-                  ? "的格式或时长无法读取"
-                  : /download|HTTPS URL|URL.*(?:policy|allowed)|redirect|readable within/i.test(text)
-                    ? "无法下载"
-                    : "不符合模型要求"
-            : "");
-    if (!issue) return;
-    const actions: Record<string, string> = {
-        无法下载: "请重新上传音频，确认素材链接可公开访问后再提交",
-        的格式或时长无法读取: "请将音频重新导出为 MP3、WAV 或 M4A，确认文件完整且含有音轨后再上传",
-        文件过大: "请压缩或更换音频，确保文件不超过模型的大小限制后再提交",
-        不符合模型要求: "请检查参考音频的时长、格式和大小，调整后再提交",
-    };
-    return { reason: `${persisted?.[1] || label}${issue}`, action: actions[issue] };
 }
 
 function extractProviderFields(raw: string): ExtractedFields {
@@ -807,47 +741,26 @@ function referenceMediaConstraintCopy(text: string): CategoryCopy | undefined {
         const [reason, ...action] = text.split("。");
         return { reason, action: action.join("。") };
     }
-    const unreadableFps = text.match(/^(第 \d+ 个参考视频帧率无法读取)/);
-    if (unreadableFps) return {reason:unreadableFps[1],action:"请重新导出 MP4/MOV 视频后上传，确保文件完整且包含有效的视频轨"};
-    const measuredFps = text.match(/^(第 \d+ 个参考视频平均帧率为 \d+(?:\.\d+)? FPS)[，。](?:需要 |请将参考视频重新导出为 )(\d+)–(\d+) FPS/);
-    if (measuredFps) return { reason: measuredFps[1], action: `请将参考视频重新导出为 ${measuredFps[2]}–${measuredFps[3]} FPS 后再提交` };
-    const fps = text.match(/^(?:素材转换失败:\s*)?(?:frame rate|framerate|fps) must be between (\d+(?:\.\d+)?)\s*(?:fps)? and (\d+(?:\.\d+)?)[.\s]*$/i);
-    if (fps) return { reason: "参考视频帧率不符合要求", action: `请将参考视频重新导出为 ${fps[1]}–${fps[2]} FPS 后再提交` };
-    if (text.startsWith("参考视频帧率不符合要求。请将参考视频重新导出为 ")) return { reason: text.split("。")[0], action: text.slice(text.indexOf("。") + 1) };
-    if (/^(?:(?:素材转换失败:\s*)?(?:unsupported (?:video |audio )?codec|(?:video |audio )?codec (?:is )?not supported)[.\s]*$|参考素材编码不受当前模型支持。)/i.test(text)) return { reason: "参考素材编码不受当前模型支持", action: "请将视频重新导出为常见的 H.264 MP4，音频重新导出为 MP3 或 WAV 后替换素材；只修改文件后缀无效" };
+    if (/^(?:(?:素材转换失败:\s*)?(?:unsupported (?:image )?codec|(?:image )?codec (?:is )?not supported)[.\s]*$|参考素材编码不受当前模型支持。)/i.test(text)) return { reason: "参考素材编码不受当前模型支持", action: "请将图片重新导出为常见的 PNG、JPEG 或 WebP 后替换素材；只修改文件后缀无效" };
     if (/^(?:asset (?:is )?(?:not ready|still processing)[.\s]*$|参考素材仍在处理中。)/i.test(text)) return { reason: "参考素材仍在处理中", action: "请在素材库确认处理完成后再生成，不要重复上传或反复提交" };
     if (/^(?:asset (?:access denied|permission denied|forbidden)[.\s]*$|无权访问参考素材。)/i.test(text)) return { reason: "无权访问参考素材", action: "请使用上传该素材的账号与渠道，或重新上传原文件；检查素材权限，无需修改提示词" };
     const pixelPersisted = text.match(/^(参考素材像素总量不符合模型要求)。((?:请将参考素材的宽×高调整到) \d+–\d+ 像素[^{}]*)$/);
     if (pixelPersisted) return { reason: pixelPersisted[1], action: pixelPersisted[2] };
-    const videoPersisted = text.match(/^(第 \d+ 个参考视频(?:无法读取|格式或地址不支持|文件过大|尺寸为 \d+×\d+|时长为 \d+(?:\.\d+)? 秒|像素总量为 \d+（\d+×\d+）))[。]([^{}]+)$/);
-    if (videoPersisted) return { reason: videoPersisted[1], action: videoPersisted[2] };
 
     const persisted = text.match(/^参考素材(宽度|高度|宽高比)不符合模型要求。请将(?:宽度|高度|宽高比)调整为 (\d+(?:\.\d+)?)–(\d+(?:\.\d+)?)( 像素| )后重新提交/);
     if (persisted) return { reason: `参考素材${persisted[1]}不符合模型要求`, action: `请将${persisted[1]}调整为 ${persisted[2]}–${persisted[3]}${persisted[4]}后重新提交` };
-    const single = text.match(/^(第 \d+ (?:张|个|段)参考(?:图|视频|音频)(?:宽度|高度|宽高比|时长)为 \d+(?:\.\d+)?(?: 像素| 秒)?)[，。]需要 ((?:至少|不超过) \d+(?:\.\d+)?(?: 像素| 秒)?)/);
-    if (single) return { reason: single[1], action: `需要 ${single[2]}；${single[1].includes("时长") ? "请裁剪或更换这段素材后再提交" : "请调整尺寸或更换后再提交"}` };
-    const size = text.match(/^第 (\d+) (张|个|段)参考(图|视频|音频)(宽度|高度)为 (\d+) 像素[，。]需要 (\d+)–(\d+) 像素/);
-    if (size) return { reason: `第 ${size[1]} ${size[2]}参考${size[3]}${size[4]}为 ${size[5]} 像素`, action: `需要 ${size[6]}–${size[7]} 像素；请调整尺寸或更换后再提交` };
-    const aspect = text.match(/^第 (\d+) (张|个|段)参考(图|视频|音频)宽高比为 (\d+(?:\.\d+)?)[，。]需要 (\d+(?:\.\d+)?)–(\d+(?:\.\d+)?)/);
-    if (aspect) return { reason: `第 ${aspect[1]} ${aspect[2]}参考${aspect[3]}宽高比为 ${aspect[4]}`, action: `需要 ${aspect[5]}–${aspect[6]}；请调整尺寸或更换后再提交` };
-    const videoDuration = text.match(/^(第 \d+ 个参考视频时长为 \d+(?:\.\d+)? 秒)，需要 (\d+)–(\d+) 秒/);
-    if (videoDuration) return { reason: videoDuration[1], action: `请将这段参考视频裁剪或更换为 ${videoDuration[2]}–${videoDuration[3]} 秒` };
-    const videoRead = text.match(/^第 (\d+) 个参考视频[：:]?(?:参考视频)?(?:尺寸|时长)?(?:下载失败|无法读取|无法完整读取|数据无法读取|分段读取失败|在读取期间发生变化|时长无法读取|尺寸无法读取)/);
-    if (videoRead) return { reason: `第 ${videoRead[1]} 个参考视频无法读取`, action: "请检查素材链接，或重新导出 MP4/MOV 文件后导入" };
-    const videoFormat = text.match(/^第 (\d+) 个参考视频[：:]?(?:参考视频)?需使用/);
-    if (videoFormat) return { reason: `第 ${videoFormat[1]} 个参考视频格式或地址不支持`, action: "请导入 MP4/MOV 文件，或使用可公开访问的 HTTP/HTTPS 视频链接" };
-    const videoBytes = text.match(/^第 (\d+) 个参考视频[：:]?(?:参考视频)?文件不能超过 (\d+)MB/);
-    if (videoBytes) return { reason: `第 ${videoBytes[1]} 个参考视频文件过大`, action: `请压缩至 ${videoBytes[2]}MB 以内或更换素材` };
-    const videoSize = text.match(/^(第 \d+ 个参考视频尺寸为 \d+×\d+)，需要宽高均在 (\d+)–(\d+) 像素之间/);
-    if (videoSize) return { reason: videoSize[1], action: `请将这段参考视频的宽和高均调整到 ${videoSize[2]}–${videoSize[3]} 像素` };
-    const pixelDetail = text.match(/^(第 \d+ (?:张|个|段)参考(?:图|视频|音频)像素总量为 \d+（\d+×\d+）)，需要 ([^；]+) 像素/);
+    const single = text.match(/^(第 \d+ 张参考图(?:宽度|高度|宽高比)为 \d+(?:\.\d+)? 像素)[，。]需要 ((?:至少|不超过) \d+(?:\.\d+)? 像素)/);
+    if (single) return { reason: single[1], action: `需要 ${single[2]}；请调整尺寸或更换后再提交` };
+    const size = text.match(/^第 (\d+) 张参考图(宽度|高度)为 (\d+) 像素[，。]需要 (\d+)–(\d+) 像素/);
+    if (size) return { reason: `第 ${size[1]} 张参考图${size[2]}为 ${size[3]} 像素`, action: `需要 ${size[4]}–${size[5]} 像素；请调整尺寸或更换后再提交` };
+    const aspect = text.match(/^第 (\d+) 张参考图宽高比为 (\d+(?:\.\d+)?)[，。]需要 (\d+(?:\.\d+)?)–(\d+(?:\.\d+)?)/);
+    if (aspect) return { reason: `第 ${aspect[1]} 张参考图宽高比为 ${aspect[2]}`, action: `需要 ${aspect[3]}–${aspect[4]}；请调整尺寸或更换后再提交` };
+    const pixelDetail = text.match(/^(第 \d+ 张参考图像素总量为 \d+（\d+×\d+）)，需要 ([^；]+) 像素/);
     if (pixelDetail) return { reason: pixelDetail[1], action: `需要 ${pixelDetail[2]} 像素；请调整这份素材的尺寸或更换原文件，修改生成分辨率不会改变参考素材` };
-    const unknownSize = text.match(/^(第 \d+ 个参考视频尺寸无法读取)/);
-    if (unknownSize) return { reason: unknownSize[1], action: "请重新导出 MP4/MOV 后导入" };
-    const pixels = text.match(/^第 (\d+) (张|个|段)参考(图|视频|音频)像素总量/);
-    if (pixels) return { reason: `第 ${pixels[1]} ${pixels[2]}参考${pixels[3]}像素总量不符合当前模型要求`, action: "请调整尺寸或更换后再提交" };
-    const file = text.match(/^第 (\d+) (张|个|段)参考(图|视频|音频)文件过大[，。]当前模型单文件上限为 ([^；;]+)/);
-    if (file) return { reason: `第 ${file[1]} ${file[2]}参考${file[3]}文件过大`, action: `当前模型单文件上限为 ${file[4]}；请压缩或更换后再提交` };
+    const pixels = text.match(/^第 (\d+) 张参考图像素总量/);
+    if (pixels) return { reason: `第 ${pixels[1]} 张参考图像素总量不符合当前模型要求`, action: "请调整尺寸或更换后再提交" };
+    const file = text.match(/^第 (\d+) 张参考图文件过大[，。]当前模型单文件上限为 ([^；;]+)/);
+    if (file) return { reason: `第 ${file[1]} 张参考图文件过大`, action: `当前模型单文件上限为 ${file[2]}；请压缩或更换后再提交` };
     if (text.startsWith("整次请求的参考素材合计过大")) return { reason: "整次请求的参考素材合计过大", action: "请减少素材后再提交" };
 }
 
@@ -898,7 +811,7 @@ function containsContentSafety(normalized: string) {
 function moderationCategoryFromMessage(normalized: string): GenerationErrorCategory {
     if (/prompt\s+(?:or|and)\s+(?:reference|input)|提示词或参考/.test(normalized)) return "moderation_input";
     if (normalized.includes("reference image") || normalized.includes("input image") || normalized.includes("参考图")) return "moderation_reference";
-    if (normalized.includes("output") && (normalized.includes("image") || normalized.includes("video") || normalized.includes("result"))) return "moderation_output";
+    if (normalized.includes("output") && (normalized.includes("image") || normalized.includes("result"))) return "moderation_output";
     return "moderation_input";
 }
 
@@ -1017,7 +930,7 @@ function isMalformedText(value: string) {
 }
 
 function isDownloadText(value: string) {
-    return value.includes("视频结果下载失败") || (value.includes("下载失败") && value.includes("结果"));
+    return value.includes("下载失败") && value.includes("结果");
 }
 
 function isCancelledText(value: string) {
@@ -1025,7 +938,7 @@ function isCancelledText(value: string) {
 }
 
 function isResultsMissingText(value: string) {
-    return value.includes("没有返回图片") || value.includes("没有返回视频") || value.includes("没有可用结果") || value.includes("接口没有返回");
+    return value.includes("没有返回图片") || value.includes("没有可用结果") || value.includes("接口没有返回");
 }
 
 function isCanvasSaveConflictText(text: string) {
@@ -1047,7 +960,6 @@ function matchPersistedCategory(text: string): GenerationErrorCategory | "" {
     }
     if (text.includes("真人形象")) return "moderation_reference";
     if (text.includes("不支持强制工具调用")) return "invalid_params";
-    if (text.startsWith("视频时长不符合模型要求")) return "invalid_params";
     if (text.includes("可能仍在服务端执行") || text.includes("请勿立即重试")) return "timeout";
     return "";
 }

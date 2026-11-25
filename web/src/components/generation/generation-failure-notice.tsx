@@ -1,7 +1,8 @@
-import { Copy, Eye, RefreshCw } from "lucide-react";
+import { Bug, Copy, Eye, RefreshCw } from "lucide-react";
 import { useState } from "react";
 
 import { formatGenerationDiagnostics, type GenerationFailureContext, type GenerationFailureExplanation } from "@/lib/generation-error";
+import DiagnosticsPanel from "@/pages/settings/diagnostics-panel";
 
 type GenerationFailureNoticeProps = {
     explanation: GenerationFailureExplanation;
@@ -11,12 +12,16 @@ type GenerationFailureNoticeProps = {
     retryLabel?: string;
     onOpenDetails?: () => void;
     retryDisabled?: boolean;
+    enableDiagnosticsExport?: boolean;
+    taskId?: string;
 };
 
-export function GenerationFailureNotice({ explanation, context, compact, onRetry, retryLabel, onOpenDetails, retryDisabled }: GenerationFailureNoticeProps) {
+export function GenerationFailureNotice({ explanation, context, compact, onRetry, retryLabel, onOpenDetails, retryDisabled, enableDiagnosticsExport, taskId }: GenerationFailureNoticeProps) {
     const [copyState, setCopyState] = useState<"idle" | "copied" | "failed">("idle");
+    const [diagnosticsOpen, setDiagnosticsOpen] = useState(false);
     const diagnostics = formatGenerationDiagnostics(explanation, context);
     const showRetry = Boolean(onRetry) && !explanation.blockAutomaticRetry && !retryDisabled;
+    const exportTaskId = taskId || context?.taskId;
     const copyDiagnostics = async () => {
         try {
             if (typeof navigator !== "undefined" && navigator.clipboard?.writeText) {
@@ -65,6 +70,20 @@ export function GenerationFailureNotice({ explanation, context, compact, onRetry
                         {copyState === "copied" ? "已复制" : copyState === "failed" ? "复制失败" : "复制排查信息"}
                     </button>
                 ) : null}
+                {enableDiagnosticsExport ? (
+                    <button
+                        type="button"
+                        className="generation-failure-button"
+                        onClick={(event) => {
+                            event.stopPropagation();
+                            setDiagnosticsOpen(true);
+                        }}
+                        onMouseDown={(event) => event.stopPropagation()}
+                    >
+                        <Bug className="size-3.5" />
+                        导出诊断包
+                    </button>
+                ) : null}
                 {showRetry ? (
                     <button
                         type="button"
@@ -80,6 +99,7 @@ export function GenerationFailureNotice({ explanation, context, compact, onRetry
                     </button>
                 ) : null}
             </div>
+            {enableDiagnosticsExport && diagnosticsOpen ? <DiagnosticsPanel open onClose={() => setDiagnosticsOpen(false)} taskId={exportTaskId} /> : null}
         </div>
     );
 }
@@ -90,7 +110,7 @@ function fallbackCopy(value: string) {
     area.setAttribute("readonly", "true");
     area.style.position = "fixed";
     area.style.opacity = "0";
-    document.body.appendChild(area);
+    document.body.append(area);
     area.select();
     const copied = document.execCommand("copy");
     area.remove();

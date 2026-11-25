@@ -8,8 +8,8 @@ test("connection menu reuses the compact create menu with the supported node set
     expect(component).toContain('<CanvasCreateMenu commands={commands} layout="list"');
     expect(component).toContain('title="引用该节点生成"');
     const commands = component.match(/command\("[^"]+"/g) || [];
-    expect(commands).toHaveLength(7);
-    for (const id of ["text", "image", "video", "audio", "smart-edit", "director", "script"]) {
+    expect(commands).toHaveLength(2);
+    for (const id of ["text", "image"]) {
         expect(commands).toContain(`command("${id}"`);
     }
 });
@@ -28,7 +28,7 @@ test("add-node submenu exposes the LibTV-style compact list layout", () => {
 test("connection menu keeps keyboard dismissal and delegates disabled states", () => {
     expect(component).toContain('event.key === "Escape"');
     expect(component).toContain("getDisabledReason(CanvasNodeType.Text)");
-    expect(component).toContain('command("smart-edit"');
-    expect(component).toContain('"node", "暂不可用"');
-    expect(component).toContain('event.key === "Escape"');
+    expect(component).toContain("getDisabledReason(CanvasNodeType.Image)");
+    expect(component).toContain("disabledReason, onClick: action || create(type)");
+    expect(component).toContain("onMouseDown={(event) => event.stopPropagation()}");
 });

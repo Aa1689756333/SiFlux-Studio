@@ -12,7 +12,6 @@ import {
 } from "../src/lib/canvas/canvas-generation-history";
 import { reuseGeneratedMediaStorageKey } from "../src/lib/canvas/canvas-generation-task-sync";
 import { insertCanvasGenerationHistoryTask } from "../src/pages/canvas/canvas-generation-orchestration";
-import { localTaskHistoryFromProjects } from "../src/lib/local-task-history";
 import { captureUserScopeEpoch, setActiveUserScope } from "../src/lib/user-scope";
 import { listGenerationTasks, type GenerationTask } from "../src/services/api/task-center";
 import { CanvasNodeType, type CanvasNodeData } from "../src/types/canvas";
@@ -24,7 +23,6 @@ const definitions = readFileSync(resolve(import.meta.dir, "../src/lib/canvas/too
 const project = readFileSync(resolve(import.meta.dir, "../src/pages/canvas/project.tsx"), "utf8");
 const orchestration = readFileSync(resolve(import.meta.dir, "../src/pages/canvas/canvas-generation-orchestration.ts"), "utf8");
 const orchestrationHook = readFileSync(resolve(import.meta.dir, "../src/pages/canvas/use-canvas-generation-orchestration.ts"), "utf8");
-const localHistory = readFileSync(resolve(import.meta.dir, "../src/lib/local-task-history.ts"), "utf8");
 const taskSync = readFileSync(resolve(import.meta.dir, "../src/lib/canvas/canvas-generation-task-sync.ts"), "utf8");
 
 function succeededImageSummary(partial: Partial<GenerationTask> = {}): GenerationTask {
@@ -117,7 +115,6 @@ describe("LibTV generation history picker", () => {
         expect(historySource).toContain("assertCanvasGenerationHistoryTaskForInsert");
         expect(historySource).not.toContain("filter((task) => Boolean(task.resultJson");
         expect(picker).toContain("enabled: open && Boolean(projectId.trim())");
-        expect(picker).not.toContain("localTaskHistoryFromProjects");
         expect(picker).not.toContain("isLocalWorkspaceMode");
         expect(picker).not.toContain("loadCanvasGenerationHistory");
         expect(picker).toContain("query.isError ? <>生成历史暂时无法读取");
@@ -128,9 +125,6 @@ describe("LibTV generation history picker", () => {
     });
 
     test("lists a succeeded backend task even when the canvas node has no content", () => {
-        expect(picker).not.toContain("localTaskHistoryFromProjects");
-        expect(localTaskHistoryFromProjects([wipedCanvasProject()]).some((task) => !task.resultJson)).toBe(true);
-
         const listed = insertableCanvasGenerationHistoryTasks([
             succeededImageSummary(),
             succeededImageSummary({ id: "other-canvas", projectId: "other-canvas" }),
@@ -315,13 +309,8 @@ describe("LibTV generation history picker", () => {
         expect(definitions).toContain("onOpenGenerationHistory");
         expect(orchestration).toContain("applyGenerationTaskResultToNodes");
         expect(project).toContain("insertGenerationHistoryTask");
-        expect(localHistory).toContain("localResultJson");
-        expect(localHistory).toContain("resultJson");
-        expect(localHistory).toContain("storageKey");
         expect(orchestrationHook).toContain("setGenerationHistoryOpen(false)");
         expect(taskSync).toContain("reuseGeneratedMediaStorageKey");
-        expect(taskSync).toContain("reuseAudioKey");
-        expect(taskSync).toContain("reuseVideoKey");
         expect(taskSync).toContain("reuseImageKey");
     });
 
@@ -352,40 +341,31 @@ describe("LibTV generation history picker", () => {
         expect(project).toContain("insertGenerationHistoryTask");
     });
 
-    test("does not use audio or video file URLs as card image sources", () => {
-        const audioUrl = "http://127.0.0.1:3184/api/resources/audio-owned/file";
-        const audioTask = {
-            id: "task-audio",
+    test("uses only inline image previews as card image sources", () => {
+        const resourceUrl = "http://127.0.0.1:3184/api/resources/image-owned/file";
+        const resourceTask = {
+            id: "task-resource",
             projectId: "7vvfM674HnenwTekmj88V",
-            type: "canvas_audio",
+            type: "canvas_image",
             status: "succeeded",
-            prompt: "一段旁白",
-            previewUrl: audioUrl,
-            resultJson: JSON.stringify({ mode: "audio", audio: { dataUrl: audioUrl, url: audioUrl, storageKey: "resource:audio-owned" } }),
+            prompt: "金色湖畔露营车",
+            previewUrl: resourceUrl,
+            resultJson: JSON.stringify({ mode: "image", images: [{ url: resourceUrl, storageKey: "resource:image-owned" }] }),
             attempts: 1,
             createdAt: "2026-09-24T00:00:00.000Z",
             updatedAt: "2026-09-24T00:00:00.000Z",
         } as GenerationTask;
-        const videoTask = {
-            ...audioTask,
-            id: "task-video",
-            type: "canvas_video",
-            previewUrl: "http://127.0.0.1:3184/api/resources/video-owned/file",
-            resultJson: JSON.stringify({ mode: "video", video: { dataUrl: "http://127.0.0.1:3184/api/resources/video-owned/file" } }),
-        } as GenerationTask;
         const imageTask = {
-            ...audioTask,
+            ...resourceTask,
             id: "task-image",
-            type: "canvas_image",
             previewUrl: "data:image/png;base64,abc",
             resultJson: JSON.stringify({ mode: "image", images: [{ dataUrl: "data:image/png;base64,abc" }] }),
         } as GenerationTask;
 
-        expect(generationHistoryPreviewImageSrc(audioTask)).toBe("");
-        expect(generationHistoryPreviewImageSrc(videoTask)).toBe("");
+        expect(generationHistoryPreviewImageSrc(resourceTask)).toBe("");
         expect(generationHistoryPreviewImageSrc(imageTask)).toBe("data:image/png;base64,abc");
-        expect(reuseGeneratedMediaStorageKey(undefined, audioUrl)).toBe("resource:audio-owned");
-        expect(reuseGeneratedMediaStorageKey("image:local-1", "http://127.0.0.1:3184/api/resources/video-owned/file")).toBe("image:local-1");
-        expect(reuseGeneratedMediaStorageKey(undefined, "data:audio/mpeg;base64,AAA")).toBe("");
+        expect(reuseGeneratedMediaStorageKey(undefined, resourceUrl)).toBe("resource:image-owned");
+        expect(reuseGeneratedMediaStorageKey("image:local-1", resourceUrl)).toBe("image:local-1");
+        expect(reuseGeneratedMediaStorageKey(undefined, "data:image/png;base64,AAA")).toBe("");
     });
 });

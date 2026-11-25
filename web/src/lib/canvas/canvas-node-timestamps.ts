@@ -12,13 +12,9 @@ const HYDRATED_MEDIA_KEYS = new Set<keyof CanvasNodeMetadata>([
     "naturalHeight",
     "bytes",
     "mimeType",
-    "durationMs",
-    "hasAudio",
-    "videoPreview",
-    "drawingPreviewUrl",
 ]);
 
-const MEDIA_NODE_TYPES = new Set<string>([CanvasNodeType.Image, CanvasNodeType.Video, CanvasNodeType.Audio, CanvasNodeType.Drawing]);
+const MEDIA_NODE_TYPES = new Set<string>([CanvasNodeType.Image]);
 
 export function canvasNodeCreatedAt(node: CanvasNodeData, fallback?: string) {
     return firstValidDate(node.createdAt, node.metadata?.taskCreatedAt, node.metadata?.folder?.createdAt, fallback);
@@ -28,8 +24,6 @@ export function canvasNodeUpdatedAt(node: CanvasNodeData, fallback?: string) {
     return firstValidDate(
         node.updatedAt,
         node.metadata?.taskUpdatedAt,
-        node.metadata?.drawingUpdatedAt,
-        node.metadata?.subtitleUpdatedAt,
         node.metadata?.taskCompletedAt,
         canvasNodeCreatedAt(node),
         fallback,

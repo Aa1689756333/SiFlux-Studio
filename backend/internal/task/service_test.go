@@ -67,12 +67,4 @@ func TestRetryOfRejectsNonStringAndPreservesStringContract(t *testing.T) {
 			t.Fatal("absent retryOf did not admit")
 		}
 	}
-
-	_, err = svc.CreateTask("user", CreateRequest{
-		Type: "canvas_video", Prompt: "retry", ProjectID: "canvas-1",
-		Input: map[string]any{"metadata": map[string]any{"retryOf": parent.ID}},
-	})
-	if err == nil || !strings.Contains(err.Error(), "任务类型不一致") {
-		t.Fatalf("cross-type retryOf error = %v", err)
-	}
 }

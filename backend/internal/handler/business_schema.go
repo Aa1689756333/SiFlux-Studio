@@ -110,12 +110,6 @@ func enrichBusinessSchemas(catalog *BusinessCatalog) {
 		switch t.Method + " " + t.Path {
 		case "POST /tasks":
 			request = task.CreateRequest{}
-		case "POST /timeline/renders":
-			request = task.TimelineRenderCreateRequest{}
-		case "POST /timeline/transcriptions":
-			request = task.TimelineTranscriptionCreateRequest{}
-		case "POST /depth-captures":
-			request = task.DepthCaptureCreateRequest{}
 		case "PUT /workspace/model-config":
 			request = struct {
 				Config           map[string]any `json:"config"`

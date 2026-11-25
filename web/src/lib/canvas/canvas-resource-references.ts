@@ -1,13 +1,11 @@
 import { imageReferenceLabel } from "@/lib/image-reference-prompt";
-import { canvasNodeVideoPreviewUrl, canvasVideoAssetPreviewUrl } from "@/lib/canvas/canvas-media-preview";
 import { writeCanvasNodePrompt } from "@/lib/canvas/canvas-node-prompt";
 import { getNodeResourceKind } from "@/lib/canvas/node-registry";
-import { seedanceReferenceLabel } from "@/lib/seedance-video";
 import type { Skill } from "@/services/api/skills";
 import type { Asset, AssetCategory } from "@/stores/use-asset-store";
 import { CanvasNodeType, type CanvasConnection, type CanvasNodeData, type CanvasNodeTypeId } from "@/types/canvas";
 
-export type CanvasResourceKind = "image" | "video" | "audio" | "text" | "skill" | "character";
+export type CanvasResourceKind = "image" | "text" | "skill";
 
 export type CanvasResourceReference = {
     id: string;
@@ -16,14 +14,7 @@ export type CanvasResourceReference = {
     label: string;
     title: string;
     previewUrl?: string;
-    /** 仅素材库视频在没有静态封面时使用的首帧回退源。 */
-    mediaUrl?: string;
     storageKey?: string;
-    /** 视频首帧是独立的图片资源，不能用视频 storageKey 解析。 */
-    previewStorageKey?: string;
-    /** 绘图预览保存在按项目隔离的本地绘图仓库，不复用普通图片 storageKey。 */
-    drawingId?: string;
-    drawingRevision?: number;
     text?: string;
     active: boolean;
     sourceType?: CanvasNodeTypeId;
@@ -234,7 +225,7 @@ export function replaceCanvasMentionToken(value: string, token: string, replacem
     if (!token) return value;
     const escapedToken = token.replace(/[.*+?^${}()|[\]\\]/g, "\\$&");
     // Numbered media mentions can touch Chinese prose or another mention, but not a longer number.
-    const boundary = /^@(图片|视频|音频|文本)\d+$/.test(token)
+    const boundary = /^@(图片|文本)\d+$/.test(token)
         ? "(?![0-9])"
         : token.startsWith("@[node:") ? "" : `(?=${CANVAS_RESOURCE_MENTION_BOUNDARY.source})`;
     return value.replace(new RegExp(`${escapedToken}${boundary}`, "gu"), replacement);
@@ -279,19 +270,17 @@ function compactRemovedCanvasMentionPrompt(value: string) {
 
 export function buildAssetMentionReferences(assets: Asset[]): CanvasResourceReference[] {
     return assets.flatMap((asset): CanvasResourceReference[] => {
-        if (asset.kind === "model") return [];
-        const kind: CanvasResourceKind = asset.kind === "entity" ? "character" : asset.kind;
-        const previewUrl = asset.kind === "image" ? asset.data.dataUrl : asset.kind === "video" ? canvasVideoAssetPreviewUrl(asset.data.url, asset.coverUrl) : asset.coverUrl;
+        if (asset.kind !== "image" && asset.kind !== "text") return [];
+        const previewUrl = asset.kind === "image" ? asset.data.dataUrl || asset.coverUrl : asset.coverUrl;
         const text = asset.kind === "text" ? asset.data.content : undefined;
         return [{
             id: `asset:${asset.id}`,
             nodeId: "",
             assetId: asset.id,
-            kind,
+            kind: asset.kind,
             label: asset.title,
             title: asset.title,
             previewUrl,
-            mediaUrl: asset.kind === "video" && !previewUrl ? asset.data.url : undefined,
             storageKey: "storageKey" in asset.data ? asset.data.storageKey : undefined,
             text,
             active: false,
@@ -319,17 +308,8 @@ export function buildCanvasAgentMentionReferences(nodes: CanvasNodeData[]): Canv
             kind,
             label: node.title?.trim() || fallbackTitle,
             title: node.title?.trim() || fallbackTitle,
-            previewUrl: node.metadata?.workflowKind === "character"
-                ? node.metadata.characterCoverUrl
-                : node.type === CanvasNodeType.Drawing
-                  ? node.metadata?.drawingPreviewUrl
-                  : node.type === CanvasNodeType.Video
-                    ? canvasNodeVideoPreviewUrl(node)
-                    : node.metadata?.previewContent || node.metadata?.content,
+            previewUrl: node.metadata?.previewContent || node.metadata?.content,
             storageKey: node.metadata?.storageKey,
-            previewStorageKey: node.type === CanvasNodeType.Video ? node.metadata?.videoPreview?.storageKey : undefined,
-            drawingId: node.type === CanvasNodeType.Drawing ? node.metadata?.drawingId : undefined,
-            drawingRevision: node.type === CanvasNodeType.Drawing ? node.metadata?.drawingRevision : undefined,
             text: node.metadata?.content || node.metadata?.composerContent || node.metadata?.prompt || node.title,
             active: true,
             sourceType: node.type,
@@ -411,22 +391,6 @@ export function getGenerationResourceNodes(nodeId: string, nodes: CanvasNodeData
     return [];
 }
 
-/** 收集节点自身及其上游链路中的视频节点，用于时间线片段导入定位真正的视频源。 */
-export function collectUpstreamVideoNodes(nodeId: string, nodes: CanvasNodeData[], connections: CanvasConnection[]): CanvasNodeData[] {
-    const queue = [nodeId];
-    const visited = new Set<string>();
-    const result: CanvasNodeData[] = [];
-    while (queue.length) {
-        const currentId = queue.shift()!;
-        if (visited.has(currentId)) continue;
-        visited.add(currentId);
-        const node = nodes.find((item) => item.id === currentId);
-        if (node?.type === CanvasNodeType.Video && Boolean(node.metadata?.content || node.metadata?.storageKey)) result.push(node);
-        connections.filter((connection) => connection.toNodeId === currentId).forEach((connection) => queue.push(connection.fromNodeId));
-    }
-    return result;
-}
-
 /**
  * 该节点的直接上游素材节点（按连线取 fromNodeId，只保留构成素材的）。
  * 扩展节点经 CanvasNodeGraphContext 复用它，不要另写一份取上游的逻辑。
@@ -471,13 +435,12 @@ function getConnectedConfigResourceNodes(nodeId: string, nodes: CanvasNodeData[]
 }
 
 function labelResourceNodes(nodes: CanvasNodeData[], active: boolean) {
-    const counts: Record<CanvasResourceKind, number> = { image: 0, video: 0, audio: 0, text: 0, skill: 0, character: 0 };
-    let drawingCount = 0;
+    const counts: Record<CanvasResourceKind, number> = { image: 0, text: 0, skill: 0 };
     return nodes.flatMap((node): CanvasResourceReference[] => {
         const kind = resourceKind(node);
         if (!kind) return [];
-        const index = node.type === CanvasNodeType.Drawing ? drawingCount++ : counts[kind]++;
-        const label = node.type === CanvasNodeType.Drawing ? `绘图${index + 1}` : labelForKind(kind, index);
+        const index = counts[kind]++;
+        const label = labelForKind(kind, index);
         return [
             {
                 id: node.id,
@@ -485,18 +448,9 @@ function labelResourceNodes(nodes: CanvasNodeData[], active: boolean) {
                 kind,
                 label,
                 title: node.title || label,
-                previewUrl: node.metadata?.workflowKind === "character"
-                    ? node.metadata.characterCoverUrl
-                    : node.type === CanvasNodeType.Drawing
-                      ? node.metadata?.drawingPreviewUrl
-                      : node.type === CanvasNodeType.Video
-                        ? canvasNodeVideoPreviewUrl(node)
-                        : node.metadata?.previewContent || node.metadata?.content,
+                previewUrl: node.metadata?.previewContent || node.metadata?.content,
                 storageKey: node.metadata?.storageKey,
-                previewStorageKey: node.type === CanvasNodeType.Video ? node.metadata?.videoPreview?.storageKey : undefined,
-                drawingId: node.type === CanvasNodeType.Drawing ? node.metadata?.drawingId : undefined,
-                drawingRevision: node.type === CanvasNodeType.Drawing ? node.metadata?.drawingRevision : undefined,
-                text: node.metadata?.workflowKind === "character" ? node.metadata.characterPrompt : node.type === CanvasNodeType.Text ? node.metadata?.content || node.metadata?.prompt : node.type === CanvasNodeType.Skill ? skillResourceText(node) : undefined,
+                text: node.type === CanvasNodeType.Text ? node.metadata?.content || node.metadata?.prompt : undefined,
                 active,
                 sourceType: node.type,
             },
@@ -505,10 +459,7 @@ function labelResourceNodes(nodes: CanvasNodeData[], active: boolean) {
 }
 
 function labelForKind(kind: CanvasResourceKind, index: number) {
-    if (kind === "character") return `角色${index + 1}`;
     if (kind === "image") return imageReferenceLabel(index);
-    if (kind === "video") return seedanceReferenceLabel("video", index);
-    if (kind === "audio") return seedanceReferenceLabel("audio", index);
     if (kind === "skill") return `技能${index + 1}`;
     return `文本${index + 1}`;
 }
@@ -518,13 +469,5 @@ function isResourceNode(node: CanvasNodeData) {
 }
 
 function resourceKind(node: CanvasNodeData): CanvasResourceKind | null {
-    // 角色卡是跨类型覆盖：任何节点带上角色元数据都按角色处理，故先于按类型判定。
-    if (node.metadata?.workflowKind === "character" && node.metadata.characterAssetId) return "character";
     return getNodeResourceKind(node);
-}
-
-function skillResourceText(node: CanvasNodeData) {
-    const skill = node.metadata?.skillSnapshot;
-    if (!skill) return node.metadata?.content || "";
-    return [skill.name, skill.description, skill.template, skill.outputContract].filter(Boolean).join("\n\n");
 }

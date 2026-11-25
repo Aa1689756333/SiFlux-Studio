@@ -1,14 +1,13 @@
 import { forwardRef, useCallback, useLayoutEffect, useMemo, useRef, useState } from "react";
 import type { CSSProperties, ClipboardEvent, DragEvent, KeyboardEvent, MouseEvent, PointerEvent, TextareaHTMLAttributes } from "react";
 import { createPortal } from "react-dom";
-import { ArrowLeft, ChevronRight, FileText, Folder, Image as ImageIcon, Music2, Pencil, Search, UserRound, Video, Workflow } from "lucide-react";
+import { ArrowLeft, ChevronRight, FileText, Folder, Image as ImageIcon, Search, Workflow } from "lucide-react";
 
 import { canvasThemes } from "@/lib/canvas-theme";
 import { usePersonalAssetLibrary } from "@/hooks/use-personal-asset-library";
 import { useActiveTheme } from "@/stores/canvas/use-canvas-theme-store";
 import { buildAssetMentionReferences, canvasResourceMentionToken, findCanvasResourceAutoLinkMatch, type CanvasResourceAutoLinkMatch, type CanvasResourceReference } from "@/lib/canvas/canvas-resource-references";
 import type { AssetCategory } from "@/stores/use-asset-store";
-import { CanvasNodeType } from "@/types/canvas";
 import { useResolvedCanvasResourceReferences } from "./use-resolved-canvas-resource-references";
 
 type MentionState = {
@@ -714,7 +713,7 @@ function skillMentionColor(reference: CanvasResourceReference) {
 }
 
 function referencePreviewUrl(reference: CanvasResourceReference) {
-    return reference.previewUrl || (reference.kind === "video" ? reference.mediaUrl : "") || "";
+    return reference.previewUrl || "";
 }
 
 function InlineReferencePreview({ reference, onClose }: { reference: CanvasResourceReference; onClose: () => void }) {
@@ -732,27 +731,16 @@ function InlineReferencePreview({ reference, onClose }: { reference: CanvasResou
 }
 
 function createInlinePreview(reference: CanvasResourceReference) {
-    if ((reference.kind === "image" || reference.kind === "video" || reference.kind === "character") && reference.previewUrl) {
+    if (reference.kind === "image" && reference.previewUrl) {
         const media = document.createElement("img");
         media.className = `canvas-resource-inline-preview is-${reference.kind}`;
         media.setAttribute("src", reference.previewUrl);
         media.setAttribute("alt", "");
         return media;
     }
-    if (reference.kind === "video" && reference.mediaUrl) {
-        const media = document.createElement("video");
-        media.className = "canvas-resource-inline-preview is-video";
-        media.setAttribute("src", reference.mediaUrl);
-        media.setAttribute("aria-hidden", "true");
-        media.muted = true;
-        media.playsInline = true;
-        media.preload = "metadata";
-        media.onloadedmetadata = () => primeVideoPreviewFrame(media);
-        return media;
-    }
     const fallback = document.createElement("span");
     fallback.className = "canvas-resource-inline-preview is-fallback";
-    fallback.textContent = reference.sourceType === CanvasNodeType.Drawing ? "✎" : reference.kind === "audio" ? "♪" : reference.kind === "video" ? "▶" : reference.kind === "image" ? "□" : reference.kind === "skill" ? "✦" : "";
+    fallback.textContent = reference.kind === "image" ? "□" : reference.kind === "skill" ? "✦" : "";
     return fallback;
 }
 
@@ -763,11 +751,10 @@ function syncInlineMentionPreviews(editor: HTMLElement, references: CanvasResour
         const reference = byId.get(chip.dataset.mentionReferenceId || "");
         if (!reference) return;
         const preview = chip.querySelector(".canvas-resource-inline-preview");
-        const hasImage = ["image", "video", "character"].includes(reference.kind) && Boolean(reference.previewUrl);
-        const hasVideo = !hasImage && reference.kind === "video" && Boolean(reference.mediaUrl);
-        const tag = hasImage ? "IMG" : hasVideo ? "VIDEO" : "SPAN";
-        const className = `canvas-resource-inline-preview is-${hasImage || hasVideo ? reference.kind : "fallback"}`;
-        const src = hasImage ? reference.previewUrl : hasVideo ? reference.mediaUrl : null;
+        const hasImage = reference.kind === "image" && Boolean(reference.previewUrl);
+        const tag = hasImage ? "IMG" : "SPAN";
+        const className = `canvas-resource-inline-preview is-${hasImage ? reference.kind : "fallback"}`;
+        const src = hasImage ? reference.previewUrl : null;
         if (preview && (preview.tagName !== tag || preview.className !== className || preview.getAttribute("src") !== src)) {
             preview.replaceWith(createInlinePreview(reference));
         }
@@ -1003,11 +990,6 @@ function MentionReferenceList({ references, activeReferenceId, onSelect }: { ref
 
 function ReferencePreview({ reference }: { reference: CanvasResourceReference }) {
     if (reference.kind === "image" && reference.previewUrl) return <img src={reference.previewUrl} alt="" className="canvas-resource-mention-preview is-image" />;
-    if (reference.kind === "video" && reference.previewUrl) return <img src={reference.previewUrl} alt="" className="canvas-resource-mention-preview is-video" loading="lazy" decoding="async" />;
-    if (reference.kind === "video" && reference.mediaUrl) {
-        return <video src={reference.mediaUrl} aria-hidden="true" muted playsInline preload="metadata" className="canvas-resource-mention-preview is-video" onLoadedMetadata={(event) => primeVideoPreviewFrame(event.currentTarget)} />;
-    }
-    if (reference.kind === "character" && reference.previewUrl) return <img src={reference.previewUrl} alt="" className="canvas-resource-mention-preview is-character" />;
     if (reference.kind === "skill") {
         return (
             <span className="canvas-resource-mention-preview is-skill">
@@ -1015,23 +997,12 @@ function ReferencePreview({ reference }: { reference: CanvasResourceReference })
             </span>
         );
     }
-    const Icon = reference.sourceType === CanvasNodeType.Drawing ? Pencil : reference.kind === "character" ? UserRound : reference.kind === "audio" ? Music2 : reference.kind === "video" ? Video : reference.kind === "image" ? ImageIcon : FileText;
+    const Icon = reference.kind === "image" ? ImageIcon : FileText;
     return (
         <span className="canvas-resource-mention-preview is-fallback">
             <Icon aria-hidden />
         </span>
     );
-}
-
-function primeVideoPreviewFrame(video: HTMLVideoElement) {
-    if (video.currentTime !== 0 || !Number.isFinite(video.duration) || video.duration <= 0) return;
-    try {
-        // Metadata-only loading does not paint a frame consistently across browsers.
-        // Seeking a tiny amount keeps this preview passive while forcing first-frame decode.
-        video.currentTime = Math.min(0.001, video.duration);
-    } catch {
-        // A transient media error should leave the fallback element usable.
-    }
 }
 
 function splitMentionText(value: string, references: CanvasResourceReference[]) {

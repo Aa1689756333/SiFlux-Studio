@@ -1,5 +1,5 @@
 import type { CSSProperties } from "react";
-import { AlertCircle, ImageUp, FileText, Film, Music2 } from "lucide-react";
+import { AlertCircle, FileText, ImageUp } from "lucide-react";
 import { CanvasNodeType, type CanvasNodeData } from "@/types/canvas";
 import { uploadVeilOpacity } from "@/lib/canvas/canvas-file-upload";
 import type { CanvasTheme } from "@/lib/canvas-theme";
@@ -9,8 +9,8 @@ export function CanvasFileUploadContent({ node, theme, reduceMotion = false }: {
     const { upload } = useCanvasNodeActions();
     const failed = node.metadata?.fileUpload === "error";
     const percent = node.metadata?.fileUploadProgress;
-    const label = node.type === CanvasNodeType.Image ? "图片" : node.type === CanvasNodeType.Video ? "视频" : node.type === CanvasNodeType.Audio ? "音频" : "文本";
-    const Icon = failed ? AlertCircle : node.type === CanvasNodeType.Video ? Film : node.type === CanvasNodeType.Audio ? Music2 : node.type === CanvasNodeType.Text ? FileText : ImageUp;
+    const label = node.type === CanvasNodeType.Image ? "图片" : "文本";
+    const Icon = failed ? AlertCircle : node.type === CanvasNodeType.Text ? FileText : ImageUp;
     return (
         <div className="canvas-file-upload" data-static={reduceMotion || failed || undefined} style={{ "--upload-surface": theme.node.fill, "--upload-text": theme.node.text, "--upload-muted": theme.node.muted } as CSSProperties}>
             <div className="canvas-file-upload-glow" aria-hidden="true" style={{ opacity: uploadVeilOpacity(percent) }} />

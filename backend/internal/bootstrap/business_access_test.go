@@ -12,7 +12,6 @@ import (
 	"testing"
 
 	"infinite-canvas/backend/internal/agentops"
-	"infinite-canvas/backend/internal/editing"
 	"infinite-canvas/backend/internal/model"
 )
 
@@ -79,21 +78,6 @@ func TestExternalBusinessRealUploadRenderAndIsolation(t *testing.T) {
 	if file.Code != 200 || !bytes.Equal(file.Body.Bytes(), picture.Bytes()) {
 		t.Fatal("owned media download differs", file.Code)
 	}
-	visible := true
-	timeline := editing.Project{Version: 2, DurationMs: 1000, Tracks: []editing.Track{{ID: "v", Kind: "video", Visible: &visible}}, Clips: []editing.Clip{{ID: "pic", Kind: "image", TrackID: "v", DurationMs: 1000, NodeID: "pic", DirectMedia: &editing.DirectMedia{ID: "pic", Kind: "image", StorageKey: "resource:" + uploaded.Resource.ID}}}}
-	render := call("POST", "/timeline/renders", acceptanceJSON(t, map[string]any{"timeline": timeline, "clientOperationId": "external-render-once"}))
-	if render.Code != 200 {
-		t.Fatal("external render requires no UI approval", render.Code, render.Body.String())
-	}
-	var task model.Task
-	taskRaw, _ := decodeEnvelope(t, render)
-	if json.Unmarshal([]byte(acceptanceJSON(t, taskRaw)), &task) != nil || task.Status != model.TaskStatusQueued {
-		t.Fatal("real render task not queued", taskRaw)
-	}
-	getTask := call("GET", "/tasks/"+task.ID, "")
-	if getTask.Code != 200 {
-		t.Fatal(getTask.Code, getTask.Body.String())
-	}
 	move := call("POST", "/ops/canvas.node.move", acceptanceJSON(t, map[string]any{"opId": "external-move", "params": map[string]any{"canvasId": canvas, "nodeId": "n1", "expectedRevision": rev, "position": map[string]any{"x": 64, "y": 32}}}))
 	if move.Code != 200 {
 		t.Fatal(move.Code, move.Body.String())
@@ -114,7 +98,7 @@ func TestExternalBusinessRealUploadRenderAndIsolation(t *testing.T) {
 	if err != nil {
 		t.Fatal(err)
 	}
-	for _, endpoint := range []string{"/timeline/renders", "/ai/models"} {
+	for _, endpoint := range []string{"/ai/models"} {
 		denied := h.call(requestOptions{method: "POST", path: endpoint, body: `{"credentialRef":"beefapi-enterprise","baseUrl":"https://attacker.example/v1"}`, clientID: ro.ID, clientToken: roToken})
 		if _, reason := decodeEnvelope(t, denied); denied.Code != 403 || reason != "read_only_client" {
 			t.Fatal("legacy token silently elevated", endpoint, denied.Code, denied.Body.String())

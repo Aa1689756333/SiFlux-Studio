@@ -3,7 +3,6 @@ import { resourceIdFromStorageKey } from "@/services/api/resources";
 import { useAssetStore, type Asset, type NewAsset } from "@/stores/use-asset-store";
 import { useCanvasStore, type CanvasProject } from "@/stores/canvas/use-canvas-store";
 import { CanvasNodeType, type CanvasNodeData } from "@/types/canvas";
-import type { TimelineDirectMedia } from "@/types/timeline";
 
 export type CanvasAssetRepairResult = {
     createdAssets: number;
@@ -38,12 +37,6 @@ export function repairMissingCanvasAssets(projectIds?: Set<string>, partialAsset
                     if (node.metadata.storageKey && !storageKeyByAssetId.has(node.metadata.assetId)) storageKeyByAssetId.set(node.metadata.assetId, node.metadata.storageKey);
                 }
             }
-            for (const clip of project.timeline?.clips || []) {
-                if (clip.directMedia?.assetId) {
-                    knownAssetIds.add(clip.directMedia.assetId);
-                    if (clip.directMedia.storageKey && !storageKeyByAssetId.has(clip.directMedia.assetId)) storageKeyByAssetId.set(clip.directMedia.assetId, clip.directMedia.storageKey);
-                }
-            }
         }
         const repaired = repairProject(project, knownAssetIds, assetIdByStorageKey, storageKeyByAssetId, (node) => {
             const input = canvasNodeToAsset(node, { canvasId: project.id, source: "canvas-upload" });
@@ -71,7 +64,7 @@ function repairProject(
     assetIdByStorageKey: Map<string, string>,
     storageKeyByAssetId: Map<string, string>,
     createAsset: (node: CanvasNodeData) => string | undefined,
-): Pick<CanvasProject, "nodes" | "timeline"> | null {
+): Pick<CanvasProject, "nodes"> | null {
     let changed = false;
     const nodes = project.nodes.map((node) => {
         if (!isDurableMediaNode(node)) return node;
@@ -80,20 +73,7 @@ function repairProject(
         changed = true;
         return { ...node, metadata: { ...node.metadata, assetId } };
     });
-    const timeline = project.timeline
-        ? {
-              ...project.timeline,
-              clips: project.timeline.clips.map((clip) => {
-                  const media = clip.directMedia;
-                  if (!media || media.kind === "text" || !mediaContent(media)) return clip;
-                  const assetId = matchingAssetId(media.assetId, media.storageKey, knownAssetIds, assetIdByStorageKey, storageKeyByAssetId) || createAsset(timelineMediaNode(media));
-                  if (!assetId || media.assetId === assetId) return clip;
-                  changed = true;
-                  return { ...clip, directMedia: { ...media, assetId } };
-              }),
-          }
-        : project.timeline;
-    return changed ? { nodes, timeline } : null;
+    return changed ? { nodes } : null;
 }
 
 function matchingAssetId(explicitId: string | undefined, storageKey: string | undefined, knownAssetIds: Set<string>, assetIdByStorageKey: Map<string, string>, storageKeyByAssetId: Map<string, string>) {
@@ -103,31 +83,6 @@ function matchingAssetId(explicitId: string | undefined, storageKey: string | un
 
 function isDurableMediaNode(node: CanvasNodeData) {
     return isCanvasMediaNodeType(node) && Boolean(node.metadata?.content || node.metadata?.storageKey);
-}
-
-function timelineMediaNode(media: TimelineDirectMedia): CanvasNodeData {
-    const type = media.kind === "audio" ? CanvasNodeType.Audio : media.kind === "video" ? CanvasNodeType.Video : CanvasNodeType.Image;
-    return {
-        id: media.id,
-        type,
-        title: media.title,
-        position: { x: 0, y: 0 },
-        width: media.width || 320,
-        height: media.height || (type === CanvasNodeType.Audio ? 120 : 240),
-        metadata: {
-            content: mediaContent(media),
-            storageKey: media.storageKey,
-            naturalWidth: media.width,
-            naturalHeight: media.height,
-            durationMs: media.durationMs,
-            bytes: media.bytes,
-            mimeType: media.mimeType,
-        },
-    };
-}
-
-function mediaContent(media: TimelineDirectMedia) {
-    return media.url || media.dataUrl || media.content || "";
 }
 
 function assetStorageKey(asset: Asset) {
@@ -140,7 +95,7 @@ export type CanvasAssetRebindResult = {
     updatedProjects: number;
 };
 
-const LOCAL_MEDIA_KEY_PATTERN = /^(image|video|audio|file|video-reference|audio-reference):/;
+const LOCAL_MEDIA_KEY_PATTERN = /^(image|file):/;
 const RESOURCE_URL_PATTERN = /\/resources\/([A-Za-z0-9_-]{1,80})\/file/;
 const RESOURCE_ID_PATTERN = /^[A-Za-z0-9_-]{1,80}$/;
 
@@ -192,45 +147,26 @@ export function rebindInconsistentCanvasAssets(records: Asset[], projectIds?: Se
             projectChanged = true;
             return { ...node, metadata: { ...node.metadata, assetId } };
         });
-        const timeline = project.timeline
-            ? {
-                  ...project.timeline,
-                  clips: project.timeline.clips.map((clip) => {
-                      const media = clip.directMedia;
-                      const identity = media && media.kind !== "text" ? mediaNodeIdentity(media.storageKey, mediaContent(media)) : undefined;
-                      if (!media || !identity) return clip;
-                      const assetId = resolveAssetId(media.assetId, identity, () => canvasNodeToAsset(timelineMediaNode(media), { canvasId: project.id, source: "canvas-manual" }));
-                      if (!assetId || media.assetId === assetId) return clip;
-                      reboundNodes += 1;
-                      projectChanged = true;
-                      return { ...clip, directMedia: { ...media, assetId } };
-                  }),
-              }
-            : project.timeline;
         if (!projectChanged) continue;
-        canvasStore.updateProject(project.id, { nodes, timeline });
+        canvasStore.updateProject(project.id, { nodes });
         updatedProjects += 1;
     }
     return { reboundNodes, createdAssets, updatedProjects };
 }
 
-/** 收集画布媒体节点与时间线片段声明过 assetId 的媒体引用，供强制覆盖前批量拉取服务端素材记录。 */
+/** 收集画布媒体节点声明过 assetId 的媒体引用，供强制覆盖前批量拉取服务端素材记录。 */
 export function collectCanvasMediaAssetIds(projects: CanvasProject[]): Set<string> {
     const ids = new Set<string>();
     for (const project of projects) {
         for (const node of project.nodes) {
             if (isCanvasMediaNodeType(node) && node.metadata?.assetId && mediaNodeIdentity(node.metadata.storageKey, node.metadata.content)) ids.add(node.metadata.assetId);
         }
-        for (const clip of project.timeline?.clips || []) {
-            const media = clip.directMedia;
-            if (media?.assetId && media.kind !== "text" && mediaNodeIdentity(media.storageKey, mediaContent(media))) ids.add(media.assetId);
-        }
     }
     return ids;
 }
 
 function isCanvasMediaNodeType(node: CanvasNodeData) {
-    return node.type === CanvasNodeType.Image || node.type === CanvasNodeType.Video || node.type === CanvasNodeType.Audio;
+    return node.type === CanvasNodeType.Image;
 }
 
 function mediaNodeIdentity(storageKey: string | undefined, content: string | undefined) {
@@ -249,7 +185,7 @@ function mediaIdentityFromValue(value: string | undefined) {
     if (resourceId) return resourceIdFromIdentity(resourceId);
     const urlMatch = RESOURCE_URL_PATTERN.exec(key);
     if (urlMatch) return urlMatch[1];
-    // 本地存储 key（image:/video:…）上传时以 key 为幂等标识，同名必得同资源，可作稳定身份。
+    // 本地存储 key（image:/file:…）上传时以 key 为幂等标识，同名必得同资源，可作稳定身份。
     return LOCAL_MEDIA_KEY_PATTERN.test(key) ? key : undefined;
 }
 

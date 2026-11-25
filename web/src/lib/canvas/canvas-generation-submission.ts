@@ -4,7 +4,7 @@ import type { NodeGenerationContext } from "@/components/canvas/canvas-node-gene
 import type { CanvasNodeGenerationMode } from "@/components/canvas/canvas-node-prompt-panel";
 import { generationPromptFingerprint } from "@/lib/generation-error";
 
-type GenerationReference = NodeGenerationContext["referenceImages"][number] | NodeGenerationContext["referenceVideos"][number] | NodeGenerationContext["referenceAudios"][number];
+type GenerationReference = NodeGenerationContext["referenceImages"][number];
 
 export type CanvasGenerationRequestFingerprintInput = {
     nodeId: string;
@@ -19,10 +19,9 @@ export type CanvasGenerationRequestFingerprintInput = {
         parameters?: Record<string, unknown>;
     };
     operation?: string;
-    audioInstructions?: string;
     promptTemplateOperation?: string;
     promptTemplateVariables?: Record<string, string>;
-    context: Pick<NodeGenerationContext, "referenceImages" | "referenceVideos" | "referenceAudios" | "characterReferences" | "resolvedCharacterVersions" | "resolvedCharacterVoices">;
+    context: Pick<NodeGenerationContext, "referenceImages">;
 };
 
 /**
@@ -44,16 +43,10 @@ export function canvasGenerationRequestFingerprint(input: CanvasGenerationReques
         options: input.options,
         workflow: input.workflow,
         operation: input.operation,
-        audioInstructions: input.audioInstructions,
         promptTemplateOperation: input.promptTemplateOperation,
         promptTemplateVariables: input.promptTemplateVariables,
         references: {
             images: input.context.referenceImages.map(referenceIdentity),
-            videos: input.context.referenceVideos.map(referenceIdentity),
-            audios: input.context.referenceAudios.map(referenceIdentity),
-            characters: input.context.characterReferences,
-            resolvedCharacterVersions: input.context.resolvedCharacterVersions,
-            resolvedCharacterVoices: input.context.resolvedCharacterVoices,
         },
     });
     return `canvas-generation:v1:${generationPromptFingerprint(serialized)}`;
@@ -67,7 +60,6 @@ function referenceIdentity(reference: GenerationReference) {
         type: reference.type,
         source: source.startsWith("data:") ? `data:${generationPromptFingerprint(source)}` : source,
         derivedSource: "source" in reference ? reference.source : undefined,
-        durationMs: "durationMs" in reference ? reference.durationMs : undefined,
     };
 }
 

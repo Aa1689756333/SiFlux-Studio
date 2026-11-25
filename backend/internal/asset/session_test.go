@@ -553,3 +553,26 @@ func TestChunkedUploadRetryAfterDroppedSessionFilesCommits(t *testing.T) {
 		t.Fatalf("persisted %#v err=%v", listed, listErr)
 	}
 }
+
+func TestChunkedUploadStartReportsReceivedChunks(t *testing.T) {
+	svc, _, _ := newTestDomain(t)
+	body := []byte("payload")
+	req := ChunkedUploadStart{FileName: "a.png", Kind: "image", Size: int64(len(body)), Width: 1, Height: 1, IdempotencyKey: "resume-key"}
+	first, err := svc.StartChunkedUpload("user-1", req)
+	if err != nil {
+		t.Fatal(err)
+	}
+	if len(first.Received) != 0 {
+		t.Fatalf("new session received = %#v", first.Received)
+	}
+	if err := svc.PutChunkedUpload("user-1", first.UploadID, 0, bytes.NewReader(body)); err != nil {
+		t.Fatal(err)
+	}
+	reused, err := svc.StartChunkedUpload("user-1", req)
+	if err != nil || reused.UploadID != first.UploadID {
+		t.Fatalf("reuse = %#v err=%v", reused, err)
+	}
+	if len(reused.Received) != 1 || reused.Received[0] != 0 {
+		t.Fatalf("received = %#v", reused.Received)
+	}
+}

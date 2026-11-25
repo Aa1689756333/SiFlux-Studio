@@ -227,6 +227,7 @@ func (s *Service) UpdateUserCanvasNodeFields(userID, canvasID, nodeID string, pa
 	}
 	nodeType := canvasNodeType(node)
 	descriptor, hasDescriptor := canvasCapabilityRegistry.Resolve(nodeType)
+	if !hasDescriptor { return UserDataSummary{}, kernel.BadAuthRequest("历史节点仅可读取：" + nodeType) }
 	label := canvasCapabilityRegistry.LabelFor(nodeType)
 	// metadata 必须先绑定到节点上：ApplyPatch 写的是 node["metadata"]，
 	// 若之后再拿一个新建的空 map 覆盖，没有 metadata 的历史节点会丢掉这次修改。

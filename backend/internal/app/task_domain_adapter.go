@@ -30,7 +30,6 @@ func (s *Service) TaskService() *localtask.Service { return s.taskDomain() }
 
 func (s *Service) taskDependencies() localtask.Dependencies {
 	return localtask.Dependencies{
-		BindTranscriptionModel: s.bindTranscriptionModel,
 		Catalog:                taskCatalogAdapter{s},
 		Secrets:                taskSecretsAdapter{s},
 		Media:                  taskMediaAdapter{s},
@@ -40,13 +39,9 @@ func (s *Service) taskDependencies() localtask.Dependencies {
 		Runtime:                taskRuntimeAdapter{s},
 		Images:                 taskImagesAdapter{s},
 		Failures:               taskFailuresAdapter{},
-		TextReplay:             s.TextReplay(),
-		Provider:               taskProviderAdapter{s},
 		Present:                taskPresenterAdapter{s},
 		Logs:                   taskLogAdapter{s},
 		Activity:               taskActivityAdapter{s},
-		OwnedMedia:             taskOwnedMediaAdapter{s},
-		Features:               taskFeaturesAdapter{s},
 		NewID:                  newID,
 	}
 }
@@ -127,10 +122,6 @@ func (a taskCatalogAdapter) ValidateCapability(input map[string]any) error {
 	return a.s.validatePortraitTaskQuote(input)
 }
 
-func (taskCatalogAdapter) HasExecutableVideoConfig(input map[string]any) bool {
-	return modelcatalog.HasExecutableVideoConfig(input)
-}
-
 type taskSecretsAdapter struct{ s *Service }
 
 // The managed channel is retired; input now carries its own secrets unchanged.
@@ -157,7 +148,7 @@ func (a taskMediaAdapter) ValidateTransport(userID string, input map[string]any)
 	if err := json.Unmarshal(raw, &prepared); err != nil {
 		return BadAuthRequest("任务参数格式无效，请检查模型设置后重新提交")
 	}
-	if len(prepared.ReferenceImages)+len(prepared.ReferenceVideos)+len(prepared.ReferenceAudios) == 0 && prepared.Mask == nil {
+	if len(prepared.ReferenceImages) == 0 && prepared.Mask == nil {
 		return nil
 	}
 	if isWorkflowProviderInterface(prepared.Config.InterfaceType) {
@@ -184,18 +175,6 @@ type taskProjectsAdapter struct{ s *Service }
 
 func (a taskProjectsAdapter) EnsureActive(userID, canvasOrProjectID string) error {
 	return a.s.ensureTaskProjectActive(userID, canvasOrProjectID)
-}
-
-type taskOwnedMediaAdapter struct{ s *Service }
-
-func (a taskOwnedMediaAdapter) Resource(userID, id string) (*model.Resource, error) {
-	return a.s.Resource(userID, id)
-}
-
-type taskFeaturesAdapter struct{ s *Service }
-
-func (a taskFeaturesAdapter) Require(name string) error {
-	return a.s.RequireFeature(name)
 }
 
 type taskPolicyAdapter struct{ s *Service }
@@ -247,17 +226,14 @@ func (taskFailuresAdapter) Category(message, stage string) generation.FailureCat
 	if stage == "submission_unknown" {
 		return generation.CategorySubmissionUncertain
 	}
+	if stage == "request_not_sent" {
+		return generation.CategoryRequestNotSent
+	}
 	return classifyTaskFailure(errors.New(message)).Category
 }
 
 func (taskFailuresAdapter) UserMessage(message string) string {
 	return classifyTaskFailure(errors.New(message)).UserMessage()
-}
-
-type taskProviderAdapter struct{ s *Service }
-
-func (a taskProviderAdapter) RequestCancel(ctx context.Context, task *model.Task) error {
-	return a.s.requestProviderCancellation(ctx, task)
 }
 
 type taskPresenterAdapter struct{ s *Service }

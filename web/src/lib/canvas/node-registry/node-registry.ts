@@ -1,53 +1,24 @@
-import type { CanvasNodeData, CanvasNodeTypeId } from "@/types/canvas";
-import type { PluginCanvasNodeContribution } from "@/lib/plugins/plugin-types";
+import { CanvasNodeType, type CanvasNodeData, type CanvasNodeTypeId } from "@/types/canvas";
 
-import { canvasNodeDefinitionFromPlugin, type CanvasNodeDefinition } from "./node-definition";
+import type { CanvasNodeDefinition } from "./node-definition";
 
-/** 模块级注册表 */
 const definitions = new Map<CanvasNodeTypeId, CanvasNodeDefinition>();
-/** 节点类型 → 归属方。内置节点归属 "builtin"，为后续扩展留出隔离位。 */
-const ownerByType = new Map<CanvasNodeTypeId, string>();
-
-/** 未注册类型的兜底最小尺寸——与非媒体节点的历史下限一致 */
+const supportedTypes = new Set([CanvasNodeType.Image, CanvasNodeType.Text, CanvasNodeType.Config, CanvasNodeType.Frame]);
 const FALLBACK_MIN_SIZE = { width: 220, height: 160 } as const;
 
-/** 批量注册节点定义 */
-export function registerNodeDefinitions(defs: CanvasNodeDefinition[], ownerId = "builtin") {
+/** 仅注册保留的内置类型；重复初始化按类型覆盖，历史未知节点不参与注册。 */
+export function registerNodeDefinitions(defs: CanvasNodeDefinition[]) {
     const ids = new Set<string>();
     for (const def of defs) {
-        const owner = ownerByType.get(def.type);
-        if (ids.has(def.type) || (owner && owner !== ownerId)) throw new Error(`节点类型重复或归属冲突：${def.type}`);
+        if (!supportedTypes.has(def.type)) throw new Error(`画布节点类型已移除：${def.type}`);
+        if (ids.has(def.type)) throw new Error(`节点类型重复：${def.type}`);
         ids.add(def.type);
     }
-    for (const def of defs) {
-        definitions.set(def.type, def);
-        ownerByType.set(def.type, ownerId);
-    }
-}
-
-/** Registers schema-driven canvas nodes from the unified plugin manifest. */
-export function registerPluginCanvasNodes(pluginId: string, nodes: PluginCanvasNodeContribution[]) {
-    registerNodeDefinitions(nodes.map((node) => canvasNodeDefinitionFromPlugin(pluginId, node)), pluginId);
-}
-
-/**
- * 注销某归属方的全部节点定义。
- * 只删归属该 ownerId 的条目——内置节点不会被其他归属方的增删波及。
- */
-export function unregisterNodeDefinitions(ownerId: string) {
-    for (const [type, owner] of ownerByType) {
-        if (owner !== ownerId) continue;
-        definitions.delete(type);
-        ownerByType.delete(type);
-    }
+    for (const def of defs) definitions.set(def.type, def);
 }
 
 export function getNodeDefinition(type: CanvasNodeTypeId) {
     return definitions.get(type);
-}
-
-export function getNodeOwnerId(type: CanvasNodeTypeId) {
-    return ownerByType.get(type) || "builtin";
 }
 
 export function listNodeDefinitions() {
@@ -61,13 +32,13 @@ export function listCreatableNodeDefinitions() {
 
 /** UI 短标签 */
 export function getNodeLabel(type: CanvasNodeTypeId) {
-    return definitions.get(type)?.label || "未知节点";
+    return definitions.get(type)?.label || "已移除类型";
 }
 
 /** 列表/搜索标签，缺省派生自 label */
 export function getNodeListLabel(type: CanvasNodeTypeId) {
     const def = definitions.get(type);
-    if (!def) return "未知节点";
+    if (!def) return "已移除类型";
     return def.listLabel || `${def.label}节点`;
 }
 

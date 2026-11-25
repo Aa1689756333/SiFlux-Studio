@@ -28,7 +28,7 @@ export function persistCanvasMediaPerformanceMode(mode: CanvasMediaPerformanceMo
 export function shouldReduceCanvasMediaEffects(mode: CanvasMediaPerformanceMode, nodes: CanvasNodeData[]) {
     if (mode === "performance") return true;
     if (mode === "quality") return false;
-    const mediaCount = nodes.filter((node) => node.type === CanvasNodeType.Image || node.type === CanvasNodeType.Video || node.type === CanvasNodeType.Audio).length;
+    const mediaCount = nodes.filter((node) => node.type === CanvasNodeType.Image).length;
     return nodes.length >= 80 || mediaCount >= 32;
 }
 
@@ -41,12 +41,4 @@ export function canvasNodeRenderBudget(scale: number) {
     if (scale < 0.14) return 280;
     if (scale < 0.28) return 420;
     return CANVAS_MAX_RENDERED_NODES;
-}
-
-export function resolveActiveCanvasMediaNodeId(selectedNodeIds: ReadonlySet<string>, nodeById: ReadonlyMap<string, CanvasNodeData>) {
-    if (selectedNodeIds.size !== 1) return null;
-    const nodeId = selectedNodeIds.values().next().value;
-    if (!nodeId) return null;
-    const type = nodeById.get(nodeId)?.type;
-    return type === CanvasNodeType.Video || type === CanvasNodeType.Audio ? nodeId : null;
 }

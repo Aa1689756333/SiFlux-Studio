@@ -227,7 +227,7 @@ func (s *Service) TestAdminChannelModel(ctx context.Context, actor *model.User, 
 	if err != nil {
 		return nil, err
 	}
-	if capability == "text" || capability == "image" || capability == "video" {
+	if capability == "text" || capability == "image" {
 		if _, err := NormalizeModelCapabilityConfigForModel(capability, string(protocol), providerModelKey, req.CapabilityConfig); err != nil {
 			return nil, err
 		}
@@ -246,77 +246,49 @@ func (s *Service) TestAdminChannelModel(ctx context.Context, actor *model.User, 
 	prompt := map[string]string{
 		"text":  "Reply with OK.",
 		"image": "A simple gray circle on a white background.",
-		"video": "A static gray circle on a white background.",
-		"audio": "Model test.",
 	}[capability]
-	videoSeconds := "6"
-	videoSecondsValue := 6
-	if protocol == model.ChannelInterfaceVolcengineJiMengVideo {
-		videoSeconds = "5"
-		videoSecondsValue = 5
-	}
 	imageSize, imageQuality := "", ""
 	var imageProfile *ImageCapabilityConfig
-	videoRatio, videoResolution := videoTestDefaults(nil)
-	var videoProfile *VideoCapabilityConfig
-	switch capability {
-	case "image":
+	if capability == "image" {
 		profile, normalizeErr := NormalizeModelCapabilityConfigForModel(capability, string(protocol), providerModelKey, req.CapabilityConfig)
 		if normalizeErr != nil {
 			return nil, normalizeErr
 		}
 		imageProfile = profile.Image
 		imageSize, imageQuality = imageTestDefaults(imageProfile)
-	case "video":
-		profile, normalizeErr := NormalizeModelCapabilityConfigForModel(capability, string(protocol), providerModelKey, req.CapabilityConfig)
-		if normalizeErr != nil {
-			return nil, normalizeErr
-		}
-		videoProfile = profile.Video
-		videoRatio, videoResolution = videoTestDefaults(videoProfile)
 	}
 	input := canvasGenerationInput{
 		Mode:   capability,
 		Prompt: prompt,
 		Config: providerConfig{
-			ChannelID:          channel.ID,
-			APIFormat:          channel.APIFormat,
-			InterfaceType:      string(protocol),
-			BaseURL:            channel.BaseURL,
-			APIKey:             channel.APIKey,
-			SecretKey:          channel.SecretKey,
-			Headers:            headers,
-			Model:              providerModelKey,
-			ChannelModelKey:    modelKey,
-			Size:               map[string]string{"image": imageSize, "video": videoRatio}[capability],
-			Quality:            imageQuality,
-			Count:              "1",
-			VideoSeconds:       videoSeconds,
-			VQuality:           videoResolution,
-			VideoGenerateAudio: "false",
-			VideoWatermark:     "false",
-			AudioVoice:         "alloy",
-			AudioFormat:        "mp3",
-			AudioSpeed:         "1",
+			ChannelID:       channel.ID,
+			APIFormat:       channel.APIFormat,
+			InterfaceType:   string(protocol),
+			BaseURL:         channel.BaseURL,
+			APIKey:          channel.APIKey,
+			SecretKey:       channel.SecretKey,
+			Headers:         headers,
+			Model:           providerModelKey,
+			ChannelModelKey: modelKey,
+			Size:            imageSize,
+			Quality:         imageQuality,
+			Count:           "1",
 		},
 		Metadata: map[string]interface{}{},
 	}
 	if capability == "image" {
 		input.ImageCapability = imageProfile
 	}
-	if capability == "video" {
-		input.VideoCapability = videoProfile
-	}
 
 	testCtx, cancel := context.WithTimeout(ctx, 10*time.Minute)
 	defer cancel()
 	testCtx = s.bindGenerationRuntime(testCtx, generation.CallMeta{
 		UserID: actor.ID, ChannelID: channel.ID, Capability: capability,
-		Operation: "admin_model_test", Model: modelKey, VideoSeconds: videoSecondsValue,
+		Operation: "admin_model_test", Model: modelKey,
 	})
 	testCtx = context.WithValue(testCtx, providerAnalyticsKey{}, providerAnalyticsContext{
 		UserID: actor.ID, ChannelID: channel.ID, Capability: capability,
-		Operation: "admin_model_test", Model: modelKey, VideoSeconds: videoSecondsValue,
+		Operation: "admin_model_test", Model: modelKey,
 	})
 	testCtx = withProtocolRegistry(testCtx, s.protocolRegistry())
 	startedAt := time.Now()
@@ -325,10 +297,8 @@ func (s *Service) TestAdminChannelModel(ctx context.Context, actor *model.User, 
 		_, err = runTextTask(testCtx, input)
 	case "image":
 		_, err = runImageTask(testCtx, input)
-	case "video":
-		_, err = runVideoTask(testCtx, input)
-	case "audio":
-		_, err = runAudioTask(testCtx, input)
+	default:
+		return nil, BadAuthRequest("不支持的测试能力：" + capability)
 	}
 	if err != nil {
 		status := http.StatusBadGateway

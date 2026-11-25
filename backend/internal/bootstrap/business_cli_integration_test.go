@@ -17,7 +17,6 @@ import (
 
 	"github.com/modelcontextprotocol/go-sdk/mcp"
 	"infinite-canvas/backend/internal/agentops"
-	"infinite-canvas/backend/internal/editing"
 )
 
 func TestExternalCLIAndMCPRealBusinessUpload(t *testing.T) {
@@ -65,9 +64,9 @@ func TestExternalCLIAndMCPRealBusinessUpload(t *testing.T) {
 	if err = os.WriteFile(pngPath, imageBytes.Bytes(), 0600); err != nil {
 		t.Fatal(err)
 	}
-	ffmpeg, err := editing.ResolveFFmpegBinary()
+	ffmpeg, err := exec.LookPath("ffmpeg")
 	if err != nil {
-		t.Fatal(err)
+		t.Skip("ffmpeg is not installed")
 	}
 	files := map[string]string{"image": pngPath, "audio": filepath.Join(dir, "reference.wav"), "video": filepath.Join(dir, "reference.mp4")}
 	fixtures := [][]string{{"-f", "lavfi", "-i", "sine=frequency=440:duration=1", "-c:a", "pcm_s16le", files["audio"]}, {"-f", "lavfi", "-i", "testsrc2=size=64x64:rate=8:duration=1", "-c:v", "libx264", "-threads", "1", "-pix_fmt", "yuv420p", files["video"]}}

@@ -67,7 +67,7 @@ const MAX_PROFILE_BYTES = 256 * 1024;
 export const MAX_STYLE_ASSETS = 20;
 
 export type StyleExecutionContext = {
-    mode: "image" | "video";
+    mode: "image";
     model: string;
     interfaceType?: string;
 };

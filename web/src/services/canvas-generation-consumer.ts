@@ -45,7 +45,7 @@ export class CanvasBindProjectionAdoptionError extends Error {
 }
 
 export type AdoptServerConfirmedProjection = (project: CanvasProject, scope: string, entryCapturedScope?: CapturedUserScope) => Promise<CanvasProject | undefined>;
-type PersistCanvasDocumentWithScope = (id: string, patch: { nodes?: CanvasNodeData[]; connections?: CanvasConnection[]; timeline?: CanvasProject["timeline"] }, entryCapturedScope?: CapturedUserScope) => Promise<void>;
+type PersistCanvasDocumentWithScope = (id: string, patch: { nodes?: CanvasNodeData[]; connections?: CanvasConnection[] }, entryCapturedScope?: CapturedUserScope) => Promise<void>;
 
 export async function applyCanvasGenerationTaskNodeEffect(input: {
     projectId: string;
@@ -305,7 +305,6 @@ export async function bindBackendCanvasGenerationResult(input: {
                         {
                             nodes: healed.nodes,
                             connections: targetProject.connections,
-                            ...(healed.timeline ? { timeline: healed.timeline } : {}),
                         },
                         capturedScope,
                     );
@@ -367,7 +366,6 @@ export async function bindBackendCanvasGenerationResult(input: {
                         {
                             nodes: healed.nodes,
                             connections: targetProject.connections,
-                            ...(healed.timeline ? { timeline: healed.timeline } : {}),
                         },
                         capturedScope,
                     );

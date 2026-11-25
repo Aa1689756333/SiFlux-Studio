@@ -2,28 +2,23 @@ import { AnimatePresence } from "motion/react";
 import { useEffect, useState, type CSSProperties, type ReactNode } from "react";
 import {
     ArrowLeft,
-    AtSign,
     Check,
     ChevronRight,
     Clipboard,
-    CloudUpload,
     Copy,
     FolderOpen,
     FolderPlus,
     Image as ImageIcon,
     Layers3,
     LayoutTemplate,
-    Link2,
     Maximize2,
     PanelTop,
-    Pencil,
     Plus,
     Redo2,
     Tags,
     Trash2,
     Undo2,
     Upload,
-    UserRound,
 } from "lucide-react";
 
 import { CanvasCreateMenu, type CanvasCreateCommand } from "@/components/canvas/canvas-create-menu";
@@ -55,27 +50,20 @@ type CanvasNodeContextMenuProps = {
     onClose: () => void;
     onAddNode: (type: CanvasNodeTypeId, position?: Position) => void;
     onAddFolder: () => void;
-    onChooseStyle: () => void;
-    onOpenDirector: (position: Position) => void;
     onUpload: () => void;
     onOpenAssets: () => void;
-    onOpenProjectCharacters: () => void;
     onOpenGenerationHistory: () => void;
     onUndo: () => void;
     onRedo: () => void;
     onPaste: () => void;
     onCopyNode: () => void;
-    onCreateGenerationCopy: () => void;
     onDuplicate: () => void;
     onDelete: () => void;
     onSaveAsset: () => void;
     onViewMedia: () => void;
     onEditText: () => void;
-    onOpenDrawing: () => void;
     onGenerateImage: () => void;
     onCopyContent: () => void;
-    onCopyMediaUrl: () => void;
-    onUploadToArkPrivateAsset: () => void;
     onSetAssetCategory: (category: CanvasAssetCategory) => void;
     onToggleFrame: () => void;
     onSpreadSelection?: () => void;
@@ -95,27 +83,20 @@ export function CanvasNodeContextMenu({
     onClose,
     onAddNode,
     onAddFolder,
-    onChooseStyle,
-    onOpenDirector,
     onUpload,
     onOpenAssets,
-    onOpenProjectCharacters,
     onOpenGenerationHistory,
     onUndo,
     onRedo,
     onPaste,
     onCopyNode,
-    onCreateGenerationCopy,
     onDuplicate,
     onDelete,
     onSaveAsset,
     onViewMedia,
     onEditText,
-    onOpenDrawing,
     onGenerateImage,
     onCopyContent,
-    onCopyMediaUrl,
-    onUploadToArkPrivateAsset,
     onSetAssetCategory,
     onToggleFrame,
     onSpreadSelection,
@@ -157,18 +138,12 @@ export function CanvasNodeContextMenu({
     const nodeContent = typeof node?.metadata?.content === "string" ? node.metadata.content : "";
     const isImage = node?.type === CanvasNodeType.Image;
     const isText = node?.type === CanvasNodeType.Text;
-    const isCharacterReference = Boolean(isText && node?.metadata?.workflowKind === "character" && node.metadata.characterAssetId);
-    const isDrawing = node?.type === CanvasNodeType.Drawing;
-    const isVideo = node?.type === CanvasNodeType.Video;
-    const isMedia = isImage || isVideo;
-    const isAudio = node?.type === CanvasNodeType.Audio;
     const isFrame = node?.type === CanvasNodeType.Frame;
     const isFolder = isCanvasFolderNode(node);
     const hasNodeContent = isText ? Boolean(nodeContent.trim()) : Boolean(nodeContent);
-    const canSaveAsset = Boolean(node && !isCharacterReference && (isText ? hasNodeContent : hasNodeContent && (isImage || isVideo || isAudio)));
-    const canOpenPreview = Boolean(isMedia && hasNodeContent);
-    const canGenerateFromText = Boolean(isText && !isCharacterReference && hasNodeContent);
-    const canCopyMediaUrl = Boolean(isMedia && hasNodeContent);
+    const canSaveAsset = Boolean(node && (isText ? hasNodeContent : hasNodeContent && isImage));
+    const canOpenPreview = Boolean(isImage && hasNodeContent);
+    const canGenerateFromText = Boolean(isText && hasNodeContent);
     const assetCategory = node ? canvasNodeAssetCategory(node) : "other";
     const hasMultiSelection = selectedCount >= 2;
     const position = getContextMenuPosition(menu, hasMultiSelection);
@@ -191,7 +166,7 @@ export function CanvasNodeContextMenu({
             >
                 <div className="absolute inset-x-8 top-0 h-px" style={{ background: `linear-gradient(90deg, transparent, ${theme.toolbar.border}, transparent)` }} />
                 <div className="thin-scrollbar min-h-0 overflow-y-auto">
-                    {menu.type === "node" && isMedia && categoryOpen ? (
+                    {menu.type === "node" && isImage && categoryOpen ? (
                         <>
                             <MenuHeader title="资产分类" description={node?.title || nodeTypeLabel(node)} onBack={() => setCategoryOpen(false)} />
                             <MenuSection label="项目用途" />
@@ -209,6 +184,7 @@ export function CanvasNodeContextMenu({
                                 </>
                             ) : null}
                             <MenuButton icon={<Plus className="size-4" />} label="添加节点" chevron active={addOpen} onClick={() => setAddOpen((value) => !value)} />
+                            <MenuButton icon={<FolderPlus className="size-4" />} label="新建文件夹" onClick={() => runAction(onAddFolder)} />
                             <MenuButton icon={<Upload className="size-4" />} label="上传到这里" onClick={() => runAction(onUpload)} />
                             {!isProjectLinked ? <MenuButton icon={<FolderOpen className="size-4" />} label="从素材库插入" onClick={() => runAction(onOpenAssets)} /> : null}
                             <MenuDivider />
@@ -228,32 +204,11 @@ export function CanvasNodeContextMenu({
                         </>
                     ) : menu.type === "node" ? (
                         <>
-                            {isCharacterReference ? (
+                            {isImage ? (
                                 <>
-                                    <MenuHeader title="角色卡" description={node?.metadata?.characterName || node?.title} />
-                                    <MenuSection label="角色引用" />
-                                    <MenuButton icon={<UserRound />} label="查看角色详情" onClick={() => runAction(onEditText)} />
-                                    <MenuDivider />
-                                    <MenuSection label="节点" />
-                                            <MenuButton icon={<Copy />} label="复制角色引用" shortcut="⌘C" onClick={() => runAction(onCopyNode)} />
-                                    <MenuButton icon={<Layers3 />} label="创建引用副本" shortcut="⌘D" onClick={() => runAction(onDuplicate)} />
-                                    <MenuButton icon={<Trash2 />} label="删除节点" danger onClick={() => runAction(onDelete)} />
-                                </>
-                            ) : isMedia ? (
-                                <>
-                                    {isImage ? (
-                                        <>
-                                            <MenuButton icon={<Maximize2 />} label="全景预览" disabled={!canOpenPreview} onClick={() => runAction(onViewMedia)} />
-                                            <MenuButton icon={<Tags />} label="资产分类" chevron onClick={() => setCategoryOpen(true)} />
-                                            <MenuButton icon={<Copy />} label="复制节点" shortcut="⌘C" onClick={() => runAction(onCopyNode)} />
-                                        </>
-                                    ) : (
-                                        <>
-                                            <MenuButton icon={<Maximize2 />} label="全景预览" disabled={!canOpenPreview} onClick={() => runAction(onViewMedia)} />
-                                            <MenuButton icon={<Tags />} label="资产分类" chevron onClick={() => setCategoryOpen(true)} />
-                                            <MenuButton icon={<Copy />} label="复制节点" shortcut="⌘C" onClick={() => runAction(onCopyNode)} />
-                                        </>
-                                    )}
+                                    <MenuButton icon={<Maximize2 />} label="全屏预览" disabled={!canOpenPreview} onClick={() => runAction(onViewMedia)} />
+                                    <MenuButton icon={<Tags />} label="资产分类" chevron onClick={() => setCategoryOpen(true)} />
+                                    <MenuButton icon={<Copy />} label="复制节点" shortcut="⌘C" onClick={() => runAction(onCopyNode)} />
                                     <MenuButton icon={<Trash2 />} label="删除节点" danger onClick={() => runAction(onDelete)} />
                                 </>
                             ) : (
@@ -270,7 +225,6 @@ export function CanvasNodeContextMenu({
                                         <MenuButton icon={<FolderPlus />} label="保存到我的素材" disabled={!canSaveAsset} onClick={() => runAction(onSaveAsset)} />
                                     )}
                                     {isText ? <MenuButton icon={<Maximize2 />} label="放大编辑" onClick={() => runAction(onEditText)} /> : null}
-                                    {isDrawing ? <MenuButton icon={<Pencil />} label="打开绘图" onClick={() => runAction(onOpenDrawing)} /> : null}
                                     {isText ? <MenuButton icon={<ImageIcon />} label="用文本生图" disabled={!canGenerateFromText} onClick={() => runAction(onGenerateImage)} /> : null}
                                     <MenuDivider />
                                     <MenuSection label="副本与内容" />
@@ -299,12 +253,8 @@ export function CanvasNodeContextMenu({
                         workspaceMode={workspaceMode}
                         isProjectLinked={isProjectLinked}
                         onAddNode={(type, position) => runAction(() => onAddNode(type, position))}
-                        onAddFolder={() => runAction(onAddFolder)}
-                        onChooseStyle={() => runAction(onChooseStyle)}
-                        onOpenDirector={() => runAction(() => onOpenDirector(menu.position))}
                         onUpload={() => runAction(onUpload)}
                         onOpenAssets={() => runAction(onOpenAssets)}
-                        onOpenProjectCharacters={() => runAction(onOpenProjectCharacters)}
                         onOpenGenerationHistory={() => runAction(onOpenGenerationHistory)}
                     />
                 ) : null}
@@ -319,12 +269,8 @@ function AddNodeContextMenu({
     workspaceMode,
     isProjectLinked,
     onAddNode,
-    onAddFolder,
-    onChooseStyle,
-    onOpenDirector,
     onUpload,
     onOpenAssets,
-    onOpenProjectCharacters,
     onOpenGenerationHistory,
 }: {
     parentPosition: { left: number; top: number };
@@ -332,38 +278,20 @@ function AddNodeContextMenu({
     workspaceMode: CanvasWorkspaceMode;
     isProjectLinked: boolean;
     onAddNode: (type: CanvasNodeTypeId, position?: Position) => void;
-    onAddFolder: () => void;
-    onChooseStyle: () => void;
-    onOpenDirector: () => void;
     onUpload: () => void;
     onOpenAssets: () => void;
-    onOpenProjectCharacters: () => void;
     onOpenGenerationHistory: () => void;
 }) {
     const theme = canvasThemes[useActiveTheme()];
-    const installations = usePluginStore((state) => state.installations);
-    const pluginStates = usePluginStore((state) => state.pluginStates);
-    const left = getSubmenuLeft(parentPosition.left);
     const createContext: AddNodeMenuContext = {
         workspaceMode,
         isProjectLinked,
-        enabledPluginIds: new Set(installations.filter((item) => pluginStates[item.manifest.id]?.effectiveEnabled ?? item.enabled).map((item) => item.manifest.id)),
         handlers: {
             onAddText: () => onAddNode(CanvasNodeType.Text, createPosition),
             onAddImage: () => onAddNode(CanvasNodeType.Image, createPosition),
-            onAddVideo: () => onAddNode(CanvasNodeType.Video, createPosition),
-            onAddAudio: () => onAddNode(CanvasNodeType.Audio, createPosition),
-            onAddScript: () => onAddNode(CanvasNodeType.Script, createPosition),
             onAddFrame: () => onAddNode(CanvasNodeType.Frame, createPosition),
-            onAddFolder,
-            onAddDrawing: () => onAddNode(CanvasNodeType.Drawing, createPosition),
-            onAddExtensionNode: (type) => onAddNode(type, createPosition),
-            onAddWorkflow: () => onAddNode(CanvasNodeType.Config, createPosition),
-            onChooseStyle,
-            onOpenDirector,
             onUpload,
             onOpenMyAssets: onOpenAssets,
-            onOpenProjectCharacters,
             onOpenGenerationHistory,
         },
     };
@@ -371,9 +299,7 @@ function AddNodeContextMenu({
         id: command.id,
         label: command.label,
         icon: command.icon,
-        badge: command.badge,
         section: command.section,
-        disabledReason: command.disabledReason,
         onClick: () => command.run(createContext),
     }));
 
@@ -528,11 +454,6 @@ function nodeTypeLabel(node?: CanvasNodeData | null) {
     if (!node) return "节点";
     if (node.type === CanvasNodeType.Image) return "图片节点";
     if (node.type === CanvasNodeType.Text) return "文本节点";
-    if (node.type === CanvasNodeType.Script) return "分镜脚本节点";
-    if (node.type === CanvasNodeType.Skill) return "技能节点";
-    if (node.type === CanvasNodeType.Video) return "视频节点";
-    if (node.type === CanvasNodeType.Audio) return "音频节点";
-    if (node.type === CanvasNodeType.Drawing) return "绘图节点";
     if (node.type === CanvasNodeType.Frame) return isCanvasFolderNode(node) ? "文件夹" : "背板";
     return "生成配置节点";
 }

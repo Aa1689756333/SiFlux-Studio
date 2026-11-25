@@ -138,8 +138,52 @@ func TestRedactTextRemovesMarkersAndURLQuery(t *testing.T) {
 			t.Fatalf("redactText leaked %q: %s", secret, got)
 		}
 	}
-	if !strings.Contains(got, "https://host.example/path") {
-		t.Fatalf("redactText dropped safe URL host: %s", got)
+	if !strings.Contains(got, "https://host.example") || strings.Contains(got, "/path") {
+		t.Fatalf("redactText kept media path: %s", got)
+	}
+}
+
+func TestExportIncludesStandalonePageTasksWithoutPromptOrMedia(t *testing.T) {
+	db, err := gorm.Open(sqlite.Open("file:diagnostics-standalone?mode=memory&cache=shared"), &gorm.Config{})
+	if err != nil {
+		t.Fatal(err)
+	}
+	if err := db.AutoMigrate(&model.Task{}, &model.TaskLog{}, &model.ApiCallLog{}); err != nil {
+		t.Fatal(err)
+	}
+	now := time.Now().UTC()
+	input := `{"prompt":"secret standalone prompt","metadata":{"source":"standalone-image-page"},"config":{"apiKey":"sk-secret-key"}}`
+	if err := db.Create(&model.Task{
+		ID: "standalone-1", UserID: "user-1", Type: "image_generate", Status: model.TaskStatusFailed,
+		Prompt: "secret standalone prompt", InputJSON: input,
+		Error:     "download failed https://cdn.example.com/outputs/secret.mp4?token=media-secret",
+		CreatedAt: now.Add(-time.Minute), UpdatedAt: now,
+	}).Error; err != nil {
+		t.Fatal(err)
+	}
+	svc := New(Dependencies{Store: repository.New(db), Brand: staticBrand{name: "SiFlux", slug: "siflux"}})
+	bundle, err := svc.Export("user-1", ExportRequest{
+		From: now.Add(-2 * time.Minute).Format(time.RFC3339Nano), To: now.Add(time.Minute).Format(time.RFC3339Nano),
+	})
+	if err != nil {
+		t.Fatal(err)
+	}
+	if !strings.HasPrefix(bundle.FileName, "siflux-diagnostics-") {
+		t.Fatalf("branded file name = %s", bundle.FileName)
+	}
+	files := readTestZIP(t, bundle.Data)
+	tasks := files["backend/tasks.jsonl"]
+	if !strings.Contains(tasks, `"source":"standalone-image-page"`) || !strings.Contains(tasks, `"id":"standalone-1"`) {
+		t.Fatalf("standalone task missing: %s", tasks)
+	}
+	all := strings.Join([]string{files["manifest.json"], files["README.txt"], tasks, files["backend/task-logs.jsonl"], files["backend/upstream-calls.jsonl"]}, "\n")
+	for _, secret := range []string{"secret standalone prompt", "sk-secret-key", "outputs/secret.mp4", "media-secret", "BeefTV", "beeftv"} {
+		if strings.Contains(all, secret) {
+			t.Fatalf("diagnostic bundle leaked %q: %s", secret, all)
+		}
+	}
+	if !strings.Contains(tasks, "https://cdn.example.com") {
+		t.Fatalf("host should remain: %s", tasks)
 	}
 }
 

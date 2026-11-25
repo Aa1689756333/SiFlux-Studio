@@ -6,11 +6,8 @@ import remarkGfm from "remark-gfm";
 import { ASSISTANT_PROPOSAL_UNDONE_TEXT, agentAssistantFailureText, type AgentToolCall, type AssistantGenerationProposal, type AssistantTurn } from "@/services/api/agent-assistant";
 import { ASSISTANT_UNDONE_INCOMPLETE_TEXT, assistantChangeSummary, assistantSkillLabel, assistantChangedNodeIds, assistantProposalText, assistantTurnCanContinue, assistantUnresolvedFailures, assistantUndoFailureText, assistantVisibleReply } from "./canvas-assistant-copy";
 import { dismissedProposalKey, type AssistantTurnStatus } from "./use-canvas-assistant";
-import { modelOptionName, resolveModelChannel, useEffectiveConfig } from "@/stores/use-config-store";
-import { portraitPriceLines, seedancePortraitModel, seedancePortraitLabel } from "@/lib/seedance-portrait";
-import { portraitGenerationError } from "@/lib/model-selection";
+import { useEffectiveConfig } from "@/stores/use-config-store";
 import { CanvasAssistantAttachments } from "./canvas-assistant-attachments";
-import { CanvasAssistantOutputs } from "./canvas-assistant-outputs";
 
 type Props = {
     turn: AssistantTurn;
@@ -66,7 +63,6 @@ export function CanvasAssistantTurnView({ turn, status, handledProposals, propos
                 {(input.skills || []).map(skill => <span className="canvas-assistant-chip" key={skill.skillId}>{assistantSkillLabel(skill)}</span>)}
             </div>) : (turn.supplements || []).map((text, index) => <CanvasAssistantUserMessage key={`supplement:${index}`} text={text} selectedCount={0} />)}
             {turn.reply ? <CanvasAssistantReply text={turn.reply} /> : null}
-            {turn.outputs?.length ? <CanvasAssistantOutputs outputs={turn.outputs} /> : null}
             {turn.cancelled ? <p className="canvas-assistant-meta">这一条已经停下了。</p> : null}
             {turn.error ? (
                 <div className={canContinue ? "canvas-assistant-incomplete" : "canvas-assistant-feedback"} role="status">
@@ -116,15 +112,10 @@ export function CanvasAssistantTurnView({ turn, status, handledProposals, propos
             {(turn.proposals || []).map((proposal) => {
                 const started = handledProposals.has(proposal.proposalId);
                 const skipped = handledProposals.has(dismissedProposalKey(proposal.proposalId));
-                const selectedModel = proposal.modelKey || proposal.model;
-                const portrait = seedancePortraitModel(selectedModel);
-                const profile = seedancePortraitLabel(selectedModel) ? resolveModelChannel(config, selectedModel).modelProfiles?.find((item) => item.model === modelOptionName(selectedModel)) : undefined;
-                const priceError = portrait ? portraitGenerationError(config, selectedModel) : "";
                 const running = Boolean(runningProposalIds?.has(proposal.proposalId));
                 return (
                     <div key={proposal.proposalId} className="canvas-assistant-card">
-                        <span style={{ whiteSpace: "pre-line", overflowWrap: "anywhere" }}>{assistantProposalText(proposal, portraitPriceLines(profile?.videoPricing))}</span>
-                        {priceError && !started && !skipped && !undone ? <span className="canvas-assistant-meta" role="status">{priceError}</span> : null}
+                        <span style={{ whiteSpace: "pre-line", overflowWrap: "anywhere" }}>{assistantProposalText(proposal)}</span>
                         {!skipped && !running && (!undone || started) && proposalFeedback?.[proposal.proposalId] ? <span className="canvas-assistant-meta" role="status" style={{ overflowWrap: "anywhere" }}>{proposalFeedback[proposal.proposalId]}</span> : null}
                         {started ? (
                             <span className="canvas-assistant-meta">已开始生成</span>
@@ -134,7 +125,7 @@ export function CanvasAssistantTurnView({ turn, status, handledProposals, propos
                             <span className="canvas-assistant-meta">这次没有生成</span>
                         ) : (
                             <div className="canvas-assistant-card-actions">
-                                <Button size="small" type="primary" autoInsertSpace={false} loading={running} disabled={Boolean(priceError)} onClick={() => onRunProposal(proposal, turn.turnId)}>
+                                <Button size="small" type="primary" autoInsertSpace={false} loading={running} onClick={() => onRunProposal(proposal, turn.turnId)}>
                                     生成
                                 </Button>
                                 <Button size="small" disabled={running} onClick={() => onDismissProposal(proposal.proposalId)}>

@@ -2,7 +2,6 @@ import { NODE_DEFAULT_SIZE } from "@/constant/canvas";
 import { CanvasNodeType, isBuiltinCanvasNodeType, type CanvasNodeData } from "@/types/canvas";
 
 export const MEDIA_NODE_MIN_SIZE = { width: 420, height: 236 } as const;
-export const VIDEO_NODE_MAX_SIZE = { width: 720, height: 520 } as const;
 
 export function fitNodeSize(width: number, height: number, maxWidth = 720, maxHeight = 520, minWidth = MEDIA_NODE_MIN_SIZE.width, minHeight = MEDIA_NODE_MIN_SIZE.height) {
     const w = Math.max(1, width);
@@ -53,8 +52,8 @@ export function nodeSizeFromRatio(size: string, baseWidth: number, baseHeight: n
 }
 
 export function ensureMediaNodeMinimumSize(node: CanvasNodeData) {
-    if (node.type !== CanvasNodeType.Image && node.type !== CanvasNodeType.Video) return node;
-    const title = node.title === "New Generation" ? "图片" : node.title === "Video" ? "视频" : node.title;
+    if (node.type !== CanvasNodeType.Image) return node;
+    const title = node.title === "New Generation" ? "图片" : node.title;
     let width = node.width;
     let height = node.height;
     const emptyStage = isBuiltinCanvasNodeType(node.type) ? NODE_DEFAULT_SIZE[node.type] : undefined;

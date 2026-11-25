@@ -16,7 +16,7 @@ describe("inline canvas mask editing", () => {
 
     test("hides the ordinary node toolbar while mask editing", () => {
         const project = read("../src/pages/canvas/project.tsx");
-        expect(project).toContain("nodeImageSettingsOpen || annotationNodeId || maskEditNodeId || emotionNodeId");
+        expect(project).toContain("nodeImageSettingsOpen || annotationNodeId || maskEditNodeId || angleNodeId");
     });
 
     test("closes and suppresses the ordinary prompt panel while mask editing", () => {

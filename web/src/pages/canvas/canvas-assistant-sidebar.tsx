@@ -199,7 +199,7 @@ export function CanvasAssistantSidebar(props: Props) {
                         <h3>想在这张画布上做什么？</h3>
                         {ASSISTANT_STARTER_PROMPTS.slice(0, 3).map((prompt, index) => (
                             <button key={prompt} type="button" className="canvas-assistant-starter" onClick={() => setDraft(prompt)}>
-                                <span>{["拆分分镜", "完善选中镜头", "整理画布"][index]}</span><ArrowUpRight size={14} aria-hidden="true" />
+                                <span>{["起草生图提示词", "完善图片提示词", "整理画布"][index]}</span><ArrowUpRight size={14} aria-hidden="true" />
                             </button>
                         ))}
                     </div>

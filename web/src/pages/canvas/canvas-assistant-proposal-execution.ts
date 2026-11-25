@@ -1,5 +1,5 @@
 import type { AssistantGenerationProposal } from "@/services/api/agent-assistant";
-import type { CanvasNodeData } from "@/types/canvas";
+import type { CanvasGenerationMode, CanvasNodeData } from "@/types/canvas";
 import type { CanvasNodeGenerationOptions } from "./use-canvas-generation-executor";
 import { buildGenerationConfig } from "@/lib/canvas/canvas-project-generation";
 import { ASSISTANT_PROPOSAL_BLOCKED_TEXT, AssistantProposalBlockedError, type ConfirmedGenerationInputs } from "./canvas-assistant-proposal-snapshot";
@@ -14,7 +14,7 @@ type ProposalExecution = {
     /** 后端确认这一轮仍有效；返回的文案表示拒绝，不会提交任何生成。 */
     confirmRunnable?: () => Promise<string | null>;
     prepare: () => Promise<ConfirmedGenerationInputs>;
-    generate: (nodeId: string, mode: "image" | "video", prompt: string, options?: CanvasNodeGenerationOptions) => Promise<unknown>;
+    generate: (nodeId: string, mode: CanvasGenerationMode, prompt: string, options?: CanvasNodeGenerationOptions) => Promise<unknown>;
     markHandled: (proposalId: string) => void;
     notify: (content: string) => void;
     stillOwns?: () => boolean;
@@ -54,6 +54,12 @@ export async function executeAssistantProposal({ proposal, nodes, claims, isHand
         notify("这项提案缺少模型信息，请让助手重新提出生成方案后再确认。");
         return;
     }
+    // 画布现在只生成图片；旧会话遗留的视频提案不能再提交生成。
+    if (proposal.kind !== "image") {
+        notify("当前画布只支持生图，请让助手重新提出生图方案。");
+        return;
+    }
+    const generationMode = proposal.kind;
     // 先占住这次确认，避免连点发出第二单；没有任务回执时在 finally 里放开。
     claims.add(proposal.proposalId);
     let receivedTask = false;
@@ -86,7 +92,7 @@ export async function executeAssistantProposal({ proposal, nodes, claims, isHand
         }
         await Promise.allSettled(confirmedTargets.map(async (node) => {
             if (!node) return;
-            await generate(node.id, proposal.kind, node.metadata?.composerContent ?? node.metadata?.prompt ?? "", {
+            await generate(node.id, generationMode, node.metadata?.composerContent ?? node.metadata?.prompt ?? "", {
                 confirmedModelKey: modelKey,
                 confirmedInputs,
                 clientOperationId: `proposal:${proposal.proposalId}:${node.id}`,

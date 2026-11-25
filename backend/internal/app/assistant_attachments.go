@@ -3,7 +3,6 @@ package app
 import (
 	"fmt"
 	"infinite-canvas/backend/internal/operations"
-	"math"
 	"strings"
 )
 
@@ -24,22 +23,15 @@ func (s *Service) ValidateAssistantAttachments(userID, canvasID string, items []
 	if len(items) > 16 {
 		return fmt.Errorf("一次最多添加 16 个素材")
 	}
-	purposes := map[string]bool{"analysis": true, "character": true, "scene": true, "style": true, "motion": true, "first-frame": true, "last-frame": true, "rhythm": true, "sound": true}
+	purposes := map[string]bool{"analysis": true, "character": true, "scene": true, "style": true, "reference": true}
 	for _, a := range items {
 		if a.ResourceID == "" || !purposes[a.Purpose] || len(a.Name) > 512 {
 			return fmt.Errorf("素材信息不完整")
 		}
-		if a.Kind != "image" && a.Kind != "video" && a.Kind != "audio" {
+		if a.Kind != "image" {
 			return fmt.Errorf("不支持的素材类型")
 		}
-		for _, n := range []*float64{a.Start, a.End} {
-			if n != nil && (math.IsNaN(*n) || math.IsInf(*n, 0) || *n < 0 || *n > 86400) {
-				return fmt.Errorf("素材片段时间无效")
-			}
-		}
-		if a.Start != nil && a.End != nil && *a.End <= *a.Start {
-			return fmt.Errorf("片段结束时间必须晚于开始时间")
-		}
+		if a.Start != nil || a.End != nil { return fmt.Errorf("图片素材不支持片段区间") }
 		mime, err := operations.ValidateMediaReference(s.BindDomain(nil), userID, canvasID, a.NodeID, a.AssetID, a.ResourceID)
 		if err != nil {
 			return err

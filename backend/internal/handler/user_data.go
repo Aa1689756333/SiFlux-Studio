@@ -125,19 +125,6 @@ func registerUserDataRoutes(r *gin.RouterGroup, svc *app.Service) {
 		}
 		ok(c, gin.H{"usage": usage})
 	})
-	r.DELETE("/resources/playback-cache", func(c *gin.Context) {
-		user, err := currentUser(c, svc)
-		if err != nil {
-			failService(c, err)
-			return
-		}
-		cleared, err := svc.ClearVideoPreviewCache(user.ID)
-		if err != nil {
-			failService(c, err)
-			return
-		}
-		ok(c, gin.H{"cleared": cleared})
-	})
 	r.POST("/resources", func(c *gin.Context) {
 		user, err := currentUser(c, svc)
 		if err != nil {
@@ -183,19 +170,6 @@ func registerUserDataRoutes(r *gin.RouterGroup, svc *app.Service) {
 		}
 		ok(c, gin.H{"resource": resource})
 	})
-	r.POST("/resources/:id/playback", func(c *gin.Context) {
-		user, err := currentUser(c, svc)
-		if err != nil {
-			failService(c, err)
-			return
-		}
-		resource, err := svc.PrepareResourcePlayback(user.ID, c.Param("id"))
-		if err != nil {
-			failService(c, err)
-			return
-		}
-		ok(c, gin.H{"resource": resource})
-	})
 	r.GET("/resources/:id/file", func(c *gin.Context) {
 		user, err := currentUser(c, svc)
 		if err != nil {
@@ -220,27 +194,8 @@ func registerUserDataRoutes(r *gin.RouterGroup, svc *app.Service) {
 		}
 		resource := delivery.Resource
 		etag := resourceResponseETag(resource)
-		// variant=playback：serve 浏览器兼容播放副本（H.265→H.264 转码）。
-		// 副本就绪时用独立 ETag 后缀，避免浏览器拿原件缓存命中 304 而继续黑屏。
-		usePlayback := c.Query("variant") == "playback" && resource.Provider == "local" &&
-			resource.PlaybackStatus == model.PlaybackStatusReady && resource.PlaybackObjectKey != ""
 		var stream *app.ResourceStream
-		if usePlayback {
-			stream, err = svc.OpenResourcePlaybackRange(user.ID, resource.ID)
-			if errors.Is(err, app.ErrPlaybackNotReady) {
-				usePlayback = false
-			} else if err != nil {
-				failService(c, err)
-				return
-			} else {
-				defer stream.Body.Close()
-				resource = stream.Resource
-			}
-		}
 		serveETag := etag
-		if usePlayback {
-			serveETag = playbackResponseETag(etag)
-		}
 		// 资源 ID 内容不可变（上传永远生成新 ID，不会原地覆盖）：图片可以放心交给浏览器
 		// 磁盘强缓存 30 天，大画布二次打开零请求直读磁盘缓存。视频/音频涉及转码副本
 		// 就绪与 Range 语义，保持逐次条件请求（304）。
@@ -709,8 +664,4 @@ func ifNoneMatch(header string, etag string) bool {
 		}
 	}
 	return false
-}
-
-func playbackResponseETag(original string) string {
-	return strings.TrimSuffix(original, `"`) + `:pb"`
 }

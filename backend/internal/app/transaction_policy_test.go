@@ -99,7 +99,6 @@ func TestCanvasQuotaReadsPolicyFromItsTransaction(t *testing.T) {
 			func() error { return host.StructuredQuota("user", "canvas", false, 1) },
 			func() error { return host.StructuredBatchQuota("user", "asset", 1, 1) },
 			func() error { return host.StructuredReplacementQuota("user", "asset", 1, 1) },
-			func() error { return (creationQuotaAdapter{s}).ValidateCanvas("user", repo, false, 1) },
 		} {
 			if err := check(); err == nil || !strings.Contains(err.Error(), "配置格式无效") {
 				t.Fatalf("expected in-transaction policy rejection, got %v", err)

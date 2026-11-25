@@ -1,18 +1,20 @@
 import type { ModelChannel } from "@/stores/use-config-store";
 
 export type ModelProtocol = string;
-export type ProtocolCapability = "text" | "image" | "video" | "audio";
+export type ProtocolCapability = "text" | "image";
 export type ModelProtocolWorkflow = { id: string; label: string; providerId: string; capability: ProtocolCapability; parameters: Array<{ name: string; type: string; required?: boolean; description?: string; values?: string[]; mapping?: string }>; defaults?: Record<string, string | number | boolean> };
 export type ModelProtocolDefinition = { value: ModelProtocol; label: string; vendor?: string; capability: ProtocolCapability; create: string; contentType: string; poll?: string; media: string; enabled?: boolean; baseUrl?: string; workflows?: ModelProtocolWorkflow[] };
 
-export function protocolGroups(protocols: ModelProtocolDefinition[]) {
-    return (["text", "image", "video", "audio"] as ProtocolCapability[]).map((capability) => ({ label: { text: "文本", image: "图片", video: "视频", audio: "音频" }[capability], options: protocols.filter((item) => item.capability === capability && item.enabled !== false).map((item) => ({ label: `${item.label} · ${item.create.replace(/^POST /, "")}`, value: item.value })) }));
+export function isSupportedProtocolCapability(value: unknown): value is ProtocolCapability {
+    return value === "text" || value === "image";
 }
-export function modelProtocolDefinition(value: string | undefined, definitions: ModelProtocolDefinition[] = []) { return definitions.find((item) => item.value === value); }
+
+export function protocolGroups(protocols: ModelProtocolDefinition[]) {
+    return (["text", "image"] as const).map((capability) => ({ label: { text: "文本", image: "图片" }[capability], options: protocols.filter((item) => item.capability === capability && item.enabled !== false).map((item) => ({ label: `${item.label} · ${item.create.replace(/^POST /, "")}`, value: item.value })) }));
+}
+export function modelProtocolDefinition(value: string | undefined, definitions: ModelProtocolDefinition[] = []) { return definitions.find((item) => item.value === value && isSupportedProtocolCapability(item.capability)); }
 export function modelProtocolLabel(value: string | undefined, definitions: ModelProtocolDefinition[] = []) { return modelProtocolDefinition(value, definitions)?.label || (value ? value : "未安装协议"); }
-// Protocol → capability for the protocols the host ships without a plugin
-// catalog. Runtime definitions win; unknown/custom ids stay unresolved so a
-// user's own contract is never silently rewritten.
+
 const BUILTIN_PROTOCOL_CAPABILITIES: Record<ModelProtocol, ProtocolCapability> = {
     "chat-completion": "text",
     "openai-response": "text",
@@ -20,26 +22,11 @@ const BUILTIN_PROTOCOL_CAPABILITIES: Record<ModelProtocol, ProtocolCapability> =
     "claude-api": "text",
     "gemini-generate-content": "text",
     "openai-image": "image",
-    "openai-videos": "video",
     "gemini-image": "image",
     "grok-image": "image",
     "volcengine-ark-image": "image",
     "volcengine-ark-agent-plan-image": "image",
     "volcengine-jimeng-image": "image",
-    newapi: "video",
-    "newapi-channel-1": "video",
-    "newapi-channel-2": "video",
-    "xai-video": "video",
-    "volcengine-ark-video": "video",
-    "volcengine-ark-agent-plan-video": "video",
-    "volcengine-jimeng-video": "video",
-    "gemini-veo": "video",
-    "novita-video": "video",
-    "minimax-video": "video",
-    "agnes-video": "video",
-    "full-video": "video",
-    "openai-audio": "audio",
-    "async-audio": "audio",
 };
 export function modelProtocolCapability(value: string | undefined, definitions: ModelProtocolDefinition[] = []) {
     const definition = modelProtocolDefinition(value, definitions);
@@ -49,22 +36,10 @@ export function modelProtocolCapability(value: string | undefined, definitions: 
 export function isVolcengineArkImageProtocol(protocol?: string) {
     return protocol === "volcengine-ark-image" || protocol === "volcengine-ark-agent-plan-image";
 }
-export function isVolcengineArkVideoProtocol(protocol?: string) {
-    return protocol === "volcengine-ark-video" || protocol === "volcengine-ark-agent-plan-video";
-}
 export function protocolForModelCatalog(_endpointTypes: string[] = []): ModelProtocol | undefined {
-    // A provider catalog cannot invent a protocol ID. The channel's selected
-    // plugin or an explicit model configuration must supply it.
     return undefined;
 }
 
-/**
- * 自有中转站的目录可以决定文本协议：它声明的端点类型就是我们对上游的调用契约。
- *
- * 顺序遵循中转站返回的数组——数组本身就是它的优先级声明，将来在中转站调整顺序，
- * 客户端跟着变，不必发版。数组缺失或为空时返回 undefined，保持原有行为
- * （文本协议默认 chat-completion，等价于「chat 优先」）。
- */
 const RELAY_CATALOG_TEXT_PROTOCOLS: Record<string, ModelProtocol> = {
     openai: "chat-completion",
     "chat.completions": "chat-completion",
@@ -77,7 +52,6 @@ const RELAY_CATALOG_TEXT_PROTOCOLS: Record<string, ModelProtocol> = {
 };
 
 export function protocolForRelayCatalog(endpointTypes: string[] = [], capability?: ProtocolCapability): ModelProtocol | undefined {
-    // 图像/视频/音频的协议仍由预设或用户配置决定，端点类型不足以推断。
     if (capability && capability !== "text") return undefined;
     for (const value of endpointTypes) {
         const protocol = RELAY_CATALOG_TEXT_PROTOCOLS[value.trim().toLowerCase()];
@@ -86,13 +60,9 @@ export function protocolForRelayCatalog(endpointTypes: string[] = [], capability
     return undefined;
 }
 export function protocolForBeefAPICatalog(endpointTypes: string[] = []): ModelProtocol | undefined {
-    // Only explicit wire contracts map to host protocol IDs; generic "openai"
-    // metadata cannot replace a user's configured protocol.
     const endpoints = endpointTypes.map((value) => value.trim().toLowerCase());
     const mappings: Array<[string, string[]]> = [
         ["openai-image", ["image-generation", "images", "images.generations"]],
-        ["openai-videos", ["openai-video", "videos", "videos.generations"]],
-        ["openai-audio", ["audio.speech", "audio-speech"]],
         ["openai-response", ["openai-response", "openai-response-compact", "responses"]],
         ["claude-api", ["anthropic", "messages"]],
         ["gemini-generate-content", ["gemini"]],
@@ -101,89 +71,54 @@ export function protocolForBeefAPICatalog(endpointTypes: string[] = []): ModelPr
     return mappings.find(([, aliases]) => aliases.some((alias) => endpoints.includes(alias)))?.[0];
 }
 export function modelProtocolSummary(value: string | undefined, definitions: ModelProtocolDefinition[] = []) { const protocol = modelProtocolDefinition(value, definitions); return protocol ? [protocol.create, protocol.contentType, protocol.poll, protocol.media].filter(Boolean).join(" · ") : "当前协议未安装或尚未选择。"; }
+
+// 旧目录中的退场协议不能在失去能力标签后被重新当作文本模型。
+export function isUnsupportedModelProtocol(value: unknown) {
+    if (typeof value !== "string") return false;
+    const protocol = value.trim().toLowerCase();
+    return /^(?:newapi(?:-channel-[12])?|gemini-veo|full-video)$/.test(protocol) || /(?:^|[-_.])(?:video|videos|audio)(?:$|[-_.])/.test(protocol);
+}
+export function isUnsupportedGenerationModel(model: string) {
+    const name = model.toLowerCase().split("::").pop() || "";
+    return /(?:^|[^a-z0-9])(?:video|audio|tts|speech|voice|music|sound|asr|stt|whisper|transcription|transcriptions|transcribe|seedance|sora|veo|kling|hailuo|pika|runway|cogvideo|hunyuanvideo|animatediff|ltxvideo|wan)(?:$|[^a-z0-9])/.test(name)
+        || /^(?:grok-imagine-video|sd-native-full-|原生不卡人脸)/.test(name);
+}
 export function normalizeModelProtocol(value: unknown): ModelProtocol | undefined {
     const protocol = typeof value === "string" && value.trim() ? value.trim() : undefined;
+    if (isUnsupportedModelProtocol(protocol)) return undefined;
     return protocol === "google-gemini-generate-content" ? "gemini-generate-content" : protocol;
 }
 
 const STANDARD_PROTOCOLS: Record<ProtocolCapability, ModelProtocol[]> = {
     text: ["chat-completion", "openai-response"],
     image: ["openai-image"],
-    video: ["newapi-channel-2", "newapi"],
-    audio: ["openai-audio"],
 };
-
 const FALLBACK_PROTOCOLS: Record<ProtocolCapability, ModelProtocol> = {
     text: "chat-completion",
     image: "openai-image",
-    video: "newapi-channel-2",
-    audio: "openai-audio",
 };
 
 export function inferProtocolCapabilityFromModel(model: string): ProtocolCapability {
     const lower = model.toLowerCase();
-    if (
-        lower.includes("audio") ||
-        lower.includes("tts") ||
-        lower.includes("voice") ||
-        lower.includes("speech") ||
-        lower.includes("sound") ||
-        lower.includes("music")
-    ) {
-        return "audio";
-    }
-    if (
-        lower.includes("seedream") ||
-        lower.includes("gpt-image") ||
-        lower.includes("image") ||
-        lower.includes("dall-e") ||
-        lower.includes("dalle") ||
-        lower.includes("flux") ||
-        lower.includes("imagen") ||
-        lower.includes("banana") ||
-        lower.includes("midjourney") ||
-        lower.includes("sdxl") ||
-        lower.includes("stable-diffusion")
-    ) {
-        return "image";
-    }
-    if (
-        lower.includes("video") ||
-        lower.includes("sora") ||
-        lower.includes("veo") ||
-        lower.includes("kling") ||
-        lower.includes("seedance") ||
-        lower.includes("minimax-video") ||
-        lower.includes("hailuo") ||
-        lower.includes("pika") ||
-        lower.includes("runway") ||
-        lower.includes("omni") ||
-        lower.includes("cogvideo") ||
-        lower.includes("wan")
-    ) {
-        return "video";
-    }
+    if (["seedream", "gpt-image", "image", "dall-e", "dalle", "flux", "imagen", "banana", "midjourney", "sdxl", "stable-diffusion", "ideogram", "recraft"].some((token) => lower.includes(token))) return "image";
     return "text";
 }
 
 export function defaultProtocolForCapability(capability: ProtocolCapability, availableProtocols: ModelProtocolDefinition[] = []): ModelProtocol {
-    for (const id of STANDARD_PROTOCOLS[capability] || []) {
+    for (const id of STANDARD_PROTOCOLS[capability]) {
         if (!availableProtocols.length || availableProtocols.some((item) => item.value === id && item.enabled !== false)) return id;
     }
     const matched = availableProtocols.find((item) => item.capability === capability && item.enabled !== false);
-    return matched?.value || FALLBACK_PROTOCOLS[capability] || "chat-completion";
+    return matched?.value || FALLBACK_PROTOCOLS[capability];
 }
-
 export function defaultProtocolForModel(model: string, availableProtocols: ModelProtocolDefinition[] = []): ModelProtocol {
     return defaultProtocolForCapability(inferProtocolCapabilityFromModel(model), availableProtocols);
 }
-
 export function usesOpenAICompatibleProtocolDefault(apiFormat?: string) {
     return apiFormat !== "gemini" && apiFormat !== "claude";
 }
 
 type ChannelModelProfile = NonNullable<ModelChannel["modelProfiles"]>[number];
-
 export function ensureModelProfilesWithUiDefaults(
     models: string[],
     profiles: Array<Omit<ChannelModelProfile, "capability"> & { capability?: ProtocolCapability }> | undefined,
@@ -191,11 +126,11 @@ export function ensureModelProfilesWithUiDefaults(
     apiFormat?: string,
 ): ChannelModelProfile[] {
     const byModel = new Map((profiles || []).filter((item) => models.includes(item.model)).map((item) => [item.model, item]));
-    return models.map((model) => {
+    return models.filter((model) => !isUnsupportedGenerationModel(model)).flatMap((model) => {
         const current = byModel.get(model);
-        if (current?.protocol && current.capability) return { ...current, capability: current.capability, protocol: current.protocol };
+        if (current?.capability && !isSupportedProtocolCapability(current.capability) || isUnsupportedModelProtocol(current?.protocol)) return [];
         const capability = current?.capability || modelProtocolCapability(current?.protocol, availableProtocols) || inferProtocolCapabilityFromModel(model);
         const protocol = current?.protocol || (usesOpenAICompatibleProtocolDefault(apiFormat) ? defaultProtocolForCapability(capability, availableProtocols) : undefined);
-        return { ...current, model, capability, protocol };
+        return [{ ...current, model, capability, protocol }];
     });
 }

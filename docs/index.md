@@ -1,6 +1,6 @@
 # BeefTV 文档
 
-BeefTV 是一个本地优先、轻量、AI Native 的视频工作台。本页只收录公开使用、开发和维护所需的文档。
+BeefTV 是一个本地优先、轻量的 AI 生图与 Agent 工作台。本页只收录公开使用、开发和维护所需的文档。
 
 ## 开始使用
 
@@ -30,10 +30,6 @@ BeefTV 是一个本地优先、轻量、AI Native 的视频工作台。本页只
 - [后端数据库](content/docs/backend/backend-database.mdx)
 - [任务运行时稳定性](content/docs/backend/task-runtime-stability.mdx)
 - [生成失败归类](content/docs/backend/generation-errors.mdx)
-- [插件系统](content/docs/plugins/plugin-system.mdx)
-- [插件界面扩展](content/docs/plugins/plugin-surfaces.mdx)
-- [AI 审美批改插件](content/docs/plugins/ai-art-critique.mdx)
-- [剪辑导出调用方与规划分叉](refactor/editing.md)
 - [生成结果第一段入库](refactor/media-ingest.md)
 
 ## 项目治理

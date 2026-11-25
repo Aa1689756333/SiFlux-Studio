@@ -9,14 +9,12 @@ import (
 	"infinite-canvas/backend/internal/app"
 	"infinite-canvas/backend/internal/appearance"
 	"infinite-canvas/backend/internal/assistantruntime"
-	"infinite-canvas/backend/internal/conversation"
 	"infinite-canvas/backend/internal/diagnostics"
 	"infinite-canvas/backend/internal/eagle"
 	"infinite-canvas/backend/internal/localapp"
 	"infinite-canvas/backend/internal/model"
 	localproject "infinite-canvas/backend/internal/project"
 	localtask "infinite-canvas/backend/internal/task"
-	"infinite-canvas/backend/internal/textreplay"
 	"infinite-canvas/backend/internal/workspace"
 
 	"github.com/gin-gonic/gin"
@@ -48,9 +46,6 @@ type RuntimeDependencies struct {
 	Projects           localapp.ProjectPort
 	Tasks              localapp.TaskPort
 	Generation         localapp.GenerationPort
-	Conversations      *conversation.Service
-	// TextReplay is the archive owned by the runtime; legacy callers use its app facade.
-	TextReplay  textreplay.API
 	Eagle       *eagle.Client
 	Diagnostics *diagnostics.Service
 	Appearance  *appearance.Service
@@ -72,9 +67,6 @@ type serviceRuntimeAdapter struct {
 	listProjects                func(string) ([]localproject.Summary, error)
 	tasksWithOptions            func(string, localtask.ListOptions) ([]localtask.Summary, error)
 	createTask                  func(string, localtask.CreateRequest) (*model.Task, error)
-	createTimelineRender        func(string, localtask.TimelineRenderCreateRequest) (*model.Task, error)
-	createTimelineTranscription func(string, localtask.TimelineTranscriptionCreateRequest) (*model.Task, error)
-	createDepthCapture          func(string, localtask.DepthCaptureCreateRequest) (*model.Task, error)
 }
 
 func newServiceRuntimeAdapter(value *app.Service) serviceRuntimeAdapter {
@@ -83,8 +75,6 @@ func newServiceRuntimeAdapter(value *app.Service) serviceRuntimeAdapter {
 		readModelConfig: value.ReadLocalModelConfig, saveModelConfig: value.SaveLocalModelConfig,
 		resources: value.Resources, uploadLocalResource: value.UploadLocalResource,
 		listProjects: value.ListProjects, tasksWithOptions: value.TasksWithOptions, createTask: value.CreateLocalTask,
-		createTimelineRender: value.CreateTimelineRenderTask, createTimelineTranscription: value.CreateTimelineTranscriptionTask,
-		createDepthCapture: value.CreateDepthCaptureTask,
 	}
 }
 
@@ -124,18 +114,6 @@ func (a serviceRuntimeAdapter) CreateTask(userID string, request localtask.Creat
 	return a.createTask(userID, request)
 }
 
-func (a serviceRuntimeAdapter) CreateTimelineRenderTask(userID string, request localtask.TimelineRenderCreateRequest) (*model.Task, error) {
-	return a.createTimelineRender(userID, request)
-}
-
-func (a serviceRuntimeAdapter) CreateTimelineTranscriptionTask(userID string, request localtask.TimelineTranscriptionCreateRequest) (*model.Task, error) {
-	return a.createTimelineTranscription(userID, request)
-}
-
-func (a serviceRuntimeAdapter) CreateDepthCaptureTask(userID string, request localtask.DepthCaptureCreateRequest) (*model.Task, error) {
-	return a.createDepthCapture(userID, request)
-}
-
 func requestAssetPort(c *gin.Context, fallback *app.Service) localapp.AssetPort {
 	if dependencies, ok := runtimeDependencies(c); ok && dependencies.Assets != nil {
 		return dependencies.Assets
@@ -169,13 +147,6 @@ func requestProviderConfig(c *gin.Context, fallback *app.Service) ProviderConfig
 		return dependencies.ProviderConfig
 	}
 	return newServiceRuntimeAdapter(fallback)
-}
-
-func requestTextReplay(c *gin.Context, fallback *app.Service) textReplayAPI {
-	if dependencies, ok := runtimeDependencies(c); ok && dependencies.TextReplay != nil {
-		return dependencies.TextReplay
-	}
-	return appTextReplayAPI{fallback}
 }
 
 const runtimeDependenciesKey = "canvas.runtime-dependencies"

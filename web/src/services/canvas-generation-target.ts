@@ -1,5 +1,5 @@
 import type { Dispatch, SetStateAction } from "react";
-import { assetResourceId, bindCanvasNodeResourceAsset, canvasNodeResourceId, extractOwnedResourceId } from "@/lib/canvas/canvas-resource-id";
+import { assetResourceId, bindCanvasNodeResourceAsset, canvasNodeResourceId } from "@/lib/canvas/canvas-resource-id";
 import { assertUserScope, isUserScopeAbandonedError, type CapturedUserScope } from "@/lib/user-scope-guard";
 import { CanvasStaleScopeError } from "@/services/canvas-revision-conflict";
 import { persistCanvasDocument } from "@/services/local-workspace-repository";
@@ -7,7 +7,6 @@ import type { ensureCanvasNodeAsset } from "@/services/project-asset-sync";
 import { useAssetStore } from "@/stores/use-asset-store";
 import { useCanvasStore, type CanvasProject } from "@/stores/canvas/use-canvas-store";
 import { CanvasNodeType, type CanvasNodeData } from "@/types/canvas";
-import type { TimelineDirectMedia } from "@/types/timeline";
 import { CanvasGenerationTargetSaveError } from "./canvas-generation-errors";
 
 export function isCanvasMediaAssetGuardError(error: unknown) {
@@ -52,33 +51,10 @@ export function syncInMemoryCanvasProjectMediaAssets(project: CanvasProject): bo
     return changed;
 }
 
-function timelineDirectMediaToNode(media: TimelineDirectMedia): CanvasNodeData {
-    const type = media.kind === "audio" ? CanvasNodeType.Audio : media.kind === "video" ? CanvasNodeType.Video : CanvasNodeType.Image;
-    return {
-        id: media.id,
-        type,
-        title: media.title,
-        position: { x: 0, y: 0 },
-        width: media.width || 320,
-        height: media.height || (type === CanvasNodeType.Audio ? 120 : 240),
-        metadata: {
-            assetId: media.assetId,
-            content: media.url || media.dataUrl || media.content || "",
-            storageKey: media.storageKey,
-            naturalWidth: media.width,
-            naturalHeight: media.height,
-            durationMs: media.durationMs,
-            bytes: media.bytes,
-            mimeType: media.mimeType,
-        },
-    };
-}
-
 export type HealCanvasProjectMediaAssetsResult = {
     healed: boolean;
     current: boolean;
     nodes: CanvasNodeData[];
-    timeline?: CanvasProject["timeline"];
 };
 
 export async function healCanvasProjectMediaAssets(
@@ -101,11 +77,11 @@ export async function healCanvasProjectMediaAssets(
 
     assertScopeActive();
     if (!isScopeCurrent()) {
-        return { healed: false, current: false, nodes: project.nodes, timeline: project.timeline };
+        return { healed: false, current: false, nodes: project.nodes };
     }
     syncInMemoryCanvasProjectMediaAssets(project);
     if (!isScopeCurrent()) {
-        return { healed: false, current: false, nodes: project.nodes, timeline: project.timeline };
+        return { healed: false, current: false, nodes: project.nodes };
     }
 
     const ensure = options.ensureNodeAsset ?? (await import("@/services/project-asset-sync")).ensureCanvasNodeAsset;
@@ -127,10 +103,9 @@ export async function healCanvasProjectMediaAssets(
     const normalizedById = new Map(normalizedNodes.map((node) => [node.id, node]));
     const ensuredAssetIdByKey = new Map<string, string>();
     const ensuredAssetIdByNodeId = new Map<string, string>();
-    const fallbackAssetIdByResource = new Map<string, string>();
 
     for (const node of normalizedNodes) {
-        if (node.type !== CanvasNodeType.Image && node.type !== CanvasNodeType.Video && node.type !== CanvasNodeType.Audio) continue;
+        if (node.type !== CanvasNodeType.Image) continue;
         const resId = canvasNodeResourceId(node);
         if (!resId) continue;
         if (node.metadata?.isBatchRoot && node.metadata.primaryImageId && !node.metadata.assetId) {
@@ -143,7 +118,7 @@ export async function healCanvasProjectMediaAssets(
         let assetId = ensuredAssetIdByKey.get(ensureKey);
         if (!assetId) {
             if (!isScopeCurrent()) {
-                return { healed: false, current: false, nodes: project.nodes, timeline: project.timeline };
+                return { healed: false, current: false, nodes: project.nodes };
             }
             const result = await ensure({
                 canvasId: project.id,
@@ -157,16 +132,13 @@ export async function healCanvasProjectMediaAssets(
             if (result.assetId) {
                 assetId = result.assetId;
                 ensuredAssetIdByKey.set(ensureKey, assetId);
-                if (!fallbackAssetIdByResource.has(resId)) {
-                    fallbackAssetIdByResource.set(resId, assetId);
-                }
             }
         }
         if (assetId) {
             ensuredAssetIdByNodeId.set(node.id, assetId);
         }
         if (!isScopeCurrent()) {
-            return { healed: false, current: false, nodes: project.nodes, timeline: project.timeline };
+            return { healed: false, current: false, nodes: project.nodes };
         }
     }
 
@@ -181,60 +153,8 @@ export async function healCanvasProjectMediaAssets(
     if (batchPass.changed) nodesChanged = true;
     const healedNodes = batchPass.nodes;
 
-    let timelineChanged = false;
-    let healedTimeline = project.timeline;
-    if (project.timeline?.clips?.length) {
-        const nextClips = [...project.timeline.clips];
-        for (let index = 0; index < nextClips.length; index += 1) {
-            const clip = nextClips[index];
-            const media = clip.directMedia;
-            if (!media || media.kind === "text") continue;
-            const resId = extractOwnedResourceId(media.storageKey, media.url || media.dataUrl || media.content);
-            if (!resId) continue;
-            const declaredClipAsset = media.assetId ? assets.find((item) => item.id === media.assetId) : undefined;
-            const declaredClipResId = declaredClipAsset ? assetResourceId(declaredClipAsset) : "";
-            const declaredClipMismatch = Boolean(declaredClipResId && declaredClipResId !== resId);
-            const effectiveClipAssetId = declaredClipMismatch ? undefined : media.assetId;
-            const ensureKey = `${resId}::${effectiveClipAssetId || ""}`;
-            let assetId = ensuredAssetIdByKey.get(ensureKey) || (!effectiveClipAssetId ? fallbackAssetIdByResource.get(resId) : undefined);
-            if (!assetId) {
-                if (!isScopeCurrent()) {
-                    return { healed: false, current: false, nodes: project.nodes, timeline: project.timeline };
-                }
-                assertScopeActive();
-                const result = await ensure({
-                    canvasId: project.id,
-                    domainProjectId: project.projectId,
-                    node: timelineDirectMediaToNode({ ...media, assetId: effectiveClipAssetId }),
-                    source: "canvas-manual",
-                    signal: options.signal,
-                    expectedScope: options.expectedScope,
-                });
-                assertScopeActive();
-                if (result.assetId) {
-                    assetId = result.assetId;
-                    ensuredAssetIdByKey.set(ensureKey, assetId);
-                    if (!fallbackAssetIdByResource.has(resId)) {
-                        fallbackAssetIdByResource.set(resId, assetId);
-                    }
-                }
-                if (!isScopeCurrent()) {
-                    return { healed: false, current: false, nodes: project.nodes, timeline: project.timeline };
-                }
-            }
-            const nextAssetId = assetId || effectiveClipAssetId;
-            if (media.assetId !== nextAssetId) {
-                timelineChanged = true;
-                nextClips[index] = { ...clip, directMedia: { ...media, assetId: nextAssetId } };
-            }
-        }
-        if (timelineChanged) {
-            healedTimeline = { ...project.timeline, clips: nextClips };
-        }
-    }
-
     if (!isScopeCurrent()) {
-        return { healed: false, current: false, nodes: project.nodes, timeline: project.timeline };
+        return { healed: false, current: false, nodes: project.nodes };
     }
 
     const healedAssetIdByNodeId = new Map<string, string | undefined>();
@@ -247,11 +167,7 @@ export async function healCanvasProjectMediaAssets(
     }
 
     project.nodes = healedNodes;
-    if (timelineChanged && healedTimeline) project.timeline = healedTimeline;
-    useCanvasStore.getState().updateProject(project.id, {
-        nodes: healedNodes,
-        ...(timelineChanged && healedTimeline ? { timeline: healedTimeline } : {}),
-    });
+    useCanvasStore.getState().updateProject(project.id, { nodes: healedNodes });
 
     if (healedAssetIdByNodeId.size > 0) {
         const stampNodes = (current: CanvasNodeData[]) =>
@@ -265,10 +181,9 @@ export async function healCanvasProjectMediaAssets(
     }
 
     return {
-        healed: nodesChanged || healedAssetIdByNodeId.size > 0 || timelineChanged,
+        healed: nodesChanged || healedAssetIdByNodeId.size > 0,
         current: true,
         nodes: healedNodes,
-        timeline: healedTimeline,
     };
 }
 
@@ -311,7 +226,6 @@ export async function persistCanvasGenerationTarget(input: {
                     {
                         nodes: healed.nodes,
                         connections: project.connections,
-                        ...(healed.timeline ? { timeline: healed.timeline } : {}),
                     },
                     input.expectedScope,
                 );

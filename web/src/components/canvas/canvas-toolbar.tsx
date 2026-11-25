@@ -1,7 +1,6 @@
-import { hideAgentDirectorMcp } from "@/lib/release-flags";
 import { AnimatePresence, motion } from "motion/react";
 import { useEffect, useRef, useState, type MouseEvent as ReactMouseEvent, type ReactNode } from "react";
-import { Hand, MousePointer2, ScanFace } from "lucide-react";
+import { Hand, MousePointer2 } from "lucide-react";
 
 import { FloatingDock, type FloatingDockCommand } from "@/components/ui/aceternity/floating-dock";
 import { SpotlightSurface } from "@/components/ui/aceternity/spotlight-surface";
@@ -17,7 +16,7 @@ import type { CanvasAppearance } from "@/lib/canvas/canvas-appearance";
 import { canvasThemes, type CanvasBackgroundMode, type CanvasTheme } from "@/lib/canvas-theme";
 import { defaultToolbarPrefs, readToolbarPrefs, resolveToolbarEntries, type ToolContext, type ToolbarHandlers, type ToolbarPrefs } from "@/lib/canvas/tool-registry";
 import { useActiveTheme } from "@/stores/canvas/use-canvas-theme-store";
-import type { CanvasNodeTypeId, CanvasToolMode, CanvasWorkspaceMode } from "@/types/canvas";
+import type { CanvasToolMode, CanvasWorkspaceMode } from "@/types/canvas";
 
 export function CanvasToolbar({
     selectedCount,
@@ -32,17 +31,8 @@ export function CanvasToolbar({
     backgroundMode,
     showImageInfo,
     onAddImage,
-    onAddVideo,
-    onAddAudio,
     onAddText,
-    onChooseStyle,
-    onAddScript,
     onAddFrame,
-    onAddFolder,
-    onAddDrawing,
-    onAddExtensionNode,
-    onAddWorkflow,
-    onOpenDirector,
     onUndo,
     onRedo,
     onUpload,
@@ -58,7 +48,6 @@ export function CanvasToolbar({
     onShowConnectionsChange,
     onShowImageInfoChange,
     onOpenMyAssets,
-    onOpenProjectCharacters,
     onOpenGenerationHistory,
     shortcutRequestNonce,
 }: {
@@ -75,17 +64,8 @@ export function CanvasToolbar({
     backgroundMode: CanvasBackgroundMode;
     showImageInfo: boolean;
     onAddImage: () => void;
-    onAddVideo: () => void;
-    onAddAudio: () => void;
     onAddText: () => void;
-    onChooseStyle: () => void;
-    onAddScript: () => void;
     onAddFrame: () => void;
-    onAddFolder: () => void;
-    onAddDrawing: () => void;
-    onAddExtensionNode: (type: CanvasNodeTypeId) => void;
-    onAddWorkflow: () => void;
-    onOpenDirector: () => void;
     onUndo: () => void;
     onRedo: () => void;
     onUpload: () => void;
@@ -101,7 +81,6 @@ export function CanvasToolbar({
     onShowConnectionsChange: (visible: boolean) => void;
     onShowImageInfoChange: (show: boolean) => void;
     onOpenMyAssets: () => void;
-    onOpenProjectCharacters: () => void;
     onOpenGenerationHistory: () => void;
     shortcutRequestNonce: number;
 }) {
@@ -196,7 +175,8 @@ export function CanvasToolbar({
         return () => window.removeEventListener("keydown", handleToolShortcut);
     }, [onToolChange]);
 
-    // 构建 handlers（主工具栏只需要部分回调，其余用 no-op 占位满足类型）
+    // 构建 handlers；主工具栏只消费画布级命令，节点级命令由节点工具栏提供。
+    const noop = () => undefined;
     const handlers: ToolbarHandlers = {
         onToolChange,
         onDeselect,
@@ -205,19 +185,9 @@ export function CanvasToolbar({
         onClear,
         onAddText,
         onAddImage,
-        onAddVideo,
-        onAddAudio,
-        onAddScript,
         onAddFrame,
-        onAddFolder,
-        onAddDrawing,
-        onAddExtensionNode,
-        onAddWorkflow,
-        onChooseStyle,
-        onOpenDirector,
         onUpload,
         onOpenMyAssets,
-        onOpenProjectCharacters,
         onOpenGenerationHistory,
         onOpenShortcuts: () => setShortcutsOpen((value) => !value),
         onBackgroundModeChange,
@@ -226,28 +196,34 @@ export function CanvasToolbar({
         onToggleAppearancePanel: (event: ReactMouseEvent<HTMLElement>) => { placePanel(event); setShortcutsOpen(false); setAddOpen(false); setModeMenuOpen(false); setSettingsOpen(false); setAppearanceOpen((value) => !value); },
         onToggleSettingsPanel: () => { setShortcutsOpen(false); setAddOpen(false); setAppearanceOpen(false); setModeMenuOpen(false); setSettingsOpen((value) => !value); },
         onDeleteSelected: onDelete,
-        // 以下为多选/节点悬停工具栏回调，主工具栏不使用，用 no-op 占位
-        onAlign: () => {}, onArrange: () => {}, onCreateStoryboard: () => {}, onCreateReferenceGroup: () => {}, onBatchConnect: () => {}, onMergeVideos: () => {},
-        onNodeInfo: () => {}, onNodeDelete: () => {}, onNodeRetry: () => {}, onNodeEditText: () => {}, onNodeDecreaseFont: () => {}, onNodeIncreaseFont: () => {},
-        onNodeToggleDialog: () => {}, onNodeAnnotate: () => {}, onNodeGenerateImage: () => {}, onNodeUpload: () => {}, onNodeDownload: () => {}, onNodeSaveAsset: () => {},
-        onNodeMaskEdit: () => {}, onNodeEmotion: () => {}, onNodePortraitTexture: () => {}, onNodeCrop: () => {}, onNodeSplit: () => {}, onNodeUpscale: () => {},
-        onNodeSuperResolve: () => {}, onNodeAngle: () => {}, onNodeViewImage: () => {}, onNodeExtractVideoFrames: () => {}, onNodeExtractAudioFromVideo: () => {}, onNodeTrimVideoSegments: () => {}, onNodeCropVideo: () => {}, onNodeDepthCapture: () => {}, onNodeSubtitles: () => {}, onNodeTimeline: () => {}, onNodeReversePrompt: () => {},
-        onNodeToggleFreeResize: () => {}, onNodeToggleLocked: () => {}, onNodeCopyPrompt: () => {},
-    } as ToolbarHandlers;
+        onDuplicateSelected: noop,
+        onAlign: noop,
+        onArrange: noop,
+        onCreateReferenceGroup: noop,
+        onBatchConnect: noop,
+        onNodeInfo: noop,
+        onNodeDelete: noop,
+        onNodeDuplicate: noop,
+        onNodeRetry: noop,
+        onNodeEditText: noop,
+        onNodeDecreaseFont: noop,
+        onNodeIncreaseFont: noop,
+        onNodeToggleDialog: noop,
+        onNodeGenerateImage: noop,
+        onNodeUpload: noop,
+        onNodeDownload: noop,
+        onNodeSaveAsset: noop,
+        onNodeToggleLocked: noop,
+    };
 
     const ctx: ToolContext = {
         selectedCount,
         selectedNodeTypes: new Set(),
-        selectedVideoCount: 0,
         canvasTool,
         workspaceMode,
         isProjectLinked,
         canUndo,
         canRedo,
-        extractingVideoFrames: false,
-        extractingAudio: false,
-        trimmingVideo: false,
-        mergingVideos: false,
         addPanelOpen: addOpen,
         appearancePanelOpen: appearanceOpen,
         settingsPanelOpen: settingsOpen,
@@ -278,17 +254,7 @@ export function CanvasToolbar({
                 setShortcutsOpen((value) => !value);
             },
         } : item);
-    const items = [
-        ...mainItemsWithCanvasMode,
-        ...(libtvChrome ? [
-            {
-                id: "tool-portrait-studio",
-                label: "人像造型室",
-                icon: <ScanFace />,
-                onClick: onOpenProjectCharacters,
-            },
-        ] : []),
-    ];
+    const items = [...mainItemsWithCanvasMode];
 
     // 中央空白起点与主工具栏共用同一份命令解析，避免素材类型和插件节点逐渐分叉。
     const createCommands = useCanvasCreateCommands(ctx, runAddAction);
@@ -334,12 +300,6 @@ export function CanvasToolbar({
                 className="canvas-floating-dock libtv-main-dock pointer-events-auto max-w-full"
                 style={canvasDockStyle(theme)}
             />
-            {libtvChrome && !hideAgentDirectorMcp() ? (
-                <button type="button" className="canvas-libtv-director-entry pointer-events-auto" onClick={onOpenDirector} aria-label="TV Director">
-                    <span className="canvas-libtv-director-orb" aria-hidden="true" />
-                    <span>TV Director</span>
-                </button>
-            ) : null}
 
             <ToolbarSettingsModal open={settingsOpen} onClose={() => setSettingsOpen(false)} toolbar="main" />
         </div>

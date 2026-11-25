@@ -37,7 +37,7 @@ func externalBusiness(c *gin.Context) (externalBusinessPrincipal, bool) {
 }
 
 func businessPathAllowed(p string) bool {
-	for _, prefix := range []string{"/assets", "/asset-folders", "/resources", "/canvas-projects", "/canvas-folders", "/projects", "/project-folders", "/voice-profiles", "/style-profiles", "/tasks", "/timeline", "/depth-captures", "/creation-runs", "/creation-conversations", "/skills", "/plugins", "/runninghub", "/settings/prompt-templates"} {
+	for _, prefix := range []string{"/assets", "/asset-folders", "/resources", "/canvas-projects", "/canvas-folders", "/projects", "/project-folders", "/style-profiles", "/tasks", "/skills", "/plugins", "/runninghub", "/settings/prompt-templates"} {
 		if p == prefix || strings.HasPrefix(p, prefix+"/") {
 			return true
 		}
@@ -52,7 +52,7 @@ func NewBusinessCatalog(routes gin.RoutesInfo) *BusinessCatalog {
 		if !strings.HasPrefix(route.Path, "/api/") || !businessPathAllowed(p) {
 			continue
 		}
-		readOnly := route.Method == http.MethodGet || p == "/timeline/render-plan"
+		readOnly := route.Method == http.MethodGet
 		properties := map[string]any{"path": map[string]any{"type": "object", "additionalProperties": map[string]any{"type": "string"}}, "query": map[string]any{"type": "object", "additionalProperties": map[string]any{"type": "string"}}, "body": map[string]any{"type": "object", "additionalProperties": true}}
 		pathProperties := map[string]any{}
 		required := []string{}
@@ -74,7 +74,7 @@ func NewBusinessCatalog(routes gin.RoutesInfo) *BusinessCatalog {
 	enrichBusinessSchemas(c)
 	for i := range c.Tools {
 		t := &c.Tools[i]
-		if t.Method == "POST" && (t.Path == "/tasks" || t.Path == "/tasks/:id/retry" || t.Path == "/creation-runs/:id/execute") {
+		if t.Method == "POST" && (t.Path == "/tasks" || t.Path == "/tasks/:id/retry") {
 			t.SubmitsGeneration = true
 			t.Cost = "selected-channel"
 			t.Summary += "；提交生成，按所选渠道计费，由外部调用方审批"

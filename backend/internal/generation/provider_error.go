@@ -37,6 +37,7 @@ const (
 	CategoryConcurrency         FailureCategory = "concurrency"
 	CategoryProviderUnavailable FailureCategory = "provider_unavailable"
 	CategoryNetwork             FailureCategory = "network"
+	CategoryRequestNotSent      FailureCategory = "request_not_sent"
 	CategoryTimeout             FailureCategory = "timeout"
 	CategorySubmissionUncertain FailureCategory = "submission_uncertain"
 	CategoryAsyncFailed         FailureCategory = "async_failed"
@@ -99,6 +100,7 @@ var categoryCopies = map[FailureCategory]categoryCopy{
 	CategoryConcurrency:         {Reason: "同时进行的生成过多", Action: "请等待已有任务完成后再试"},
 	CategoryProviderUnavailable: {Reason: "模型服务暂时不可用", Action: "请稍后重试"},
 	CategoryNetwork:             {Reason: "网络连接失败", Action: "请检查网络并核对原任务状态后，再决定是否重新生成"},
+	CategoryRequestNotSent:      {Reason: "请求尚未发送到模型服务", Action: "可安全重试，不会重复扣费"},
 	CategoryTimeout:             {Reason: "模型服务响应超时", Action: "请稍后查询原任务，不要立即重新提交"},
 	CategorySubmissionUncertain: {Reason: "提交结果尚未确认，上游任务可能仍在执行", Action: "请先查询原任务状态，不要立即重新提交"},
 	CategoryAsyncFailed:         {Reason: "生成任务没有完成", Action: "请查看详情后决定是否重试"},
@@ -296,7 +298,7 @@ func (f Failure) BlocksAutomaticRetry() bool {
 		return true
 	}
 	switch f.Category {
-	case CategoryThrottled, CategoryConcurrency, CategoryProviderUnavailable, CategoryCancelled:
+	case CategoryThrottled, CategoryConcurrency, CategoryProviderUnavailable, CategoryCancelled, CategoryRequestNotSent:
 		return false
 	default:
 		return true
@@ -419,8 +421,16 @@ func ClassifyError(err error) Failure {
 	if err == nil {
 		return normalizeFailure(Failure{Category: CategoryUnknown})
 	}
+	var unknown SubmissionUnknownError
+	if errors.As(err, &unknown) {
+		return normalizeFailure(Failure{Category: CategorySubmissionUncertain, Uncertain: true, Retryable: false})
+	}
 	if errors.Is(err, context.Canceled) {
 		return normalizeFailure(Failure{Category: CategoryCancelled})
+	}
+	var notSent RequestNotSentError
+	if errors.As(err, &notSent) {
+		return normalizeFailure(Failure{Category: CategoryRequestNotSent, Retryable: true})
 	}
 	var preparation RequestPreparationError
 	if errors.As(err, &preparation) {
@@ -445,10 +455,6 @@ func ClassifyError(err error) Failure {
 			failure.Action = ""
 		}
 		return normalizeFailure(failure)
-	}
-	var unknown SubmissionUnknownError
-	if errors.As(err, &unknown) {
-		return normalizeFailure(Failure{Category: CategorySubmissionUncertain, Uncertain: true, Retryable: false})
 	}
 	var pending StatePendingError
 	if errors.As(err, &pending) {
@@ -490,10 +496,6 @@ func ClassifyText(raw string) Failure {
 		f.RequestID, f.TaskID = persistedReferenceIDs(text)
 		return normalizeFailure(f)
 	}
-	if copy, ok := referenceDurationCopy(text); ok {
-		requestID, taskID := persistedReferenceIDs(text)
-		return normalizeFailure(Failure{Category: CategoryInvalidParams, Reason: copy.Reason, Action: copy.Action, RequestID: requestID, TaskID: taskID})
-	}
 	if copy, ok := referenceMediaConstraintCopy(text); ok {
 		requestID, taskID := persistedReferenceIDs(text)
 		category := CategoryInvalidParams
@@ -520,13 +522,6 @@ func ClassifyText(raw string) Failure {
 	if fields.hasStructured() {
 		if strings.Contains(fields.Message, "暂无可用渠道") || strings.Contains(fields.Message, "无可用渠道") {
 			return normalizeFailure(Failure{Category: CategoryProviderUnavailable, Structured: true, ProviderCode: sanitizeProviderCode(fields.Code), ProviderMessage: sanitizeProviderText(fields.Message), RequestID: fields.RequestID})
-		}
-		if strings.EqualFold(fields.Code, "invalid_reference_audio") {
-			copy, _ := referenceAudioCopy(fields.Message, true)
-			return normalizeFailure(Failure{Category: CategoryInvalidParams, Reason: copy.Reason, Action: copy.Action, RequestID: fields.RequestID, TaskID: fields.TaskID, ProviderCode: fields.Code, Structured: true, FromCode: true})
-		}
-		if copy, ok := referenceDurationCopy(fields.Message); ok {
-			return normalizeFailure(Failure{Category: CategoryInvalidParams, Reason: copy.Reason, Action: copy.Action, RequestID: fields.RequestID, TaskID: fields.TaskID})
 		}
 		failure.Structured = true
 		failure.ProviderCode = sanitizeProviderCode(fields.Code)
@@ -1032,22 +1027,6 @@ func specializeThinkingToolChoice(failure *Failure, fields extractedFields) {
 	}
 }
 
-func referenceDurationCopy(text string) (categoryCopy, bool) {
-	if copy, ok := referenceAudioCopy(text, false); ok {
-		return copy, true
-	}
-	if m := regexp.MustCompile(`^第 (\d+) 段参考(音频|视频)时长为 (\d+(?:\.\d+)?) 秒[，。]需要 (\d+(?:\.\d+)?)–(\d+(?:\.\d+)?) 秒`).FindStringSubmatch(text); len(m) == 6 {
-		return categoryCopy{Reason: fmt.Sprintf("第 %s 段参考%s时长为 %s 秒", m[1], m[2], m[3]), Action: fmt.Sprintf("需要 %s–%s 秒；请裁剪或更换这段素材后再提交", m[4], m[5])}, true
-	}
-	if m := regexp.MustCompile(`^第 (\d+) 段参考(音频|视频)的时长无法读取`).FindStringSubmatch(text); len(m) == 3 {
-		return categoryCopy{Reason: fmt.Sprintf("第 %s 段参考%s的时长无法读取", m[1], m[2]), Action: "请重新导入素材后再提交"}, true
-	}
-	if m := regexp.MustCompile(`^参考素材时长不符合模型要求。请检查每段参考音频和视频，将不符合要求的素材调整为 (\d+(?:\.\d+)?)–(\d+(?:\.\d+)?) 秒`).FindStringSubmatch(text); len(m) == 3 {
-		return categoryCopy{Reason: "参考素材时长不符合模型要求", Action: fmt.Sprintf("请检查每段参考音频和视频，将不符合要求的素材调整为 %s–%s 秒后重新提交", m[1], m[2])}, true
-	}
-	return categoryCopy{}, false
-}
-
 func specializeMediaConstraints(failure *Failure, fields extractedFields) {
 	if failure.Category != CategoryUnknown && failure.Category != CategoryInvalidParams && failure.Category != CategoryInputTooLarge && failure.Category != CategoryInputInaccessible {
 		return
@@ -1421,7 +1400,7 @@ func sanitizeProviderText(value string) string {
 
 func applyRetryable(failure *Failure) {
 	switch failure.Category {
-	case CategoryThrottled, CategoryProviderUnavailable, CategoryNetwork, CategoryTimeout, CategoryConcurrency:
+	case CategoryThrottled, CategoryProviderUnavailable, CategoryNetwork, CategoryTimeout, CategoryConcurrency, CategoryRequestNotSent:
 		failure.Retryable = !failure.Uncertain
 	default:
 		failure.Retryable = false

@@ -368,7 +368,7 @@ func TestCanonicalCategoriesRoundTripAndRetryPolicy(t *testing.T) {
 		generation.CategoryInvalidParams, generation.CategoryContextTooLong,
 		generation.CategoryInputInaccessible, generation.CategoryInputTooLarge, generation.CategoryModelMissing,
 		generation.CategoryThrottled, generation.CategoryConcurrency, generation.CategoryProviderUnavailable,
-		generation.CategoryNetwork, generation.CategoryTimeout, generation.CategorySubmissionUncertain,
+		generation.CategoryNetwork, generation.CategoryRequestNotSent, generation.CategoryTimeout, generation.CategorySubmissionUncertain,
 		generation.CategoryAsyncFailed, generation.CategoryCancelled, generation.CategoryPartialSuccess,
 		generation.CategoryDownloadFailed, generation.CategoryResultsMissing,
 		generation.CategoryMalformedResponse, generation.CategoryUnknown,
@@ -384,7 +384,7 @@ func TestCanonicalCategoriesRoundTripAndRetryPolicy(t *testing.T) {
 			if persisted.Category != category {
 				t.Errorf("persisted category = %s, want %s", persisted.Category, category)
 			}
-			allowAutomaticRetry := category == generation.CategoryThrottled || category == generation.CategoryConcurrency || category == generation.CategoryProviderUnavailable || category == generation.CategoryCancelled
+			allowAutomaticRetry := category == generation.CategoryThrottled || category == generation.CategoryConcurrency || category == generation.CategoryProviderUnavailable || category == generation.CategoryCancelled || category == generation.CategoryRequestNotSent
 			if coded.BlocksAutomaticRetry() == allowAutomaticRetry {
 				t.Errorf("automatic retry block = %v, allowed = %v", coded.BlocksAutomaticRetry(), allowAutomaticRetry)
 			}
@@ -475,10 +475,7 @@ func TestReferenceDurationAdviceSurvivesPersistence(t *testing.T) {
 	for _, text := range []string{
 		`{"error":{"code":"400","message":"素材转换失败: Height must be between 300px and 6000px."}}`,
 		`{"error":{"code":"400","message":"aspect ratio must be between 0.4 and 2.5"}}`,
-		"第 1 段参考音频时长为 16.00 秒，需要 不超过 15 秒；请裁剪或更换这段素材后再提交",
 		"第 1 张参考图高度为 216 像素，需要 至少 300 像素；请调整尺寸或更换后再提交",
-		"第 2 段参考音频时长为 0.90 秒，需要 2–30 秒；请裁剪或更换这段素材后再提交",
-		"参考素材时长不符合模型要求。请检查每段参考音频和视频，将不符合要求的素材调整为 1.8–30.2 秒后重新提交。",
 	} {
 		failure := generation.ClassifyText(text)
 		reloaded := generation.ClassifyText(failure.UserMessage())
@@ -508,30 +505,8 @@ func TestWholeRequestTooLargeIsNotASingleFileAdvice(t *testing.T) {
 	}
 }
 
-func TestGatewayVideoPreflightErrorFixture(t *testing.T) {
-	data, err := os.ReadFile("../../../web/test/fixtures/reference-video-errors.json")
-	if err != nil {
-		t.Fatal(err)
-	}
-	var cases []struct{ Message, Reason, Action string }
-	if err = json.Unmarshal(data, &cases); err != nil {
-		t.Fatal(err)
-	}
-	for _, item := range cases {
-		body, _ := json.Marshal(map[string]any{"error": map[string]string{"code": "invalid_reference_video", "message": item.Message}})
-		failure := generation.ClassifyText(string(body))
-		if !strings.Contains(failure.Reason, item.Reason) || !strings.Contains(failure.Action, item.Action) {
-			t.Fatalf("lost guidance for %s: %+v", item.Message, failure)
-		}
-		persisted := generation.ClassifyText(failure.UserMessage())
-		if !strings.Contains(persisted.UserMessage(), item.Action) {
-			t.Fatalf("lost persisted guidance: %+v", persisted)
-		}
-	}
-}
-
 func TestReferencePixelDiagnosticIDIsNotDuplicated(t *testing.T) {
-	input := "第 1 个参考视频像素总量为 331776（432×768）。需要 407696–8295044 像素；请调整尺寸。排查编号：请求 202609290516575609492488268d9d6HqaXq7bq。"
+	input := "第 1 张参考图像素总量为 331776（432×768）。需要 407696–8295044 像素；请调整尺寸。排查编号：请求 202609290516575609492488268d9d6HqaXq7bq。"
 	failure := generation.ClassifyText(input)
 	if strings.Count(failure.UserMessage(), "202609290516575609492488268d9d6HqaXq7bq") != 1 {
 		t.Fatalf("duplicate ID: %s", failure.UserMessage())

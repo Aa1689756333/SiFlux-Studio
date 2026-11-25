@@ -1,12 +1,8 @@
 import { NODE_DEFAULT_SIZE } from "@/constant/canvas";
-import { seedanceOutputWarning } from "@/lib/seedance-output-warning";
-import { fitNodeSize, nodeSizeFromRatio, VIDEO_NODE_MAX_SIZE } from "@/lib/canvas/canvas-node-size";
+import { fitNodeSize, nodeSizeFromRatio } from "@/lib/canvas/canvas-node-size";
 import { compositeEmotionImage } from "@/lib/canvas/canvas-emotion";
-import { storeGeneratedAudio } from "@/services/api/audio";
-import { storeGeneratedVideo } from "@/services/api/video";
 import { parseBackendGenerationResult } from "@/services/api/generation-task";
 import type { GenerationTask, GenerationTaskOutput } from "@/services/api/task-center";
-import { resolveMediaUrl, type UploadedFile } from "@/services/file-storage";
 import { resolveImageUrl, uploadImage, type UploadedImage } from "@/services/image-storage";
 import { ownedResourceIdFromMediaRef, resourceStorageKey } from "@/services/api/resources";
 import { useCanvasStore } from "@/stores/canvas/use-canvas-store";
@@ -31,17 +27,14 @@ export function generationTaskNodeId(task: GenerationTask) {
 
 export function generationTaskMode(task: GenerationTask, fallback?: CanvasGenerationMode): CanvasGenerationMode {
     const inputMode = generationTaskInput(task)?.mode;
-    if (inputMode === "text" || inputMode === "image" || inputMode === "video" || inputMode === "audio") return inputMode;
+    if (inputMode === "text" || inputMode === "image") return inputMode;
     if (task.type === "canvas_text") return "text";
-    if (task.type === "canvas_video") return "video";
-    if (task.type === "canvas_audio") return "audio";
     if (task.type === "canvas_image") return "image";
     return fallback || "image";
 }
 
 export function generationTaskCanReloadResource(task: GenerationTask) {
-    const mode = generationTaskMode(task);
-    return task.status === "succeeded" && (mode === "image" || mode === "video" || mode === "audio") && (Boolean(task.resultJson) || Boolean(task.outputs?.length));
+    return task.status === "succeeded" && generationTaskMode(task) === "image" && (Boolean(task.resultJson) || Boolean(task.outputs?.length));
 }
 
 export function imageMetadata(image: UploadedImage): CanvasNodeMetadata {
@@ -60,53 +53,11 @@ export function imageMetadata(image: UploadedImage): CanvasNodeMetadata {
     };
 }
 
-export function videoMetadata(video: UploadedFile): CanvasNodeMetadata {
-    return {
-        outputParameterWarning: undefined,
-        content: video.url,
-        storageKey: video.storageKey,
-        status: "success",
-        naturalWidth: video.width,
-        naturalHeight: video.height,
-        bytes: video.bytes,
-        mimeType: video.mimeType || "video/mp4",
-        durationMs: video.durationMs,
-        hasAudio: video.hasAudio,
-        videoPreview: video.preview ? {
-            content: video.preview.url,
-            storageKey: video.preview.storageKey,
-            width: video.preview.width,
-            height: video.preview.height,
-            bytes: video.preview.bytes,
-            mimeType: video.preview.mimeType,
-        } : undefined,
-        errorDetails: undefined,
-        generationErrorCode: undefined,
-        resourceReloadAvailable: undefined,
-        failedPromptFingerprint: undefined,
-    };
-}
-
 export function reuseGeneratedMediaStorageKey(storageKey?: string, url?: string) {
     const existing = storageKey?.trim();
     if (existing) return existing;
     const resourceId = ownedResourceIdFromMediaRef(undefined, url);
     return resourceId ? resourceStorageKey(resourceId) : "";
-}
-
-export function audioMetadata(audio: UploadedFile): CanvasNodeMetadata {
-    return {
-        content: audio.url,
-        storageKey: audio.storageKey,
-        status: "success",
-        bytes: audio.bytes,
-        mimeType: audio.mimeType || "audio/mpeg",
-        durationMs: audio.durationMs,
-        errorDetails: undefined,
-        generationErrorCode: undefined,
-        resourceReloadAvailable: undefined,
-        failedPromptFingerprint: undefined,
-    };
 }
 
 function workflowMetadataForResultNode(): Partial<CanvasNodeMetadata> {
@@ -135,23 +86,15 @@ export function applyGeneratedMediaResultMetadata(node: CanvasNodeData, media: C
 export type GenerationResultMediaIO = {
     resolveImageUrl: typeof resolveImageUrl;
     uploadImage: typeof uploadImage;
-    resolveMediaUrl: typeof resolveMediaUrl;
-    storeGeneratedVideo: typeof storeGeneratedVideo;
-    storeGeneratedAudio: typeof storeGeneratedAudio;
-    fetchBlob: (url: string) => Promise<Blob>;
 };
 
 const defaultGenerationResultMediaIO: GenerationResultMediaIO = {
     resolveImageUrl,
     uploadImage,
-    resolveMediaUrl,
-    storeGeneratedVideo,
-    storeGeneratedAudio,
-    fetchBlob: async (url) => (await fetch(url)).blob(),
 };
 
 export async function buildGenerationTaskNodeResult(node: CanvasNodeData, task: GenerationTask, nodes: CanvasNodeData[] = [node], mediaIO: GenerationResultMediaIO = defaultGenerationResultMediaIO): Promise<CanvasNodeData> {
-    const mode = generationTaskMode(task, node.type === CanvasNodeType.Text ? "text" : node.type === CanvasNodeType.Video ? "video" : node.type === CanvasNodeType.Audio ? "audio" : "image");
+    const mode = generationTaskMode(task, node.type === CanvasNodeType.Text ? "text" : "image");
     const prompt = node.metadata?.prompt || task.prompt;
     const result = parseBackendGenerationResult(task);
 
@@ -192,47 +135,6 @@ export async function buildGenerationTaskNodeResult(node: CanvasNodeData, task: 
             position: { x: node.position.x + node.width / 2 - imageSize.width / 2, y: node.position.y + node.height / 2 - imageSize.height / 2 },
             metadata: applyGeneratedMediaResultMetadata(node, imageMetadata(normalizedImage), { prompt, ...completedTaskMetadata(task) }),
         };
-    }
-
-    if (mode === "video") {
-        const videoSource = result.video?.dataUrl || result.video?.url || "";
-        const reuseVideoKey = reuseGeneratedMediaStorageKey(result.video?.storageKey, videoSource);
-        if (!videoSource && !reuseVideoKey) throw new Error("后端任务没有返回视频");
-        const video = reuseVideoKey
-            ? {
-                  url: await mediaIO.resolveMediaUrl(reuseVideoKey, videoSource),
-                  storageKey: reuseVideoKey,
-                  width: result.video?.width,
-                  height: result.video?.height,
-                  durationMs: result.video?.durationMs,
-                  bytes: result.video?.bytes || 0,
-                  mimeType: result.video?.mimeType || "video/mp4",
-              }
-            : await mediaIO.storeGeneratedVideo({ url: videoSource, mimeType: result.video?.mimeType || "video/mp4" });
-        const videoSize = fitNodeSize(video.width || node.width || VIDEO_NODE_MAX_SIZE.width, video.height || node.height || VIDEO_NODE_MAX_SIZE.height, VIDEO_NODE_MAX_SIZE.width, VIDEO_NODE_MAX_SIZE.height);
-        const geometry = node.metadata?.locked
-            ? {}
-            : {
-                  width: videoSize.width,
-                  height: videoSize.height,
-                  position: { x: node.position.x + node.width / 2 - videoSize.width / 2, y: node.position.y + node.height / 2 - videoSize.height / 2 },
-              };
-        return {
-            ...node,
-            type: CanvasNodeType.Video,
-            ...geometry,
-            metadata: applyGeneratedMediaResultMetadata(node, { ...videoMetadata(video), outputParameterWarning: seedanceOutputWarning(task.inputJson, video.width, video.height, task.model) }, { prompt, ...completedTaskMetadata(task) }),
-        };
-    }
-
-    if (mode === "audio") {
-        const audioSource = result.audio?.dataUrl || result.audio?.url || "";
-        const reuseAudioKey = reuseGeneratedMediaStorageKey(result.audio?.storageKey, audioSource);
-        if (!audioSource && !reuseAudioKey) throw new Error("后端任务没有返回音频");
-        const audio = reuseAudioKey
-            ? { url: await mediaIO.resolveMediaUrl(reuseAudioKey, audioSource), storageKey: reuseAudioKey, durationMs: result.audio?.durationMs, bytes: result.audio?.bytes || 0, mimeType: result.audio?.mimeType || "audio/mpeg" }
-            : await mediaIO.storeGeneratedAudio(await mediaIO.fetchBlob(audioSource), result.audio?.format || "mp3");
-        return { ...node, type: CanvasNodeType.Audio, metadata: applyGeneratedMediaResultMetadata(node, audioMetadata(audio), { prompt, ...completedTaskMetadata(task) }) };
     }
 
     if (!result.text) throw new Error("后端任务没有返回文本");
@@ -279,24 +181,17 @@ export async function applyMaterializedGenerationTaskResultToNodes(nodes: Canvas
     const asset = useAssetStore.getState().assets.find((candidate) => candidate.id === output.materializedAssetId);
     if (!asset) throw new Error("生成任务输出素材不存在");
     const result = parseBackendGenerationResult(task);
-    if (asset.kind === "image") {
-        const images = [...(result.images || [])];
-        images[output.outputIndex] = {
-            dataUrl: asset.data.dataUrl || asset.coverUrl,
-            storageKey: asset.data.storageKey,
-            width: asset.data.width,
-            height: asset.data.height,
-            bytes: asset.data.bytes,
-            mimeType: asset.data.mimeType,
-        };
-        result.images = images;
-    } else if (asset.kind === "video") {
-        result.video = { dataUrl: asset.data.url, ...asset.data };
-    } else if (asset.kind === "audio") {
-        result.audio = { dataUrl: asset.data.url, ...asset.data };
-    } else {
-        throw new Error("生成任务输出素材类型不支持画布节点");
-    }
+    if (asset.kind !== "image") throw new Error("生成任务输出素材类型不支持画布节点");
+    const images = [...(result.images || [])];
+    images[output.outputIndex] = {
+        dataUrl: asset.data.dataUrl || asset.coverUrl,
+        storageKey: asset.data.storageKey,
+        width: asset.data.width,
+        height: asset.data.height,
+        bytes: asset.data.bytes,
+        mimeType: asset.data.mimeType,
+    };
+    result.images = images;
     const updatedNode = await buildGenerationTaskNodeResult(node, { ...task, resultJson: JSON.stringify(result) }, nodes);
     const durableNode = {
         ...updatedNode,

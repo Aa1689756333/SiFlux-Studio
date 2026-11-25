@@ -164,7 +164,7 @@ export function Minimap({ nodes, viewport, viewportSize, canvasContainerRef, onV
                 {displayNodes.map((node) => {
                     const pos = toMinimap(node.position.x, node.position.y);
                     const frame = isFrameNode(node);
-                    const color = node.type === CanvasNodeType.Image ? "#10b981" : node.type === CanvasNodeType.Video ? "#f97316" : node.type === CanvasNodeType.Audio ? "#a855f7" : node.type === CanvasNodeType.Config ? "#60a5fa" : node.type === CanvasNodeType.Skill ? "#818cf8" : frame ? theme.frame.stroke : theme.node.muted;
+                    const color = node.type === CanvasNodeType.Image ? "#10b981" : node.type === CanvasNodeType.Config ? "#60a5fa" : frame ? theme.frame.stroke : theme.node.muted;
                     const imagePreviewSource = showImagePreviews && node.type === CanvasNodeType.Image ? getImagePreviewSource(node) : "";
                     const nodeLabel = node.title?.trim() || getNodeLabel(node.type);
                     return (

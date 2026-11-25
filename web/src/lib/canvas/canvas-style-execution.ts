@@ -9,7 +9,7 @@ export type CanvasStyleExecutionRuntime = {
     prompt: string;
 };
 
-export function resolveCanvasStyleExecution(nodes: CanvasNodeData[], sourceNode: CanvasNodeData | undefined, prompt: string, config: AiConfig, mode: "image" | "video"): CanvasStyleExecutionRuntime | null {
+export function resolveCanvasStyleExecution(nodes: CanvasNodeData[], sourceNode: CanvasNodeData | undefined, prompt: string, config: AiConfig, mode: "image"): CanvasStyleExecutionRuntime | null {
     const styleNode = nodes.find((node) => node.metadata?.workflowKind === "styleboard");
     if (!styleNode || sourceNode?.metadata?.workflowKind === "styleboard") return null;
     const profile = parseStyleProfile(styleNode.metadata?.styleProfileJson) || legacyStyleNodeProfile(styleNode);

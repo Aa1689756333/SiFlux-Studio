@@ -57,8 +57,8 @@ async function renderGradedBlob(url: string, grade: CanvasColorGrade) {
 }
 
 /**
- * 把调色节点的参考图落地成真实资源——照 resolveCanvasDrawingReference 的做法：
- * 本地渲染 → 上传 → 换成 storageKey/url，让下游按普通图片消费。
+ * 把调色节点的参考图落地成真实资源：本地渲染 → 上传 → 换成 storageKey/url，
+ * 让下游按普通图片消费。
  *
  * 只在生成真正要用它时才调用（见 canvas-node-generation），所以拖滑杆调参数不会产生上传。
  */

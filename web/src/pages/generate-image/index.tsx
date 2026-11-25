@@ -9,6 +9,7 @@ import { ImageSizePicker } from "@/components/image-size-picker";
 import { ModelPicker } from "@/components/model-picker";
 import { WorkspacePage } from "@/components/layout/workspace-page";
 import { canvasImageReferenceLimitError } from "@/lib/canvas/canvas-project-generation";
+import { generationDeliveryProgressView } from "@/lib/generation-delivery-progress";
 import { explainGenerationError, shouldBlockAutomaticRetry } from "@/lib/generation-error";
 import { mergedImageCapabilityConfig } from "@/lib/model-selection";
 import { creationAttachmentsFromReferences, persistableMediaReferences } from "@/lib/standalone-generation-reference";
@@ -16,8 +17,9 @@ import { assertUserScope, captureUserScope, userScopeMatches } from "@/lib/user-
 import { uploadImage } from "@/services/image-storage";
 import { resolveResourceUrl } from "@/services/api/resources";
 import { ASSET_CATEGORY_LABELS } from "@/lib/asset-category";
-import { creationAttachmentFromAsset, creationAttachmentFromImage, creationFileAccepted, creationImageAsset, removeCreationAttachment, type CreationAttachment } from "@/pages/create/creation-assets";
+import { acceptedImageFile, creationAttachmentFromAsset, creationAttachmentFromImage, creationImageAsset, removeCreationAttachment, type GenerationAttachment } from "@/lib/generation-attachments";
 import { useAssetStore, type ImageAsset } from "@/stores/use-asset-store";
+import { useGenerationDeliveryProgress } from "@/stores/use-generation-delivery-progress";
 import { selectableModelsByCapability, useConfigStore, useEffectiveConfig } from "@/stores/use-config-store";
 import type { ReferenceImage } from "@/types/image";
 
@@ -41,9 +43,9 @@ function jobSummary(job: ImageGenerationJob) {
     return `${statusLabel} · ${new Date(job.createdAt).toLocaleString("zh-CN", { month: "2-digit", day: "2-digit", hour: "2-digit", minute: "2-digit" })}`;
 }
 
-function attachmentToReferenceImage(attachment: CreationAttachment): ReferenceImage | null {
+function attachmentToReferenceImage(attachment: GenerationAttachment): ReferenceImage | null {
     if (!attachment.type.startsWith("image/")) return null;
-    const dataUrl = "dataUrl" in attachment ? attachment.dataUrl : attachment.url || attachment.previewUrl || "";
+    const dataUrl = attachment.dataUrl || attachment.url || attachment.previewUrl || "";
     if (!dataUrl && !attachment.storageKey) return null;
     return {
         id: attachment.id,
@@ -53,8 +55,8 @@ function attachmentToReferenceImage(attachment: CreationAttachment): ReferenceIm
         url: attachment.url,
         storageKey: attachment.storageKey,
         bytes: attachment.bytes,
-        width: "width" in attachment ? attachment.width : undefined,
-        height: "height" in attachment ? attachment.height : undefined,
+        width: attachment.width,
+        height: attachment.height,
     };
 }
 
@@ -84,7 +86,7 @@ export default function GenerateImagePage() {
     const [ratio, setRatio] = useState(imageProfile.size.default || "1:1");
     const [quality, setQuality] = useState(imageProfile.quality.default || "auto");
     const [count, setCount] = useState("1");
-    const [attachments, setAttachments] = useState<CreationAttachment[]>([]);
+    const [attachments, setAttachments] = useState<GenerationAttachment[]>([]);
     const snapshot = useSyncExternalStore(subscribeStandaloneImage, getStandaloneImageSnapshot, getStandaloneImageSnapshot);
     const jobs = snapshot.jobs;
     const [activeId, setActiveId] = useState("");
@@ -94,6 +96,9 @@ export default function GenerateImagePage() {
 
     const activeJob = jobs.find((job) => job.id === activeId) || jobs[0];
     const live = Boolean(activeJob && snapshot.liveIds.includes(activeJob.id));
+    const deliveryTaskId = activeJob?.taskIds[0];
+    const deliveryProgress = useGenerationDeliveryProgress((state) => (deliveryTaskId ? state.byTask[deliveryTaskId] : undefined));
+    const delivery = deliveryProgress ? generationDeliveryProgressView(deliveryProgress) : null;
     const maxReferences = imageProfile.references.maxImages ?? 14;
     const referenceImages = attachments.flatMap((attachment) => {
         const image = attachmentToReferenceImage(attachment);
@@ -176,7 +181,7 @@ export default function GenerateImagePage() {
 
     const addFiles = async (files: FileList | File[]) => {
         const expectedScope = captureUserScope();
-        const images = Array.from(files).filter((file) => creationFileAccepted("image", file));
+        const images = Array.from(files).filter((file) => acceptedImageFile(file));
         if (!images.length) return;
         try {
             for (const file of images) {
@@ -209,13 +214,15 @@ export default function GenerateImagePage() {
                 </header>
                 <div className="siflux-image-gen-body">
                     <section className="siflux-image-gen-results" aria-label="生成结果">
-                        {activeJob?.status === "running" ? <p className="siflux-image-gen-status">正在生成，离开本页后仍会继续。</p> : null}
+                        {activeJob?.status === "running" ? <p className="siflux-image-gen-status">{delivery ? `${delivery.title}${delivery.percent != null ? ` ${delivery.percent}%` : ""} · ${delivery.detail}` : "正在生成，离开本页后仍会继续。"}</p> : null}
                         {activeJob?.error ? (
                             <div className="siflux-image-gen-error">
                                 <GenerationFailureNotice
                                     explanation={explainGenerationError(activeJob.error, { taskId: activeJob.taskIds[0], stage: activeJob.generationErrorCode })}
                                     onRetry={showRetry ? () => void startJob(activeJob) : undefined}
                                     retryLabel="按相同参数重试"
+                                    enableDiagnosticsExport
+                                    taskId={activeJob.taskIds[0]}
                                 />
                                 {showRetrieve ? (
                                     <button type="button" className="siflux-image-gen-action" disabled={live} onClick={() => continueRetrieve(activeJob)}>继续取回</button>
@@ -272,7 +279,7 @@ export default function GenerateImagePage() {
                         <div className="siflux-image-gen-refs">
                             {attachments.map((attachment) => (
                                 <span className="siflux-image-gen-ref" key={attachment.id}>
-                                    <img src={attachment.previewUrl || ("dataUrl" in attachment ? attachment.dataUrl : attachment.url)} alt={attachment.name} />
+                                    <img src={attachment.previewUrl || attachment.dataUrl || attachment.url} alt={attachment.name} />
                                     <button type="button" aria-label={`移除 ${attachment.name}`} onClick={() => setAttachments((current) => removeCreationAttachment(current, attachment.id))}><X size={12} /></button>
                                 </span>
                             ))}

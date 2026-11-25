@@ -1,28 +1,23 @@
 import { useEffect, useMemo, useRef, useState } from "react";
 import type { CSSProperties, KeyboardEvent, MouseEvent, PointerEvent } from "react";
 import { Button, Image } from "antd";
-import { FileText, Image as ImageIcon, Music2, Pencil, Sparkles, Video, X } from "lucide-react";
+import { FileText, Image as ImageIcon, Sparkles, X } from "lucide-react";
 
 import { canvasThemes } from "@/lib/canvas-theme";
 import { isCanvasWorkflowProvider } from "@/lib/canvas/canvas-workflow";
 import { useActiveTheme } from "@/stores/canvas/use-canvas-theme-store";
 import type { CanvasResourceReference } from "@/lib/canvas/canvas-resource-references";
 import { generationInputMentionLabel, normalizeGenerationNodeMentionTokens, type NodeGenerationInput } from "./canvas-node-generation";
-import { CanvasVideoPromptTools } from "./canvas-video-prompt-tools";
 import { CanvasPresetPicker, type CanvasPromptPreset } from "./canvas-preset-picker";
 import type { CanvasGenerationMode, CanvasNodeMetadata, CanvasWorkspaceMode } from "@/types/canvas";
-import { CanvasH3ReferenceOrder } from "./canvas-h3-reference-order";
-import { isH3Style } from "@/lib/h3-video";
 
 type CanvasConfigComposerProps = {
-    model?: string;
     value: string;
     inputs: NodeGenerationInput[];
     skillReferences?: CanvasResourceReference[];
     generationMode?: CanvasGenerationMode;
     metadata?: CanvasNodeMetadata;
     onChange: (value: string) => void;
-    onMetadataChange?: (patch: Partial<CanvasNodeMetadata>) => void;
     onClose: () => void;
     workspaceMode?: CanvasWorkspaceMode;
 };
@@ -45,9 +40,9 @@ type ComposerCandidate =
           reference: CanvasResourceReference;
       };
 
-export const CONFIG_REFERENCE_PATTERN = /@\[node:([^\]]+)\]|@(图片|视频|音频|文本|角色|绘图)(\d+)/g;
+export const CONFIG_REFERENCE_PATTERN = /@\[node:([^\]]+)\]|@(图片|文本)(\d+)/g;
 
-export function CanvasConfigComposer({ value, inputs, skillReferences = [], generationMode, metadata, model="", onChange, onMetadataChange, onClose, workspaceMode = "professional" }: CanvasConfigComposerProps) {
+export function CanvasConfigComposer({ value, inputs, skillReferences = [], generationMode = "image", metadata, onChange, onClose, workspaceMode = "professional" }: CanvasConfigComposerProps) {
     const theme = canvasThemes[useActiveTheme()];
     const editorRef = useRef<HTMLDivElement>(null);
     const composingRef = useRef(false);
@@ -56,17 +51,10 @@ export function CanvasConfigComposer({ value, inputs, skillReferences = [], gene
     const [imagePreview, setImagePreview] = useState<string | null>(null);
     const [presetOpen, setPresetOpen] = useState(false);
     const simpleMode = workspaceMode === "simple";
-    const workflowVideoReferenceMode = generationMode === "video" && isCanvasWorkflowProvider(metadata);
+    const workflowReferenceMode = isCanvasWorkflowProvider(metadata);
     const normalizedValue = useMemo(() => normalizeGenerationNodeMentionTokens(value, inputs), [inputs, value]);
     const tokens = useMemo(() => parseComposerTokens(normalizedValue, inputs), [inputs, normalizedValue]);
     const referenceById = useMemo(() => new Map(inputs.map((input) => [input.nodeId, input])), [inputs]);
-    const videoFrameOptions = useMemo(
-        () =>
-            inputs
-                .filter((input) => input.type === "image" && input.image)
-                .map((input) => ({ nodeId: input.nodeId, label: resourceLabel(input, inputs), title: input.title, previewUrl: input.image?.dataUrl })),
-        [inputs],
-    );
     const candidates = useMemo(() => {
         if (!mention) return [];
         const query = (mention.query || "").trim().toLowerCase();
@@ -178,31 +166,13 @@ export function CanvasConfigComposer({ value, inputs, skillReferences = [], gene
             <div className="mb-3 flex items-center justify-between gap-3">
                 <div className="flex min-w-0 items-baseline gap-2">
                     <div className="shrink-0 text-xs font-semibold">{simpleMode ? "快速生成" : "组装提示词"}</div>
-                    <div className="truncate text-[var(--fs-label)] opacity-55">{simpleMode ? "已连接素材会自动带入" : workflowVideoReferenceMode ? "已连接媒体会按工作流字段顺序自动带入" : "@ 引用已连接素材或已激活技能，发送前自动组装"}</div>
+                    <div className="truncate text-[var(--fs-label)] opacity-55">{simpleMode ? "已连接素材会自动带入" : workflowReferenceMode ? "已连接图片会按工作流字段顺序自动带入" : "@ 引用已连接素材或已激活技能，发送前自动组装"}</div>
                 </div>
                 <div className="flex shrink-0 items-center gap-1">
+                    <CanvasPresetPicker mode={generationMode} skillReferences={skillReferences} open={presetOpen} onOpenChange={setPresetOpen} compact onSelect={insertPreset} />
                     <Button size="small" type="text" className="!h-7 !w-7 !min-w-7 !p-0" icon={<X className="size-3.5" />} onClick={onClose} />
                 </div>
             </div>
-            {generationMode === "video" && onMetadataChange && !simpleMode ? (
-                <div className="mb-3 rounded-lg px-2 py-2" style={{ background: theme.node.fill }}>
-                    <CanvasVideoPromptTools
-                        metadata={metadata}
-                        middleFrameSupported={model.split("::").at(-1)==="minimax-h3-max"}
-                        endFrameSupported={!isH3Style(model)}
-                        referenceLabel={workflowVideoReferenceMode?"工作流参考":"参考生成"}
-                        frameOptions={videoFrameOptions}
-                        referenceMode={workflowVideoReferenceMode || model.split("::").at(-1)==="minimax-h3" && metadata?.videoEditOperation==="reference_to_video" ? "all" : "frames"}
-                        referenceSummary={{
-                            imageCount: inputs.filter((input) => input.type === "image" || input.type === "character").length,
-                            videoCount: inputs.filter((input) => input.type === "video").length,
-                            audioCount: inputs.filter((input) => input.type === "audio").length,
-                        }}
-                        onMetadataChange={onMetadataChange}
-                    />
-                    <CanvasH3ReferenceOrder model={model} inputs={inputs} metadata={metadata} onChange={onMetadataChange} />
-                </div>
-            ) : null}
             <div className="canvas-config-composer-editor relative rounded-lg" style={{ background: theme.node.fill }}>
                 {!value.trim() ? <div className="pointer-events-none absolute left-4 top-3 text-sm leading-7" style={{ color: theme.node.placeholder }}>输入提示词，按 @ 引用连接素材或技能</div> : null}
                 <div
@@ -260,7 +230,6 @@ export function CanvasConfigComposer({ value, inputs, skillReferences = [], gene
             {imagePreview ? <Image src={imagePreview} alt="引用图片预览" style={{ display: "none" }} preview={{ visible: true, src: imagePreview, onVisibleChange: (visible) => !visible && setImagePreview(null) }} /> : null}
         </div>
     );
-
 }
 
 function removeActiveSlash(editor: HTMLDivElement) {
@@ -329,16 +298,8 @@ function ResourcePreview({ candidate }: { candidate: ComposerCandidate }) {
         );
     }
     const input = candidate.input;
-    if (input.sourceKind === "drawing") {
-        return (
-            <span className="grid size-9 shrink-0 place-items-center rounded-md bg-black/10">
-                <Pencil className="size-4" />
-            </span>
-        );
-    }
     if (input.type === "image" && input.image) return <img src={input.image.dataUrl} alt="" className="size-9 rounded-md object-cover" />;
-    if (input.type === "video" && input.previewUrl) return <img src={input.previewUrl} alt="" className="size-9 rounded-md bg-black object-cover" loading="lazy" decoding="async" />;
-    const Icon = input.type === "audio" ? Music2 : input.type === "video" ? Video : input.type === "image" ? ImageIcon : FileText;
+    const Icon = input.type === "image" ? ImageIcon : FileText;
     return (
         <span className="grid size-9 shrink-0 place-items-center rounded-md bg-black/10">
             <Icon className="size-4" />
@@ -358,7 +319,7 @@ function createReferenceChip(input: NodeGenerationInput, inputs: NodeGenerationI
     wrapper.dataset.referenceToken = `@${generationInputMentionLabel(input, inputs)}`;
     wrapper.className = "mx-px inline-flex h-7 max-w-40 items-center justify-center overflow-hidden rounded-md border px-1 text-xs leading-none align-middle";
     Object.assign(wrapper.style, chipStyle(theme));
-    const previewUrl = input.type === "image" && input.image && input.sourceKind !== "drawing" ? input.image.dataUrl : input.type === "video" ? input.previewUrl : "";
+    const previewUrl = input.type === "image" && input.image ? input.image.dataUrl : "";
     if (previewUrl) {
         const image = document.createElement("img");
         image.src = previewUrl;
@@ -372,10 +333,10 @@ function createReferenceChip(input: NodeGenerationInput, inputs: NodeGenerationI
             onImagePreview(previewUrl);
         });
     } else {
-        wrapper.title = input.sourceKind === "drawing" ? resourceLabel(input, inputs) : input.text || input.title;
+        wrapper.title = input.text || input.title;
         const text = document.createElement("span");
         text.className = "block truncate";
-        text.textContent = input.sourceKind === "drawing" ? resourceLabel(input, inputs) : input.type === "text" ? input.text || input.title : input.title;
+        text.textContent = input.type === "text" ? input.text || input.title : input.title;
         wrapper.appendChild(text);
     }
     return wrapper;

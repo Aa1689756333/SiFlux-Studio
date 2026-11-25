@@ -65,10 +65,10 @@ export async function uploadAssistantAttachment(file: File, expected = captureUs
     return { resourceId: resource.id, assetId: identity, kind, name: file.name, mimeType: resource.mimeType || file.type, bytes: resource.size || file.size, durationMs, purpose: "analysis" };
 }
 export function attachmentFromCanvasReference(reference: CanvasResourceReference): AssistantAttachment {
-    if (!["image", "video", "audio"].includes(reference.kind)) throw new Error("请选择图片、视频或音频素材");
-    const resourceId = ownedResourceIdFromMediaRef(reference.storageKey, reference.mediaUrl || reference.previewUrl);
+    if (reference.kind !== "image") throw new Error("请选择图片素材");
+    const resourceId = ownedResourceIdFromMediaRef(reference.storageKey, reference.previewUrl);
     if (!resourceId) throw new Error("这个素材还没有保存到工作区，请先保存素材");
-    return { resourceId, kind: reference.kind as AssistantAttachment["kind"], name: reference.title || reference.label, mimeType: "", bytes: 0,
+    return { resourceId, kind: reference.kind, name: reference.title || reference.label, mimeType: "", bytes: 0,
         purpose: "analysis", ...(reference.assetId ? { assetId: reference.assetId } : { nodeId: reference.nodeId }) };
 }
 const drafts = localforage.createInstance({ name: "beeftv-assistant-input", storeName: "drafts" });

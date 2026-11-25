@@ -4,15 +4,13 @@ import { getMediaBlob } from "@/services/file-storage";
 import { getImageBlob } from "@/services/image-storage";
 import type { CanvasExportAsset, CanvasExportFile, CanvasProjectExportItem } from "@/types/canvas-export";
 import type { CanvasFolder, CanvasProject } from "@/stores/canvas/use-canvas-store";
-import { loadCanvasDrawing, loadCanvasDrawingPreview, loadCanvasDrawingRender } from "@/lib/canvas/canvas-drawing-storage";
-import type { CanvasDrawingExport } from "@/types/canvas-export";
 import { normalizeLocalCanvasProject } from "@/lib/local-workspace-migration";
 import { isLocalWorkspaceMode } from "@/services/workspace-mode";
 import { archiveFileExtension, assertUniqueArchiveNames, ExportIntegrityError, type MissingExportFile } from "@/lib/export-integrity";
 import { assertUserScope, captureUserScope } from "@/lib/user-scope-guard";
 import { http } from "@/services/api/request";
 
-export const ARCHIVE_STORAGE_KEY_PATTERN = /^(image|video|audio|file|resource|model|video-reference|audio-reference):/;
+export const ARCHIVE_STORAGE_KEY_PATTERN = /^(image|file|resource|model):/;
 
 export function isArchiveStorageKey(value: string) {
     const key = value.trim();
@@ -20,12 +18,12 @@ export function isArchiveStorageKey(value: string) {
     return ARCHIVE_STORAGE_KEY_PATTERN.test(key);
 }
 
-export async function exportCanvasProjects(projects: CanvasProject[], fileName = "画布", options: { includeLocalDrawings?: boolean; folders?: CanvasFolder[] } = {}): Promise<OwnedMediaSaveResult> {
+export async function exportCanvasProjects(projects: CanvasProject[], fileName = "画布", options: { folders?: CanvasFolder[] } = {}): Promise<OwnedMediaSaveResult> {
     const scope = captureUserScope();
     const zipFiles: { name: string; data: BlobPart }[] = [];
     const missingFiles: MissingExportFile[] = [];
     const exportedProjects = await Promise.all(
-        projects.map(async (project) => {
+        projects.map(async (project): Promise<CanvasProjectExportItem> => {
             const files: CanvasExportAsset[] = [];
             await Promise.all(
                 collectStorageKeys(project).map(async (storageKey) => {
@@ -45,33 +43,7 @@ export async function exportCanvasProjects(projects: CanvasProject[], fileName =
                     zipFiles.push({ name: path, data: blob });
                 }),
             );
-            const drawingDocuments = (await Promise.all(project.nodes.filter((node) => options.includeLocalDrawings !== false && node.type === "drawing" && node.metadata?.drawingId).map(async (node): Promise<CanvasDrawingExport | null> => {
-                const drawingId = node.metadata?.drawingId;
-                if (!drawingId) return null;
-                const [saved, preview, render] = await Promise.all([
-                    loadCanvasDrawing(project.id, drawingId, scope),
-                    loadCanvasDrawingPreview(project.id, drawingId, scope),
-                    loadCanvasDrawingRender(project.id, drawingId, scope),
-                ]);
-                if (!saved) {
-                    missingFiles.push({ owner: project.title || project.id, reference: `画板 ${node.title || drawingId}` });
-                    return null;
-                }
-                const previewPath = preview ? `projects/${project.id}/drawings/${safeFileName(drawingId)}.png` : undefined;
-                if (preview && previewPath) zipFiles.push({ name: previewPath, data: preview });
-                const generationRenderPath = render ? `projects/${project.id}/drawings/${safeFileName(drawingId)}.generation.png` : undefined;
-                if (render && generationRenderPath) zipFiles.push({ name: generationRenderPath, data: render.blob });
-                return {
-                    drawingId,
-                    ...saved,
-                    previewPath,
-                    generationRender: render && generationRenderPath
-                        ? { path: generationRenderPath, pageId: render.pageId, width: render.width, height: render.height, mimeType: render.mimeType, background: render.background }
-                        : undefined,
-                } satisfies CanvasDrawingExport;
-            }))).filter((item): item is CanvasDrawingExport => item !== null);
-            drawingDocuments.forEach((document) => zipFiles.push({ name: `projects/${project.id}/drawings/${safeFileName(document.drawingId)}.json`, data: JSON.stringify(document) }));
-            return { project: isLocalWorkspaceMode() ? normalizeLocalCanvasProject(project) : project, files, drawingDocuments };
+            return { project: isLocalWorkspaceMode() ? normalizeLocalCanvasProject(project) : project, files };
         }),
     );
 
@@ -174,7 +146,6 @@ function preflightCanvasArchiveProject(
     if (!Array.isArray(item.files)) throw new Error(`画布「${title}」的媒体清单无效`);
     if (project.nodes !== undefined && !Array.isArray(project.nodes)) throw new Error(`画布「${title}」的节点列表无效`);
     if (project.connections !== undefined && !Array.isArray(project.connections)) throw new Error(`画布「${title}」的连线列表无效`);
-    if (project.timeline !== undefined) preflightCanvasArchiveTimeline(project.timeline, title);
     const nodeIds = new Set<string>();
     for (const node of project.nodes || []) {
         if (!node || typeof node !== "object" || typeof node.id !== "string" || !node.id.trim() || typeof node.type !== "string" || !node.type.trim()) {
@@ -205,41 +176,6 @@ function preflightCanvasArchiveProject(
     }
     for (const storageKey of fileKeys) {
         if (!liveKeys.includes(storageKey)) throw new Error(`画布「${title}」的媒体清单与画布内容不一致`);
-    }
-    if (item.drawingDocuments !== undefined && !Array.isArray(item.drawingDocuments)) {
-        throw new Error(`画布「${title}」的画板文档无效`);
-    }
-    const drawingIds = new Set<string>();
-    for (const document of item.drawingDocuments || []) {
-        if (!document || typeof document.drawingId !== "string" || !document.drawingId.trim()) {
-            throw new Error(`画布「${title}」的画板文档无效`);
-        }
-        if (drawingIds.has(document.drawingId)) throw new Error(`画布「${title}」存在重复画板`);
-        drawingIds.add(document.drawingId);
-        if (document.previewPath) {
-            const path = confinedArchivePath(document.previewPath);
-            if (archivePaths.has(path)) throw new Error(`压缩包存在重名文件：${path}`);
-            archivePaths.add(path);
-            if (!zip.get(path) && !zip.get(document.previewPath)) throw new Error(`压缩包缺少媒体文件：${document.previewPath}`);
-        }
-        if (document.generationRender?.path) {
-            const path = confinedArchivePath(document.generationRender.path);
-            if (archivePaths.has(path)) throw new Error(`压缩包存在重名文件：${path}`);
-            archivePaths.add(path);
-            if (!zip.get(path) && !zip.get(document.generationRender.path)) throw new Error(`压缩包缺少媒体文件：${document.generationRender.path}`);
-        }
-    }
-    for (const node of project.nodes || []) {
-        if (node.type !== "drawing" || !node.metadata?.drawingId) continue;
-        if (item.drawingDocuments && !drawingIds.has(node.metadata.drawingId)) {
-            throw new Error(`画布「${title}」缺少画板 ${node.title || node.metadata.drawingId}`);
-        }
-    }
-}
-
-function preflightCanvasArchiveTimeline(timeline: NonNullable<CanvasProject["timeline"]>, title: string) {
-    if (!timeline || typeof timeline !== "object" || !Array.isArray(timeline.clips) || !Array.isArray(timeline.tracks)) {
-        throw new Error(`画布「${title}」的时间线无效`);
     }
 }
 

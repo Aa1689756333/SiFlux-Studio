@@ -6,10 +6,8 @@ import { useNavigate } from "react-router";
 
 import { canvasAppearanceBaseTheme, canvasAppearanceForTheme, DEFAULT_CANVAS_BACKGROUND_MODE, normalizeCanvasAppearance, type CanvasAppearance } from "@/lib/canvas/canvas-appearance";
 import type { CanvasBackgroundMode } from "@/lib/canvas-theme";
-import { removeCanvasDrawing } from "@/lib/canvas/canvas-drawing-storage";
 import { normalizeCanvasNodeTimestamps } from "@/lib/canvas/canvas-node-timestamps";
 import { normalizeCanvasMediaNodeSemanticsList } from "@/lib/canvas/canvas-node-semantics";
-import { migrateDirectorCanvas } from "@/lib/canvas/director/director-node-migration";
 import { canvasWorkspaceProjectId, listCanvasWorkspaceProjectCanvases } from "@/lib/canvas/canvas-workspace-project";
 import { hydrateAssistantImages, resetInterruptedGeneration } from "@/lib/canvas/canvas-project-generation";
 import { listAddedSkills, type Skill } from "@/services/api/skills";
@@ -22,7 +20,6 @@ import { assertUserScope, captureUserScope, userScopeMatches } from "@/lib/user-
 import { useCanvasHistoryStore } from "@/stores/canvas/use-canvas-history-store";
 import { useCanvasThemeStore } from "@/stores/canvas/use-canvas-theme-store";
 import { projectSyncProgress, useSyncProgressStore } from "@/stores/use-sync-progress-store";
-import { readCanvasSyncDrafts } from "@/services/canvas-sync-drafts";
 import { useUserStore } from "@/stores/use-user-store";
 import { isLocalWorkspaceMode } from "@/services/workspace-mode";
 import type { CanvasAssistantSession, CanvasConnection, CanvasNodeData, ViewportTransform } from "@/types/canvas";
@@ -149,12 +146,7 @@ export function useCanvasProjectLifecycle({
                 ? normalizeCanvasAppearance(targetProject.appearance, fallbackTheme)
                 : canvasAppearanceForTheme(fallbackTheme);
             const sourceNodes = resetInterruptedGeneration(targetProject.nodes);
-            const sourceScenes = targetProject.directorScenes || [];
-            const migration = migrateDirectorCanvas(sourceNodes, sourceScenes);
-            const normalizedDirectorNodes = migration.nodes;
-            const hasDirectorMigration = normalizedDirectorNodes.some((node, index) => node !== sourceNodes[index]) || migration.directorScenes !== sourceScenes;
-            if (hasDirectorMigration) updateProject(targetProject.id, migration);
-            const initialNodes = normalizeCanvasMediaNodeSemanticsList(normalizeCanvasNodeTimestamps(normalizedDirectorNodes, {
+            const initialNodes = normalizeCanvasMediaNodeSemanticsList(normalizeCanvasNodeTimestamps(sourceNodes, {
                 createdAt: targetProject.createdAt,
                 updatedAt: targetProject.updatedAt,
             }));
@@ -167,7 +159,7 @@ export function useCanvasProjectLifecycle({
                 backgroundMode: targetProject.backgroundMode || DEFAULT_CANVAS_BACKGROUND_MODE,
                 showImageInfo: targetProject.showImageInfo || false,
             };
-            observedContentRef.current = hasDirectorMigration ? { ...snapshot, nodes: targetProject.nodes } : snapshot;
+            observedContentRef.current = snapshot;
             chatSessionsRef.current = snapshot.chatSessions;
             activeChatIdRef.current = snapshot.activeChatId;
             nodesRef.current = snapshot.nodes;
@@ -423,17 +415,8 @@ export function useCanvasProjectLifecycle({
         const scope = captureUserScope();
         const siblingCanvases = listCanvasWorkspaceProjectCanvases(useCanvasStore.getState().projects, projectId);
         const nextCanvas = siblingCanvases.find((canvas) => canvas.id !== projectId);
-        let drawingIds = nodesRef.current.flatMap((node) => node.type === "drawing" && node.metadata?.drawingId ? [node.metadata.drawingId] : []);
-        const drafts = await readCanvasSyncDrafts(projectId);
-        assertUserScope(scope);
-        const preserved = new Set(drafts.flatMap((draft) => draft.project.nodes.flatMap((node) => node.metadata?.drawingId ? [node.metadata.drawingId] : [])));
-        drawingIds = drawingIds.filter((id) => !preserved.has(id));
         await deleteWorkspaceCanvasProjects([projectId]);
         assertUserScope(scope);
-        if (drawingIds.length) {
-            void Promise.all(drawingIds.map((drawingId) => removeCanvasDrawing(projectId, drawingId)))
-                .catch(() => { if (userScopeMatches(scope)) message.warning("画布已删除，但部分本地绘图缓存清理失败"); });
-        }
         cleanupAssetImages();
         navigate(nextCanvas ? `/canvas/${nextCanvas.id}` : "/canvas");
     }, [cleanupAssetImages, localMode, message, navigate, nodesRef, projectId]);

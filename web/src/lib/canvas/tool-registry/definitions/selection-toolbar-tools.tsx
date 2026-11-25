@@ -1,4 +1,4 @@
-import { AlignHorizontalJustifyCenter, AlignHorizontalJustifyEnd, AlignHorizontalJustifyStart, AlignHorizontalSpaceAround, AlignHorizontalSpaceBetween, AlignVerticalJustifyCenter, AlignVerticalJustifyEnd, AlignVerticalJustifyStart, AlignVerticalSpaceAround, AlignVerticalSpaceBetween, Film, FolderTree, Grid3X3, LayoutTemplate, Link2, LoaderCircle, Sparkles, Workflow } from "lucide-react";
+import { AlignHorizontalJustifyCenter, AlignHorizontalJustifyEnd, AlignHorizontalJustifyStart, AlignHorizontalSpaceAround, AlignHorizontalSpaceBetween, AlignVerticalJustifyCenter, AlignVerticalJustifyEnd, AlignVerticalJustifyStart, AlignVerticalSpaceAround, AlignVerticalSpaceBetween, Copy, FolderTree, Grid3X3, Link2, Sparkles, Trash2, Workflow } from "lucide-react";
 
 import { registerToolbarTools, type ToolDefinition } from "@/lib/canvas/tool-registry";
 
@@ -16,21 +16,10 @@ export const selectionToolbarTools: ToolDefinition[] = [
     { id: "selection-arrange-column", toolbar: "selection", category: "arrange", label: "纵向排列", icon: <AlignVerticalSpaceAround />, defaultVisible: false, defaultOrder: 100, run: (ctx) => ctx.handlers.onArrange("column") },
     { id: "selection-arrange-grid", toolbar: "selection", category: "arrange", label: "宫格排列", icon: <Grid3X3 />, defaultVisible: false, defaultOrder: 110, run: (ctx) => ctx.handlers.onArrange("grid") },
     { id: "selection-arrange-flow", toolbar: "selection", category: "arrange", label: "按连线整理", icon: <Workflow />, defaultVisible: false, defaultOrder: 120, run: (ctx) => ctx.handlers.onArrange("flow") },
-    { id: "selection-create-storyboard", toolbar: "selection", category: "selection", label: "创建分镜组", icon: <LayoutTemplate />, defaultVisible: true, defaultOrder: 130, disabled: (ctx) => ctx.selectedCount < 2, run: (ctx) => ctx.handlers.onCreateStoryboard() },
-    { id: "selection-create-reference-group", toolbar: "selection", category: "selection", label: "创建引用组", icon: <FolderTree />, defaultVisible: false, defaultOrder: 140, disabled: (ctx) => ctx.selectedCount < 2, run: (ctx) => ctx.handlers.onCreateReferenceGroup() },
+    { id: "selection-create-reference-group", toolbar: "selection", category: "selection", label: "分组", icon: <FolderTree />, defaultVisible: true, defaultOrder: 140, disabled: (ctx) => ctx.selectedCount < 2, run: (ctx) => ctx.handlers.onCreateReferenceGroup() },
     { id: "selection-batch-connect", toolbar: "selection", category: "selection", label: "批量连接", icon: <Link2 />, defaultVisible: true, defaultOrder: 145, disabled: (ctx) => ctx.selectedCount < 2, run: (ctx) => ctx.handlers.onBatchConnect() },
-    {
-        id: "selection-merge-videos",
-        toolbar: "selection",
-        category: "selection",
-        label: (ctx) => `合并选中视频（${ctx.selectedVideoCount}）`,
-        icon: (ctx) => ctx.mergingVideos ? <LoaderCircle className="animate-spin" /> : <Film />,
-        defaultVisible: true,
-        defaultOrder: 150,
-        applicable: (ctx) => ctx.selectedVideoCount >= 2,
-        disabled: (ctx) => ctx.mergingVideos,
-        run: (ctx) => ctx.handlers.onMergeVideos(),
-    },
+    { id: "selection-duplicate", toolbar: "selection", category: "selection", label: "创建副本", icon: <Copy />, defaultVisible: true, defaultOrder: 150, run: (ctx) => ctx.handlers.onDuplicateSelected() },
+    { id: "selection-delete", toolbar: "selection", category: "danger", label: "删除选中节点", icon: <Trash2 />, defaultVisible: true, defaultOrder: 160, danger: true, run: (ctx) => ctx.handlers.onDeleteSelected() },
 ];
 
 registerToolbarTools(selectionToolbarTools);

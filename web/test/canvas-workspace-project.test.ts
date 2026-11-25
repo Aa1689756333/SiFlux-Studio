@@ -108,7 +108,6 @@ describe("canvas workspace project grouping", () => {
                     nodes: [{ id: "node-1", type: "text", x: 40, y: 80, width: 320, height: 180, content: "原画布节点" }] as never,
                     connections: [{ id: "connection-1", sourceNodeId: "node-1", targetNodeId: "node-2" }] as never,
                     viewport: { x: 120, y: -40, k: 1.25 },
-                    timeline: { id: "timeline-1", tracks: [] } as never,
                 });
                 const root = useCanvasStore.getState().openProject(rootId)!;
                 copyId = useCanvasStore.getState().importProject({ ...root, canvasTitle: "分镜画布 副本" }, rootId);
@@ -123,10 +122,8 @@ describe("canvas workspace project grouping", () => {
             expect(copy?.nodes).toEqual(root?.nodes);
             expect(copy?.connections).toEqual(root?.connections);
             expect(copy?.viewport).toEqual(root?.viewport);
-            expect(copy?.timeline).toEqual(root?.timeline);
             expect(copy?.nodes).not.toBe(root?.nodes);
             expect(copy?.connections).not.toBe(root?.connections);
-            expect(copy?.timeline).not.toBe(root?.timeline);
         } finally {
             withCanvasStorePersistenceSuppressed(() => useCanvasStore.setState({ projects: previousProjects }));
         }

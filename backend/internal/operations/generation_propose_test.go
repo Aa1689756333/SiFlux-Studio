@@ -138,12 +138,13 @@ func TestOpGenerationProposeRejectsConfigRevisionDrift(t *testing.T) {
 }
 
 func TestOpGenerationProposeRejectsKindMismatch(t *testing.T) {
-	videoNode := imageNode("n1", "beefapi::wan3.0-video")
-	videoNode["type"] = "video"
-	probe := &proposeProbe{doc: proposeCanvas(t, []map[string]any{videoNode})}
+	// 历史节点可能带着已退场的生成模式（例如视频），它们不能再接受生图提议。
+	legacyVideoNode := imageNode("n1", "beefapi::wan3.0-video")
+	legacyVideoNode["metadata"].(map[string]any)["generationMode"] = "video"
+	probe := &proposeProbe{doc: proposeCanvas(t, []map[string]any{legacyVideoNode})}
 	_, err := opCanvasGenerationPropose(&Context{UserID: "owner", Domain: probe}, json.RawMessage(`{"canvasId":"c1","nodeIds":["n1"],"kind":"image"}`))
 	if err == nil {
-		t.Fatal("video node must not accept image propose")
+		t.Fatal("legacy video node must not accept image propose")
 	}
 	if AsError(err).Reason != "generation_kind_mismatch" {
 		t.Fatalf("node kind reason: %v", err)

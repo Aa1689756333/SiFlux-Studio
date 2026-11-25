@@ -352,41 +352,6 @@ func TestCanvasTaskBindRejectsClientResultPayload(t *testing.T) {
 	}
 }
 
-func TestCanvasTaskBindTextUsesReceiptTransaction(t *testing.T) {
-	h := newHarness(t)
-	h.addNode(t, "node-text", "text", "旁白", map[string]any{"taskId": "task-text", "status": "loading", "storyboard": map[string]any{"visibleColumns": []any{"action"}, "referenceNodeIds": []any{"n1"}}})
-	now := time.Now()
-	task := model.Task{
-		ID: "task-text", UserID: h.userID, ProjectID: h.canvasID, Type: "canvas_text",
-		Status: model.TaskStatusSucceeded, Operation: "storyboard",
-		InputJSON:  `{"metadata":{"source":"canvas","nodeId":"node-text"}}`,
-		ResultJSON: `{"text":"成片旁白","rows":[{"shotNumber":1,"action":"开门","id":"shot-keep"}]}`,
-		CreatedAt:  now, UpdatedAt: now, CompletedAt: &now,
-	}
-	if err := h.service.Database().Create(&task).Error; err != nil {
-		t.Fatal(err)
-	}
-	result, err := h.bindTask(t, task.ID, "node-text", 0)
-	if err != nil {
-		t.Fatal(err)
-	}
-	if result.Replayed {
-		t.Fatal("text bind should write a receipt")
-	}
-	meta := h.node(t, "node-text")
-	metadata := nodeMeta(meta)
-	if metadata["content"] != "成片旁白" || metadata["status"] != "success" {
-		t.Fatalf("text node = %#v", metadata)
-	}
-	board, _ := metadata["storyboard"].(map[string]any)
-	if board["visibleColumns"] == nil {
-		t.Fatalf("storyboard visible columns dropped: %#v", board)
-	}
-	if h.receiptCount(t, localtask.AttachNodeEffectKey(task.ID, "node-text", 0)) != 1 {
-		t.Fatal("text bind bypassed the receipt transaction")
-	}
-}
-
 func TestCanvasTaskBindSQLiteFailureBeforePatchLeavesAsset(t *testing.T) {
 	h := newHarness(t)
 	task := h.seedReadyCanvasImageTask(t, "task-fail-patch", "node-fail-patch", "失败前", 1, 1)

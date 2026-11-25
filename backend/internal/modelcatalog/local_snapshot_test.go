@@ -18,8 +18,13 @@ func TestParseAndFilterLocalChannelModels(t *testing.T) {
 }
 
 func TestGenerationModeSupportedUsesCanvasRegistry(t *testing.T) {
-	if !GenerationModeSupported("image") || !GenerationModeSupported("video") {
-		t.Fatal("image and video generation modes should be supported")
+	if !GenerationModeSupported("image") {
+		t.Fatal("image generation mode should be supported")
+	}
+	for _, mode := range []string{"video", "audio"} {
+		if GenerationModeSupported(mode) {
+			t.Fatalf("%s generation mode was removed from the canvas registry", mode)
+		}
 	}
 	if GenerationModeSupported("not-a-mode") {
 		t.Fatal("unknown mode treated as supported")

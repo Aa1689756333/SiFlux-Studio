@@ -1,60 +1,13 @@
-import { Blocks, CircleDollarSign, Clapperboard, Images, LibraryBig, ListTodo, PanelsTopLeft, Settings, WandSparkles } from "lucide-react";
+import { Bot, Images, LibraryBig, PanelsTopLeft, Plug, Settings } from "lucide-react";
 
 export const navigationTools = [
-    {
-        slug: "create",
-        label: "创作",
-        icon: WandSparkles,
-        section: "创作空间",
-    },
-    {
-        slug: "projects",
-        label: "短剧创作",
-        icon: Clapperboard,
-        section: "创作空间",
-    },
-    {
-        slug: "canvas",
-        label: "画布",
-        icon: PanelsTopLeft,
-        section: "创作空间",
-    },
-    {
-        slug: "tasks",
-        label: "任务",
-        icon: ListTodo,
-        section: "创作空间",
-    },
-    {
-        slug: "assets",
-        label: "素材",
-        icon: Images,
-        section: "创作空间",
-    },
-    {
-        slug: "skills",
-        label: "技能库",
-        icon: LibraryBig,
-        section: "工作台管理",
-    },
-    {
-        slug: "plugins",
-        label: "插件中心",
-        icon: Blocks,
-        section: "工作台管理",
-    },
-    {
-        slug: "wallet",
-        label: "积分中心",
-        icon: CircleDollarSign,
-        section: "工作台管理",
-    },
-    {
-        slug: "settings",
-        label: "设置",
-        icon: Settings,
-        section: "工作台管理",
-    },
+    { slug: "image", label: "生图", icon: Images, section: "创作" },
+    { slug: "agent", label: "Agent", icon: Bot, section: "创作" },
+    { slug: "canvas", label: "画布", icon: PanelsTopLeft, section: "工作区" },
+    { slug: "assets", label: "图片素材", icon: Images, section: "工作区" },
+    { slug: "settings", label: "设置", icon: Settings, section: "工作区" },
+    { slug: "skills", label: "Agent 技能", icon: LibraryBig, section: "Agent 配置" },
+    { slug: "agents", label: "MCP 连接", icon: Plug, section: "Agent 配置" },
 ] as const;
 
 export type NavigationToolSlug = (typeof navigationTools)[number]["slug"];

@@ -49,7 +49,7 @@ function incompleteCanvasProjection(id: string, scope: string, identity: string 
 
 type LocalCanvasContent = Partial<Pick<CanvasProject, "nodes" | "connections" | "chatSessions" | "activeChatId">>;
 type CanvasSaveSummary = Pick<CanvasProject, "id" | "title" | "createdAt" | "updatedAt" | "revision">;
-type CanvasDocumentPersistPatch = Partial<Pick<CanvasProject, "nodes" | "connections" | "timeline" | "chatSessions" | "activeChatId" | "appearance" | "backgroundMode" | "showImageInfo" | "title" | "folderId" | "directorScenes">>;
+type CanvasDocumentPersistPatch = Partial<Pick<CanvasProject, "nodes" | "connections" | "chatSessions" | "activeChatId" | "appearance" | "backgroundMode" | "showImageInfo" | "title" | "folderId">>;
 
 const backendSaveTails = new Map<string, Promise<void>>();
 const backendSaveTimers = new Map<string, ReturnType<typeof setTimeout>>();
@@ -664,11 +664,6 @@ export async function persistCanvasDocument(id: string, patch: CanvasDocumentPer
         }
         throw error;
     }
-}
-
-/** Timeline edits live on the canvas document. */
-export async function persistCanvasTimeline(id: string, timeline: NonNullable<CanvasProject["timeline"]>) {
-    await persistCanvasDocument(id, { timeline });
 }
 
 /**

@@ -1,7 +1,7 @@
 import { useEffect, useLayoutEffect, useRef, useState, type ReactNode, type RefObject } from "react";
 import { App, Button, Dropdown, Input, Modal, Tag, Tooltip } from "antd";
 import type { MenuProps } from "antd";
-import { Camera, ChevronDown, ChevronRight, Images, Maximize2, Plus, Settings2, SlidersHorizontal, UserRound } from "lucide-react";
+import { ChevronDown, ChevronRight, Images, Plus, Settings2, SlidersHorizontal } from "lucide-react";
 
 import { canvasDockStyle } from "@/lib/canvas/canvas-aceternity-style";
 import { ASSET_CATEGORY_OPTIONS } from "@/lib/asset-category";
@@ -36,30 +36,19 @@ type CanvasNodeToolbarProps = {
     onDownload: (node: CanvasNodeData) => void;
     onSaveAsset: (node: CanvasNodeData) => void;
     onMaskEdit: (node: CanvasNodeData) => void;
-    onEmotion: (node: CanvasNodeData) => void;
     onPortraitTexture: (node: CanvasNodeData) => void;
     onCrop: (node: CanvasNodeData) => void;
     onSplit: (node: CanvasNodeData, params: ImageSplitParams) => void;
     onUpscale: (node: CanvasNodeData) => void;
-    onSuperResolve: (node: CanvasNodeData) => void;
     onAngle: (node: CanvasNodeData) => void;
     onLighting: (node: CanvasNodeData) => void;
-    onPanorama: (node: CanvasNodeData) => void;
     onViewImage: (node: CanvasNodeData) => void;
-    onExtractVideoFrames: (node: CanvasNodeData, preset?: "current" | "first" | "last") => void;
-    onExtractAudioFromVideo: (node: CanvasNodeData) => void;
-    onTrimVideoSegments: (node: CanvasNodeData) => void;
-    onDepthCapture: (node: CanvasNodeData) => void;
-    onSubtitles: (node: CanvasNodeData) => void;
-    onTimeline: (node: CanvasNodeData) => void;
-    extractingVideoFrames: boolean;
-    extractingAudio: boolean;
-    trimmingVideo: boolean;
     onReversePrompt: (node: CanvasNodeData) => void;
     onRetry: (node: CanvasNodeData) => void;
     onToggleFreeResize: (node: CanvasNodeData) => void;
     onToggleLocked: (node: CanvasNodeData) => void;
     onDelete: (node: CanvasNodeData) => void;
+    onDuplicate: (node: CanvasNodeData) => void;
     workspaceMode?: CanvasWorkspaceMode;
 };
 
@@ -98,30 +87,19 @@ export function CanvasNodeToolbar({
     onDownload,
     onSaveAsset,
     onMaskEdit,
-    onEmotion,
     onPortraitTexture,
     onCrop,
     onSplit,
     onUpscale,
-    onSuperResolve,
     onAngle,
     onLighting,
-    onPanorama,
     onViewImage,
-    onExtractVideoFrames,
-    onExtractAudioFromVideo,
-    onTrimVideoSegments,
-    onDepthCapture,
-    onSubtitles,
-    onTimeline,
-    extractingVideoFrames,
-    extractingAudio,
-    trimmingVideo,
     onReversePrompt,
     onRetry,
     onToggleFreeResize,
     onToggleLocked,
     onDelete,
+    onDuplicate,
     workspaceMode = "professional",
 }: CanvasNodeToolbarProps) {
     const [openMenuId, setOpenMenuId] = useState<string | null>(null);
@@ -217,8 +195,6 @@ export function CanvasNodeToolbar({
     if (!node || !anchor) return null;
 
     const isImage = node.type === CanvasNodeType.Image;
-    const isVideo = node.type === CanvasNodeType.Video;
-    const isAudio = node.type === CanvasNodeType.Audio;
     const hasImage = isImage && Boolean(node.metadata?.content);
     const copyImagePrompt = (target: CanvasNodeData) => {
         const prompt = target.metadata?.prompt?.trim();
@@ -233,59 +209,60 @@ export function CanvasNodeToolbar({
         onToggleFreeResize,
         onAnnotate,
         onMaskEdit,
-        onEmotion,
         onPortraitTexture,
         onCrop,
         onUpscale,
-        onSuperResolve,
         onAngle,
         onLighting,
-        onPanorama,
         onViewImage,
         onCopyPrompt: copyImagePrompt,
         onReversePrompt,
     });
 
-    // 构建 ToolContext——供注册表解析工具
-    const nodeHoverHandlers = {
+    // 节点悬停工具栏只消费节点级命令；主工具栏命令在这里没有作用域。
+    const noop = () => undefined;
+    const nodeHoverHandlers: ToolbarHandlers = {
+        onToolChange: noop,
+        onDeselect: noop,
+        onUndo: noop,
+        onRedo: noop,
+        onClear: noop,
+        onAddText: noop,
+        onAddImage: noop,
+        onAddFrame: noop,
+        onUpload: noop,
+        onOpenMyAssets: noop,
+        onOpenGenerationHistory: noop,
+        onOpenShortcuts: noop,
+        onBackgroundModeChange: noop,
+        onShowImageInfoChange: noop,
+        onToggleAddPanel: noop,
+        onToggleAppearancePanel: noop,
+        onToggleSettingsPanel: noop,
+        onDeleteSelected: noop,
+        onDuplicateSelected: noop,
+        onAlign: noop,
+        onArrange: noop,
+        onCreateReferenceGroup: noop,
+        onBatchConnect: noop,
         onNodeInfo: onInfo,
         onNodeDelete: onDelete,
+        onNodeDuplicate: onDuplicate,
         onNodeRetry: onRetry,
         onNodeEditText: onEditText,
         onNodeDecreaseFont: onDecreaseFont,
         onNodeIncreaseFont: onIncreaseFont,
         onNodeToggleDialog: onToggleDialog,
-        onNodeAnnotate: onAnnotate,
         onNodeGenerateImage: onGenerateImage,
         onNodeUpload: onUpload,
         onNodeDownload: onDownload,
         onNodeSaveAsset: onSaveAsset,
-        onNodeMaskEdit: onMaskEdit,
-        onNodeEmotion: onEmotion,
-        onNodePortraitTexture: onPortraitTexture,
-        onNodeCrop: onCrop,
-        onNodeSplit: (target) => onSplit(target, { rows: 2, columns: 2 }),
-        onNodeUpscale: onUpscale,
-        onNodeSuperResolve: onSuperResolve,
-        onNodeAngle: onAngle,
-        onNodeViewImage: onViewImage,
-        onNodeExtractVideoFrames: onExtractVideoFrames,
-        onNodeExtractAudioFromVideo: onExtractAudioFromVideo,
-        onNodeTrimVideoSegments: onTrimVideoSegments,
-        onNodeCropVideo: onCrop,
-        onNodeDepthCapture: onDepthCapture,
-        onNodeReversePrompt: onReversePrompt,
-        onNodeToggleFreeResize: onToggleFreeResize,
-        onNodeSubtitles: onSubtitles,
-        onNodeTimeline: onTimeline,
         onNodeToggleLocked: onToggleLocked,
-        onNodeCopyPrompt: copyImagePrompt,
-    } as Partial<ToolbarHandlers> as ToolbarHandlers;
+    };
 
     const nodeHoverCtx: ToolContext = {
         selectedCount: 0,
         selectedNodeTypes: new Set(),
-        selectedVideoCount: 0,
         canvasTool: "move",
         workspaceMode: workspaceMode || "professional",
         isProjectLinked: false,
@@ -293,10 +270,6 @@ export function CanvasNodeToolbar({
         canRedo: false,
         node,
         nodeMetadata: node.metadata,
-        extractingVideoFrames,
-        extractingAudio,
-        trimmingVideo,
-        mergingVideos: false,
         addPanelOpen: false,
         appearancePanelOpen: false,
         settingsPanelOpen: false,
@@ -322,55 +295,13 @@ export function CanvasNodeToolbar({
         };
     });
     const allTools: ToolbarTool[] = hasImage && !simpleMode ? [...registryToolbarTools, ...imageTools] : registryToolbarTools;
-    const compact = containerWidth < 640;
-    const narrow = containerWidth < 420;
+    const compact = containerWidth < 560;
     const inGroup = (group: NodeToolbarGroup) => allTools.filter((tool) => tool.group === group).sort(compareToolbarTools);
     const primary = inGroup("primary");
-    const primaryTools = narrow ? primary.slice(0, 1) : primary;
-    // Image nodes use a deliberately small, stable action hierarchy. Keep the
-    // underlying handlers/tool definitions intact, but only expose the actions
-    // that belong to the four image workflows in the primary dock.
-    const imagePrimaryTools = primary.filter((tool) => tool.id === "maskEdit");
-    const portraitTools = compact ? [] : isImage ? inGroup("portrait").filter((tool) => tool.id === "emotion") : inGroup("portrait");
-    const viewpointLightingTools = compact ? [] : isImage ? [...inGroup("viewpoint"), ...inGroup("lighting")].filter((tool) => tool.id === "angle" || tool.id === "lighting") : [...inGroup("viewpoint"), ...inGroup("lighting")];
-    const panoramaTools = compact || isImage ? [] : inGroup("panorama");
-    const processTools = compact
-        ? [...inGroup("portrait"), ...inGroup("viewpoint"), ...inGroup("lighting"), ...inGroup("panorama"), ...inGroup("process")]
-        : isImage
-          ? inGroup("process").filter((tool) => tool.id === "crop" || tool.id === "split" || tool.id === "annotation")
-          : inGroup("process");
-    const workspaceTools = narrow ? [] : inGroup("workspace");
+    const processTools = inGroup("process");
     const utilityTools = inGroup("utility");
-    const imageSettingsTools = isImage ? allTools.filter((tool) => tool.id === "replace" || tool.id === "resize" || tool.id === "node-lock") : [];
-    const processMenuLabel = compact ? "工具" : isVideo ? "提取素材" : isImage ? "图片工具" : isAudio ? "音频处理" : "文本调整";
-    const videoProcessingTools = [
-        ...registryToolbarTools.filter((tool) => tool.id === "trimRegenerate" || tool.id === "cropVideo"),
-        ...(narrow ? inGroup("workspace") : []),
-    ];
-    const videoAudioTool = registryToolbarTools.find((tool) => tool.id === "extractAudio");
-    const videoSubtitleTool = registryToolbarTools.find((tool) => tool.id === "subtitles");
-    const videoKeyframeTool = registryToolbarTools.find((tool) => tool.id === "extractFrames");
-    const videoKeyframeTools: ToolbarTool[] = videoKeyframeTool
-        ? [
-              { ...videoKeyframeTool, id: "keyframe-current", label: "截取当前帧", onClick: () => onExtractVideoFrames(node, "current") },
-              { ...videoKeyframeTool, id: "keyframe-first", label: "截取首帧", onClick: () => onExtractVideoFrames(node, "first") },
-              { ...videoKeyframeTool, id: "keyframe-last", label: "截取尾帧", onClick: () => onExtractVideoFrames(node, "last") },
-          ]
-        : [];
-    const videoGlobalTools: ToolbarTool[] = isVideo
-        ? [
-              {
-                  id: "video-preview",
-                  label: "预览",
-                  icon: <Maximize2 className="size-3.5" />,
-                  group: "utility",
-                  order: 10,
-                  disabled: !Boolean(node.metadata?.content),
-                  onClick: () => onViewImage(node),
-              },
-              ...utilityTools,
-          ]
-        : [];
+    const moreTools = inGroup("more");
+    const processMenuLabel = isImage ? "图片工具" : "调整";
     const handleMenuOpenChange = (menuId: string, open: boolean) => {
         setOpenMenuId((current) => (open ? menuId : current === menuId ? null : current));
         if (open) onKeep(node.id);
@@ -397,35 +328,22 @@ export function CanvasNodeToolbar({
             }}
         >
             <div role="toolbar" aria-label="节点快捷工具" className="flex h-10 max-w-full items-center gap-0.5 overflow-visible rounded-[var(--dock-radius-tight)] px-1.5 backdrop-blur-2xl" style={{ ...dockStyle, border: 0 }}>
-                {isVideo ? (
+                {compact ? (
                     <>
-                        {videoProcessingTools.length ? <NodeDockMenuButton menuId="video-processing" label="视频处理" icon={null} tools={videoProcessingTools} openMenuId={openMenuId} onOpenChange={handleMenuOpenChange} placement="bottomLeft" /> : null}
-                        {videoAudioTool ? <NodeDockToolButton tool={videoAudioTool} showTooltip={false} /> : null}
-                        {videoSubtitleTool ? <NodeDockToolButton tool={videoSubtitleTool} showTooltip={false} /> : null}
-                        {videoKeyframeTools.length ? (
-                            <NodeDockMenuButton menuId="video-keyframes" label="关键帧截取" icon={<Images className="size-3.5" />} tools={videoKeyframeTools} openMenuId={openMenuId} onOpenChange={handleMenuOpenChange} placement="bottomLeft" />
-                        ) : null}
-                        {workspaceTools.map((tool) => (
-                            <NodeDockToolButton key={tool.id} tool={tool} />
+                        {primary.slice(0, 1).map((tool) => (
+                            <NodeDockToolButton key={tool.id} tool={tool} iconOnly />
                         ))}
-                        {videoGlobalTools.length ? <span aria-hidden className="aceternity-dock-separator mx-1 h-5 w-px shrink-0" /> : null}
-                        {videoGlobalTools.map((tool) => (
+                        <NodeDockMenuButton menuId="all-tools" label="工具" icon={<SlidersHorizontal className="size-3.5" />} tools={[...primary.slice(1), ...processTools, ...moreTools]} openMenuId={openMenuId} onOpenChange={handleMenuOpenChange} />
+                        {utilityTools.map((tool) => (
                             <NodeDockToolButton key={tool.id} tool={tool} iconOnly />
                         ))}
                     </>
                 ) : (
                     <>
-                        {(isImage ? imagePrimaryTools : primaryTools).map((tool) => (
+                        {primary.map((tool) => (
                             <NodeDockToolButton key={tool.id} tool={tool} showTooltip={tool.id !== "maskEdit"} />
                         ))}
-                        {panoramaTools.map((tool) => (
-                            <NodeDockToolButton key={tool.id} tool={tool} />
-                        ))}
-                        {portraitTools.length ? <NodeDockMenuButton menuId="portrait" label="人像调整" icon={<UserRound className="size-3.5" />} tools={portraitTools} openMenuId={openMenuId} onOpenChange={handleMenuOpenChange} /> : null}
-                        {viewpointLightingTools.length ? (
-                            <NodeDockMenuButton menuId="viewpoint-lighting" label={isImage ? "视角调整" : "视角"} icon={<Camera className="size-3.5" />} tools={viewpointLightingTools} openMenuId={openMenuId} onOpenChange={handleMenuOpenChange} />
-                        ) : null}
-                        {processTools.length ? (
+                        {processTools.length > 2 ? (
                             <NodeDockMenuButton
                                 menuId="process"
                                 label={processMenuLabel}
@@ -435,12 +353,10 @@ export function CanvasNodeToolbar({
                                 onOpenChange={handleMenuOpenChange}
                                 split={hasImage && !simpleMode ? { node, onSplit } : undefined}
                             />
-                        ) : null}
-                        {imageSettingsTools.length ? <NodeDockMenuButton menuId="image-settings" label="图片设置" icon={<Settings2 className="size-3.5" />} tools={imageSettingsTools} openMenuId={openMenuId} onOpenChange={handleMenuOpenChange} /> : null}
-                        {workspaceTools.length ? <span aria-hidden className="aceternity-dock-separator mx-1 h-5 w-px shrink-0" /> : null}
-                        {workspaceTools.map((tool) => (
-                            <NodeDockToolButton key={tool.id} tool={tool} />
-                        ))}
+                        ) : (
+                            processTools.map((tool) => <NodeDockToolButton key={tool.id} tool={tool} />)
+                        )}
+                        {moreTools.length ? <NodeDockMenuButton menuId="more" label="更多" icon={<Settings2 className="size-3.5" />} tools={moreTools} openMenuId={openMenuId} onOpenChange={handleMenuOpenChange} /> : null}
                         {utilityTools.length ? <span aria-hidden className="aceternity-dock-separator mx-1 h-5 w-px shrink-0" /> : null}
                         {utilityTools.map((tool) => (
                             <NodeDockToolButton key={tool.id} tool={tool} iconOnly />
@@ -651,21 +567,11 @@ export function CanvasNodeInfoModal({
     const nodeTypeLabel =
         node?.type === CanvasNodeType.Text
             ? "文本"
-            : node?.type === CanvasNodeType.Script
-              ? "分镜脚本"
-              : node?.type === CanvasNodeType.Skill
-                ? "技能"
-                : node?.type === CanvasNodeType.Image
-                  ? "图片"
-                  : node?.type === CanvasNodeType.Video
-                    ? "视频"
-                    : node?.type === CanvasNodeType.Audio
-                      ? "音频"
-                      : node?.type === CanvasNodeType.Drawing
-                        ? "绘图"
-                        : node?.type === CanvasNodeType.Frame
-                          ? "背板"
-                          : "生成配置";
+            : node?.type === CanvasNodeType.Image
+              ? "图片"
+              : node?.type === CanvasNodeType.Frame
+                ? "分组"
+                : "生图配置";
     useEffect(() => {
         setAssetTags(node?.metadata?.assetTags || []);
         setAssetTagInput("");
@@ -742,7 +648,7 @@ export function CanvasNodeInfoModal({
                                         );
                                     })}
                                 </div>
-                                <p className="canvas-node-inspector-help">生成后会按此分类进入项目资产；角色、场景和画风工作流会自动预填。</p>
+                                <p className="canvas-node-inspector-help">生成后会按此分类进入项目资产。</p>
                             </section>
                         ) : null}
 
@@ -765,21 +671,6 @@ export function CanvasNodeInfoModal({
                                         <InfoRow key={item.label} label={item.label} value={item.value} />
                                     ))}
                                 </div>
-                            </section>
-                        ) : null}
-
-                        {node.type === CanvasNodeType.Skill && node.metadata?.skillSnapshot ? (
-                            <section className="canvas-node-inspector-section">
-                                <div className="canvas-node-inspector-section-heading">
-                                    <span>技能模板</span>
-                                </div>
-                                <div className="canvas-node-inspector-copy">{node.metadata.skillSnapshot.template}</div>
-                                {node.metadata.skillSnapshot.outputContract ? (
-                                    <>
-                                        <div className="canvas-node-inspector-subheading">输出约束</div>
-                                        <div className="canvas-node-inspector-copy">{node.metadata.skillSnapshot.outputContract}</div>
-                                    </>
-                                ) : null}
                             </section>
                         ) : null}
 
@@ -866,10 +757,8 @@ function nodeGenerationRows(node: CanvasNodeData) {
 
     add("模型", metadata.model);
     add("生成尺寸", metadata.size);
-    add("分辨率", metadata.vquality || metadata.quality);
-    add("秒数", metadata.seconds ? `${metadata.seconds} 秒` : undefined);
-    add("生成声音", metadata.generateAudio === undefined ? undefined : metadata.generateAudio === "true" ? "开启" : "关闭");
-    add("水印", metadata.watermark === undefined ? undefined : metadata.watermark === "true" ? "开启" : "关闭");
+    add("画质", metadata.quality);
+    add("生成数量", metadata.count);
     if (metadata.references?.length) {
         const referenceNames = metadata.references
             .slice(0, 3)

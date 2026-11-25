@@ -3,6 +3,7 @@ import { persist, type PersistStorage, type StorageValue } from "zustand/middlew
 
 import { nanoid } from "nanoid";
 import { sameCanvasContent, sameCanvasDocument } from "@/lib/canvas/canvas-content";
+import { retainSupportedCanvasGraph } from "@/lib/canvas/canvas-supported-graph";
 import { traceCanvasGraph } from "@/lib/canvas/canvas-graph-trace";
 import { DEFAULT_CANVAS_BACKGROUND_MODE, normalizeCanvasAppearance, readCanvasAppearanceDefault, type CanvasAppearance } from "@/lib/canvas/canvas-appearance";
 import { decideExternalCanvasRevision } from "@/lib/canvas/canvas-external-revision";
@@ -15,8 +16,6 @@ import { usesBrowserLocalResourceStore } from "@/services/workspace-resource-sto
 import type { CanvasBackgroundMode } from "@/lib/canvas-theme";
 import type { CanvasStarterMode } from "@/lib/canvas/canvas-starter";
 import type { CanvasAssistantSession, CanvasConnection, CanvasNodeData, ViewportTransform } from "@/types/canvas";
-import type { DirectorScene } from "@/types/director";
-import type { TimelineProject } from "@/types/timeline";
 
 export type CanvasProject = {
     id: string;
@@ -40,8 +39,6 @@ export type CanvasProject = {
     backgroundMode: CanvasBackgroundMode;
     showImageInfo: boolean;
     viewport: ViewportTransform;
-    directorScenes: DirectorScene[];
-    timeline?: TimelineProject;
 };
 
 export type CanvasFolder = {
@@ -72,7 +69,7 @@ type CanvasStore = {
     deleteProjects: (ids: string[]) => void;
     restoreProject: (project: CanvasProject) => void;
     replaceProjects: (projects: CanvasProject[]) => void;
-    updateProject: (id: string, patch: Partial<Pick<CanvasProject, "workspaceProjectId" | "projectId" | "folderId" | "title" | "canvasTitle" | "nodes" | "connections" | "chatSessions" | "activeChatId" | "starterMode" | "appearance" | "backgroundMode" | "showImageInfo" | "viewport" | "directorScenes" | "timeline">>) => void;
+    updateProject: (id: string, patch: Partial<Pick<CanvasProject, "workspaceProjectId" | "projectId" | "folderId" | "title" | "canvasTitle" | "nodes" | "connections" | "chatSessions" | "activeChatId" | "starterMode" | "appearance" | "backgroundMode" | "showImageInfo" | "viewport">>) => void;
 };
 
 export const CANVAS_FOLDERS_KEY = "infinite-canvas:canvas_folders";
@@ -757,7 +754,6 @@ export const useCanvasStore = create<CanvasStore>()(
                     backgroundMode: appearanceDefault?.backgroundMode || DEFAULT_CANVAS_BACKGROUND_MODE,
                     showImageInfo: false,
                     viewport: initialViewport,
-                    directorScenes: [],
                 };
                 set((state) => ({ projects: [project, ...state.projects] }));
                 return id;
@@ -797,6 +793,7 @@ export const useCanvasStore = create<CanvasStore>()(
             moveProjectsToFolder: (ids, folderId) => set((state) => ({ projects: state.projects.map((project) => ids.includes(project.id) ? { ...project, folderId, updatedAt: new Date().toISOString() } : project) })),
             importProject: (source, workspaceProjectId) => {
                 const now = new Date().toISOString();
+                const graph = retainSupportedCanvasGraph(source.nodes || [], source.connections || []);
                 const project: CanvasProject = {
                     id: nanoid(),
                     revision: 0,
@@ -807,8 +804,8 @@ export const useCanvasStore = create<CanvasStore>()(
                     canvasTitle: source.canvasTitle,
                     createdAt: source.createdAt || now,
                     updatedAt: now,
-                    nodes: cloneCanvasValue(source.nodes || []),
-                    connections: cloneCanvasValue(source.connections || []),
+                    nodes: cloneCanvasValue(graph.nodes),
+                    connections: cloneCanvasValue(graph.connections),
                     chatSessions: cloneCanvasValue(source.chatSessions || []),
                     activeChatId: source.activeChatId || null,
                     starterMode: source.starterMode,
@@ -816,8 +813,6 @@ export const useCanvasStore = create<CanvasStore>()(
                     backgroundMode: source.backgroundMode || DEFAULT_CANVAS_BACKGROUND_MODE,
                     showImageInfo: source.showImageInfo || false,
                     viewport: cloneCanvasValue(source.viewport || initialViewport),
-                    directorScenes: cloneCanvasValue(source.directorScenes || []),
-                    timeline: source.timeline ? cloneCanvasValue(source.timeline) : undefined,
                 };
                 project.workspaceProjectId = workspaceProjectId || project.id;
                 set((state) => ({ projects: [project, ...state.projects] }));
@@ -846,6 +841,10 @@ export const useCanvasStore = create<CanvasStore>()(
                 const current = state.projects.find((project) => project.id === id);
                 if (!current) return state;
                 const next = { ...current, ...patch };
+                // 载入/回写入口都统一裁剪：已移除的节点类型不会重新进入内存画布。
+                const retained = retainSupportedCanvasGraph(next.nodes, next.connections);
+                if (retained.nodes !== next.nodes) next.nodes = retained.nodes;
+                if (retained.connections !== next.connections) next.connections = retained.connections;
                 const contentChanged = !sameCanvasContent(current, next);
                 if (!contentChanged && samePersistenceValue(current.viewport, next.viewport)) return state;
                 if (patch.connections && current.connections.length !== patch.connections.length) traceCanvasGraph("store.updateProject", { previous: current, next });

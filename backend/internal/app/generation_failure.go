@@ -28,7 +28,7 @@ func applyAppFailureWrappers(err error, failure generation.Failure) generation.F
 		failure.Action = "请保留任务记录并联系支持查询结果，不要重复提交"
 		if errors.Is(err, context.DeadlineExceeded) {
 			failure.Reason = "等待模型返回超时，图片结果尚未确认"
-			failure.Action = "可稍后重新生成；若担心重复扣费，请先联系支持查询结果"
+			failure.Action = "请保留任务记录并联系支持查询结果，不要重复提交"
 		}
 		var preparation imagePreparationError
 		if errors.As(err, &preparation) {
@@ -50,10 +50,6 @@ func applyAppFailureWrappers(err error, failure generation.Failure) generation.F
 		failure.Uncertain, failure.Retryable = true, false
 		failure.Reason, failure.Action = "", ""
 		return failure
-	}
-	var download videoDownloadError
-	if errors.As(err, &download) {
-		failure = generation.WithDownloadFailure(failure, download.TaskID)
 	}
 	var pending providerStatePendingError
 	if errors.As(err, &pending) {
@@ -93,12 +89,18 @@ func persistedFailureErrorCode(message string, stage string) string {
 	if stage == "submission_unknown" {
 		return string(generation.CategorySubmissionUncertain)
 	}
+	if stage == "request_not_sent" {
+		return string(generation.CategoryRequestNotSent)
+	}
 	return failure.ErrorCode()
 }
 
 func persistedFailureBlocksRetry(message string, stage string) bool {
 	if stage == "submission_unknown" {
 		return true
+	}
+	if stage == "request_not_sent" {
+		return false
 	}
 	return generation.ClassifyText(message).BlocksAutomaticRetry()
 }

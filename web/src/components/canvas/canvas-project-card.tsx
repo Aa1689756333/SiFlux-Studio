@@ -1,5 +1,5 @@
-import { Check, Clapperboard, CloudUpload, Download, FileText, Frame, HardDriveUpload, Image as ImageIcon, MoreHorizontal, Music2, Pencil, Plus, Settings2, Sparkles, Trash2, Video, Workflow, X } from "lucide-react";
-import { useEffect, useState, type ReactNode } from "react";
+import { Check, CloudUpload, Download, FileText, Frame, HardDriveUpload, Image as ImageIcon, MoreHorizontal, Pencil, Plus, Settings2, Trash2, Workflow, X } from "lucide-react";
+import { useState, type ReactNode } from "react";
 import { useNavigate, useSearchParams } from "react-router";
 import { App, Dropdown, Input } from "antd";
 
@@ -12,12 +12,11 @@ import { resourceFileUrl, resourceIdFromStorageKey } from "@/services/api/resour
 import { isLocalWorkspaceMode } from "@/services/workspace-mode";
 import { resolveBackendApiUrl } from "@/stores/use-config-store";
 import { CachedResourceImage } from "@/components/cached-resource-image";
-import { resolveMediaUrl } from "@/services/file-storage";
 import { MediaPlaceholder } from "@/components/ui/product/media-placeholder";
 import { cn } from "@/lib/utils";
 import { canvasSyncProgressKey, useSyncProgressStore } from "@/stores/use-sync-progress-store";
 
-type ProjectPreviewMedia = { node: CanvasNodeData; url: string; storageKey?: string; kind: "image" | "video" };
+type ProjectPreviewMedia = { node: CanvasNodeData; url: string; storageKey?: string };
 const projectPreviewMediaCache = new WeakMap<CanvasNodeData[], { first: ProjectPreviewMedia[]; latest: ProjectPreviewMedia[] }>();
 
 export function CanvasCreateCard({ disabled, onClick }: { disabled?: boolean; onClick: () => void }) {
@@ -156,16 +155,12 @@ export function ProjectPreview({ project, preferLatestImage = false, emptyVarian
     // render cloud-upload copy or a cloud icon during a local write.
     const isLocalSave = isLocalWorkspaceMode() || syncProgress?.message?.includes("本地") === true;
     const [failedMedia, setFailedMedia] = useState<string[]>([]);
-    const media = projectPreviewMediaCandidates(project.nodes, preferLatestImage).find((candidate) => !failedMedia.includes(`${candidate.node.id}:${candidate.kind}:${candidate.url}`));
-    const failMedia = () => { if (media) setFailedMedia((current) => [...current, `${media.node.id}:${media.kind}:${media.url}`]); };
+    const media = projectPreviewMediaCandidates(project.nodes, preferLatestImage).find((candidate) => !failedMedia.includes(`${candidate.node.id}:${candidate.url}`));
+    const failMedia = () => { if (media) setFailedMedia((current) => [...current, `${media.node.id}:${media.url}`]); };
 
     const content = media ? (
         <div className="canvas-project-media size-full">
-            {media.kind === "video" ? (
-                <ProjectPreviewVideo key={`${media.node.id}:${media.url}`} media={media} onError={failMedia} />
-            ) : (
-                <CachedResourceImage key={`${media.node.id}:${media.url}`} storageKey={media.storageKey} src={media.url} alt={media.node.title || "项目图片"} loading="lazy" decoding="async" className="size-full min-h-0 object-cover" fallback={emptyVariant === "libtv" ? <LibTvEmptyPreview /> : <MediaPlaceholder failed />} loadingFallback={<MediaPlaceholder label="正在读取封面" />} onError={failMedia} />
-            )}
+            <CachedResourceImage key={`${media.node.id}:${media.url}`} storageKey={media.storageKey} src={media.url} alt={media.node.title || "项目图片"} loading="lazy" decoding="async" className="size-full min-h-0 object-cover" fallback={emptyVariant === "libtv" ? <LibTvEmptyPreview /> : <MediaPlaceholder failed />} loadingFallback={<MediaPlaceholder label="正在读取封面" />} onError={failMedia} />
         </div>
     ) : emptyVariant === "libtv" ? (
         <LibTvEmptyPreview />
@@ -239,45 +234,23 @@ export function projectPreviewMediaCandidates(nodes: CanvasNodeData[], preferLat
     let cached = projectPreviewMediaCache.get(nodes);
     if (!cached) {
         const images: ProjectPreviewMedia[] = [];
-        const videos: ProjectPreviewMedia[] = [];
         for (const node of nodes) {
-            if (node.type !== CanvasNodeType.Image && node.type !== CanvasNodeType.Video) continue;
+            if (node.type !== CanvasNodeType.Image) continue;
             const metadata = node.metadata;
-            const pushSource = (kind: "image" | "video", url: string, storageKey?: string) => {
+            const pushSource = (url: string, storageKey?: string) => {
                 if (!isPreviewUrl(url) && !storageKey) return;
-                const group = kind === "video" ? videos : images;
-                if (!group.some((media) => media.node === node && media.url === url && media.storageKey === storageKey)) group.push({ node, url, storageKey, kind });
+                if (!images.some((media) => media.node === node && media.url === url && media.storageKey === storageKey)) images.push({ node, url, storageKey });
             };
-            if (node.type === CanvasNodeType.Video) {
-                const poster = metadata?.videoPreview;
-                if (poster?.content && poster.content !== metadata?.content) pushSource("image", resolveBackendApiUrl(poster.content), poster.storageKey);
-            }
-            const kind = node.type === CanvasNodeType.Video ? "video" : "image";
             const resourceId = resourceIdFromStorageKey(metadata?.storageKey);
-            if (metadata?.storageKey) pushSource(kind, resourceId ? resourceFileUrl(resourceId) : "", metadata.storageKey);
+            if (metadata?.storageKey) pushSource(resourceId ? resourceFileUrl(resourceId) : "", metadata.storageKey);
             for (const value of [metadata?.previewContent, metadata?.content]) {
-                if (value) pushSource(kind, resolveBackendApiUrl(value));
+                if (value) pushSource(resolveBackendApiUrl(value));
             }
         }
-        cached = { first: [...images, ...videos], latest: [...images].reverse().concat([...videos].reverse()) };
+        cached = { first: images, latest: [...images].reverse() };
         projectPreviewMediaCache.set(nodes, cached);
     }
     return preferLatestImage ? cached.latest : cached.first;
-}
-
-function ProjectPreviewVideo({ media, onError }: { media: ProjectPreviewMedia; onError: () => void }) {
-    const [source, setSource] = useState("");
-    useEffect(() => {
-        let active = true;
-        setSource("");
-        void resolveMediaUrl(media.storageKey, media.url).then((url) => {
-            if (!active) return;
-            if (url) setSource(url);
-            else onError();
-        }).catch(() => { if (active) onError(); });
-        return () => { active = false; };
-    }, [media.storageKey, media.url]);
-    return source ? <video className="canvas-project-video size-full object-cover" src={source} muted playsInline preload="auto" aria-label={media.node.title || "项目视频"} onLoadedData={(event) => { event.currentTarget.currentTime = 0; }} onError={onError} /> : null;
 }
 
 function buildNodePreviewLayout(nodes: CanvasNodeData[]) {
@@ -300,22 +273,14 @@ function getNodePresentation(node: CanvasNodeData) {
     switch (node.type) {
         case CanvasNodeType.Text:
             return { label: "文本", icon: <FileText className="size-3.5" /> };
-        case CanvasNodeType.Script:
-            return { label: "分镜脚本", icon: <Clapperboard className="size-3.5" /> };
         case CanvasNodeType.Image:
             return { label: "图片", icon: <ImageIcon className="size-3.5" /> };
-        case CanvasNodeType.Video:
-            return { label: "视频", icon: <Video className="size-3.5" /> };
-        case CanvasNodeType.Audio:
-            return { label: "音频", icon: <Music2 className="size-3.5" /> };
-        case CanvasNodeType.Drawing:
-            return { label: "绘图", icon: <Pencil className="size-3.5" /> };
         case CanvasNodeType.Frame:
             return { label: "背板", icon: <Frame className="size-3.5" /> };
         case CanvasNodeType.Config:
             return { label: "生成配置", icon: <Settings2 className="size-3.5" /> };
         default:
-            return { label: "技能", icon: <Sparkles className="size-3.5" /> };
+            return { label: "节点", icon: <FileText className="size-3.5" /> };
     }
 }
 

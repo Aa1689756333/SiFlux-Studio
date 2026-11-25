@@ -47,7 +47,7 @@ func TestTaskRetryHandlerPreservesStructuredErrors(t *testing.T) {
 			if err != nil {
 				t.Fatal(err)
 			}
-			task := model.Task{ID: "retry-errors", UserID: owner.ID, Type: "canvas_video", Status: tc.status, Stage: tc.stage}
+			task := model.Task{ID: "retry-errors", UserID: owner.ID, Type: "canvas_image", Status: tc.status, Stage: tc.stage}
 			if err := db.Create(&task).Error; err != nil {
 				t.Fatal(err)
 			}

@@ -1,5 +1,5 @@
 import { expect, test } from "bun:test";
-import { assistantModelOptions, MANAGED_ASSISTANT_MODELS, resolveAssistantModel } from "@/lib/assistant-model";
+import { assistantModelOptions, chatPageModelAllowsTextSkill, chatPageModelOptions, MANAGED_ASSISTANT_MODELS, resolveAssistantModel, resolveChatPageModel } from "@/lib/assistant-model";
 import { createModelChannel, defaultConfig } from "@/stores/use-config-store";
 import { mergeManagedBeefAPICatalog } from "@/pages/settings/channel-settings-pane";
 
@@ -66,4 +66,34 @@ test("authorization adopts server default once while ordinary refresh preserves 
     const server = { ...config, assistantModel: "beefapi::gpt-6-astra" };
     expect(mergeManagedBeefAPICatalog(current, server, true).assistantModel).toBe(server.assistantModel);
     expect(mergeManagedBeefAPICatalog(current, server).assistantModel).toBe(current.assistantModel);
+});
+
+test("chat page models come from the builtin relay catalog", () => {
+    const relay = createModelChannel({
+        id: "siflux",
+        pinned: true,
+        models: ["gpt-6-astra", "catalog-text", "image-only", "missing-recommended-placeholder"],
+        modelProfiles: [
+            { model: "gpt-6-astra", capability: "text", protocol: "chat-completion" },
+            { model: "catalog-text", capability: "text", protocol: "chat-completion" },
+            { model: "image-only", capability: "image", protocol: "openai-image" },
+        ],
+    });
+    const custom = createModelChannel({
+        id: "custom",
+        models: ["local-text"],
+        modelProfiles: [{ model: "local-text", capability: "text", protocol: "chat-completion" }],
+    });
+    const config = { ...defaultConfig, channels: [relay, custom], textModel: "custom::local-text", assistantModel: "siflux::catalog-text" };
+    expect(chatPageModelOptions(config)[0]).toBe("siflux::gpt-6-astra");
+    expect(chatPageModelOptions(config)).toContain("siflux::catalog-text");
+    expect(chatPageModelOptions(config)).not.toContain("custom::local-text");
+    expect(chatPageModelOptions(config)).not.toContain("siflux::image-only");
+    expect(chatPageModelOptions(config).some((model) => model.includes("claude-opus-5-5"))).toBe(false);
+    expect(resolveChatPageModel(config, "siflux::catalog-text")).toBe("siflux::catalog-text");
+    expect(resolveChatPageModel({ ...config, assistantModel: "siflux::gone" }, "siflux::gone")).toBe("siflux::gpt-6-astra");
+    expect(chatPageModelAllowsTextSkill(config, "siflux::catalog-text")).toBe(true);
+    expect(chatPageModelAllowsTextSkill(config, "custom::local-text")).toBe(false);
+    const withoutRecommended = { ...relay, models: ["catalog-text"], modelProfiles: [{ model: "catalog-text", capability: "text" as const, protocol: "chat-completion" as const }] };
+    expect(chatPageModelOptions({ ...config, channels: [withoutRecommended, custom] })).toEqual(["siflux::catalog-text"]);
 });

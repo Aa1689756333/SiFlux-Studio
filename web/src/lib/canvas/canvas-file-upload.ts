@@ -2,14 +2,12 @@ import { fitNodeSize } from "@/lib/canvas/canvas-node-size";
 import { NODE_DEFAULT_SIZE } from "@/constant/canvas";
 import { CanvasNodeType, type CanvasNodeData, type Position } from "@/types/canvas";
 
-export const CANVAS_UPLOAD_ACCEPT = "image/*,video/*,.mp4,.mov,.m4v,.mkv,.webm,.avi,audio/*,.mp3,.wav,text/plain,text/markdown,.txt,.md,.markdown";
+export const CANVAS_UPLOAD_ACCEPT = "image/*,text/plain,text/markdown,.txt,.md,.markdown";
 export function isTextUploadFile(file: Pick<File, "name" | "type">) {
     return /\.(txt|md|markdown)$/i.test(file.name) || file.type === "text/plain" || file.type === "text/markdown";
 }
 export function uploadNodeType(file: Pick<File, "name" | "type">) {
     if (file.type.startsWith("image/")) return CanvasNodeType.Image;
-    if (file.type.startsWith("video/") || /\.(mp4|mov|m4v|mkv|webm|avi)$/i.test(file.name)) return CanvasNodeType.Video;
-    if (file.type.startsWith("audio/") || /\.(mp3|wav)$/i.test(file.name)) return CanvasNodeType.Audio;
     if (isTextUploadFile(file)) return CanvasNodeType.Text;
     return null;
 }
@@ -23,9 +21,8 @@ export function uploadVeilOpacity(percent = 0) {
 
 export async function createFileUploadPlaceholder(id: string, file: File, position: Position) {
     const type = uploadNodeType(file);
-    if (!type) throw new Error("请选择图片、视频、音频或 TXT / Markdown 文件");
+    if (!type) throw new Error("请选择图片或 TXT / Markdown 文件");
     if (type === CanvasNodeType.Image) return createImageUploadPlaceholder(id, file, position, await readUploadImageSize(file));
-    // 浏览器能否解码不决定能否导入；尺寸与封面由上传后的媒体信息补齐。
     const size = NODE_DEFAULT_SIZE[type];
     return {
         ...size, id, type, title: file.name,

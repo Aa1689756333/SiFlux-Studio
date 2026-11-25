@@ -14,14 +14,12 @@ import (
 	localasset "infinite-canvas/backend/internal/asset"
 	"infinite-canvas/backend/internal/assistantturns"
 	"infinite-canvas/backend/internal/canvas"
-	"infinite-canvas/backend/internal/depthcapture"
 	"infinite-canvas/backend/internal/diagnostics"
 	"infinite-canvas/backend/internal/kernel"
 	"infinite-canvas/backend/internal/model"
 	"infinite-canvas/backend/internal/modelcatalog"
 	"infinite-canvas/backend/internal/operations"
 	"infinite-canvas/backend/internal/platform"
-	"infinite-canvas/backend/internal/playback"
 	"infinite-canvas/backend/internal/plugins"
 	localproject "infinite-canvas/backend/internal/project"
 	"infinite-canvas/backend/internal/prompts"
@@ -29,7 +27,6 @@ import (
 	"infinite-canvas/backend/internal/skills"
 	localtask "infinite-canvas/backend/internal/task"
 	"infinite-canvas/backend/internal/taskdelivery"
-	"infinite-canvas/backend/internal/textreplay"
 )
 
 type Service struct {
@@ -39,7 +36,6 @@ type Service struct {
 	cancelMu                 sync.Mutex
 	storageMu                sync.Mutex
 	workerRuntimeMu          sync.Mutex
-	characterTaskMu          sync.Mutex
 	activeCancels            map[string]context.CancelFunc
 	pendingStorage           map[string]int64
 	coordinator              *platform.Coordinator
@@ -58,11 +54,6 @@ type Service struct {
 	routeCatalogTTL          time.Duration
 	routeCatalogMaxStale     time.Duration
 	workers                  *platform.Worker
-	readCachesOnce           sync.Once
-	concurrencyReadCache     *platform.BoundedReadCache[string, platform.RuntimeTaskPolicy]
-	textReplay               *textreplay.Service
-	textReplayOnce           sync.Once
-	routeVersionReadCache    *platform.BoundedReadCache[string, int64]
 	skills                   *skills.Service
 	prompts                  *prompts.Service
 	projects                 *localproject.Service
@@ -74,10 +65,6 @@ type Service struct {
 	appearanceOnce           sync.Once
 	diagnostics              *diagnostics.Service
 	diagnosticsOnce          sync.Once
-	playback                 *playback.Service
-	playbackOnce             sync.Once
-	depthCapture             *depthcapture.Service
-	depthCaptureOnce         sync.Once
 	generationDeliveryMedia  taskdelivery.Media
 	generationDelivery       *taskdelivery.Deliverer
 	deliveryMu               sync.Mutex
@@ -275,7 +262,7 @@ func (s *Service) RetryTask(userID string, id string) (*model.Task, error) {
 	if s.IsDraining() {
 		return s.taskDomain().Retry(userID, id)
 	}
-	if task, err := s.repo.TaskForUser(userID, id); err == nil && task.Status == model.TaskStatusSucceeded && deliveryPaused(task.Stage) {
+	if task, err := s.repo.TaskForUser(userID, id); err == nil && task.Type == "canvas_image" && task.Status == model.TaskStatusSucceeded && deliveryPaused(task.Stage) {
 		return s.resumeGenerationDownload(*task)
 	}
 	return s.taskDomain().Retry(userID, id)

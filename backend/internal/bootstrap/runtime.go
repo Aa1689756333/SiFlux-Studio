@@ -17,7 +17,6 @@ import (
 	"infinite-canvas/backend/internal/app"
 	"infinite-canvas/backend/internal/assistantruntime"
 	"infinite-canvas/backend/internal/buildinfo"
-	"infinite-canvas/backend/internal/conversation"
 	"infinite-canvas/backend/internal/database"
 	"infinite-canvas/backend/internal/eagle"
 	canvasHandler "infinite-canvas/backend/internal/handler"
@@ -184,8 +183,6 @@ func Open(_ context.Context, raw Config) (result *Runtime, openErr error) {
 		Tasks:              localRoot.Tasks,
 		Generation:         localRoot.Generation,
 		AssistantHost:      assistantHost,
-		Conversations:      conversation.New(conversation.NewStore(repo)),
-		TextReplay:         svc.TextReplay(),
 		Appearance:         svc.AppearanceDomain(),
 		Diagnostics:        svc.DiagnosticsDomain(),
 		Eagle:              eagle.New(),
@@ -273,7 +270,6 @@ func initializeService(svc *app.Service) error {
 	}
 	initializers := []func() error{
 		svc.EnsureDefaultPromptTemplates,
-		svc.EnsureBuiltinProjectWorkflowTemplate,
 		svc.EnsureBuiltinSkills,
 		svc.EnsureSkillPackages,
 	}
@@ -306,11 +302,6 @@ func (r *Runtime) Start() error {
 	} else {
 		r.service.StartWorker()
 	}
-	r.background.Add(1)
-	go func() {
-		defer r.background.Done()
-		r.service.RecoverPlaybackTranscodes()
-	}()
 	// The assistant loads its operation catalog from this server before becoming
 	// healthy. Accept requests before synchronously waiting for child readiness.
 	go func() {

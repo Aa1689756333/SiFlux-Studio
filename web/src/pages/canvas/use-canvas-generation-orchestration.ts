@@ -1,10 +1,9 @@
-import { useCallback, useEffect, useRef, type Dispatch, type SetStateAction } from "react";
+import { useCallback, useRef, type Dispatch, type SetStateAction } from "react";
 import { useQueryClient } from "@tanstack/react-query";
 import { App } from "antd";
 import { nanoid } from "nanoid";
 import { captureUserScope, userScopeMatches } from "@/lib/user-scope-guard";
 
-import { promoteLegacyBatchTableSize } from "@/lib/canvas/canvas-batch-table";
 import { persistCanvasDocument } from "@/services/local-workspace-repository";
 import { cancelGenerationTask, type GenerationTask } from "@/services/api/task-center";
 import { canvasTaskConfirmation } from "./canvas-task-confirmation";
@@ -13,7 +12,7 @@ import type { Skill } from "@/services/api/skills";
 import { useAssetStore, type Asset } from "@/stores/use-asset-store";
 import { useCanvasStore } from "@/stores/canvas/use-canvas-store";
 import { useEffectiveConfig } from "@/stores/use-config-store";
-import { CanvasNodeType, type CanvasConnection, type CanvasNodeData, type Position } from "@/types/canvas";
+import type { CanvasConnection, CanvasNodeData, Position } from "@/types/canvas";
 
 import {
     createImageNodeFromTextSource,
@@ -25,16 +24,14 @@ import {
     selectRetryableImageBatchChildren,
 } from "./canvas-generation-orchestration";
 import { readOwnedCanvasNodes, useCanvasOwnerLifetime } from "./canvas-owner-epoch";
-import { useCanvasBatchTable } from "./use-canvas-batch-table";
 import { useCanvasGeneration } from "./use-canvas-generation";
 import { useCanvasGenerationBatches } from "./use-canvas-generation-batches";
 import { useCanvasGenerationExecutor } from "./use-canvas-generation-executor";
 import { useCanvasGenerationRetry } from "./use-canvas-generation-retry";
-import { useCanvasStoryboard } from "./use-canvas-storyboard";
 
 type UseCanvasGenerationOrchestrationOptions = {
     projectId: string;
-    /** 生成任务查询与 live 绑定：短剧关闭时为空。 */
+    /** 生成任务查询与 live 绑定：画布未关联项目时为空。 */
     linkedProjectId?: string;
     /** 执行器 / 重试 / 历史插入的素材归属，沿用当前画布项目 id。 */
     domainProjectId?: string;
@@ -43,7 +40,6 @@ type UseCanvasGenerationOrchestrationOptions = {
     addedSkills: Skill[];
     assets: Asset[];
     nodes: CanvasNodeData[];
-    connections: CanvasConnection[];
     nodesRef: { current: CanvasNodeData[] };
     connectionsRef: { current: CanvasConnection[] };
     setNodes: Dispatch<SetStateAction<CanvasNodeData[]>>;
@@ -64,7 +60,6 @@ export function useCanvasGenerationOrchestration({
     addedSkills,
     assets,
     nodes,
-    connections,
     nodesRef,
     connectionsRef,
     setNodes,
@@ -88,8 +83,6 @@ export function useCanvasGenerationOrchestration({
         bindGenerationTask,
         finishGenerationRequest,
         openNodeTaskDetails,
-        retrieveTaskResult,
-        retrievingTaskId,
         runningNodeId,
         setRunningNodeId,
         setTaskDetail,
@@ -133,67 +126,6 @@ export function useCanvasGenerationOrchestration({
         nodesRef,
         setNodes,
         handleGenerateNode,
-    });
-
-    const {
-        addReferenceColumn: addBatchReferenceColumn,
-        addRow: addBatchRow,
-        fillRowsFromConnections,
-        generateRows: generateBatchRows,
-        moveReferenceCell: moveBatchReferenceCell,
-        patchTable: patchBatchTable,
-        removeReferenceColumn: removeBatchReferenceColumn,
-        removeRow: removeBatchRow,
-        reorderReferenceColumns: reorderBatchReferenceColumns,
-        syncRowsFromConnections,
-        updateRow: updateBatchRow,
-    } = useCanvasBatchTable({
-        nodesRef,
-        connectionsRef,
-        setNodes,
-        setConnections,
-        setSelectedNodeIds,
-        enqueueGenerationBatch,
-    });
-
-    useEffect(() => {
-        if (!projectLoaded) return;
-        setNodes((current) => {
-            let changed = false;
-            const next = current.map((node) => {
-                const promoted = promoteLegacyBatchTableSize(node);
-                if (promoted !== node) changed = true;
-                return promoted;
-            });
-            return changed ? next : current;
-        });
-        nodesRef.current.filter((node) => node.type === CanvasNodeType.BatchTable).forEach((node) => {
-            syncRowsFromConnections(node.id, true);
-        });
-    }, [connections, nodesRef, projectLoaded, setNodes, syncRowsFromConnections]);
-
-    const {
-        addScriptRow,
-        createAndGenerateScriptVideos,
-        createScriptActionBoards,
-        createScriptImageNodes,
-        createScriptVideoNodes,
-        generateScriptImages,
-        generateScriptRows,
-        generateScriptVideos,
-        removeScriptRow,
-        replaceScriptRows,
-        updateScriptRow,
-        updateScriptRows,
-    } = useCanvasStoryboard({
-        projectId,
-        addedSkills,
-        nodesRef,
-        connectionsRef,
-        setNodes,
-        setConnections,
-        setSelectedNodeIds,
-        enqueueGenerationBatch,
     });
 
     const handleRetryNode = useCanvasGenerationRetry({
@@ -337,8 +269,6 @@ export function useCanvasGenerationOrchestration({
         bindGenerationTask,
         finishGenerationRequest,
         openNodeTaskDetails,
-        retrieveTaskResult,
-        retrievingTaskId,
         runningNodeId,
         setRunningNodeId,
         setTaskDetail,
@@ -354,29 +284,6 @@ export function useCanvasGenerationOrchestration({
         enqueueGenerationBatch,
         retryFailedBatchItems,
         stopRemainingBatchItems,
-        addBatchReferenceColumn,
-        addBatchRow,
-        fillRowsFromConnections,
-        generateBatchRows,
-        moveBatchReferenceCell,
-        patchBatchTable,
-        removeBatchReferenceColumn,
-        removeBatchRow,
-        reorderBatchReferenceColumns,
-        syncRowsFromConnections,
-        updateBatchRow,
-        addScriptRow,
-        createAndGenerateScriptVideos,
-        createScriptActionBoards,
-        createScriptImageNodes,
-        createScriptVideoNodes,
-        generateScriptImages,
-        generateScriptRows,
-        generateScriptVideos,
-        removeScriptRow,
-        replaceScriptRows,
-        updateScriptRow,
-        updateScriptRows,
         reconcileImageBatchRootNode,
         retryImageBatchChildren,
         generateImageFromTextNode,

@@ -2,7 +2,7 @@ import { useCallback, useEffect, useLayoutEffect, useMemo, useRef, useState, typ
 import { App, Button, Dropdown, Input, Popover, Tag, Typography } from "antd";
 import { Callout } from "@/components/ui/product/callout";
 import { Bubble, Sender, type BubbleItemType } from "@ant-design/x";
-import { ArrowUp, Check, ChevronDown, FileText, Image as ImageIcon, LoaderCircle, Music2, Sparkles, UserRound, Video, X } from "lucide-react";
+import { ArrowUp, Check, ChevronDown, FileText, Image as ImageIcon, LoaderCircle, Sparkles, X } from "lucide-react";
 
 import { ModelPicker } from "@/components/model-picker";
 import type { CanvasResourceReference } from "@/lib/canvas/canvas-resource-references";
@@ -13,7 +13,6 @@ type CanvasPromptOptimizerDrawerProps = {
     open: boolean;
     children: ReactNode;
     prompt: string;
-    generationMode: "image" | "video";
     targetModel: string;
     targetProtocol?: string;
     config: AiConfig;
@@ -98,7 +97,7 @@ function getInitialPanelPosition(panelSize: PanelSize): PanelPosition {
     };
 }
 
-export function CanvasPromptOptimizerDrawer({ open, children, prompt, generationMode, targetModel, targetProtocol, config, optimizerModel, references, provider, onClose, onApply }: CanvasPromptOptimizerDrawerProps) {
+export function CanvasPromptOptimizerDrawer({ open, children, prompt, targetModel, targetProtocol, config, optimizerModel, references, provider, onClose, onApply }: CanvasPromptOptimizerDrawerProps) {
     const { message } = App.useApp();
     const abortRef = useRef<AbortController | null>(null);
     const chatRef = useRef<HTMLDivElement | null>(null);
@@ -127,13 +126,13 @@ export function CanvasPromptOptimizerDrawer({ open, children, prompt, generation
     const optimizationReferences = mode === "reference" ? selectedReferences : activeReferences;
     const referenceCount = mode === "reference" ? selectedReferences.length : activeReferences.length;
     const textContext = useMemo(
-        () => optimizationReferences.filter((reference) => (reference.kind === "text" || reference.kind === "character") && reference.text?.trim()).map((reference) => ({ title: reference.title || reference.label, text: reference.text!.trim() })),
+        () => optimizationReferences.filter((reference) => reference.kind === "text" && reference.text?.trim()).map((reference) => ({ title: reference.title || reference.label, text: reference.text!.trim() })),
         [optimizationReferences],
     );
     const imageContext = useMemo(
         () =>
             optimizationReferences
-                .filter((reference) => (reference.kind === "image" || reference.kind === "character") && reference.previewUrl && /^(data:|https?:\/\/)/i.test(reference.previewUrl))
+                .filter((reference) => reference.kind === "image" && reference.previewUrl && /^(data:|https?:\/\/)/i.test(reference.previewUrl))
                 .map((reference) => ({ title: reference.title || reference.label, url: reference.previewUrl! })),
         [optimizationReferences],
     );
@@ -435,7 +434,7 @@ export function CanvasPromptOptimizerDrawer({ open, children, prompt, generation
                 {
                     prompt: promptValue,
                     mode,
-                    generationMode,
+                    generationMode: "image",
                     targetModel,
                     targetProtocol,
                     optimizerModel: activeOptimizerModel || undefined,
@@ -643,7 +642,7 @@ export function CanvasPromptOptimizerDrawer({ open, children, prompt, generation
                     <div className="canvas-prompt-optimizer-header-title">
                         <div className="canvas-prompt-optimizer-header-title-row">
                             <Typography.Text strong>AI 提示词优化</Typography.Text>
-                            <span className="canvas-prompt-optimizer-mode-badge">{generationMode === "image" ? "图片" : "视频"}</span>
+                            <span className="canvas-prompt-optimizer-mode-badge">图片</span>
                             <span className="canvas-prompt-optimizer-context" title={targetModel || "未配置模型"}>
                                 · {targetModel || "未配置模型"}
                                 {referenceCount ? ` · 参考 ${referenceCount}` : ""}
@@ -811,17 +810,17 @@ function ReferenceSelection({ references, selectedReferences, onToggle }: { refe
                     })}
                 </div>
             ) : (
-                <p className="canvas-prompt-optimizer-reference-empty">请先添加参考图、角色或文本，再使用此模式。</p>
+                <p className="canvas-prompt-optimizer-reference-empty">请先添加参考图或文本，再使用此模式。</p>
             )}
         </div>
     );
 }
 
 function ReferencePreview({ reference }: { reference: CanvasResourceReference }) {
-    if ((reference.kind === "image" || reference.kind === "character") && reference.previewUrl) {
+    if (reference.kind === "image" && reference.previewUrl) {
         return <img className="canvas-prompt-optimizer-reference-chip-preview" src={reference.previewUrl} alt="" />;
     }
-    const Icon = reference.kind === "text" ? FileText : reference.kind === "video" ? Video : reference.kind === "audio" ? Music2 : reference.kind === "character" ? UserRound : ImageIcon;
+    const Icon = reference.kind === "text" ? FileText : ImageIcon;
     return (
         <span className="canvas-prompt-optimizer-reference-chip-icon">
             <Icon className="size-3.5" aria-hidden="true" />

@@ -1,129 +1,15 @@
-package app
+﻿package app
 
 import (
-	"context"
 	"encoding/json"
 	"testing"
-	"time"
 
-	"infinite-canvas/backend/internal/kernel"
 	"infinite-canvas/backend/internal/model"
 	"infinite-canvas/backend/internal/repository"
 
 	"gorm.io/driver/sqlite"
 	"gorm.io/gorm"
 )
-
-func TestVideoTaskTimeoutHasFiveMinuteSafetyFloor(t *testing.T) {
-	policy := defaultRuntimePolicy().Task
-	policy.VideoTimeoutMinutes = 1
-	policy.ImageTimeoutMinutes = 1
-	if got := taskExecutionTimeoutWithPolicy("canvas_video", policy); got != 5*time.Minute {
-		t.Fatalf("video timeout = %s, want 5m", got)
-	}
-	if got := taskExecutionTimeoutWithPolicy("canvas_image", policy); got != time.Minute {
-		t.Fatalf("image timeout = %s, want 1m", got)
-	}
-}
-
-func TestDefaultVideoTaskTimeoutIsOneHour(t *testing.T) {
-	policy := defaultRuntimePolicy().Task
-	if policy.VideoTimeoutMinutes != 60 {
-		t.Fatalf("default video timeout = %d minutes, want 60", policy.VideoTimeoutMinutes)
-	}
-	if got := taskExecutionTimeoutWithPolicy("canvas_video", policy); got != time.Hour {
-		t.Fatalf("video execution timeout = %s, want 1h", got)
-	}
-}
-
-func TestProviderPollingDeadlineDefaultsToOneHour(t *testing.T) {
-	startedAt := time.Now()
-	deadline := providerPollingDeadline(context.Background())
-	remaining := deadline.Sub(startedAt)
-	if remaining < time.Hour || remaining > time.Hour+time.Second {
-		t.Fatalf("provider polling deadline = %s, want approximately 1h", remaining)
-	}
-}
-
-func TestOnlyResumableNewAPIChannel2VideoDeadlinesStayRunning(t *testing.T) {
-	svc := &Service{}
-	input, err := json.Marshal(canvasGenerationInput{Mode: "video", Config: providerConfig{BaseURL: "https://example.com", InterfaceType: string(model.ChannelInterfaceNewAPIChannel2)}})
-	if err != nil {
-		t.Fatal(err)
-	}
-	startedAt := time.Now()
-	base := model.Task{ID: "task-1", Type: "canvas_video", ProviderRequestID: "provider-task-1", StartedAt: &startedAt}
-	if !svc.shouldDeferVideoProviderTask(base, string(input), context.DeadlineExceeded) {
-		t.Fatal("resumable NewAPI Channel 2 deadline should remain running")
-	}
-	pendingErr := providerStatePendingError{TaskID: base.ProviderRequestID, Cause: providerHTTPError{StatusCode: 400, Body: `{"code":"task_not_exist"}`}}
-	if !svc.shouldDeferVideoProviderTask(base, string(input), pendingErr) {
-		t.Fatal("resumable NewAPI Channel 2 provider sync delay should remain running")
-	}
-	expiredStartedAt := startedAt.Add(-newAPIChannel2TaskSyncMaxAge - time.Second)
-	expiredTask := model.Task{ID: base.ID, Type: base.Type, ProviderRequestID: base.ProviderRequestID, StartedAt: &expiredStartedAt}
-	if svc.shouldDeferVideoProviderTask(expiredTask, string(input), pendingErr) {
-		t.Fatal("provider sync delay must stop after the bounded synchronization window")
-	}
-	if !svc.shouldDeferVideoProviderTask(expiredTask, string(input), context.DeadlineExceeded) {
-		t.Fatal("a normal long-running provider task must remain resumable after the synchronization window")
-	}
-	if svc.shouldDeferVideoProviderTask(model.Task{ID: base.ID, Type: base.Type, ProviderRequestID: base.ProviderRequestID}, string(input), pendingErr) {
-		t.Fatal("provider sync delay without a persisted start time must fail closed")
-	}
-	if svc.shouldDeferVideoProviderTask(model.Task{ID: "task-2", Type: "canvas_video"}, string(input), context.DeadlineExceeded) {
-		t.Fatal("missing provider task id must not be deferred")
-	}
-	if svc.shouldDeferVideoProviderTask(model.Task{ID: "task-2", Type: "canvas_video"}, string(input), pendingErr) {
-		t.Fatal("provider sync delay without persisted provider task id must not be deferred")
-	}
-	if svc.shouldDeferVideoProviderTask(base, string(input), context.Canceled) {
-		t.Fatal("explicit cancellation must not be deferred")
-	}
-	if svc.shouldDeferVideoProviderTask(base, string(input), providerHTTPError{StatusCode: 400, Body: `{"code":"task_not_exist"}`}) {
-		t.Fatal("untyped provider error must not be deferred")
-	}
-	other, err := json.Marshal(canvasGenerationInput{Mode: "video", Config: providerConfig{BaseURL: "https://example.com", InterfaceType: string(model.ChannelInterfaceNewAPIVideo)}})
-	if err != nil {
-		t.Fatal(err)
-	}
-	if svc.shouldDeferVideoProviderTask(base, string(other), context.DeadlineExceeded) {
-		t.Fatal("providers without a verified query-only resume contract must fail closed")
-	}
-}
-
-func TestResumableVideoDeadlineUsesResolvedSystemChannelProtocol(t *testing.T) {
-	db, err := gorm.Open(sqlite.Open("file:"+kernel.NewID()+"?mode=memory&cache=shared"), &gorm.Config{})
-	if err != nil {
-		t.Fatal(err)
-	}
-	if err := db.AutoMigrate(&model.ModelChannel{}, &model.ChannelModel{}); err != nil {
-		t.Fatal(err)
-	}
-	channel := model.ModelChannel{
-		ID: "channel-video", UserID: "admin", Scope: model.ChannelScopeSystem, Enabled: true, Name: "Video",
-		BaseURL: "https://example.com", APIKey: "test-key", APIFormat: "openai", ModelsJSON: `["video-model"]`,
-	}
-	channelModel := model.ChannelModel{
-		ID: "model-video", ChannelID: channel.ID, ModelKey: "video-model", Capability: "video",
-		Protocol: model.ChannelInterfaceNewAPIChannel2, Enabled: true,
-	}
-	if err := db.Create(&channel).Error; err != nil {
-		t.Fatal(err)
-	}
-	if err := db.Create(&channelModel).Error; err != nil {
-		t.Fatal(err)
-	}
-	input, err := json.Marshal(canvasGenerationInput{Mode: "video", Config: providerConfig{ChannelID: channel.ID, Model: "video-model"}})
-	if err != nil {
-		t.Fatal(err)
-	}
-	svc := New(repository.New(db), t.TempDir())
-	task := model.Task{ID: "task-system", Type: "canvas_video", ProviderRequestID: "provider-task-1"}
-	if !svc.shouldDeferVideoProviderTask(task, string(input), context.DeadlineExceeded) {
-		t.Fatal("system-channel task must use the resolved model protocol when deciding query-only recovery")
-	}
-}
 
 func TestRuntimePolicyDefaultsAndSelfUseModeValidate(t *testing.T) {
 	if err := validateRuntimePolicy(defaultRuntimePolicy()); err != nil {

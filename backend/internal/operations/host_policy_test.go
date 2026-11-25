@@ -28,10 +28,10 @@ func TestHostPolicyContract(t *testing.T) {
 	if string(expected) != string(raw) {
 		t.Fatal("host descriptor fixture drift; regenerate with UPDATE_HOST_POLICY_FIXTURE=1")
 	}
-	for _, id := range []string{"canvas.script.rows.append", "canvas.script.row.update", "canvas.script.row.remove"} {
+	for _, id := range []string{"canvas.node.configure", "canvas.generation.propose", "canvas.task.bind"} {
 		op := registry.ops[id]
 		if !op.AssistantVisible("canvas") || op.AssistantVisible("read-only") || op.Descriptor().Replay != "safe" {
-			t.Fatalf("storyboard policy: %#v", op.Descriptor())
+			t.Fatalf("canvas write policy: %#v", op.Descriptor())
 		}
 	}
 	if (&Op{ID: "unknown"}).AssistantVisible("canvas") || (&Op{}).Descriptor().Replay != "unsafe" {

@@ -204,20 +204,6 @@ func visibleAPICallLogQuery(query *gorm.DB) *gorm.DB {
 	return query.Where("api_call_logs.request_kind <> ?", "poll")
 }
 
-func (r *Repository) VideoAPICallRoot(log model.ApiCallLog) (*model.ApiCallLog, error) {
-	var root model.ApiCallLog
-	query := r.db.Where("capability = ? AND request_kind = ?", "video", "create")
-	if log.TaskID != "" {
-		query = query.Where("task_id = ?", log.TaskID)
-	} else {
-		query = query.Where("user_id = ? AND channel_id = ? AND provider_request_id = ?", log.UserID, log.ChannelID, log.ProviderRequestID)
-	}
-	if err := query.Order("created_at desc").First(&root).Error; err != nil {
-		return nil, err
-	}
-	return &root, nil
-}
-
 func (r *Repository) apiCallLogQuery(filter AnalyticsFilter) *gorm.DB {
 	query := r.db.Where("api_call_logs.created_at >= ? AND api_call_logs.created_at < ?", filter.From, filter.To)
 	if filter.UserID != "" {

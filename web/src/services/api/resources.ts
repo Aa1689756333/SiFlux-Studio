@@ -1,4 +1,5 @@
 import { assertUserScope, captureUserScope, isUserScopeAbandonedError, UserScopeAbandonedError, waitForRetryDelay, type CapturedUserScope } from "@/lib/user-scope-guard";
+import { createClientId } from "@/lib/client-id";
 import { isLocalRuntimeMode } from "@/lib/runtime-mode";
 import { http, apiBaseURL, ApiError, type HttpRequestConfig } from "@/services/api/request";
 
@@ -155,25 +156,38 @@ export async function uploadResourceFile(
     // 分片与 multipart 两条路径的失败都要归一成 ResourceUploadError，
     // 否则调用方只能靠文案猜测该重试还是该报错。
     try {
+        const ticket = meta?.idempotencyKey?.trim() || `resource-upload:${createClientId()}`;
+        const retryMeta = { ...meta, idempotencyKey: ticket };
         if (file.size > CHUNK_UPLOAD_THRESHOLD) {
-            const resource = await uploadFileInChunks(file, name, kind, meta, expected, onProgress);
+            const resource = await uploadFileInChunks(file, name, kind, retryMeta, expected, onProgress);
             rememberResource(resource, expected);
             return resource;
         }
-        const formData = new FormData();
-        formData.append("kind", kind);
-        formData.append("file", file, name);
-        if (meta?.width) formData.append("width", String(Math.round(meta.width)));
-        if (meta?.height) formData.append("height", String(Math.round(meta.height)));
-        if (meta?.durationMs) formData.append("durationMs", String(Math.round(meta.durationMs)));
-        const data = await http.post<{ resource: RemoteResource }>("/resources", formData, {
-            ...scopedUploadConfig(expected, meta?.idempotencyKey),
-            onUploadProgress: onProgress ? ({ loaded, total }) => {
-                if (total && total > 0) onProgress(Math.min(file.size, file.size * loaded / total), file.size);
-            } : undefined,
-        });
-        rememberResource(data.resource, expected);
-        return data.resource;
+        let lastError: unknown;
+        for (let attempt = 0; attempt < 3; attempt++) {
+            try {
+                const formData = new FormData();
+                formData.append("kind", kind);
+                formData.append("file", file, name);
+                if (meta?.width) formData.append("width", String(Math.round(meta.width)));
+                if (meta?.height) formData.append("height", String(Math.round(meta.height)));
+                if (meta?.durationMs) formData.append("durationMs", String(Math.round(meta.durationMs)));
+                const data = await http.post<{ resource: RemoteResource }>("/resources", formData, {
+                    ...scopedUploadConfig(expected, ticket),
+                    onUploadProgress: onProgress ? ({ loaded, total }) => {
+                        if (total && total > 0) onProgress(Math.min(file.size, file.size * loaded / total), file.size);
+                    } : undefined,
+                });
+                rememberResource(data.resource, expected);
+                return data.resource;
+            } catch (error) {
+                lastError = error;
+                const normalized = normalizeUploadError(error);
+                if (normalized.permanent || attempt === 2) throw normalized;
+                await prepareChunkRetry(error, expected);
+            }
+        }
+        throw normalizeUploadError(lastError);
     } catch (error) {
         throw normalizeUploadError(error);
     }
@@ -187,7 +201,8 @@ async function uploadFileInChunks(file: Blob, name: string, kind: "image" | "vid
         try {
             return await runChunkedUpload(file, name, kind, meta, expected, onProgress);
         } catch (error) {
-            if (attempt === CHUNK_UPLOAD_RETRIES - 1) throw error;
+            const normalized = normalizeUploadError(error);
+            if (normalized.permanent || attempt === CHUNK_UPLOAD_RETRIES - 1) throw normalized;
             await prepareChunkRetry(error, expected);
         }
     }
@@ -195,11 +210,16 @@ async function uploadFileInChunks(file: Blob, name: string, kind: "image" | "vid
 }
 
 async function runChunkedUpload(file: Blob, name: string, kind: "image" | "video" | "audio" | "file", meta: ResourceUploadMeta | undefined, expected: CapturedUserScope, onProgress?: (uploadedBytes: number, totalBytes: number) => void) {
-    const session = await http.post<{ uploadId: string; chunkSize: number; chunkCount: number }>("/resources/uploads", { fileName: name, kind, size: file.size, width: meta?.width, height: meta?.height, durationMs: meta?.durationMs }, scopedUploadConfig(expected, meta?.idempotencyKey));
+    const session = await http.post<{ uploadId: string; chunkSize: number; chunkCount: number; received?: number[] }>("/resources/uploads", { fileName: name, kind, size: file.size, width: meta?.width, height: meta?.height, durationMs: meta?.durationMs, idempotencyKey: meta?.idempotencyKey }, scopedUploadConfig(expected, meta?.idempotencyKey));
+    const received = new Set(session.received ?? []);
     for (let index = 0; index < session.chunkCount; index++) {
         assertUserScope(expected);
         const start = index * session.chunkSize;
         const end = Math.min(file.size, start + session.chunkSize);
+        if (received.has(index)) {
+            onProgress?.(Math.min(end, file.size), file.size);
+            continue;
+        }
         const blob = file.slice(start, end);
         // raw 二进制直传，与后端按裸 body 逐片落盘对齐（勿设手动 Content-Type，让 axios 处理）。
         await http.put<{ index: number }>(`/resources/uploads/${encodeURIComponent(session.uploadId)}/chunks/${index}`, blob, {

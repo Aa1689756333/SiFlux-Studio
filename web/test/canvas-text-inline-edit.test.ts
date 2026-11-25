@@ -68,9 +68,9 @@ describe("canvas text inline edit and empty card", () => {
         expect(nodeSource).toMatch(/if \(readOnly \|\| data\.type !== CanvasNodeType\.Text\) return;[\s\S]*setIsEditingContent\(true\)/);
         expect(contextMenuSource).toContain('{isText ? <MenuButton icon={<Maximize2 />} label="放大编辑" onClick={() => runAction(onEditText)} /> : null}');
         expect(projectSource).toContain("onEditText={openTextNodeEditor}");
-        expect(projectSource).toMatch(/node.type === CanvasNodeType.Text\)\s*\{\s*setDialogNodeId\(node.id\)/);
+        expect(projectSource).toMatch(/if \(node\.type !== CanvasNodeType\.Text\) return;[\s\S]*setTextEditorNodeId\(node\.id\)/);
         expect(createNodeSource).toContain(
-            "if (type !== CanvasNodeType.Text && type !== CanvasNodeType.Script && type !== CanvasNodeType.BatchTable && type !== CanvasNodeType.Frame && type !== CanvasNodeType.Drawing && type !== CanvasNodeType.MediaConversion) setDialogNodeId(node.id);",
+            "if (type !== CanvasNodeType.Text && type !== CanvasNodeType.Frame) setDialogNodeId(node.id);",
         );
     });
 });

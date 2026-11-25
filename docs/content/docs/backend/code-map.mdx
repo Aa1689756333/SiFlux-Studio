@@ -4,7 +4,7 @@ title: 本地后端代码地图
 
 # 本地后端代码地图
 
-SiFlux 是单用户、本地优先的桌面应用。项目、画布、素材和任务落到本地 SQLite 与工作区目录；模型生成仍可通过 Provider/Protocol 适配器访问外部 API。旧内置 Agent 已从产品运行面退场，其历史运行/偏好/记忆数据仍保留在本地数据库。
+SiFlux 是单用户、本地优先的桌面应用，产品面只有**生图**与 **Agent** 两条主线。画布只承载图片工作流；项目、画布、素材和任务落到本地 SQLite 与工作区目录，模型生成仍可通过 Provider/Protocol 适配器访问外部 API。
 
 ## 运行链路
 
@@ -25,24 +25,32 @@ Wails / local dev
 | 边界 | 位置 | 职责 |
 | --- | --- | --- |
 | 组合根 | `backend/internal/bootstrap` | 打开本地数据、组合窄服务、启停 HTTP 与 worker |
-| 本地应用 | `backend/internal/localapp` | 定义 workspace/project/asset/task/generation/provider-config 端口（旧 Agent 空端口已移除） |
+| 本地应用 | `backend/internal/localapp` | 定义 workspace/project/asset/task/generation/provider-config 端口 |
 | 工作区 | `backend/internal/workspace` | 本地身份、模型配置快照；ZIP 导入导出不在此包 |
-| 任务域 | `backend/internal/task` | 本地任务命令、列表读模型、生命周期，以及本机 ffmpeg/转写/深度捕捉的准入 |
+| 任务域 | `backend/internal/task` | 本地任务命令、列表读模型与生命周期；只接受 `canvas_image` 一种任务类型 |
 | 生成结果交付 | `backend/internal/taskdelivery` | 第一段把生成 dataURL/字节写入本地资源并改写 ResultJSON；第二段在任务成功后物化素材。不发起新的上游生成。远端产物经 `outbound.DownloadResumable` 断点续传下载：无总超时，只有头部与空闲超时，半成品在 `<data>/cache/artifact-downloads` 下按身份复用 |
-| 生成域 | `backend/internal/generation` | 统一生成输入、引用、能力、registry 协议调度和失败归类 |
-| 视频结果取回 | `backend/internal/generation/video_delivery.go` | 所有视频入口共用下载重试、10 秒无进展检测和原任务结果刷新；BeefAPI 取备用存储，自接供应商只查询自己的原任务。认证由所选协议提供，跨域媒体请求清除供应商凭据 |
+| 生成域 | `backend/internal/generation` | 统一生成输入、引用、能力、registry 协议调度和失败归类；`Execute` 只执行生图 |
 | 供应商适配 | `backend/internal/provider`, `protocol`, `outbound` | 外部模型 API、自定义渠道和插件协议 |
 | 模型目录 | `backend/internal/modelcatalog` | 能力合同、渠道目录校验/解析/合并与 BeefAPI/WhatsToken overlay；出站 HTTP 仍走 outbound |
 | 协议插件 | `backend/internal/plugins` | registry、安装/启用和渠道设置用的 provider 能力目录；live 快照按 Runtime 隔离 |
-| Seedance 参考素材预上传 | `backend/internal/app/beefapi_seedance_preupload.go` | 仅内置 BeefAPI Seedance：本机后端把参考图片/视频/音频换成短期 HTTPS 链接后再提交 `/v1/videos`；本机文件在上传完成前保持本地引用 |
+| 画布能力 | `backend/internal/canvas`, `canvas/capability` | 画布文档写入、图片节点能力描述符；只注册 image/text/config/frame 四种节点 |
 | 数据 | `backend/internal/database`, `repository` | SQLite schema、迁移和持久化 |
-| 剪辑语义计划 | `backend/internal/editing` | 版本化时间线渲染计划：选择、顺序、空隙、裁剪、音量、字幕与输出宽高/帧率/采样率。不依赖 `internal/app`，不接受本地路径或 ffmpeg 参数 |
-| 视频预览与工具 | `backend/internal/playback`、`backend/internal/mediatools` | 按需 H.264 预览、单任务转码、用户预览缓存清理；播放和剪辑共用随包 FFmpeg 解析，显式路径优先于随包工具，最后查 PATH |
 | HTTP | `backend/internal/handler` | 本地 `/api` 合同、输入限制和响应封装 |
 | 企业连接 | `backend/internal/beefapi` | 设备授权、本机密钥和连接状态 |
 | 本机 MCP | `backend/cmd/siflux` | `siflux mcp serve` 使用官方 MCP SDK，经 `/api/ops` 访问本机工作区 |
 | 桌面更新发布 | `backend/cmd/update-release` | 生成更新密钥、打包 zip、签署 `desktop-update.json` |
-| 前端 | `web/src` | React 画布、项目、素材、模型配置与插件 UI |
+| 前端 | `web/src` | React 生图页、画布、素材库、设置与 Agent UI |
+
+## 已移除的模块
+
+以下包已从代码中删除，不要在架构整理时重建：
+
+- `internal/editing`、`internal/playback`、`internal/transcription`、`internal/depthcapture`、`internal/depthruntime`、`internal/mediatools`。
+- `internal/creation`、`internal/conversation`、`internal/textreplay`。
+- `internal/generation` 下的 `video*.go`、`audio*.go`、`beefapi_h3.go`、`seedance_*.go`、`fullvideo_upload.go`。
+- `internal/protocol/seedance_*`；`internal/task/specialized.go`；`internal/operations/canvas_timeline.go`、`canvas_render.go`、`storyboard_rows.go`、`message_attach.go`。
+
+历史画布里的旧节点类型仍可读取，但写入路径会拒绝新建或修改它们（`internal/canvas/writable_document.go`）。
 
 ## 硬边界
 

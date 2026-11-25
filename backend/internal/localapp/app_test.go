@@ -24,18 +24,6 @@ func (fakePorts) TasksWithOptions(string, localtask.ListOptions) ([]localtask.Su
 	return nil, nil
 }
 
-func (fakePorts) CreateTimelineRenderTask(string, localtask.TimelineRenderCreateRequest) (*model.Task, error) {
-	return nil, nil
-}
-
-func (fakePorts) CreateTimelineTranscriptionTask(string, localtask.TimelineTranscriptionCreateRequest) (*model.Task, error) {
-	return nil, nil
-}
-
-func (fakePorts) CreateDepthCaptureTask(string, localtask.DepthCaptureCreateRequest) (*model.Task, error) {
-	return nil, nil
-}
-
 func (fakePorts) CreateTask(string, localtask.CreateRequest) (*model.Task, error) { return nil, nil }
 func (fakePorts) ReadLocalModelConfig() ([]byte, error)                           { return nil, nil }
 func (fakePorts) SaveLocalModelConfig([]byte) error                               { return nil }

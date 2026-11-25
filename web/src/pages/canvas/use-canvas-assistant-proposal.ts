@@ -2,7 +2,7 @@ import { useCallback, useRef, useState } from "react";
 
 import { confirmAssistantProposalRunnable, type AssistantGenerationProposal } from "@/services/api/agent-assistant";
 import type { Skill } from "@/services/api/skills";
-import type { CanvasConnection, CanvasNodeData } from "@/types/canvas";
+import type { CanvasConnection, CanvasGenerationMode, CanvasNodeData } from "@/types/canvas";
 
 import { executeAssistantProposal } from "./canvas-assistant-proposal-execution";
 import { AssistantProposalBlockedError, prepareAssistantProposalSnapshot } from "./canvas-assistant-proposal-snapshot";
@@ -10,7 +10,7 @@ import { recordAssistantProposalCanvasRejection, readAssistantProposalSourceStat
 import { useCanvasOwnerLifetime } from "./canvas-owner-epoch";
 import type { CanvasNodeGenerationOptions } from "./use-canvas-generation-executor";
 
-type GenerateNode = (nodeId: string, mode: "image" | "video", prompt: string, options?: CanvasNodeGenerationOptions) => Promise<unknown>;
+type GenerateNode = (nodeId: string, mode: CanvasGenerationMode, prompt: string, options?: CanvasNodeGenerationOptions) => Promise<unknown>;
 
 type UseCanvasAssistantProposalOptions = {
     projectId: string;

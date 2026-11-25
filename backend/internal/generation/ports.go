@@ -6,8 +6,6 @@ import (
 	"net/http"
 	"strings"
 	"time"
-
-	"infinite-canvas/backend/internal/outbound"
 )
 
 // ResourceInfo is the executor view of an owned workspace asset.
@@ -64,6 +62,8 @@ type TransportObservation struct {
 	Err                   error
 	ResponseLimitBytes    int64
 	Dispatched            bool
+	TransportPhase        string
+	TransportRoute        string
 	HTTPStatus            int
 	DeclaredResponseBytes int64
 	ReceivedBytes         int64
@@ -100,13 +100,12 @@ type PromptPort interface {
 	ValidateResult(operation string, result map[string]any) error
 }
 
-// ConfigPort resolves channel secrets, loads image/video capability, and
-// performs provider-specific private-asset sync. It is not an app.Service bag.
+// ConfigPort resolves channel secrets and loads the image capability. It is
+// not an app.Service bag.
 type ConfigPort interface {
 	Resolve(config Config) (Config, error)
 	ApplyCapabilities(ctx context.Context, input *Input) error
 	RequireWorkflow(interfaceType string) error
-	SyncArkPrivateAssets(ctx context.Context, userID string, input *Input) error
 }
 
 // StylePort applies the project's style profile to an image generation prompt.
@@ -114,19 +113,9 @@ type StylePort interface {
 	Apply(userID, projectID string, input *Input) error
 }
 
-// MediaProbePort inspects local/inline Seedance 2 reference videos for the
-// current execution. A missing port fails closed when a referenced video
-// must be probed; it is not a package-level callback.
-type MediaProbePort interface {
-	ProbeSeedance2Video(config Config, index int, media *Media, data []byte) error
-}
-
-// Endpoints holds per-execution test/control-plane URL overrides.
-// Production leaves this empty and derives hosts from config/region.
-type Endpoints struct {
-	BeefAPIVideoBaseURL       string
-	ArkPrivateAssetAPIBaseURL string
-}
+// Endpoints holds per-execution test URL overrides. Production leaves this
+// empty and derives hosts from config.
+type Endpoints struct{}
 
 type CallMeta struct {
 	UserID            string
@@ -145,27 +134,16 @@ type CallMeta struct {
 	ConcurrencyLimit  int
 }
 
-// DeliveryProgressPort carries in-generation result download progress (for
-// example a video fetched from a gateway before the task succeeds). The adapter
-// is bound to the executing SiFlux task and owns identity; provider task ids
-// must never be used as the key. nil means nothing is reported.
-type DeliveryProgressPort interface {
-	ReportDelivery(progress outbound.ResumableProgress)
-	ClearDelivery()
-}
-
 type Runtime struct {
 	Resources ResourcePort
 	Limits    LimitsPort
 	Receipts  ReceiptPort
 	Stages    StagePort
-	Delivery  DeliveryProgressPort
 	Images    ImageSubmissionPort
 	Workflow  WorkflowPort
 	Prompt    PromptPort
 	Config    ConfigPort
 	Style     StylePort
-	Probe     MediaProbePort
 	Call      CallMeta
 	Endpoints Endpoints
 }

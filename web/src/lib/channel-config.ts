@@ -1,5 +1,4 @@
 import { mergeFetchedChannelModelProfiles } from "@/lib/channel-model-catalog";
-import { seedancePortraitModel } from "@/lib/seedance-portrait";
 import type { ChannelModelFetchResult } from "@/services/api/image";
 import { getTransportFailureKind } from "@/services/api/request";
 
@@ -55,21 +54,15 @@ export function applyFetchedChannelModelCatalog(channel: ModelChannel, result: C
     return {
         ...channel,
         models: channel.models.length ? channel.models : uniqueModels(result.models),
-        modelProfiles: profiles.map((profile) => {
-            const previous = existing.get(profile.model);
-            if (!previous) return profile;
-            return seedancePortraitModel(profile.model) ? { ...previous, videoPricing: profile.videoPricing ?? null } : previous;
-        }).concat((channel.modelProfiles || []).filter((profile) => !profiles.some((item) => item.model === profile.model))
-            .map((profile) => seedancePortraitModel(profile.model) ? { ...profile, videoPricing: null } : profile)),
+        modelProfiles: profiles.map((profile) => existing.get(profile.model) || profile)
+            .concat((channel.modelProfiles || []).filter((profile) => !profiles.some((item) => item.model === profile.model))),
     };
 }
 
 export function withChannels(config: AiConfig, channels: ModelChannel[]): AiConfig {
     const models = modelOptionsFromChannels(channels);
     const imageModels = filterModelsByCapability(models, "image", channels);
-    const videoModels = filterModelsByCapability(models, "video", channels);
     const textModels = filterModelsByCapability(models, "text", channels);
-    const audioModels = filterModelsByCapability(models, "audio", channels);
     return {
         ...config,
         channels,
@@ -80,13 +73,9 @@ export function withChannels(config: AiConfig, channels: ModelChannel[]): AiConf
         apiKey: channels[0]?.apiKey || config.apiKey,
         apiFormat: channels[0]?.apiFormat || config.apiFormat,
         imageModels,
-        videoModels,
         textModels,
-        audioModels,
         imageModel: normalizeDefaultModel(config.imageModel, imageModels),
-        videoModel: normalizeDefaultModel(config.videoModel, videoModels),
         textModel: normalizeDefaultModel(config.textModel, textModels),
-        audioModel: normalizeDefaultModel(config.audioModel, audioModels),
     };
 }
 

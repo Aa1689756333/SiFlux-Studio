@@ -106,39 +106,26 @@ test("真实进度与遮罩浓度反向关联，不生成未知进度", () => {
     expect(uploadVeilOpacity(100)).toBeCloseTo(0.1);
 });
 
-test("统一识别图片、视频、音频、纯文本文件，不误收 PDF 或 Word", () => {
+test("统一识别图片与纯文本文件，不误收 PDF、Word、视频或音频", () => {
     for (const [name, type, expected] of [
-        ["image.png", "image/png", CanvasNodeType.Image], ["video.mp4", "video/mp4", CanvasNodeType.Video],
-        ["sound.ogg", "audio/ogg", CanvasNodeType.Audio], ["sound.wav", "", CanvasNodeType.Audio],
+        ["image.png", "image/png", CanvasNodeType.Image],
         ["note.md", "", CanvasNodeType.Text], ["note.txt", "text/plain", CanvasNodeType.Text],
         ["document.pdf", "application/pdf", null], ["document.docx", "", null],
+        ["video.mp4", "video/mp4", null], ["sound.ogg", "audio/ogg", null], ["sound.wav", "", null],
     ] as const) expect(uploadNodeType({ name, type })).toBe(expected);
 });
 
-test("音频与文本在传输前就有独立占位，可重试且不带模型生成状态", async () => {
-    for (const [name, type, expected] of [["voice.mp3", "audio/mpeg", CanvasNodeType.Audio], ["note.md", "text/markdown", CanvasNodeType.Text]] as const) {
-        const node = await createFileUploadPlaceholder("file", new File(["content"], name, { type }), { x: 0, y: 0 });
-        expect(node.type).toBe(expected);
-        expect(node.metadata?.fileUpload).toBe("uploading");
-        expect(node.metadata?.content).toBeUndefined();
-        expect(node.metadata?.status).toBeUndefined();
-        expect(interruptFileUpload(node).metadata?.fileUpload).toBe("error");
-    }
-});
-
-test("H.265 视频不需要浏览器解码即可创建上传节点，空 MIME 的 MOV 也可导入", async () => {
-    for (const [name, type] of [["hevc.mp4", "video/mp4"], ["hevc.mov", ""], ["hevc.mkv", "application/octet-stream"]]) {
-        const node = await createFileUploadPlaceholder("hevc", new File(["undecodable video"], name, { type }), { x: 100, y: 200 });
-        expect(node.type).toBe(CanvasNodeType.Video);
-        expect(node.title).toBe(name);
-        expect(node.metadata?.fileUpload).toBe("uploading");
-        expect(node.position.x + node.width / 2).toBe(100);
-        expect(node.metadata?.naturalWidth).toBeUndefined();
-    }
+test("文本在传输前就有独立占位，可重试且不带模型生成状态", async () => {
+    const node = await createFileUploadPlaceholder("file", new File(["content"], "note.md", { type: "text/markdown" }), { x: 0, y: 0 });
+    expect(node.type).toBe(CanvasNodeType.Text);
+    expect(node.metadata?.fileUpload).toBe("uploading");
+    expect(node.metadata?.content).toBeUndefined();
+    expect(node.metadata?.status).toBeUndefined();
+    expect(interruptFileUpload(node).metadata?.fileUpload).toBe("error");
 });
 
 test("所有资源渲染真实百分比，100% 仍等待保存，磨砂渐淡但文案不淡出", () => {
-    for (const type of [CanvasNodeType.Image, CanvasNodeType.Video, CanvasNodeType.Audio, CanvasNodeType.Text]) {
+    for (const type of [CanvasNodeType.Image, CanvasNodeType.Text]) {
         const node = { ...placeholder(), type, metadata: { fileUpload: "uploading" as const, fileUploadProgress: 50 } };
         const html = renderToStaticMarkup(<CanvasFileUploadContent node={node} theme={canvasThemes.light} />);
         expect(html).toContain("已上传 50%");

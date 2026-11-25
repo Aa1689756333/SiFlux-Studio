@@ -1,5 +1,5 @@
 import type { ModelProtocol } from "@/lib/model-protocols";
-import { compareModelNames, decodeChannelModel, encodeChannelModel, isBuiltinBeefAPIChannel, normalizeModelOptionValue, type AiConfig, type ModelChannel } from "@/stores/use-config-store";
+import { compareModelNames, decodeChannelModel, encodeChannelModel, isBuiltinBeefAPIChannel, isBuiltinRelayChannel, normalizeModelOptionValue, selectableModelsByCapability, type AiConfig, type ModelChannel } from "@/stores/use-config-store";
 
 export const MANAGED_ASSISTANT_MODELS = ["gpt-6-astra", "claude-opus-5-5", "deepseek-v4.1-flash", "glm-5.3", "gemini-3.8-flash"] as const;
 
@@ -64,4 +64,35 @@ export function normalizeAssistantModel(config: AiConfig, value: unknown): strin
 /** 助手实际使用的模型：未单独选择时跟随默认文本模型。 */
 export function resolveAssistantModel(config: AiConfig): string {
     return normalizeAssistantModel(config, config.assistantModel || config.textModel);
+}
+
+function builtinRelayChatChannel(config: AiConfig) {
+    return config.channels.find((channel) => isBuiltinRelayChannel(channel) && channel.enabled !== false);
+}
+
+/** 独立对话页只列出内置中转站目录里的文本模型；推荐 ID 不在目录中则隐藏。 */
+export function chatPageModelOptions(config: AiConfig): string[] {
+    const channel = builtinRelayChatChannel(config);
+    if (!channel) return [];
+    const available = selectableModelsByCapability({ ...config, channels: [channel] }, "text");
+    const recommended = MANAGED_ASSISTANT_MODELS
+        .map((model) => encodeChannelModel(channel.id, channel.modelAliases?.[model] || model))
+        .filter((option) => available.includes(option));
+    return [...recommended, ...available.filter((option) => !recommended.includes(option))];
+}
+
+/** 刷新目录时尽量保留当前选择；失效则落到仍存在的推荐模型。 */
+export function resolveChatPageModel(config: AiConfig, preferred = ""): string {
+    const options = chatPageModelOptions(config);
+    for (const value of [preferred, config.assistantModel]) {
+        const candidate = normalizeModelOptionValue(value, config.channels);
+        if (candidate && options.includes(candidate)) return candidate;
+    }
+    return options[0] || "";
+}
+
+/** 纯文字技能只要求对话页可选的文本模型，不要求多模态。 */
+export function chatPageModelAllowsTextSkill(config: AiConfig, model: string): boolean {
+    const candidate = normalizeModelOptionValue(model, config.channels);
+    return Boolean(candidate && chatPageModelOptions(config).includes(candidate));
 }

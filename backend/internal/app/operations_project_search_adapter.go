@@ -74,6 +74,7 @@ func (s *operationSession) SearchAgentProject(userID, canvasID, target, query, k
 	}
 	result := map[string]any{"canvasId": canvasID, "projectId": current.ProjectID, "page": page, "pageSize": size, "items": []any{}, "total": int64(0), "hasMore": false}
 	items := []any{}
+	if target != "canvas" { kind = "image" }
 	if target == "canvas" {
 		if current.ProjectID == "" {
 			if strings.Contains(strings.ToLower(current.Title), strings.ToLower(query)) {
@@ -132,7 +133,7 @@ func (s *operationSession) SearchAgentProject(userID, canvasID, target, query, k
 			nodeKind, _ := node["type"].(string)
 			title, _ := node["title"].(string)
 			nodeID, _ := node["id"].(string)
-			if (nodeKind != "image" && nodeKind != "video" && nodeKind != "audio") || (kind != "" && nodeKind != kind) || !strings.Contains(strings.ToLower(title), strings.ToLower(query)) {
+			if nodeKind != "image" || (kind != "" && nodeKind != kind) || !strings.Contains(strings.ToLower(title), strings.ToLower(query)) {
 				continue
 			}
 			raw, _ := json.Marshal(node)

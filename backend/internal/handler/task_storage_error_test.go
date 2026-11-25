@@ -9,13 +9,13 @@ import (
 
 func TestTaskStorageFailureIsLocalAndDoesNotExposeDatabaseDetails(t *testing.T) {
 	h := newRetiredAgentHarness(t)
-	seedSystemTextChannel(t, h.db)
+	seedSystemImageChannel(t, h.db)
 	if err := h.db.Migrator().DropColumn(&model.Task{}, "FailureDiagnostics"); err != nil {
 		t.Fatal(err)
 	}
 	response := h.do(t, http.MethodPost, "/api/tasks", map[string]any{
-		"type": "canvas_text", "prompt": "一只猫在丛林中漫步", "model": "text-test",
-		"input": map[string]any{"mode": "text", "config": map[string]any{"channelId": "channel", "model": "text-test"}},
+		"type": "canvas_image", "prompt": "一只猫在丛林中漫步", "model": "image-test",
+		"input": map[string]any{"mode": "image", "config": map[string]any{"channelId": "channel", "model": "image-test"}},
 	})
 	body := response.Body.String()
 	if response.Code != 500 || !strings.Contains(body, "local_storage_failed") || !strings.Contains(body, "尚未提交生成") || strings.Contains(body, "failure_diagnostics") {

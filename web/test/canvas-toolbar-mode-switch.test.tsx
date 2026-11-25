@@ -11,16 +11,11 @@ function createMainContext(canvasTool: "move" | "box-select" = "box-select"): To
     return {
         selectedCount: 0,
         selectedNodeTypes: new Set(),
-        selectedVideoCount: 0,
         canvasTool,
         workspaceMode: "professional",
         isProjectLinked: false,
         canUndo: false,
         canRedo: false,
-        extractingVideoFrames: false,
-        extractingAudio: false,
-        trimmingVideo: false,
-        mergingVideos: false,
         addPanelOpen: false,
         appearancePanelOpen: false,
         settingsPanelOpen: false,
@@ -93,6 +88,7 @@ describe("canvas toolbar mode switch", () => {
             "tool-add",
             CANVAS_MODE_TOOL_ID,
             "tool-assets",
+            "tool-upload",
             "tool-appearance",
             "tool-generation-history",
             "tool-shortcuts",
@@ -106,15 +102,15 @@ describe("canvas toolbar mode switch", () => {
             "selection-arrange-column",
             "selection-arrange-grid",
             "selection-arrange-flow",
-            "selection-create-reference-group",
         ]));
 
         const entries = resolveToolbarEntries("selection", createMainContext(), null);
         expect(entries.some((entry) => entry.id === "selection-align-left")).toBe(true);
         expect(entries.some((entry) => entry.id === "selection-distribute-x")).toBe(true);
         expect(entries.some((entry) => entry.id === "selection-batch-connect")).toBe(true);
+        expect(entries.some((entry) => entry.id === "selection-create-reference-group")).toBe(true);
         expect(entries.some((entry) => entry.id === "selection-arrange-grid")).toBe(false);
-        expect(entries.some((entry) => entry.id === "selection-create-reference-group")).toBe(false);
+        expect(entries.some((entry) => entry.id === "selection-arrange-flow")).toBe(false);
     });
 
     test("renders the pill switch with an active circular thumb", () => {

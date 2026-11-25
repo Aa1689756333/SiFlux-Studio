@@ -317,9 +317,6 @@ func (a generationDeliveryMediaAdapter) decodeGenerationArtifact(userID, identit
 		if kind == "image" {
 			width, height = imageDimensions(data)
 		}
-		if kind == "video" {
-			width, height, durationMs = probeGeneratedVideoMedia(data)
-		}
 		return kind, data, mimeType, fileName, width, height, durationMs, nil
 	case strings.HasPrefix(artifactURL, "http://") || strings.HasPrefix(artifactURL, "https://"):
 		ctx, finish, contextErr := a.service.beginGenerationDownload(userID, identity, generationDownloadTimeout)
@@ -358,18 +355,6 @@ func (a generationDeliveryMediaAdapter) decodeGenerationArtifact(userID, identit
 		}
 		if kind == "image" {
 			width, height = imageDimensions(data)
-		}
-		if kind == "video" {
-			probedWidth, probedHeight, probedDurationMs := probeGeneratedVideoMedia(data)
-			if width <= 0 {
-				width = probedWidth
-			}
-			if height <= 0 {
-				height = probedHeight
-			}
-			if durationMs <= 0 {
-				durationMs = probedDurationMs
-			}
 		}
 		return kind, data, mimeType, fileName, width, height, durationMs, nil
 	default:

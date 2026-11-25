@@ -23,7 +23,6 @@ import (
 	"time"
 
 	"infinite-canvas/backend/internal/model"
-	"infinite-canvas/backend/internal/modelcatalog"
 	"infinite-canvas/backend/internal/outbound"
 	"infinite-canvas/backend/internal/protocol"
 
@@ -46,11 +45,8 @@ func RunProtocolAdapterTask(ctx context.Context, input Input, adapter protocol.A
 	return RunProtocolAdapterTaskWithPolicy(ctx, input, adapter, DeclarativeProtocolPollPolicy(input.Mode))
 }
 
-func DeclarativeProtocolPollPolicy(mode string) VideoPollPolicy {
-	if mode == "video" {
-		return DefaultVideoPollPolicy()
-	}
-	return VideoPollPolicy{
+func DeclarativeProtocolPollPolicy(mode string) PollPolicy {
+	return PollPolicy{
 		Interval:          2500 * time.Millisecond,
 		MaxNotFoundMisses: 1,
 		MaxDownloadTries:  3,
@@ -58,10 +54,7 @@ func DeclarativeProtocolPollPolicy(mode string) VideoPollPolicy {
 	}
 }
 
-func RunProtocolAdapterTaskWithPolicy(ctx context.Context, input Input, adapter protocol.Adapter, policy VideoPollPolicy) (map[string]interface{}, error) {
-	if input.Mode == "video" {
-		policy = videoPollPolicyForConfig(ctx, input.Config, policy)
-	}
+func RunProtocolAdapterTaskWithPolicy(ctx context.Context, input Input, adapter protocol.Adapter, policy PollPolicy) (map[string]interface{}, error) {
 	// create、poll、download 是同一个外部任务的三个阶段：任一阶段失败都向上返回真实错误，
 	// 不把“已提交但结果未知”伪装成成功，也不把下载失败降级成空结果。
 	request := ProtocolRequestFromInput(input)
@@ -79,21 +72,15 @@ func RunProtocolAdapterTaskWithPolicy(ctx context.Context, input Input, adapter 
 		if err != nil {
 			return nil, err
 		}
-		if result, handled, streamErr := tryStreamingDeclarativeTextCreate(ctx, input, adapter, request, spec, policy); handled {
+		if result, handled, streamErr := tryStreamingDeclarativeTextCreate(ctx, input, adapter, request, spec); handled {
 			return result, streamErr
 		}
 		body, err := ExecuteProtocolRequest(WithRequestKind(ctx, "create"), input.Config, spec)
 		if err != nil {
-			if input.Mode == "video" {
-				return nil, UncertainVideoSubmission(ctx, err)
-			}
 			return nil, err
 		}
 		created, err = adapter.ParseCreate(ctx, body)
 		if err != nil {
-			if input.Mode == "video" {
-				return nil, SubmissionUnknownError{Cause: err}
-			}
 			return nil, err
 		}
 		taskID = created.TaskID
@@ -108,37 +95,37 @@ func RunProtocolAdapterTaskWithPolicy(ctx context.Context, input Input, adapter 
 			return nil, ProtocolResultError(created.Message, taskID, body)
 		}
 		if created.Status == protocol.StatusSucceeded {
-			return FinishProtocolAdapterResult(ctx, input, adapter, request, taskID, created.Result, policy)
+			return FinishProtocolAdapterResult(ctx, input, adapter, request, taskID, created.Result)
 		}
 		if taskID == "" {
 			return nil, SubmissionUnknownError{Cause: errors.New("创建请求未返回可查询的任务 ID，请核对供应商任务记录")}
 		}
 	}
 
-	return RunVideoPollLoop(ctx, taskID, policy, func(ctx context.Context) (VideoPollOutcome, error) {
+	return RunPollLoop(ctx, taskID, policy, func(ctx context.Context) (PollOutcome, error) {
 		spec, err := adapter.BuildPoll(ctx, protocol.PollContext{BaseURL: input.Config.BaseURL, Model: request.Model, Request: request, TaskID: taskID})
 		if err != nil {
-			return VideoPollOutcome{}, err
+			return PollOutcome{}, err
 		}
 		body, err := ExecuteProtocolRequest(WithRequestKind(ctx, "poll"), input.Config, spec)
 		if err != nil {
-			return VideoPollOutcome{}, err
+			return PollOutcome{}, err
 		}
 		state, err := adapter.ParsePoll(ctx, protocol.PollContext{BaseURL: input.Config.BaseURL, Model: request.Model, Request: request, TaskID: taskID}, body)
 		if err != nil {
-			return VideoPollOutcome{}, err
+			return PollOutcome{}, err
 		}
 		if state.TaskID != "" {
 			taskID = state.TaskID
 		}
 		switch state.Status {
 		case protocol.StatusSucceeded:
-			result, err := FinishProtocolAdapterResult(ctx, input, adapter, request, taskID, state.Result, policy)
-			return VideoPollOutcome{Done: err == nil, Result: result}, err
+			result, err := FinishProtocolAdapterResult(ctx, input, adapter, request, taskID, state.Result)
+			return PollOutcome{Done: err == nil, Result: result}, err
 		case protocol.StatusFailed, protocol.StatusCancelled:
-			return VideoPollOutcome{}, ProtocolResultError(state.Message, taskID, body)
+			return PollOutcome{}, ProtocolResultError(state.Message, taskID, body)
 		}
-		return VideoPollOutcome{}, nil
+		return PollOutcome{}, nil
 	})
 }
 
@@ -163,40 +150,9 @@ func ExtractProviderTaskID(body []byte) (string, error) {
 	return "", err
 }
 
-// queryProtocolAdapterVideoTask 只读取一次已有的声明式 Provider 任务。
-// 人工恢复走此路径，因此检查本地失败任务时绝不会创建第二个上游任务。
-func QueryProtocolAdapterVideoTask(ctx context.Context, input Input, adapter protocol.Adapter, taskID string) (map[string]interface{}, string, error) {
-	request := ProtocolRequestFromInput(input)
-	pollContext := protocol.PollContext{BaseURL: input.Config.BaseURL, Model: request.Model, Request: request, TaskID: taskID}
-	spec, err := adapter.BuildPoll(ctx, pollContext)
-	if err != nil {
-		return nil, "", err
-	}
-	body, err := ExecuteProtocolRequest(WithRequestKind(ctx, "poll"), input.Config, spec)
-	if err != nil {
-		return nil, "", err
-	}
-	state, err := adapter.ParsePoll(ctx, pollContext, body)
-	if err != nil {
-		return nil, "", err
-	}
-	providerStatus := string(state.Status)
-	switch state.Status {
-	case protocol.StatusSucceeded:
-		result, err := FinishProtocolAdapterResult(ctx, input, adapter, request, taskID, state.Result, DefaultVideoPollPolicy())
-		return result, providerStatus, err
-	case protocol.StatusFailed, protocol.StatusCancelled:
-		return nil, providerStatus, ProtocolResultError(state.Message, taskID, body)
-	case protocol.StatusPending, protocol.StatusProcessing:
-		return nil, providerStatus, nil
-	default:
-		return nil, providerStatus, fmt.Errorf("声明式协议任务 %s 返回未知状态：%s", taskID, providerStatus)
-	}
-}
-
 // tryStreamingDeclarativeTextCreate 让已知文本线协议在 Resolve 后的 StreamText 真正到达 OnTextDelta。
 // 其它声明式插件仍走 JSON 创建；上游忽略 stream 并返回 JSON 时回退 ParseCreate。
-func tryStreamingDeclarativeTextCreate(ctx context.Context, input Input, adapter protocol.Adapter, request protocol.GenerationRequest, spec protocol.RequestSpec, policy VideoPollPolicy) (map[string]interface{}, bool, error) {
+func tryStreamingDeclarativeTextCreate(ctx context.Context, input Input, adapter protocol.Adapter, request protocol.GenerationRequest, spec protocol.RequestSpec) (map[string]interface{}, bool, error) {
 	if input.Mode != "text" || !input.StreamText {
 		return nil, false, nil
 	}
@@ -250,7 +206,7 @@ func tryStreamingDeclarativeTextCreate(ctx context.Context, input Input, adapter
 		return nil, true, ProtocolResultError(created.Message, taskID, data)
 	}
 	if created.Status == protocol.StatusSucceeded {
-		result, finishErr := FinishProtocolAdapterResult(ctx, input, adapter, request, taskID, created.Result, policy)
+		result, finishErr := FinishProtocolAdapterResult(ctx, input, adapter, request, taskID, created.Result)
 		return result, true, finishErr
 	}
 	return nil, true, SubmissionUnknownError{Cause: errors.New("流式文本创建未返回最终结果")}
@@ -271,11 +227,6 @@ func streamingTextWire(interfaceType string) string {
 
 func ProtocolRequestFromInput(input Input) protocol.GenerationRequest {
 	resolution := strings.TrimSpace(input.Config.VQuality)
-	if input.Mode == "video" {
-		if declared := videoResolutionNameRequest(input.VideoCapability, resolution); declared != "" {
-			resolution = declared
-		}
-	}
 	aspectRatio := strings.TrimSpace(input.Config.Size)
 	if input.Mode == "image" {
 		aspectRatio = ProtocolImageAspectRatio(input)
@@ -286,20 +237,11 @@ func ProtocolRequestFromInput(input Input) protocol.GenerationRequest {
 		Prompt:        input.Prompt,
 		Instructions:  strings.TrimSpace(input.Config.SystemPrompt),
 		Images:        ProtocolImageReferences(input),
-		Videos:        ProtocolMediaReferences(input.ReferenceVideos, "video"),
-		Audios:        ProtocolMediaReferences(input.ReferenceAudios, "audio"),
 		AspectRatio:   aspectRatio,
 		Resolution:    resolution,
 		Quality:       input.Config.Quality,
-		GenerateAudio: ParseBool(input.Config.VideoGenerateAudio, false),
-		Watermark:     ParseBool(input.Config.VideoWatermark, false),
-		Operation:     firstNonEmpty(metadataString(input.Metadata, "videoEditOperation"), metadataString(input.Metadata, "videoOperation")),
 		Extra: map[string]any{
-			"videoSeconds": input.Config.VideoSeconds,
-			"audioVoice":   ResolvedAudioSpeechVoice(input.Config.Model, input.Config.AudioVoice),
-			"audioFormat":  defaultString(input.Config.AudioFormat, "mp3"),
-			"audioSpeed":   defaultString(input.Config.AudioSpeed, "1"),
-			"count":        input.Config.Count,
+			"count": input.Config.Count,
 		},
 	}
 	for _, message := range input.TextHistory {
@@ -312,25 +254,16 @@ func ProtocolRequestFromInput(input Input) protocol.GenerationRequest {
 		}
 	}
 	request.Inputs = append(request.Inputs, request.Images...)
-	request.Inputs = append(request.Inputs, request.Videos...)
-	request.Inputs = append(request.Inputs, request.Audios...)
 	if input.MaxOutputTokens > 0 {
 		request.Extra["max_output_tokens"] = input.MaxOutputTokens
 		request.Extra["max_tokens"] = input.MaxOutputTokens
-	}
-	if duration, err := strconv.Atoi(strings.TrimSpace(input.Config.VideoSeconds)); err == nil && (duration > 0 || (duration == -1 && model.IsVolcengineArkVideoProtocol(model.ChannelInterfaceType(input.Config.InterfaceType)))) {
-		request.Duration = duration
 	}
 	if count, err := strconv.Atoi(strings.TrimSpace(input.Config.Count)); err == nil && count > 0 {
 		request.ImageCount = count
 	}
 	request.Output = protocol.OutputOptions{
-		Count: request.ImageCount, Duration: request.Duration, AspectRatio: request.AspectRatio,
-		Resolution: request.Resolution, Quality: request.Quality, GenerateAudio: request.GenerateAudio,
-		Watermark: request.Watermark, Format: input.Config.AudioFormat,
-	}
-	if instructions := strings.TrimSpace(input.Config.AudioInstructions); instructions != "" {
-		request.Extra["audioInstructions"] = instructions
+		Count: request.ImageCount, AspectRatio: request.AspectRatio,
+		Resolution: request.Resolution, Quality: request.Quality,
 	}
 	request.ProviderOptions = make(map[string]map[string]any)
 	if configured, ok := input.Metadata["providerOptions"].(map[string]any); ok {
@@ -339,9 +272,6 @@ func ProtocolRequestFromInput(input Input) protocol.GenerationRequest {
 				request.ProviderOptions[strings.TrimSpace(namespace)] = options
 			}
 		}
-	}
-	if input.Mode == "video" && IsSeedanceVideoConfig(input.Config) {
-		request = protocol.NormalizeSeedanceTaskOptions(request)
 	}
 	return request
 }
@@ -362,9 +292,6 @@ func ProtocolImageAspectRatio(input Input) string {
 }
 
 func ProtocolImageReferences(input Input) []protocol.MediaReference {
-	if input.Mode == "video" {
-		return ProtocolVideoImageReferences(input)
-	}
 	result := make([]protocol.MediaReference, 0, len(input.ReferenceImages)+1)
 	for index, value := range input.ReferenceImages {
 		item := ProtocolMediaReference(value, "image", index)
@@ -381,41 +308,6 @@ func ProtocolImageReferences(input Input) []protocol.MediaReference {
 		mask.Role = "mask"
 		if mask.URL != "" || mask.DataURL != "" {
 			result = append(result, mask)
-		}
-	}
-	return result
-}
-
-func ProtocolVideoImageReferences(input Input) []protocol.MediaReference {
-	result := make([]protocol.MediaReference, 0, len(input.ReferenceImages))
-	fallbackRole := ""
-	if metadataString(input.Metadata, "videoStartFrameNodeId") != "" || metadataString(input.Metadata, "videoEndFrameNodeId") != "" {
-		fallbackRole = "reference_image"
-	}
-	for index, value := range input.ReferenceImages {
-		item := ProtocolMediaReference(value, "image", index)
-		item.Role = VideoImageRoleOrDefault(input, value, fallbackRole)
-		if modelcatalog.IsSeedance25Model(input.Config.Model) && item.Role == "" {
-			item.Role = SeedanceTaskImageRole(input, value)
-		}
-		if item.URL != "" || item.DataURL != "" {
-			result = append(result, item)
-		}
-	}
-	return result
-}
-
-func ProtocolMediaReferences(values []Media, kind string) []protocol.MediaReference {
-	result := make([]protocol.MediaReference, 0, len(values))
-	for index, value := range values {
-		item := ProtocolMediaReference(value, kind, index)
-		if kind == "video" {
-			item.Role = "reference_video"
-		} else if kind == "audio" {
-			item.Role = "reference_audio"
-		}
-		if item.URL != "" || item.DataURL != "" {
-			result = append(result, item)
 		}
 	}
 	return result
@@ -461,17 +353,13 @@ func ExecuteProtocolBinaryRequestWithConsumer(ctx context.Context, config Config
 	if contentType != "" {
 		req.Header.Set("Content-Type", contentType)
 	}
-	idle, _ := ctx.Value(videoDeliveryRequestContext{}).(time.Duration)
-	if idle == 0 || SameProviderOrigin(config.BaseURL, requestURL) {
-		for name, value := range spec.Headers {
-			req.Header.Set(name, value)
-		}
-		outbound.ApplyOutboundHeaders(req, config.Headers)
-		if err := ApplyProtocolAuth(req, config, spec.Auth); err != nil {
-			return nil, "", err
-		}
+	for name, value := range spec.Headers {
+		req.Header.Set(name, value)
 	}
-	applyBeefAPIVideoDeliveryHeader(ctx, config, req)
+	outbound.ApplyOutboundHeaders(req, config.Headers)
+	if err := ApplyProtocolAuth(req, config, spec.Auth); err != nil {
+		return nil, "", err
+	}
 	if consume != nil {
 		req.Header.Set("Accept", "text/event-stream")
 		return DoBinaryWithConsumer(req, consume)
@@ -489,11 +377,6 @@ func ProtocolRequestBody(ctx context.Context, config Config, spec protocol.Reque
 		data, err := json.Marshal(spec.Body)
 		if err != nil {
 			return nil, "", err
-		}
-		// Ark documents a 64 MiB JSON request limit. Measure the actual wire
-		// representation, including base64; URL resource sizes are irrelevant.
-		if model.IsVolcengineArkVideoProtocol(model.ChannelInterfaceType(config.InterfaceType)) && int64(len(data)) > VideoJSONRequestLimitBytes {
-			return nil, "", ErrVideoJSONRequestTooLarge
 		}
 		return bytes.NewReader(data), "application/json", nil
 	case "application/x-www-form-urlencoded":
@@ -625,12 +508,6 @@ func ApplyProtocolAuth(req *http.Request, config Config, auth protocol.ManifestA
 		return nil
 	}
 	credential := ProtocolCredentialField(config, auth.Field)
-	if idle, _ := req.Context().Value(videoDeliveryRequestContext{}).(time.Duration); idle > 0 {
-		credentials, _ := req.Context().Value(videoCredentialContext{}).(videoProviderCredentials)
-		credentials.Origin = config.BaseURL
-		credentials.Values = append(credentials.Values, credential, auth.Prefix+credential, ProtocolCredentialField(config, auth.SecretField))
-		*req = *req.WithContext(context.WithValue(req.Context(), videoCredentialContext{}, credentials))
-	}
 	switch typeName {
 	case "none":
 		return nil
@@ -653,10 +530,6 @@ func ApplyProtocolAuth(req *http.Request, config Config, auth protocol.ManifestA
 		name := defaultString(strings.TrimSpace(auth.Query), strings.TrimSpace(auth.Field))
 		if name == "" {
 			return errors.New("插件 query 鉴权缺少参数名")
-		}
-		if idle, _ := req.Context().Value(videoDeliveryRequestContext{}).(time.Duration); idle > 0 {
-			setVideoCredentialQuery(req.URL, name, auth.Prefix+credential)
-			return nil
 		}
 		query := req.URL.Query()
 		query.Set(name, auth.Prefix+credential)
@@ -893,14 +766,11 @@ func AppendProtocolQuery(rawURL string, values map[string][]string) (string, err
 	return parsed.String(), nil
 }
 
-func FinishProtocolResult(ctx context.Context, config Config, mode string, taskID string, result *protocol.Result, pollPolicy VideoPollPolicy) (map[string]interface{}, error) {
-	return finishProtocolResult(ctx, config, mode, taskID, result, pollPolicy, nil)
+func FinishProtocolResult(ctx context.Context, config Config, mode string, taskID string, result *protocol.Result) (map[string]interface{}, error) {
+	return finishProtocolResult(ctx, config, mode, taskID, result)
 }
 
-func finishProtocolResult(ctx context.Context, config Config, mode string, taskID string, result *protocol.Result, pollPolicy VideoPollPolicy, renew func(context.Context, int) (VideoResultSource, error)) (map[string]interface{}, error) {
-	if mode == "video" {
-		pollPolicy = videoPollPolicyForConfig(ctx, config, pollPolicy)
-	}
+func finishProtocolResult(ctx context.Context, config Config, mode string, taskID string, result *protocol.Result) (map[string]interface{}, error) {
 	if result == nil {
 		return nil, errors.New("声明式协议已完成但没有返回结果")
 	}
@@ -915,10 +785,6 @@ func finishProtocolResult(ctx context.Context, config Config, mode string, taskI
 	switch mode {
 	case "image":
 		references = result.Images
-	case "video":
-		references = result.Videos
-	case "audio":
-		references = result.Audios
 	default:
 		return nil, fmt.Errorf("声明式协议不支持生成模式 %s", mode)
 	}
@@ -926,21 +792,8 @@ func finishProtocolResult(ctx context.Context, config Config, mode string, taskI
 		return nil, errors.New("声明式协议已完成但没有返回媒体地址")
 	}
 	items := make([]interface{}, 0, len(references))
-	for index, reference := range references {
-		var data []byte
-		var mimeType string
-		var err error
-		if mode == "video" {
-			var resolve videoResultResolver
-			if renew != nil {
-				resolve = func(ctx context.Context) (VideoResultSource, error) { return renew(ctx, index) }
-			}
-			source := videoURLSource(config, defaultString(reference.DataURL, reference.URL))
-			download := VideoResultDownloader(config, taskID, source, resolve)
-			data, mimeType, err = RunVideoDownload(ctx, taskID, pollPolicy, download)
-		} else {
-			data, mimeType, err = ProtocolMediaBytes(ctx, config, reference)
-		}
+	for _, reference := range references {
+		data, mimeType, err := ProtocolMediaBytes(ctx, config, reference)
 		if err != nil {
 			return nil, err
 		}
@@ -948,62 +801,26 @@ func finishProtocolResult(ctx context.Context, config Config, mode string, taskI
 		item := map[string]interface{}{"dataUrl": DataURL(mimeType, data), "mimeType": mimeType}
 		items = append(items, item)
 	}
-	switch mode {
-	case "image":
-		return map[string]interface{}{"mode": "image", "images": items}, nil
-	case "video":
-		return map[string]interface{}{"mode": "video", "video": items[0]}, nil
-	default:
-		return map[string]interface{}{"mode": "audio", "audio": items[0]}, nil
-	}
+	return map[string]interface{}{"mode": "image", "images": items}, nil
 }
 
 // finishProtocolAdapterResult 优先消费 create/poll 已返回的内联或 URL 结果，只有插件明确声明独立结果端点时才下载。
 // 空响应或下载失败必须向上失败，不能生成伪素材；application/octet-stream 仅表示传输层未知类型，
-// 不会把未知内容伪装成具体图片、视频或音频 MIME。
-func FinishProtocolAdapterResult(ctx context.Context, input Input, adapter protocol.Adapter, request protocol.GenerationRequest, taskID string, result *protocol.Result, pollPolicy VideoPollPolicy) (map[string]interface{}, error) {
-	if input.Mode == "video" {
-		pollPolicy = videoPollPolicyForConfig(ctx, input.Config, pollPolicy)
-		if auth, ok := adapter.(protocol.MediaAuthAdapter); ok {
-			ctx = withVideoProtocolAuth(ctx, auth.MediaAuth())
-		}
-	}
-	renew := func(ctx context.Context, index int) (VideoResultSource, error) {
-		referenceID := ""
-		if result != nil && index < len(result.Videos) {
-			referenceID = strings.TrimSpace(result.Videos[index].ID)
-		}
-		return queryProtocolVideoSource(ctx, input, adapter, request, taskID, index, referenceID)
-	}
+// 不会把未知内容伪装成具体图片 MIME。
+func FinishProtocolAdapterResult(ctx context.Context, input Input, adapter protocol.Adapter, request protocol.GenerationRequest, taskID string, result *protocol.Result) (map[string]interface{}, error) {
 	if ProtocolResultHasOutput(input.Mode, result) {
-		return finishProtocolResult(ctx, input.Config, input.Mode, taskID, result, pollPolicy, renew)
+		return finishProtocolResult(ctx, input.Config, input.Mode, taskID, result)
 	}
 	resultAdapter, ok := adapter.(protocol.ResultAdapter)
 	capability, hasCapability := adapter.(protocol.ResultCapability)
 	if !ok || !hasCapability || !capability.ResultAvailable() {
-		return FinishProtocolResult(ctx, input.Config, input.Mode, taskID, result, pollPolicy)
+		return FinishProtocolResult(ctx, input.Config, input.Mode, taskID, result)
 	}
 	spec, err := resultAdapter.BuildResult(ctx, protocol.PollContext{BaseURL: input.Config.BaseURL, Model: request.Model, Request: request, TaskID: taskID})
 	if err != nil {
 		return nil, err
 	}
-	download := func(ctx context.Context) ([]byte, string, error) {
-		return ExecuteProtocolBinaryRequest(WithRequestKind(ctx, "download"), input.Config, spec)
-	}
-	if input.Mode == "video" {
-		source, sourceErr := protocolVideoRequestSource(input.Config, spec)
-		if sourceErr != nil {
-			return nil, sourceErr
-		}
-		download = VideoResultDownloader(input.Config, taskID, source, func(ctx context.Context) (VideoResultSource, error) { return renew(ctx, 0) })
-	}
-	var data []byte
-	var mimeType string
-	if input.Mode == "video" {
-		data, mimeType, err = RunVideoDownload(ctx, taskID, pollPolicy, download)
-	} else {
-		data, mimeType, err = download(ctx)
-	}
+	data, mimeType, err := ExecuteProtocolBinaryRequest(WithRequestKind(ctx, "download"), input.Config, spec)
 	if err != nil {
 		return nil, fmt.Errorf("声明式协议结果下载失败：%w", err)
 	}
@@ -1019,83 +836,10 @@ func FinishProtocolAdapterResult(ctx context.Context, input Input, adapter proto
 	switch input.Mode {
 	case "image":
 		downloaded.Images = []protocol.MediaReference{reference}
-	case "video":
-		downloaded.Videos = []protocol.MediaReference{reference}
-	case "audio":
-		downloaded.Audios = []protocol.MediaReference{reference}
 	default:
 		return nil, fmt.Errorf("声明式协议结果下载不支持生成模式 %s", input.Mode)
 	}
-	return FinishProtocolResult(ctx, input.Config, input.Mode, taskID, downloaded, pollPolicy)
-}
-
-func protocolVideoRequestSource(config Config, spec protocol.RequestSpec) (VideoResultSource, error) {
-	rawURL, err := ProtocolRequestURL(config.BaseURL, spec)
-	if err != nil {
-		return VideoResultSource{}, err
-	}
-	return VideoResultSource{URL: rawURL, Read: func(ctx context.Context) ([]byte, string, error) {
-		return ExecuteProtocolBinaryRequest(withVideoProtocolAuth(WithRequestKind(ctx, "download"), spec.Auth), config, spec)
-	}}, nil
-}
-
-func queryProtocolVideoSource(ctx context.Context, input Input, adapter protocol.Adapter, request protocol.GenerationRequest, taskID string, index int, referenceID string) (VideoResultSource, error) {
-	pollContext := protocol.PollContext{BaseURL: input.Config.BaseURL, Model: request.Model, Request: request, TaskID: taskID}
-	spec, err := adapter.BuildPoll(ctx, pollContext)
-	if err != nil {
-		return VideoResultSource{}, err
-	}
-	body, err := ExecuteProtocolRequest(WithRequestKind(ctx, "poll"), input.Config, spec)
-	if err != nil {
-		return VideoResultSource{}, err
-	}
-	state, err := adapter.ParsePoll(ctx, pollContext, body)
-	if err != nil {
-		return VideoResultSource{}, err
-	}
-	if returnedID := strings.TrimSpace(state.TaskID); returnedID != "" && returnedID != strings.TrimSpace(taskID) {
-		return VideoResultSource{}, errors.New("查询结果与原视频任务不一致，已停止取回")
-	}
-	if state.Status == protocol.StatusFailed || state.Status == protocol.StatusCancelled {
-		return VideoResultSource{}, ProtocolResultError(state.Message, taskID, body)
-	}
-	if state.Status != protocol.StatusSucceeded {
-		_, err := videoResultURL(string(state.Status), "")
-		return VideoResultSource{}, err
-	}
-	var reference protocol.MediaReference
-	found := false
-	if state.Result != nil {
-		if referenceID != "" {
-			for _, candidate := range state.Result.Videos {
-				if strings.TrimSpace(candidate.ID) == referenceID {
-					if found {
-						return VideoResultSource{}, errors.New("原视频任务返回重复的产物 ID，已停止取回")
-					}
-					reference, found = candidate, true
-				}
-			}
-		} else if index >= 0 && index < len(state.Result.Videos) {
-			reference, found = state.Result.Videos[index], true
-		}
-	}
-	if found {
-		rawURL, err := videoResultURL("succeeded", defaultString(reference.DataURL, reference.URL))
-		return videoURLSource(input.Config, rawURL), err
-	}
-	if referenceID != "" || index != 0 {
-		return VideoResultSource{}, errors.New("原视频任务没有返回对应视频产物，已停止取回")
-	}
-	resultAdapter, ok := adapter.(protocol.ResultAdapter)
-	capability, capable := adapter.(protocol.ResultCapability)
-	if !ok || !capable || !capability.ResultAvailable() {
-		return VideoResultSource{}, errors.New("原视频任务没有返回可取回的结果")
-	}
-	spec, err = resultAdapter.BuildResult(ctx, pollContext)
-	if err != nil {
-		return VideoResultSource{}, err
-	}
-	return protocolVideoRequestSource(input.Config, spec)
+	return FinishProtocolResult(ctx, input.Config, input.Mode, taskID, downloaded)
 }
 
 func ProtocolResultHasOutput(mode string, result *protocol.Result) bool {
@@ -1107,10 +851,6 @@ func ProtocolResultHasOutput(mode string, result *protocol.Result) bool {
 		return strings.TrimSpace(result.Text) != ""
 	case "image":
 		return len(result.Images) > 0
-	case "video":
-		return len(result.Videos) > 0
-	case "audio":
-		return len(result.Audios) > 0
 	default:
 		return false
 	}

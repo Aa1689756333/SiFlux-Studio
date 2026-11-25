@@ -18,11 +18,6 @@ afterEach(() => {
 
 const wiredModules: Array<[string, string[]]> = [
     ["lib/canvas/canvas-folder-storage.ts", ["localForageInstance(CANVAS_FOLDER_PENDING_STORE_NAME)"]],
-    ["lib/canvas/canvas-drawing-storage.ts", [
-        "localForageInstance(DRAWING_DOCUMENTS_STORE_NAME)",
-        "localForageInstance(DRAWING_PREVIEWS_STORE_NAME)",
-        "localForageInstance(DRAWING_GENERATION_RENDERS_STORE_NAME)",
-    ]],
     ["services/image-storage.ts", ["localForageInstance(IMAGE_FILES_STORE_NAME)"]],
     ["services/local-media-repository.ts", ["localForageInstance(MEDIA_FILES_STORE_NAME)"]],
     ["services/resource-blob-cache.ts", [

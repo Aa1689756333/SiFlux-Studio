@@ -13,22 +13,7 @@ export type InsertAssetPayload =
     | { kind: "text"; content: string; title: string; assetId?: string }
     | { kind: "image"; dataUrl: string; title: string; url?: string; storageKey?: string; width?: number; height?: number; bytes?: number; mimeType?: string; assetId?: string }
     | { kind: "video"; url: string; title: string; storageKey?: string; width?: number; height?: number; durationMs?: number; hasAudio?: boolean; bytes?: number; mimeType?: string; assetId?: string }
-    | { kind: "audio"; url: string; title: string; storageKey?: string; durationMs?: number; bytes?: number; mimeType?: string; assetId?: string }
-    | {
-          kind: "character";
-          title: string;
-          assetId: string;
-          versionId: string;
-          prompt: string;
-          aliases: string[];
-          definition: Record<string, unknown>;
-          coverUrl?: string;
-          visualStatus: string;
-          voiceStatus: string;
-          voiceName?: string;
-          voiceProfile?: { name: string; provider: string; language: string; timbre: string };
-          voiceInstructions?: string;
-      };
+    | { kind: "audio"; url: string; title: string; storageKey?: string; durationMs?: number; bytes?: number; mimeType?: string; assetId?: string };
 
 type Props = {
     open: boolean;
@@ -42,7 +27,7 @@ const categoryLabels: Record<string, string> = { all: "全部素材", ...ASSET_C
 export function AssetPickerModal({ open, multiple = true, onInsert, onClose }: Props) {
     const assets = useAssetStore((state) => state.assets);
     const externalAssetSources = useExternalAssetSources(open);
-    const insertableAssets = useMemo(() => assets.filter((asset): asset is InsertableAsset => asset.kind === "text" || asset.kind === "image" || asset.kind === "video" || asset.kind === "audio"), [assets]);
+    const insertableAssets = useMemo(() => assets.filter((asset): asset is InsertableAsset => asset.kind === "image" || asset.kind === "text"), [assets]);
     const items = useMemo<AssetLibraryPickerItem[]>(
         () => [
             ...insertableAssets.map((asset) => ({
@@ -50,12 +35,12 @@ export function AssetPickerModal({ open, multiple = true, onInsert, onClose }: P
                 title: asset.title,
                 category: normalizeAssetCategory(asset.category),
                 archived: asset.status === "archived",
-                kindLabel: asset.kind === "image" ? "图片" : asset.kind === "video" ? "视频" : asset.kind === "audio" ? "音频" : "文本",
+                kindLabel: asset.kind === "image" ? "图片" : "文本",
                 mediaKind: asset.kind,
                 asset,
                 searchText: (asset.tags || []).join(" "),
             })),
-            ...externalAssetSources.items,
+            ...externalAssetSources.items.filter((item) => item.mediaKind === "image" || item.mediaKind === "text"),
         ],
         [externalAssetSources.items, insertableAssets],
     );
@@ -64,14 +49,14 @@ export function AssetPickerModal({ open, multiple = true, onInsert, onClose }: P
         <AssetLibraryPickerModal
             remoteLibrary
             open={open}
-            mediaKinds={["image", "video", "audio", "text"]}
+            mediaKinds={["image", "text"]}
             items={items}
             categoryLabels={{ ...categoryLabels, ...externalAssetSources.categoryLabels }}
             folders={externalAssetSources.folders}
             footerNote={externalAssetSources.error || undefined}
             multiple={multiple}
             confirmLabel={(count) => `插入已选素材${count ? `（${count}）` : ""}`}
-            emptyDescription="先在素材库中添加图片、视频、音频或文本。"
+            emptyDescription="先在素材库中添加图片或文本。"
             onClose={onClose}
             onConfirm={async (ids, expectedScope) => {
                 await onInsert(assetPickerItemsToInsertPayloads(ids, items), expectedScope);

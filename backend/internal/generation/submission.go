@@ -11,6 +11,13 @@ import (
 
 type SubmissionUnknownError struct{ Cause error }
 
+// RequestNotSentError is created only from transport evidence: no HTTP
+// connection was acquired during this request, including any redirects.
+type RequestNotSentError struct{ Cause error }
+
+func (e RequestNotSentError) Error() string { return e.Cause.Error() }
+func (e RequestNotSentError) Unwrap() error { return e.Cause }
+
 // RequestPreparationError proves that the create request was not dispatched.
 // Reference downloads may fail after their own HTTP calls, before a paid POST.
 type RequestPreparationError struct{ Cause error }
@@ -30,11 +37,23 @@ func SafeRouteRejection(err error) bool {
 	if err == nil {
 		return false
 	}
+	var unknown SubmissionUnknownError
+	if errors.As(err, &unknown) {
+		return false
+	}
+	var preparation RequestPreparationError
+	if errors.As(err, &preparation) {
+		return true
+	}
 	if code, _ := platform.ChannelSlotFailureDetails(err); code != "" {
 		return true
 	}
 	var upstream HTTPError
 	if errors.As(err, &upstream) {
+		fields := extractProviderFields(upstream.Body)
+		if upstream.StatusCode >= 400 && fields.Code == "model_not_found" && fields.TaskID == "" {
+			return true
+		}
 		switch upstream.StatusCode {
 		case http.StatusUnauthorized, http.StatusPaymentRequired, http.StatusForbidden, http.StatusNotFound, http.StatusTooManyRequests:
 			return true
@@ -43,7 +62,12 @@ func SafeRouteRejection(err error) bool {
 	return false
 }
 
-func UncertainVideoSubmission(ctx context.Context, err error) error {
+func UncertainSubmission(ctx context.Context, err error) error {
+	var notSent RequestNotSentError
+	var unknown SubmissionUnknownError
+	if errors.As(err, &notSent) || errors.As(err, &unknown) {
+		return err
+	}
 	var preparation RequestPreparationError
 	if errors.As(err, &preparation) {
 		return err
@@ -55,7 +79,7 @@ func UncertainVideoSubmission(ctx context.Context, err error) error {
 	if errors.As(err, &circuit) {
 		return err
 	}
-	if retry, _ := RetryableVideoPollError(context.Background(), err); retry {
+	if retry, _ := RetryablePollError(context.Background(), err); retry {
 		return SubmissionUnknownError{Cause: err}
 	}
 	return err

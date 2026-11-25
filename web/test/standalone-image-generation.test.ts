@@ -37,22 +37,21 @@ function sampleJob(overrides: Partial<ImageGenerationJob> = {}): ImageGeneration
 }
 
 describe("standalone image generation page", () => {
-    test("home and sidebar open the standalone page instead of a new canvas", () => {
+    test("sidebar opens the standalone page instead of a new canvas", () => {
         const sidebar = read("src/components/layout/workspace-sidebar-nav.tsx");
         const router = read("src/router.tsx");
         expect(sidebar).toContain('to: "/generate/image"');
         expect(sidebar).not.toContain('to: "/canvas?mode=new&add=image"');
-        expect(sidebar).toContain('title: "图片生成"');
-        expect(sidebar).toContain('to: "/generate/image"');
+        expect(sidebar).toContain('title: "生图"');
         expect(sidebar).toContain('pathname.startsWith("/generate/image") ? "image"');
         expect(router).toContain('path: "/generate/image"');
         expect(router).toContain("loadGenerateImagePage");
     });
 
-    test("new project and canvas entries still open the infinite canvas", () => {
+    test("canvas entry still opens the infinite canvas", () => {
         const sidebar = read("src/components/layout/workspace-sidebar-nav.tsx");
-        expect(sidebar).toContain('to: "/canvas?mode=new"');
-        expect(sidebar).toContain('title: "新建画布"');
+        expect(sidebar).toContain('toolItem("canvas", "/canvas")');
+        expect(sidebar).not.toContain('"/canvas?mode=new"');
     });
 
     test("generation reuses the backend image task pipeline without creating a canvas", () => {

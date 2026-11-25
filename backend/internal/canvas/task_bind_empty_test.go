@@ -56,7 +56,7 @@ func TestBindTaskOutputReconcilesUnboundStoredMediaNodes(t *testing.T) {
 	}
 	for _, rawAsset := range []string{
 		`{"id":"asset-ref","kind":"image","title":"参考图","coverUrl":"/api/resources/res-ref/file","tags":[],"status":"confirmed","source":"Canvas","data":{"dataUrl":"","storageKey":"resource:res-ref","width":1,"height":1,"bytes":1,"mimeType":"image/png"}}`,
-		`{"id":"asset-video","kind":"video","title":"生成视频","coverUrl":"","tags":[],"status":"confirmed","source":"生成任务","data":{"url":"/api/resources/res-video/file","storageKey":"resource:res-video","width":1280,"height":720,"bytes":100,"mimeType":"video/mp4"}}`,
+		`{"id":"asset-video","kind":"image","title":"生成图片","coverUrl":"","tags":[],"status":"confirmed","source":"生成任务","data":{"url":"/api/resources/res-video/file","storageKey":"resource:res-video","width":1280,"height":720,"bytes":100,"mimeType":"image/png"}}`,
 	} {
 		if _, err := svc.UpsertUserAsset("owner", json.RawMessage(rawAsset)); err != nil {
 			t.Fatal(err)
@@ -74,7 +74,7 @@ func TestBindTaskOutputReconcilesUnboundStoredMediaNodes(t *testing.T) {
 			"nodes":[
 				{"id":"ref-slot","type":"image","metadata":{"storageKey":"resource:res-ref","content":"/api/resources/res-ref/file"}},
 				{"id":"batch-root","type":"image","metadata":{"isBatchRoot":true,"primaryImageId":"ref-slot","storageKey":"resource:res-ref","content":"/api/resources/res-ref/file"}},
-				{"id":"video-node","type":"video","metadata":{"taskId":"task-seedance","status":"loading"}}
+				{"id":"video-node","type":"image","metadata":{"taskId":"task-seedance","status":"loading"}}
 			],
 			"connections":[]
 		}`,
@@ -91,12 +91,12 @@ func TestBindTaskOutputReconcilesUnboundStoredMediaNodes(t *testing.T) {
 		TaskID:      "task-seedance",
 		OutputIndex: 0,
 		EffectKey:   "attach-node:task-seedance:video-node:0",
-		MediaType:   "video",
+		MediaType:   "image",
 		AssetID:     "asset-video",
 		ResourceID:  "res-video",
 		StorageKey:  "resource:res-video",
 		Content:     "/api/resources/res-video/file",
-		MimeType:    "video/mp4",
+		MimeType:    "image/png",
 		Bytes:       100,
 		Width:       1280,
 		Height:      720,
@@ -144,7 +144,7 @@ func TestBindTaskOutputPreservesDistinctAssetsSharingResource(t *testing.T) {
 		`{"id":"asset-copy-a","kind":"image","title":"副本A","coverUrl":"/api/resources/res-shared/file","tags":[],"status":"confirmed","source":"Canvas","data":{"dataUrl":"","storageKey":"resource:res-shared","width":1,"height":1,"bytes":1,"mimeType":"image/png"}}`,
 		`{"id":"asset-copy-b","kind":"image","title":"副本B","coverUrl":"/api/resources/res-shared/file","tags":[],"status":"confirmed","source":"Canvas","data":{"dataUrl":"","storageKey":"resource:res-shared","width":1,"height":1,"bytes":1,"mimeType":"image/png"}}`,
 		`{"id":"asset-unbound","kind":"image","title":"唯一素材","coverUrl":"/api/resources/res-unbound/file","tags":[],"status":"confirmed","source":"Canvas","metadata":{"referenceUrl":"/api/resources/res-secondary/file"},"data":{"dataUrl":"","storageKey":"resource:res-unbound","width":1,"height":1,"bytes":1,"mimeType":"image/png"}}`,
-		`{"id":"asset-video","kind":"video","title":"生成视频","coverUrl":"","tags":[],"status":"confirmed","source":"生成任务","data":{"url":"/api/resources/res-video/file","storageKey":"resource:res-video","width":1280,"height":720,"bytes":100,"mimeType":"video/mp4"}}`,
+		`{"id":"asset-video","kind":"image","title":"生成图片","coverUrl":"","tags":[],"status":"confirmed","source":"生成任务","data":{"url":"/api/resources/res-video/file","storageKey":"resource:res-video","width":1280,"height":720,"bytes":100,"mimeType":"image/png"}}`,
 	} {
 		if _, err := svc.UpsertUserAsset("owner", json.RawMessage(rawAsset)); err != nil {
 			t.Fatal(err)
@@ -163,7 +163,7 @@ func TestBindTaskOutputPreservesDistinctAssetsSharingResource(t *testing.T) {
 				{"id":"node-a","type":"image","metadata":{"assetId":"asset-copy-a","storageKey":"resource:res-shared","content":"/api/resources/res-shared/file"}},
 				{"id":"node-b","type":"image","metadata":{"assetId":"asset-copy-b","storageKey":"resource:res-shared","content":"/api/resources/res-shared/file"}},
 				{"id":"node-unbound","type":"image","metadata":{"storageKey":"resource:res-unbound","content":"/api/resources/res-unbound/file"}},
-				{"id":"video-node","type":"video","metadata":{"taskId":"task-seedance","status":"loading"}}
+				{"id":"video-node","type":"image","metadata":{"taskId":"task-seedance","status":"loading"}}
 			],
 			"connections":[]
 		}`,
@@ -180,12 +180,12 @@ func TestBindTaskOutputPreservesDistinctAssetsSharingResource(t *testing.T) {
 		TaskID:      "task-seedance",
 		OutputIndex: 0,
 		EffectKey:   "attach-node:task-seedance:video-node:0",
-		MediaType:   "video",
+		MediaType:   "image",
 		AssetID:     "asset-video",
 		ResourceID:  "res-video",
 		StorageKey:  "resource:res-video",
 		Content:     "/api/resources/res-video/file",
-		MimeType:    "video/mp4",
+		MimeType:    "image/png",
 		Bytes:       100,
 		Width:       1280,
 		Height:      720,

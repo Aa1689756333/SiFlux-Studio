@@ -13,7 +13,7 @@ export type ProviderCancelStatus = "requested" | "confirmed" | "uncertain";
 export type GenerationTaskResultState = "NOT_AVAILABLE" | "PENDING_MATERIALIZATION" | "MATERIALIZING" | "READY" | "FAILED_RETRYABLE" | "FAILED_PERMANENT";
 export type GenerationTaskOutput = {
     outputIndex: number;
-    mediaType: "image" | "video" | "audio";
+    mediaType: "image";
     providerArtifactRef?: string;
     materializedAssetId?: string;
     materializationErrorCode?: string;
@@ -53,7 +53,7 @@ export type GenerationTask = {
     officialStatus?: "pending" | "processing" | "completed" | "failed" | "cancelled";
     receiptRecorded?: boolean;
     previewUrl?: string;
-    previewKind?: "image" | "video";
+    previewKind?: "image";
     previewPosterUrl?: string;
     inputJson?: string;
     resultJson?: string;
@@ -85,12 +85,6 @@ export type GenerationTask = {
 	};
     created_at?: string;
     updated_at?: string;
-};
-
-export type ProviderTaskQueryResult = {
-    task: GenerationTask;
-    providerStatus: string;
-    recovered: boolean;
 };
 
 export type TaskTextDelta = {
@@ -340,14 +334,6 @@ export function cancelGenerationTask(id: string, expectedScope = captureUserScop
         window.dispatchEvent(new CustomEvent("canvas:task-cancelled", { detail: { task } }));
         return task;
     });
-}
-
-export function queryFailedVideoProviderTask(id: string) {
-    return http.post<ProviderTaskQueryResult>(`/tasks/${encodeURIComponent(id)}/query-provider`);
-}
-
-export function canRetrieveVideoResult(task: GenerationTask) {
-    return task.status === "failed" && (task.type.startsWith("canvas_video") || task.type.startsWith("video_")) && Boolean(task.providerRequestId);
 }
 
 export function refreshGenerationTaskStatus(id: string, options?: { signal?: AbortSignal }) {
@@ -618,11 +604,9 @@ async function taskTextStreamHTTPError(response: Response) {
 
 function taskWaitTimeoutMs(task?: GenerationTask) {
     const type = task?.type || "";
-    if (type === "depth_capture") return 122 * 60 * 1000;
     if (type.includes("storyboard")) return 13 * 60 * 1000;
-    if (type.includes("video")) return 32 * 60 * 1000;
     if (type.includes("image")) return 10 * 60 * 1000;
-    if (type.includes("text") || type.includes("audio")) return 12 * 60 * 1000;
+    if (type.includes("text")) return 12 * 60 * 1000;
     return 10 * 60 * 1000;
 }
 

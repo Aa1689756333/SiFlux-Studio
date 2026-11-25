@@ -16,7 +16,6 @@ import { useAssetStore, type Asset } from "@/stores/use-asset-store";
 
 const generationSource = readFileSync(resolve(import.meta.dir, "../src/pages/canvas/use-canvas-generation.ts"), "utf8");
 const consumerSource = readFileSync(resolve(import.meta.dir, "../src/services/canvas-generation-consumer.ts"), "utf8");
-const syncSource = readFileSync(resolve(import.meta.dir, "../src/services/project-asset-sync.ts"), "utf8");
 
 const completeImageAsset = {
     id: "generation_abc",
@@ -112,16 +111,6 @@ describe("backend canvas bind cutover", () => {
         expect(consumerSource).not.toContain("overlayBoundGenerationOnLiveCanvas");
         expect(consumerSource).toContain("persistCanvasDocument as PersistCanvasDocumentWithScope");
         expect(consumerSource).toContain("adopt(project, captured.userScope, captured)");
-    });
-
-    test("message consumers hydrate backend outputs instead of rematerializing", () => {
-        const start = syncSource.indexOf("export async function consumeGenerationTaskMessage");
-        const end = syncSource.indexOf("export function generationTaskMaterializedUrls", start);
-        const consume = syncSource.slice(start, end);
-        expect(consume).toContain("hasBackendDeliveredGenerationOutputs");
-        expect(consume).toContain("hydrateBackendGeneratedOutputs");
-        expect(consume).toContain("bindBackendConversationMessageResult");
-        expect(consume).not.toContain("uploadGeneratedAssetToConfiguredSources");
     });
 });
 

@@ -18,28 +18,16 @@ type providerResponseDecodeError = generation.ResponseDecodeError
 type providerCircuitOpenError = generation.CircuitOpenError
 type providerStatePendingError = generation.StatePendingError
 type providerSubmissionUnknownError = generation.SubmissionUnknownError
+type providerRequestNotSentError = generation.RequestNotSentError
 type providerMediaHydrationPolicy = generation.MediaHydrationPolicy
 
 const providerHTTPTimeout = generation.HTTPTimeout
-const videoPollTimeout = generation.VideoPollTimeout
+const providerPollTimeout = generation.PollingTimeout
 const maxProviderResponseBytes = generation.MaxResponseBytes
-const videoJSONRequestLimitBytes = generation.VideoJSONRequestLimitBytes
 
-var errVideoJSONRequestTooLarge = generation.ErrVideoJSONRequestTooLarge
+const defaultProviderPollInterval = generation.DefaultPollInterval
 
-const defaultVideoPollInterval = generation.DefaultVideoPollInterval
-const videoPollEventRetrying = generation.VideoPollEventRetrying
-const videoPollEventRecovered = generation.VideoPollEventRecovered
-
-type beefAPISeedanceMediaGroup = generation.BeefAPISeedanceMediaGroup
-
-const beefAPISeedanceImageMaxBytes = generation.BeefAPISeedanceImageMaxBytes
-const beefAPISeedanceVideoMaxBytes = generation.BeefAPISeedanceVideoMaxBytes
-const beefAPISeedanceUploadTimeout = generation.BeefAPISeedanceUploadTimeout
 const jiMengSubmitAction = generation.JiMengSubmitAction
 const jiMengResultAction = generation.JiMengResultAction
 const volcengineArkImageMinPixels = generation.VolcengineArkImageMinPixels
 const volcengineArkImageMaxPixels = generation.VolcengineArkImageMaxPixels
-
-var errBeefAPISeedanceUploadUnavailable = generation.ErrBeefAPISeedanceUploadUnavailable
-var errBeefAPISeedanceUploadIncomplete = generation.ErrBeefAPISeedanceUploadIncomplete
