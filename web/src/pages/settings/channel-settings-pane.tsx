@@ -4,6 +4,7 @@ import { useEffect, useRef, useState, useSyncExternalStore, type ReactNode } fro
 
 import { ModelEditorModal } from "@/components/model-editor-modal";
 import { ChannelHeadersEditor, validateChannelHeaders } from "@/components/channel-headers-editor";
+import { cn } from "@/lib/utils";
 import { WorkspaceState } from "@/components/layout/workspace-state";
 import { PageHeader } from "@/components/layout/workspace-page";
 import { applyFetchedChannelModelCatalog, channelConnectionError, channelConnectionSignature, channelModelFetchErrorMessage, requiresSecretKey, withChannels } from "@/lib/channel-config";
@@ -283,28 +284,43 @@ export function ChannelSettingsPane({ onOpenDiagnostics, onOpenModels, onOpenRun
                         // The relay ships with the app and the backend re-adds it on every
                         // read, so offering deletion would only hide it until the next load.
                         const pinnedPreset = builtinBeefAPI || isBuiltinRelayChannel(channel);
+                        const relayReady = channelHasGenerationCredential(channel) || Boolean(channel.apiKey?.trim());
                         return (
                             <section key={channel.id} data-onboarding={onboardingTarget} aria-labelledby={`channel-${channel.id}-title`} className="settings-channel p-2.5 sm:p-3">
                                 <div className="mb-2.5 flex flex-wrap items-start justify-between gap-2.5">
                                     <div className="min-w-0 flex-1 basis-52">
-                                        <h3 id={`channel-${channel.id}-title`} className="flex items-center gap-2 text-sm font-semibold">
-                                            {builtinBeefAPI ? <img src={beefTVAppIcon} alt="" className="size-5 shrink-0 object-contain" draggable={false} /> : <ModelLogo icon={MODEL_SERVICE_PRESETS.find((preset) => preset.id === servicePresetFor(channel))?.icon} size={20} />}
-                                            {builtinBeefAPI ? "BeefTV" : channel.name || "未命名渠道"}
-                                        </h3>
-                                        <div className="mt-1 flex flex-wrap items-center gap-2 text-xs text-foreground/55">
-                                            {builtinBeefAPI ? (
-                                                <>
-                                                    <span>已保存 {channel.models.length} 个模型</span>
-                                                    <span>BeefTV 官方算力渠道，一键连接、开箱即用</span>
-                                                </>
-                                            ) : (
-                                                <span>{channelProtocolLabel(channel)} · 已保存 {channel.models.length} 个模型</span>
-                                            )}
-                                            <ChannelStatus channel={channel} persistence={persistence} connection={null} />
-                                        </div>
-                                        {!builtinBeefAPI && <p className="mt-1 break-all text-xs text-foreground/50">模型目录地址：{modelCatalogRequestURL(channel)}</p>}
+                                        {isBuiltinRelayChannel(channel) ? (
+                                            <>
+                                                <h3 id={`channel-${channel.id}-title`} className="text-sm font-semibold">SiFlux 服务</h3>
+                                                <div className="mt-1 flex items-center gap-1.5 text-xs">
+                                                    <span className={cn("size-1.5 rounded-full", relayReady ? "bg-emerald-500" : "bg-foreground/30")} aria-hidden />
+                                                    <span className={relayReady ? "text-emerald-600" : "text-foreground/50"}>{relayReady ? "已连接" : "未连接"}</span>
+                                                </div>
+                                            </>
+                                        ) : (
+                                            <>
+                                                <h3 id={`channel-${channel.id}-title`} className="flex items-center gap-2 text-sm font-semibold">
+                                                    {builtinBeefAPI ? <img src={beefTVAppIcon} alt="" className="size-5 shrink-0 object-contain" draggable={false} /> : <ModelLogo icon={MODEL_SERVICE_PRESETS.find((preset) => preset.id === servicePresetFor(channel))?.icon} size={20} />}
+                                                    {builtinBeefAPI ? "BeefTV" : channel.name || "未命名渠道"}
+                                                </h3>
+                                                <div className="mt-1 flex flex-wrap items-center gap-2 text-xs text-foreground/55">
+                                                    {builtinBeefAPI ? (
+                                                        <>
+                                                            <span>已保存 {channel.models.length} 个模型</span>
+                                                            <span>BeefTV 官方算力渠道，一键连接、开箱即用</span>
+                                                        </>
+                                                    ) : (
+                                                        <span>{channelProtocolLabel(channel)} · 已保存 {channel.models.length} 个模型</span>
+                                                    )}
+                                                    <ChannelStatus channel={channel} persistence={persistence} connection={null} />
+                                                </div>
+                                                {!builtinBeefAPI && <p className="mt-1 break-all text-xs text-foreground/50">模型目录地址：{modelCatalogRequestURL(channel)}</p>}
+                                            </>
+                                        )}
                                     </div>
                                     <div className="flex w-full flex-wrap justify-end gap-2 sm:w-auto sm:shrink-0">
+                                        {isBuiltinRelayChannel(channel) ? null : (
+                                            <>
                                         <Button
                                             className="h-10 sm:h-8"
                                             size="small"
@@ -326,6 +342,8 @@ export function ChannelSettingsPane({ onOpenDiagnostics, onOpenModels, onOpenRun
                                         >
                                             编辑
                                         </Button>
+                                            </>
+                                        )}
                                         {!pinnedPreset ? (
                                             <Popconfirm title="删除个人模型渠道？" description="该渠道关联的模型选择会同时移除。" okText="删除" cancelText="取消" okButtonProps={{ danger: true }} onOpenChange={recordChannelDeleteConfirmOpen} onConfirm={() => deleteChannel(channel.id)}>
                                                     <Button
