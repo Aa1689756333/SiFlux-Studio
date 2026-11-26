@@ -11,7 +11,7 @@ import (
 	"infinite-canvas/backend/internal/operations"
 )
 
-func TestOpsListingKeepsOwnerAndExternalCatalogFull(t *testing.T) {
+func TestOpsListingKeepsOwnerAndHostCatalogFull(t *testing.T) {
 	env := newAssistantTestEnv(t, nil)
 	owner, err := agentops.EnsureOwnerToken(env.service.DataDir())
 	if err != nil {
@@ -33,15 +33,6 @@ func TestOpsListingKeepsOwnerAndExternalCatalogFull(t *testing.T) {
 	}
 	if !listingHas(ownerListing, "asset.list") || !listingHas(ownerListing, "canvas.search") {
 		t.Fatalf("owner 应包含工作区级操作: %v", ownerListing)
-	}
-
-	reg, token, err := env.clients.RegisterKind("codex", "cli", agentops.ClientReadWrite)
-	if err != nil {
-		t.Fatal(err)
-	}
-	externalListing := getOps(t, env, map[string]string{"x-siflux-Client": reg.ID, "Authorization": "Bearer " + token})
-	if !reflect.DeepEqual(externalListing, want) {
-		t.Fatalf("外部客户端能力发现应为 %v，得到 %v", want, externalListing)
 	}
 
 	hostListing := getOps(t, env, map[string]string{"x-siflux-Agent-Token": assistantTestHostToken})

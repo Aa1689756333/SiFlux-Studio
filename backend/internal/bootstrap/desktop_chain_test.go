@@ -200,75 +200,6 @@ func TestDesktopProfileStartupChain(t *testing.T) {
 		t.Fatalf("启动链验收不得产生模型请求：%s", raw)
 	}
 
-	// 外部客户端（CLI/MCP）接同一个桌面实例：桌面形态的 API 由启动令牌把关，
-	// 客户端必须同时出示「桌面启动令牌（过守卫）」与「已登记客户端凭据（定能力）」。
-	// 这一步是零模型只读验证：读工具可用，写工具被只读客户端拒绝。
-	if cliBinary := os.Getenv("SIFLUX_TEST_CLI"); cliBinary != "" {
-		// 客户端登记按现有合同需要 owner 凭据（本机用户可读，0600）；桌面令牌只负责过守卫。
-		ownerRaw, err := os.ReadFile(filepath.Join(dataDir, "agent_owner_token"))
-		if err != nil {
-			t.Fatal(err)
-		}
-		ownerToken := strings.TrimSpace(string(ownerRaw))
-		code, body = desktopRequestOwning(t, baseURL+"/ops/clients", launchToken, ownerToken,
-			map[string]any{"label": "desktop-cli-check", "mode": "read-only"})
-		if code != http.StatusOK {
-			t.Fatalf("登记只读客户端失败（需要 owner + 桌面令牌）：%d %s", code, body)
-		}
-		var registered struct {
-			Data struct {
-				Client struct {
-					ID string `json:"id"`
-				} `json:"client"`
-				Token string `json:"token"`
-			} `json:"data"`
-		}
-		if err := json.Unmarshal([]byte(body), &registered); err != nil {
-			t.Fatal(err)
-		}
-		if registered.Data.Client.ID == "" || registered.Data.Token == "" {
-			t.Fatalf("登记响应缺少客户端凭据：%s", body)
-		}
-
-		runCli := func(args ...string) (int, string) {
-			command := exec.Command(cliBinary, args...)
-			command.Env = append(os.Environ(),
-				"SIFLUX_BASE_URL="+baseURL,
-				"SIFLUX_DESKTOP_TOKEN=",
-				"SIFLUX_CLIENT_ID="+registered.Data.Client.ID,
-				"SIFLUX_CLIENT_TOKEN="+registered.Data.Token,
-			)
-			output, err := command.CombinedOutput()
-			exitCode := 0
-			if exitErr, ok := err.(*exec.ExitError); ok {
-				exitCode = exitErr.ExitCode()
-			} else if err != nil {
-				t.Fatalf("执行 CLI 失败: %v", err)
-			}
-			return exitCode, string(output)
-		}
-
-		// 只读列能力：能连上同一个桌面实例（守卫通过 + 客户端身份被接受）。
-		exitCode, output := runCli("ops", "list", "--read-only", "--json")
-		if exitCode != 0 || !strings.Contains(output, "canvas.get") {
-			t.Fatalf("CLI 应能通过桌面令牌读取同一实例的能力列表：exit=%d %s", exitCode, truncate(output, 300))
-		}
-		// 没有登记凭据时拒绝；外部客户端不持有桌面壳的令牌。
-		command := exec.Command(cliBinary, "ops", "list", "--read-only", "--json")
-		command.Env = append(os.Environ(), "SIFLUX_BASE_URL="+baseURL,
-			"SIFLUX_DESKTOP_TOKEN=", "SIFLUX_CLIENT_ID="+registered.Data.Client.ID, "SIFLUX_CLIENT_TOKEN=invalid")
-		if err := command.Run(); err == nil {
-			t.Fatal("无效客户端凭据不应能访问桌面实例")
-		}
-		// 只读客户端写操作仍被能力层拒绝。
-		exitCode, output = runCli("canvas", "node", "update", "--canvas", "any", "--node", "n1",
-			"--expected-revision", "1", "--content", "x", "--op-id", "desktop-cli-write", "--json")
-		if exitCode == 0 || !strings.Contains(output, "read_only") {
-			t.Fatalf("只读客户端写操作应被拒绝：exit=%d %s", exitCode, truncate(output, 300))
-		}
-		t.Logf("CLI 桌面接线通过：读成功、无令牌被拒、只读写被拒")
-	}
-
 	// 最小文字读写（默认跳过，避免测试依赖真实模型）：设置 SIFLUX_TEST_REAL_TURN=1
 	// 与 SIFLUX_TEST_CREDENTIALS=<beefapi 凭据 json> 时，用真实模型走一次
 	// 「读画布 + 改一个节点字段」，证明发行形态下的助手链路真的能读写。
@@ -381,29 +312,6 @@ func writeJSON(t *testing.T, path string, value any) {
 	if err := os.WriteFile(path, encoded, 0o600); err != nil {
 		t.Fatal(err)
 	}
-}
-
-// desktopRequestOwning 同时出示桌面令牌（过守卫）与 owner 凭据（登记客户端）。
-func desktopRequestOwning(t *testing.T, url, desktopToken, ownerToken string, payload any) (int, string) {
-	t.Helper()
-	encoded, err := json.Marshal(payload)
-	if err != nil {
-		t.Fatal(err)
-	}
-	request, err := http.NewRequest(http.MethodPost, url, strings.NewReader(string(encoded)))
-	if err != nil {
-		t.Fatal(err)
-	}
-	request.Header.Set("Content-Type", "application/json")
-	request.Header.Set("X-Desktop-Token", desktopToken)
-	request.Header.Set("x-siflux-Owner", ownerToken)
-	response, err := http.DefaultClient.Do(request)
-	if err != nil {
-		return 0, err.Error()
-	}
-	defer response.Body.Close()
-	body, _ := io.ReadAll(io.LimitReader(response.Body, 8<<10))
-	return response.StatusCode, string(body)
 }
 
 func truncate(value string, limit int) string {

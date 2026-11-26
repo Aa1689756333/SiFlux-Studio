@@ -1,10 +1,10 @@
----
+﻿---
 title: 本地后端代码地图
 ---
 
 # 本地后端代码地图
 
-SiFlux 是单用户、本地优先的桌面应用，产品面只有**生图**与 **Agent** 两条主线。画布只承载图片工作流；项目、画布、素材和任务落到本地 SQLite 与工作区目录，模型生成仍可通过 Provider/Protocol 适配器访问外部 API。
+SiFlux 是单用户、本地优先的桌面应用，核心是图片生成，提供**纯生图**与**带 Agent 的生图**两种用法。画布只承载图片工作流；项目、画布、素材和任务落到本地 SQLite 与工作区目录，模型生成仍可通过 Provider/Protocol 适配器访问外部 API。
 
 ## 运行链路
 
@@ -37,7 +37,6 @@ Wails / local dev
 | 数据 | `backend/internal/database`, `repository` | SQLite schema、迁移和持久化 |
 | HTTP | `backend/internal/handler` | 本地 `/api` 合同、输入限制和响应封装 |
 | 企业连接 | `backend/internal/beefapi` | 设备授权、本机密钥和连接状态 |
-| 本机 MCP | `backend/cmd/siflux` | `siflux mcp serve` 使用官方 MCP SDK，经 `/api/ops` 访问本机工作区 |
 | 桌面更新发布 | `backend/cmd/update-release` | 生成更新密钥、打包 zip、签署 `desktop-update.json` |
 | 前端 | `web/src` | React 生图页、画布、素材库、设置与 Agent UI |
 

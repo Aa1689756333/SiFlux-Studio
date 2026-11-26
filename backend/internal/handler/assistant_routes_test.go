@@ -41,7 +41,6 @@ func assistantInstanceProof() string {
 type assistantTestEnv struct {
 	router        *gin.Engine
 	service       *app.Service
-	clients       *agentops.ClientRegistry
 	assistantHost *assistantruntime.Host
 	uiToken       string
 	canvasID      string
@@ -110,12 +109,10 @@ func newAssistantTestEnv(t *testing.T, host func(env *assistantTestEnv) http.Han
 	router := gin.New()
 	router.Use(RuntimeDependenciesMiddleware(RuntimeDependencies{AssistantHost: assistantHost}))
 	api := router.Group("/api")
-	clients := agentops.NewClientRegistry(dataDir)
-	env.clients = clients
-	RegisterAgentProxyRoutes(api, service, clients, ui, assistantHost)
+	RegisterAgentProxyRoutes(api, service, ui, assistantHost)
 	// 操作层与生产走同一条注册路径：替身宿主通过真实 HTTP 入口写画布，
 	// 「回执与业务写入同事务」这条前提才有意义。
-	RegisterAgentOpsRoutes(api, service, agentops.NewStore(db), clients)
+	RegisterAgentOpsRoutes(api, service, agentops.NewStore(db))
 	env.router = router
 	return env
 }
@@ -554,23 +551,6 @@ func TestAssistantCancelRequiresWriteAndOwnedCanvas(t *testing.T) {
 	}
 	if env.hostHits["/cancel"] != 1 {
 		t.Fatalf("外部画布不得转发给宿主，命中 %d", env.hostHits["/cancel"])
-	}
-
-	reg, token, err := env.clients.Register("readonly", agentops.ClientReadOnly)
-	if err != nil {
-		t.Fatal(err)
-	}
-	readOnly := env.callWithHeaders(t, http.MethodPost, "/assistant/cancel", `{"canvasId":"`+env.canvasID+`"}`, map[string]string{
-		"x-siflux-Client": reg.ID, "Authorization": "Bearer " + token,
-	})
-	if readOnly.Code != http.StatusForbidden {
-		t.Fatalf("只读客户端应是 403，得到 %d %s", readOnly.Code, readOnly.Body.String())
-	}
-	if reason := decodeEnvelope(t, readOnly)["__reason"]; reason != "read_only_client" {
-		t.Fatalf("reason 应为 read_only_client，得到 %v", reason)
-	}
-	if env.hostHits["/cancel"] != 1 {
-		t.Fatalf("只读客户端不得转发给宿主，命中 %d", env.hostHits["/cancel"])
 	}
 }
 

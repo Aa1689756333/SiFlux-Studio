@@ -21,7 +21,7 @@ func TestTrustedDesktopUICanCommitDocument(t *testing.T) {
 	router := gin.New()
 	router.Use(RuntimeDependenciesMiddleware(RuntimeDependencies{DesktopTrust: trust}))
 	api := router.Group("/api")
-	RegisterAgentOpsRoutes(api, env.service, agentops.NewStore(env.service.Database()), env.clients)
+	RegisterAgentOpsRoutes(api, env.service, agentops.NewStore(env.service.Database()))
 
 	code, body := postOps(t, router, "canvas.document.commit", "ui-doc-1", map[string]string{
 		"X-Desktop-Token": "launch", "x-siflux-UI-Bootstrap": "ui",
@@ -62,17 +62,6 @@ func TestTrustedDesktopUICanCommitDocument(t *testing.T) {
 	}, `{"canvasId":"`+env.canvasID+`","expectedRevision":2,"document":{"title":"宿主整页"}}`)
 	if hostCode != http.StatusForbidden {
 		t.Fatalf("宿主不得整页提交: %d %s", hostCode, hostBody)
-	}
-
-	reg, token, err := env.clients.RegisterKind("codex", "readonly", agentops.ClientReadOnly)
-	if err != nil {
-		t.Fatal(err)
-	}
-	roCode, roBody := postOps(t, env.router, "canvas.document.commit", "ro-doc", map[string]string{
-		"x-siflux-Client": reg.ID, "Authorization": "Bearer " + token,
-	}, `{"canvasId":"`+env.canvasID+`","expectedRevision":2,"document":{"title":"只读"}}`)
-	if roCode != http.StatusForbidden {
-		t.Fatalf("只读客户端不得整页提交: %d %s", roCode, roBody)
 	}
 }
 

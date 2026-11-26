@@ -17,7 +17,6 @@ import (
 
 	"github.com/gin-gonic/gin"
 
-	"infinite-canvas/backend/internal/agentops"
 	"infinite-canvas/backend/internal/app"
 	"infinite-canvas/backend/internal/assistantruntime"
 	"infinite-canvas/backend/internal/assistantturns"
@@ -49,11 +48,11 @@ func newTurnID() string {
 
 // RegisterAgentProxyRoutes 让浏览器通过同源后端使用内置创作助手：
 // 页面只发业务消息，宿主凭据由后端注入；宿主不可用时返回明确状态而不是空回复。
-func RegisterAgentProxyRoutes(r gin.IRouter, svc *app.Service, clients *agentops.ClientRegistry, ui *uiSessionStore, host *assistantruntime.Host) {
+func RegisterAgentProxyRoutes(r gin.IRouter, svc *app.Service, ui *uiSessionStore, host *assistantruntime.Host) {
 	client := agentHostClient(10 * time.Minute)
 	registerAssistantRuntimeRoutes(r, svc)
 
-	guard := func(c *gin.Context, requireWrite bool) bool {
+	guard := func(c *gin.Context) bool {
 		// 与 /agent-ops 完全相同的来源校验：Host/RemoteAddr/Origin 都必须是本机且同源。
 		if !isLoopbackRequest(c.Request) {
 			c.JSON(http.StatusForbidden, gin.H{"code": http.StatusForbidden, "reason": "forbidden", "msg": "内置助手入口只接受本机同源请求"})
@@ -65,18 +64,13 @@ func RegisterAgentProxyRoutes(r gin.IRouter, svc *app.Service, clients *agentops
 			return false
 		}
 		c.Set("agentUserId", user.ID)
-		// 身份层：必须是内置 UI 会话或已登记客户端；CSRF 层只是附加约束。
-		readOnly, identity, authed, reason := resolveAgentCapability(c, svc, clients, ui, user.ID)
+		// 身份层：必须是内置 UI 会话；CSRF 层只是附加约束。
+		identity, authed, reason := resolveAgentCapability(c, ui, user.ID)
 		if !authed {
 			c.JSON(http.StatusForbidden, gin.H{"code": http.StatusForbidden, "reason": "unauthenticated", "msg": reason})
 			return false
 		}
 		c.Set("agentIdentity", identity)
-		if requireWrite && readOnly {
-			// 已登记的只读客户端（或声明只读的调用）不能借代理拿到宿主写权限。
-			c.JSON(http.StatusForbidden, gin.H{"code": http.StatusForbidden, "reason": "read_only_client", "msg": "只读客户端不能通过内置助手发起写操作"})
-			return false
-		}
 		return true
 	}
 
@@ -150,7 +144,7 @@ func RegisterAgentProxyRoutes(r gin.IRouter, svc *app.Service, clients *agentops
 	r.GET("/assistant/health", guardedStatus)
 
 	r.POST("/assistant/host/restart", func(c *gin.Context) {
-		if !guard(c, true) {
+		if !guard(c) {
 			return
 		}
 		if missingAssistantHost(c, host) {
@@ -274,7 +268,7 @@ func RegisterAgentProxyRoutes(r gin.IRouter, svc *app.Service, clients *agentops
 	}
 
 	r.GET("/assistant/sessions", func(c *gin.Context) {
-		if !guard(c, false) {
+		if !guard(c) {
 			return
 		}
 		canvasID := strings.TrimSpace(c.Query("canvasId"))
@@ -285,7 +279,7 @@ func RegisterAgentProxyRoutes(r gin.IRouter, svc *app.Service, clients *agentops
 	})
 
 	r.POST("/assistant/sessions", func(c *gin.Context) {
-		if !guard(c, true) {
+		if !guard(c) {
 			return
 		}
 		body, payload, valid := readAssistantBody(c, struct {
@@ -301,7 +295,7 @@ func RegisterAgentProxyRoutes(r gin.IRouter, svc *app.Service, clients *agentops
 	})
 
 	r.POST("/assistant/sessions/activate", func(c *gin.Context) {
-		if !guard(c, true) {
+		if !guard(c) {
 			return
 		}
 		body, payload, valid := readAssistantBody(c, struct {
@@ -318,7 +312,7 @@ func RegisterAgentProxyRoutes(r gin.IRouter, svc *app.Service, clients *agentops
 	})
 
 	r.GET("/assistant/history", func(c *gin.Context) {
-		if !guard(c, false) {
+		if !guard(c) {
 			return
 		}
 		canvasID := strings.TrimSpace(c.Query("canvasId"))
@@ -333,7 +327,7 @@ func RegisterAgentProxyRoutes(r gin.IRouter, svc *app.Service, clients *agentops
 	})
 
 	r.POST("/assistant/turns/:turnId/undo", func(c *gin.Context) {
-		if !guard(c, true) {
+		if !guard(c) {
 			return
 		}
 		_, payload, valid := readAssistantBody(c, struct {
@@ -365,7 +359,7 @@ func RegisterAgentProxyRoutes(r gin.IRouter, svc *app.Service, clients *agentops
 	// 生成建议在画布既有生成链路执行；开始前先由这里确认所属的一轮还有效，
 	// 已撤销的一轮不能再开始付费生成。
 	r.POST("/assistant/turns/:turnId/proposals/:proposalId/run", func(c *gin.Context) {
-		if !guard(c, true) {
+		if !guard(c) {
 			return
 		}
 		_, payload, valid := readAssistantBody(c, struct {
@@ -400,7 +394,7 @@ func RegisterAgentProxyRoutes(r gin.IRouter, svc *app.Service, clients *agentops
 	r.POST("/assistant/chat", func(c *gin.Context) {
 		// Only failures before BeginAssistantTurn prove no business turn was admitted.
 		c.Header("x-siflux-Turn-Admission", "rejected")
-		if !guard(c, true) {
+		if !guard(c) {
 			return
 		}
 		if host == nil || host.Endpoint() == "" {
@@ -595,7 +589,7 @@ func RegisterAgentProxyRoutes(r gin.IRouter, svc *app.Service, clients *agentops
 	})
 
 	r.POST("/assistant/cancel", func(c *gin.Context) {
-		if !guard(c, true) {
+		if !guard(c) {
 			return
 		}
 		body, payload, valid := readAssistantBody(c, struct {
@@ -611,7 +605,7 @@ func RegisterAgentProxyRoutes(r gin.IRouter, svc *app.Service, clients *agentops
 	})
 
 	r.POST("/assistant/steer", func(c *gin.Context) {
-		if !guard(c, true) {
+		if !guard(c) {
 			return
 		}
 		body, payload, valid := readAssistantBody(c, struct {

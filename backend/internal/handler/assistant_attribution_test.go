@@ -3,33 +3,13 @@ package handler
 import (
 	"encoding/json"
 	"net/http"
-	"net/http/httptest"
-	"strings"
 	"testing"
 
-	"infinite-canvas/backend/internal/agentops"
 	"infinite-canvas/backend/internal/app"
 )
 
-// 回合归属的信任边界：只有已鉴权内置宿主能出示归属，外部客户端即使拿到 turnId 也不能冒认；
+// 回合归属的信任边界：只有已鉴权内置宿主能出示归属；
 // 内置助手也只能在「当前画布」上写，跨画布、未知字段、越界素材都在写入之前被拒。
-
-// opsAsClient 以已登记外部客户端的身份调用操作层（真实 HTTP 入口）。
-func (e *assistantTestEnv) opsAsClient(clientID, token, op, opID, turnID, params string) (int, string) {
-	body := `{"opId":"` + opID + `","params":` + params + `}`
-	request := httptest.NewRequest(http.MethodPost, "http://127.0.0.1:18090/api/ops/"+op, strings.NewReader(body))
-	request.Host = "127.0.0.1:18090"
-	request.RemoteAddr = "127.0.0.1:12345"
-	request.Header.Set("Content-Type", "application/json")
-	request.Header.Set("x-siflux-Client", clientID)
-	request.Header.Set("Authorization", "Bearer "+token)
-	if turnID != "" {
-		request.Header.Set("x-siflux-Agent-Turn", turnID)
-	}
-	recorder := httptest.NewRecorder()
-	e.router.ServeHTTP(recorder, request)
-	return recorder.Code, recorder.Body.String()
-}
 
 func (e *assistantTestEnv) canvasSnapshot(t *testing.T) (int64, int) {
 	t.Helper()
@@ -93,38 +73,6 @@ func envelopeReason(t *testing.T, body string) string {
 		t.Fatalf("响应不是信封 JSON: %s", body)
 	}
 	return payload.Reason
-}
-
-func TestAgentOpsRejectsForgedTurnFromRegisteredClient(t *testing.T) {
-	env := newAssistantTestEnv(t, nil)
-	const turnID = "aaaa1111aaaa1111"
-	env.beginTurn(t, turnID, app.AssistantTurnInput{})
-
-	registration, token, err := env.clients.Register("外部 CLI", agentops.ClientReadWrite)
-	if err != nil {
-		t.Fatal(err)
-	}
-	revision, nodes := env.canvasSnapshot(t)
-	params := mustJSONString(t, map[string]any{"canvasId": env.canvasID, "expectedRevision": revision,
-		"nodes": []any{map[string]any{"title": "冒认写入", "type": "text"}}})
-
-	// 已登记读写客户端拿到 turnId 也不能自报归属：否则撤销会连它的写入一起抹掉。
-	status, body := env.opsAsClient(registration.ID, token, "canvas.nodes.create", "forged-1", turnID, params)
-	if status != http.StatusForbidden {
-		t.Fatalf("伪造回合归属应被拒绝，得到 %d %s", status, body)
-	}
-	if afterRevision, afterNodes := env.canvasSnapshot(t); afterRevision != revision || afterNodes != nodes {
-		t.Fatal("被拒绝的伪造写入不能改动画布")
-	}
-
-	// 同一客户端不带归属仍然按登记模式正常工作（不收窄外部客户端已有权限）。
-	status, body = env.opsAsClient(registration.ID, token, "canvas.nodes.create", "legit-1", "", params)
-	if status != http.StatusOK {
-		t.Fatalf("外部客户端正常写入不应被收窄，得到 %d %s", status, body)
-	}
-	if _, afterNodes := env.canvasSnapshot(t); afterNodes != nodes+1 {
-		t.Fatal("外部客户端写入应真的落地")
-	}
 }
 
 func TestAgentOpsRejectsCrossCanvasWriteFromAssistant(t *testing.T) {

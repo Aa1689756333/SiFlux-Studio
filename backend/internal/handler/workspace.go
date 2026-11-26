@@ -71,7 +71,7 @@ func RegisterWorkspaceRoutes(r *gin.RouterGroup, svc *app.Service) {
 				failService(c, err)
 				return
 			}
-			ok(c, gin.H{"config": redactModelConfig(c, svc, effective.Config), "revision": effective.Revision, "health": health, "source": "builtin+local"})
+			ok(c, gin.H{"config": redactModelConfig(effective.Config), "revision": effective.Revision, "health": health, "source": "builtin+local"})
 			return
 		}
 		body, err := providerConfig.ReadLocalModelConfig()
@@ -88,7 +88,7 @@ func RegisterWorkspaceRoutes(r *gin.RouterGroup, svc *app.Service) {
 			fail(c, http.StatusInternalServerError, errors.New("本地模型配置损坏"))
 			return
 		}
-		ok(c, gin.H{"config": redactModelConfig(c, svc, config)})
+		ok(c, gin.H{"config": redactModelConfig(config)})
 	})
 	r.PUT("/workspace/model-config", func(c *gin.Context) {
 		if _, err := workspaceForLocalRequest(c, svc); err != nil {
@@ -106,10 +106,6 @@ func RegisterWorkspaceRoutes(r *gin.RouterGroup, svc *app.Service) {
 		}
 		if err := json.Unmarshal(body, &envelope); err != nil || len(envelope.Config) == 0 || string(envelope.Config) == "null" {
 			fail(c, http.StatusBadRequest, errors.New("本地模型配置格式错误"))
-			return
-		}
-		if _, external := externalBusiness(c); external && envelope.ExpectedRevision == nil {
-			fail(c, http.StatusBadRequest, errors.New("修改模型配置需要 expectedRevision"))
 			return
 		}
 		envelope.Config = preserveManagedModelConfig(c, svc, envelope.Config)
@@ -135,10 +131,7 @@ func RegisterWorkspaceRoutes(r *gin.RouterGroup, svc *app.Service) {
 	})
 }
 
-func redactModelConfig(c *gin.Context, svc *app.Service, config map[string]any) map[string]any {
-	if _, external := externalBusiness(c); external {
-		config = redactExternalConfig(config)
-	}
+func redactModelConfig(config map[string]any) map[string]any {
 	return app.RedactLegacyManagedChannel(config)
 }
 
@@ -154,11 +147,7 @@ func preserveManagedModelConfig(c *gin.Context, svc *app.Service, raw json.RawMe
 			existing = effective.Config
 		}
 	}
-	if _, external := externalBusiness(c); external {
-		preserveExternalConfigSecrets(incoming, existing)
-	} else {
-		preserveBuiltinRelayConnection(incoming, existing)
-	}
+	preserveBuiltinRelayConnection(incoming, existing)
 	encoded, err := json.Marshal(incoming)
 	if err != nil {
 		return raw

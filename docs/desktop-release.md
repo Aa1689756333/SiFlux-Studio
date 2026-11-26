@@ -1,4 +1,4 @@
-# SiFlux 桌面发布
+﻿# SiFlux 桌面发布
 
 生产桌面包使用仓库根目录的 `VERSION` 作为唯一版本源。发布脚本会把版本号、当前 Git 提交和 UTC 构建时间同时注入前端与 Go 后端，并生成不依赖 Vite 开发服务器的 Wails 应用包。
 
@@ -214,7 +214,7 @@ zip 里的布局：
 
 - macOS：`SiFlux.app/...`，保留可执行权限；内部安全符号链接会被解成普通文件，不会写成 zip 符号链接项。
 - Windows：根目录的 `SiFlux.exe` 和 `plugin-packages/*.siflux-plugin`（这两个名字仍沿用上游，待全面改名时一并处理）。
-- Linux x64：`SiFlux-linux/` 内包含 `SiFlux`、`cli/siflux`、`agent-host/` 和 `plugin-packages/`。在 Ubuntu 24.04 原生构建，使用 GTK3 和 WebKitGTK 4.1；安装依赖和启动方法见 [Linux 安装说明](linux-install.md)。更新和回滚替换整个程序目录，用户数据留在配置目录。
+- Linux x64：`SiFlux-linux/` 内包含 `SiFlux`、`agent-host/` 和 `plugin-packages/`。在 Ubuntu 24.04 原生构建，使用 GTK3 和 WebKitGTK 4.1；安装依赖和启动方法见 [Linux 安装说明](linux-install.md)。更新和回滚替换整个程序目录，用户数据留在配置目录。
 
 更新清单与四个平台产物只发布在 GitHub Releases：
 

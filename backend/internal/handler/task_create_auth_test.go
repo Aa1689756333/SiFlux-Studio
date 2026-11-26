@@ -11,7 +11,6 @@ import (
 	"gorm.io/gorm"
 	"gorm.io/gorm/logger"
 
-	"infinite-canvas/backend/internal/agentops"
 	"infinite-canvas/backend/internal/app"
 	"infinite-canvas/backend/internal/database"
 	"infinite-canvas/backend/internal/model"
@@ -33,7 +32,7 @@ func (p *captureTaskPort) CreateTask(_ string, req localtask.CreateRequest) (*mo
 	return &model.Task{ID: "captured-task", Type: req.Type, Prompt: req.Prompt, Status: model.TaskStatusQueued}, nil
 }
 
-func TestRegisteredClientCannotCreatePaidTasksWithDesktopHeaders(t *testing.T) {
+func TestPaidTaskCreateRequiresTrustedDesktopUI(t *testing.T) {
 	gin.SetMode(gin.TestMode)
 	db, err := gorm.Open(sqlite.Open(filepath.Join(t.TempDir(), "task-create-auth.db")),
 		&gorm.Config{Logger: logger.Default.LogMode(logger.Silent)})
@@ -57,18 +56,7 @@ func TestRegisteredClientCannotCreatePaidTasksWithDesktopHeaders(t *testing.T) {
 	router.Use(RuntimeDependenciesMiddleware(deps))
 	RegisterTaskRoutes(router.Group("/api"), service)
 
-	clients := agentops.NewClientRegistry(t.TempDir())
-	reg, token, err := clients.RegisterKind("codex", "codex", agentops.ClientReadWrite)
-	if err != nil {
-		t.Fatal(err)
-	}
-	agentHeaders := map[string]string{
-		"x-siflux-Client": reg.ID, "Authorization": "Bearer " + token,
-	}
-	stolenDesktop := map[string]string{
-		"x-siflux-Client": reg.ID, "Authorization": "Bearer " + token,
-		"X-Desktop-Token": "launch", "x-siflux-UI-Bootstrap": "ui",
-	}
+	agentHeaders := map[string]string{"X-Desktop-Token": "launch"}
 	trustedUI := map[string]string{
 		"X-Desktop-Token": "launch", "x-siflux-UI-Bootstrap": "ui",
 	}
@@ -97,9 +85,7 @@ func TestRegisteredClientCannotCreatePaidTasksWithDesktopHeaders(t *testing.T) {
 	}
 
 	for _, probe := range probes {
-		assertForbidden(t, agentHeaders, probe, "agent token")
-		assertForbidden(t, stolenDesktop, probe, "agent plus desktop headers")
-		assertForbidden(t, map[string]string{"X-Desktop-Token": "launch"}, probe, "launch token without UI bootstrap")
+		assertForbidden(t, agentHeaders, probe, "launch token without UI bootstrap")
 	}
 	if capture.gen.Prompt != "" {
 		t.Fatalf("forbidden callers reached task admission: gen=%+v", capture.gen)
@@ -119,7 +105,7 @@ func TestRegisteredClientCannotCreatePaidTasksWithDesktopHeaders(t *testing.T) {
 	if listed.Code == http.StatusForbidden {
 		t.Fatalf("ordinary task list must remain distinct from create: %s", listed.Body.String())
 	}
-	canceled := creationAuthCall(t, router, http.MethodPost, "/api/tasks/missing/cancel", stolenDesktop, "{}")
+	canceled := creationAuthCall(t, router, http.MethodPost, "/api/tasks/missing/cancel", agentHeaders, "{}")
 	if canceled.Code == http.StatusForbidden {
 		t.Fatalf("ordinary task cancel must remain distinct from create: %s", canceled.Body.String())
 	}
@@ -154,7 +140,7 @@ func TestHostedTaskCreateStillAllowsWorkspaceOwnerWithoutDesktopTrust(t *testing
 	}
 }
 
-func TestRegisteredClientCannotRetryPaidTasksWithDesktopHeaders(t *testing.T) {
+func TestPaidTaskRetryRequiresTrustedDesktopUI(t *testing.T) {
 	gin.SetMode(gin.TestMode)
 	db, err := gorm.Open(sqlite.Open(filepath.Join(t.TempDir(), "task-retry-auth.db")),
 		&gorm.Config{Logger: logger.Default.LogMode(logger.Silent)})
@@ -180,27 +166,14 @@ func TestRegisteredClientCannotRetryPaidTasksWithDesktopHeaders(t *testing.T) {
 	router.Use(RuntimeDependenciesMiddleware(deps))
 	RegisterTaskRoutes(router.Group("/api"), service)
 
-	clients := agentops.NewClientRegistry(t.TempDir())
-	reg, token, err := clients.RegisterKind("codex", "codex", agentops.ClientReadWrite)
-	if err != nil {
-		t.Fatal(err)
-	}
-	agentHeaders := map[string]string{
-		"x-siflux-Client": reg.ID, "Authorization": "Bearer " + token,
-	}
-	stolenDesktop := map[string]string{
-		"x-siflux-Client": reg.ID, "Authorization": "Bearer " + token,
-		"X-Desktop-Token": "launch", "x-siflux-UI-Bootstrap": "ui",
-	}
+	launchOnly := map[string]string{"X-Desktop-Token": "launch"}
 	path := "/api/tasks/retry-auth-1/retry"
 	message := "任务只能由当前桌面界面重试"
 	for _, probe := range []struct {
 		label   string
 		headers map[string]string
 	}{
-		{"agent token", agentHeaders},
-		{"agent plus desktop headers", stolenDesktop},
-		{"launch token without UI bootstrap", map[string]string{"X-Desktop-Token": "launch"}},
+		{"launch token without UI bootstrap", launchOnly},
 	} {
 		recorder := creationAuthCall(t, router, http.MethodPost, path, probe.headers, "{}")
 		if recorder.Code != http.StatusForbidden {
@@ -226,7 +199,7 @@ func TestRegisteredClientCannotRetryPaidTasksWithDesktopHeaders(t *testing.T) {
 		t.Fatalf("trusted UI retry did not requeue: status=%s routeRun=%d", queued.Status, queued.RouteRun)
 	}
 
-	canceled := creationAuthCall(t, router, http.MethodPost, "/api/tasks/retry-auth-1/cancel", stolenDesktop, "{}")
+	canceled := creationAuthCall(t, router, http.MethodPost, "/api/tasks/retry-auth-1/cancel", launchOnly, "{}")
 	if canceled.Code == http.StatusForbidden {
 		t.Fatalf("ordinary task cancel must remain distinct from retry: %s", canceled.Body.String())
 	}

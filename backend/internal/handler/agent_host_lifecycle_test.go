@@ -261,7 +261,7 @@ func TestRepeatedStatusStartStopShareHostOwnership(t *testing.T) {
 	router := gin.New()
 	api := router.Group("/api")
 	RegisterAgentHostLifecycleRoutes(api, svc, host)
-	RegisterAgentProxyRoutes(api, svc, agentops.NewClientRegistry(dataDir), newUISessionStore(), host)
+	RegisterAgentProxyRoutes(api, svc, newUISessionStore(), host)
 
 	write := lifecycleRequest(router, http.MethodPut, "/api/assistant/host/config", owner, string(encoded))
 	if write.Code != http.StatusOK {
@@ -392,7 +392,7 @@ func startOwnedListenerHost(t *testing.T) (*assistantruntime.Host, http.Handler,
 	router := gin.New()
 	api := router.Group("/api")
 	RegisterAgentHostLifecycleRoutes(api, svc, host)
-	RegisterAgentProxyRoutes(api, svc, agentops.NewClientRegistry(dataDir), newUISessionStore(), host)
+	RegisterAgentProxyRoutes(api, svc, newUISessionStore(), host)
 	write := lifecycleRequest(router, http.MethodPut, "/api/assistant/host/config", owner, string(encoded))
 	if write.Code != http.StatusOK {
 		t.Fatalf("write status = %d body=%s", write.Code, write.Body.String())
