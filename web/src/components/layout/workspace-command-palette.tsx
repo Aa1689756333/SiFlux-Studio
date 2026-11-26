@@ -1,4 +1,4 @@
-import { Command, Settings, Search, X } from "lucide-react";
+﻿import { Command, Settings, Search, X } from "lucide-react";
 import { useEffect, useMemo, useRef, useState, type ComponentType } from "react";
 import { useNavigate } from "react-router";
 
@@ -32,7 +32,7 @@ export function WorkspaceCommandPalette({ open, onClose }: { open: boolean; onCl
             toolEntry("canvas", "/canvas"),
             toolEntry("assets", "/assets"),
             toolEntry("skills", "/skills"),
-            toolEntry("agents", "/agents"),
+    
             toolEntry("settings", "/settings"),
         ];
     }, []);

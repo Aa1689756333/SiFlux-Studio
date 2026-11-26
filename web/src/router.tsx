@@ -1,15 +1,15 @@
-import { lazy, Suspense, type ReactNode } from "react";
+﻿import { lazy, Suspense, type ReactNode } from "react";
 import { Navigate, Outlet, useLocation, useParams } from "react-router";
 
 import { createWorkspaceRouter } from "@/lib/app-routing";
 import { FullScreenLoader, WorkspaceRouteLoader } from "@/components/ui/aceternity/full-screen-loader";
-import { loadAgentPage, loadAgentsPage, loadAssetsPage, loadCanvasPage, loadCanvasProjectPage, loadGenerateImagePage, loadSkillsPage } from "@/lib/workspace-route-modules";
+import { loadAgentPage, loadAssetsPage, loadCanvasPage, loadCanvasProjectPage, loadGenerateImagePage, loadSkillsPage } from "@/lib/workspace-route-modules";
 import { CanvasRefreshShell } from "@/pages/canvas/canvas-refresh-shell";
 import RouteErrorPage from "@/pages/route-error";
 
 const AgentPage = lazy(loadAgentPage);
 const LocalSkillsPage = lazy(loadSkillsPage);
-const AgentsPage = lazy(loadAgentsPage);
+
 const AssetsPage = lazy(loadAssetsPage);
 const CanvasPage = lazy(loadCanvasPage);
 const CanvasProjectPage = lazy(loadCanvasProjectPage);
@@ -44,7 +44,7 @@ export const router = createWorkspaceRouter([
             { path: "/assets", element: deferred(<AssetsPage />) },
             { path: "/settings", element: deferred(<SettingsPage />) },
             { path: "/skills", element: deferred(<LocalSkillsPage />) },
-            { path: "/agents", element: deferred(<AgentsPage />) },
+    
             { path: "/projects", element: <Navigate to="/canvas" replace /> },
             { path: "/project", element: <Navigate to="/canvas" replace /> },
             { path: "/projects/:projectId", element: <CanvasProjectAliasRoute /> },

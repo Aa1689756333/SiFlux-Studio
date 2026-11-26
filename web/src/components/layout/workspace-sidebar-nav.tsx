@@ -1,4 +1,4 @@
-import { Bot, ChevronRight, Image as ImageIcon, Settings2, Sun, Moon } from "lucide-react";
+﻿import { Bot, ChevronRight, Image as ImageIcon, Settings2, Sun, Moon } from "lucide-react";
 import { LayoutGroup, motion, useReducedMotion } from "motion/react";
 import { useEffect, useMemo, useRef, useState, type ComponentType, type CSSProperties } from "react";
 import { Link, useLocation } from "react-router";
@@ -49,8 +49,7 @@ function buildNav(): { groups: WorkspaceNavGroup[]; footer: WorkspaceNavItem[] }
             ] },
             { heading: "Agent 配置", items: [
                 toolItem("skills", "/skills"),
-                toolItem("agents", "/agents"),
-            ] },
+                    ] },
         ],
         footer: [],
     };

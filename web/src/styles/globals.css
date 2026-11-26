@@ -19240,6 +19240,7 @@ html:not(.dark) .creation-home .creation-user-message-copy-wrap { box-shadow: 0 
     border-radius: 12px;
 }
 
+@media (max-width: 980px) {
     .app-user-workspace .creation-empty-workspace { width: min(100% - 28px, 860px); }
     .creation-featured-layout { grid-template-columns: 1fr; }
     .creation-featured-card.is-hero .creation-featured-media { min-height: 0; aspect-ratio: 16 / 8; }
@@ -19249,6 +19250,7 @@ html:not(.dark) .creation-home .creation-user-message-copy-wrap { box-shadow: 0 
     .creation-featured-heading { align-items: flex-start; flex-direction: column; gap: 8px; }
     .creation-featured-heading p { text-align: left; }
     .creation-featured-grid { grid-template-columns: 1fr; }
+}
 
 @media (prefers-reduced-motion: reduce) {
     .creation-featured-card,
@@ -19256,7 +19258,10 @@ html:not(.dark) .creation-home .creation-user-message-copy-wrap { box-shadow: 0 
     .canvas-model-picker-option,
     .canvas-model-picker-description,
     .creation-featured-card:hover,
-    .creation-featured-card:focus-visible,
+    .creation-featured-card:focus-visible {
+        transition: none !important;
+        transform: none;
+    }
 }
 
 /* =========================================================================

@@ -7,7 +7,6 @@ let browser: Browser, server: ReturnType<typeof Bun.serve>;
 let scratch: string;
 const resources = new Map<string, { bytes: Buffer; kind: string; mimeType: string }>();
 const chats: Record<string, any>[] = [], supplements: Record<string, any>[] = [];
-const externalConnections: Record<string, any>[] = [];
 const undoRequests: Record<string, any>[] = [];
 let rejectNextUndo = false;
 let running = false, cancelled = false, nextId = 0, failNextAsset = false;
@@ -44,10 +43,6 @@ beforeAll(async () => {
         const pathname = new URL(req.url).pathname;
         if (pathname === "/harness.js") return new Response(js, { headers: { "content-type": "application/javascript" } });
         if (pathname === "/harness.css") return new Response(css, { headers: { "content-type": "text/css" } });
-        if (pathname === "/api/agent-clients" && req.method === "POST") {
-            externalConnections.push(await req.json());
-            return ok({ client: { id: "external-fixture", kind: "codex", label: "Codex", mode: "read-write" }, setup: { kind: "codex", title: "Codex", command: "beeftv connect fixture-only" } });
-        }
         if (pathname === "/api/resources" && req.method === "POST") {
             uploadKeys.push(req.headers.get("X-Idempotency-Key") || "");
             const form = await req.formData(), file = form.get("file") as File, kind = String(form.get("kind"));
@@ -114,11 +109,16 @@ beforeAll(async () => {
         if (pathname.startsWith("/api/")) return ok({});
         return new Response('<html><meta name="viewport" content="width=device-width"><style>:root{--background:#fff;--foreground:#222;--muted:#f4f4f4;--muted-foreground:#666;--border:#ddd;--card:#fff;--fs-body:14px}*{box-sizing:border-box}body{margin:0}</style><link rel="stylesheet" href="/harness.css"><div id="root"></div><script type="module" src="/harness.js"></script></html>', { headers: { "content-type": "text/html" } });
     } });
-    const executablePath = [process.env.CHROME_PATH, "/Applications/Google Chrome.app/Contents/MacOS/Google Chrome"].find((item): item is string => Boolean(item && existsSync(item)));
-    browser = await chromium.launch({ executablePath, headless: true });
+    await ensureBrowser();
 }, 60000);
 afterAll(async () => { await browser?.close(); server?.stop(true); if (scratch) rmSync(scratch, { recursive: true, force: true }); });
-beforeEach(() => { registeredAssets.length = 0; assetScope = "guest"; });
+/** 浏览器在单条用例里崩溃后，后续用例仍应能各跑一遍，而不是整体连锁失败。 */
+async function ensureBrowser() {
+    if (browser?.isConnected()) return;
+    const executablePath = [process.env.CHROME_PATH, "/Applications/Google Chrome.app/Contents/MacOS/Google Chrome"].find((item): item is string => Boolean(item && existsSync(item)));
+    browser = await chromium.launch({ executablePath, headless: true });
+}
+beforeEach(async () => { registeredAssets.length = 0; assetScope = "guest"; await ensureBrowser(); });
 const openPages: Page[] = [];
 async function newPage(options?: Parameters<Browser["newPage"]>[0]) { const page = await browser.newPage(options); openPages.push(page); return page; }
 afterEach(async () => { for (const page of openPages.splice(0)) await page.close().catch(() => undefined); });
@@ -291,21 +291,6 @@ test("permission choices persist by workspace; trusted active mode locks the tur
     await page.screenshot({ path: "/tmp/beeftv-assistant-permissions-390.png" });
     await page.close();
 }, 20000);
-
-test("external Agent connection has no permission chooser and submits only the client kind", async () => {
-    const page = await newPage({ viewport: { width: 1280, height: 900 } });
-    await page.goto(server.url.toString().replace("localhost", "127.0.0.1"));
-    await page.getByRole("button", { name: "连接外部 Agent", exact: true }).click();
-    const panel = page.locator(".agent-connect-panel");
-    await panel.getByText("连接后可使用 BeefTV 的全部创作工具。每次操作的审批由 Codex 负责。", { exact: true }).waitFor();
-    expect(await panel.getByRole("radio").count()).toBe(0);
-    const connected = page.waitForResponse(response => response.url().endsWith("/agent-clients"));
-    await panel.getByRole("button", { name: "生成连接配置", exact: true }).click(); await connected;
-    expect(externalConnections.at(-1)).toEqual({ kind: "codex" });
-    await panel.getByRole("status").filter({ hasText: "等待工具连接" }).waitFor();
-    await page.screenshot({ path: "/tmp/beeftv-external-agent-connect.png" });
-    await page.close();
-}, 15000);
 
 test("cross-canvas receipts report every target and one atomic undo refreshes all canvases only after success", async () => {
     running = false;
