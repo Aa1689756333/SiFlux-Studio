@@ -1,5 +1,5 @@
-import { useCallback, useEffect, useMemo, useRef, useState } from "react";
-import { Alert, Button, Form, Input, Modal, Segmented, Steps, message } from "antd";
+﻿import { useCallback, useEffect, useRef, useState } from "react";
+import { Alert, Button, Form, Input, Modal, Segmented, Space, message } from "antd";
 import { CheckCircle2, Loader2, Mail, UserRound } from "lucide-react";
 import {
     connectRelayAccount,
@@ -87,23 +87,6 @@ export function RelaySignupModal({ open, onClose, onConnected }: RelaySignupModa
     const requiresEmailCode = Boolean(options?.emailVerification);
     const registerBlocked = Boolean(options && (!options.registerEnabled || !options.passwordRegisterEnabled || options.turnstile));
 
-    const currentStep = useMemo(() => {
-        if (result) return 2;
-        if (mode === "login") return 0;
-        return requiresEmailCode ? 1 : 0;
-    }, [result, mode, requiresEmailCode]);
-
-    const steps = useMemo(() => {
-        if (mode === "login") {
-            return [{ title: "账号" }, { title: "完成" }];
-        }
-        return requiresEmailCode
-            ? [{ title: "账号" }, { title: "邮箱验证" }, { title: "完成" }]
-            : [{ title: "账号" }, { title: "完成" }];
-    }, [mode, requiresEmailCode]);
-
-    const activeStep = mode === "login" ? (result ? 1 : 0) : result ? steps.length - 1 : 0;
-
     const handleSendCode = async () => {
         const email = String(form.getFieldValue("email") || "").trim();
         if (!email.includes("@")) {
@@ -169,16 +152,28 @@ export function RelaySignupModal({ open, onClose, onConnected }: RelaySignupModa
             open={open}
             onCancel={handleClose}
             footer={null}
-            width={520}
+            width={480}
             centered
             destroyOnHidden
-            title="连接 SiFlux 中转站"
+            title={
+                <div className="flex flex-col gap-1 pr-6">
+                    <span className="text-base font-semibold">连接 SiFlux 中转站</span>
+                    <span className="text-xs font-normal leading-5 text-foreground/50">
+                        {result
+                            ? "账号已接入，可以直接开始生图。"
+                            : mode === "register"
+                              ? "注册后自动生成 API Key、拉取模型并填入。"
+                              : "用已有账号登录，自动生成一枚应用专用 API Key。"}
+                    </span>
+                </div>
+            }
             maskClosable={!submitting}
         >
-            <div className="space-y-4 pt-1">
+            <div className="pt-2">
                 {!result ? (
                     <Segmented
                         block
+                        className="mb-4"
                         value={mode}
                         onChange={(value) => {
                             setMode(value as RelayMode);
@@ -191,21 +186,20 @@ export function RelaySignupModal({ open, onClose, onConnected }: RelaySignupModa
                     />
                 ) : null}
 
-                {steps.length > 1 ? <Steps size="small" current={activeStep} items={steps.map((step) => ({ title: step.title }))} /> : null}
-
                 {loadingOptions ? (
-                    <div className="flex items-center gap-2 text-sm text-foreground/70">
-                        <Loader2 className="size-4 animate-spin" />
+                    <div className="mb-3 flex items-center gap-2 text-xs text-foreground/60">
+                        <Loader2 className="size-3.5 animate-spin" />
                         正在读取中转站配置…
                     </div>
                 ) : null}
 
                 {optionsError ? (
-                    <Alert type="error" showIcon message="无法连接中转站" description={optionsError} />
+                    <Alert className="mb-3" type="error" showIcon message="无法连接中转站" description={optionsError} />
                 ) : null}
 
                 {registerBlocked && !result ? (
                     <Alert
+                        className="mb-3"
                         type="warning"
                         showIcon
                         message={options?.turnstile ? "该中转站要求人机验证" : "该中转站暂未开放密码注册"}
@@ -213,46 +207,59 @@ export function RelaySignupModal({ open, onClose, onConnected }: RelaySignupModa
                     />
                 ) : null}
 
-                {error ? <Alert type="error" showIcon message={error} /> : null}
+                {error ? <Alert className="mb-3" type="error" showIcon message={error} /> : null}
 
                 {result ? (
-                    <div className="space-y-3">
-                        <div className="flex items-center gap-2 text-base font-medium">
-                            <CheckCircle2 className="size-5 text-emerald-500" />
-                            已接入{result.displayName || result.username}
-                        </div>
-                        <div className="grid grid-cols-2 gap-3 text-sm">
-                            <div className="rounded-lg border border-border/60 p-3">
-                                <div className="text-foreground/60">账户余额</div>
-                                <div className="mt-1 text-lg font-semibold">{balance || "—"}</div>
-                            </div>
-                            <div className="rounded-lg border border-border/60 p-3">
-                                <div className="text-foreground/60">可用模型</div>
-                                <div className="mt-1 text-lg font-semibold">{result.models.length}</div>
+                    <div className="space-y-4">
+                        <div className="flex items-center gap-2.5 rounded-xl border border-emerald-500/25 bg-emerald-500/10 px-4 py-3">
+                            <CheckCircle2 className="size-5 shrink-0 text-emerald-500" />
+                            <div className="min-w-0">
+                                <div className="truncate text-sm font-medium">已接入{result.displayName || result.username}</div>
+                                <div className="text-xs text-foreground/55">API Key 已自动填入，无需手动复制。</div>
                             </div>
                         </div>
-                        <p className="m-0 text-sm leading-6 text-foreground/70">
-                            已在中转站创建专用令牌「{result.tokenName}」，可在中转站单独查看与吊销。API Key 已自动填入渠道，无需手动复制。
-                        </p>
+
+                        <div className="grid grid-cols-2 gap-2.5">
+                            <div className="rounded-xl border border-border/60 px-4 py-3">
+                                <div className="text-xs text-foreground/55">账户余额</div>
+                                <div className="mt-1 text-lg font-semibold leading-tight">{balance || "—"}</div>
+                            </div>
+                            <div className="rounded-xl border border-border/60 px-4 py-3">
+                                <div className="text-xs text-foreground/55">可用模型</div>
+                                <div className="mt-1 text-lg font-semibold leading-tight">{result.models.length}</div>
+                            </div>
+                        </div>
+
                         {result.modelsError ? (
                             <Alert type="warning" showIcon message="模型列表未能拉取" description={result.modelsError} />
                         ) : null}
-                        <Button type="primary" block onClick={handleClose}>
+
+                        <p className="m-0 text-xs leading-5 text-foreground/50">
+                            已在中转站创建专用令牌「{result.tokenName}」，可随时在中转站单独吊销。
+                        </p>
+
+                        <Button type="primary" size="large" block onClick={handleClose}>
                             完成
                         </Button>
                     </div>
                 ) : (
-                    <Form form={form} layout="vertical" requiredMark={false} disabled={submitting} className="space-y-1">
+                    <Form form={form} layout="vertical" requiredMark={false} disabled={submitting} size="middle">
                         <Form.Item
                             name="username"
                             label="用户名"
+                            className="mb-3.5"
                             rules={[{ required: true, message: "请填写用户名" }]}
                         >
-                            <Input prefix={<UserRound className="size-4 text-foreground/50" />} placeholder="用于登录中转站" autoComplete="username" />
+                            <Input
+                                prefix={<UserRound className="mr-1 size-4 text-foreground/40" />}
+                                placeholder="用于登录中转站"
+                                autoComplete="username"
+                            />
                         </Form.Item>
                         <Form.Item
                             name="password"
                             label="密码"
+                            className="mb-3.5"
                             rules={[
                                 { required: true, message: "请填写密码" },
                                 { min: 8, message: "密码至少 8 位" },
@@ -265,43 +272,51 @@ export function RelaySignupModal({ open, onClose, onConnected }: RelaySignupModa
                                 <Form.Item
                                     name="email"
                                     label="邮箱"
+                                    className="mb-3.5"
                                     rules={[
                                         { required: requiresEmailCode, message: "请填写邮箱" },
                                         { type: "email", message: "邮箱格式不正确" },
                                     ]}
-                                    extra={requiresEmailCode ? "注册需要邮箱验证码" : undefined}
                                 >
-                                    <Input prefix={<Mail className="size-4 text-foreground/50" />} placeholder="用于接收验证码" autoComplete="email" />
+                                    <Input
+                                        prefix={<Mail className="mr-1 size-4 text-foreground/40" />}
+                                        placeholder="用于接收验证码"
+                                        autoComplete="email"
+                                    />
                                 </Form.Item>
                                 {requiresEmailCode ? (
-                                    <Form.Item label="验证码" required>
-                                        <div className="flex gap-2">
-                                            <Form.Item
-                                                name="code"
-                                                noStyle
-                                                rules={[{ required: true, message: "请填写验证码" }]}
-                                            >
-                                                <Input placeholder="6 位验证码" maxLength={8} autoComplete="one-time-code" />
+                                    <Form.Item label="邮箱验证码" className="mb-4" required>
+                                        <Space.Compact className="w-full">
+                                            <Form.Item name="code" noStyle rules={[{ required: true, message: "请填写验证码" }]}>
+                                                <Input placeholder="6 位验证码" maxLength={8} autoComplete="one-time-code" className="text-center tracking-[0.4em]" />
                                             </Form.Item>
-                                            <Button onClick={() => void handleSendCode()} loading={sendingCode} disabled={cooldown > 0} className="shrink-0">
-                                                {cooldown > 0 ? `${cooldown}s` : "发送验证码"}
+                                            <Button
+                                                className="shrink-0 tabular-nums"
+                                                onClick={() => void handleSendCode()}
+                                                loading={sendingCode}
+                                                disabled={cooldown > 0}
+                                            >
+                                                {cooldown > 0 ? `${cooldown}s 后重发` : "发送验证码"}
                                             </Button>
-                                        </div>
+                                        </Space.Compact>
                                     </Form.Item>
                                 ) : null}
                             </>
                         ) : null}
+
                         <Button
                             type="primary"
+                            size="large"
                             block
+                            className="mt-1"
                             loading={submitting}
                             disabled={registerBlocked && mode === "register"}
                             onClick={() => void handleSubmit()}
                         >
                             {mode === "register" ? "注册并接入" : "登录并接入"}
                         </Button>
-                        <p className="m-0 pt-1 text-center text-xs leading-5 text-foreground/50">
-                            账号注册与充值在中转站完成，应用只保存自动生成的 API Key。
+                        <p className="m-0 pt-3 text-center text-xs leading-5 text-foreground/45">
+                            账号与充值在中转站完成，应用只保存自动生成的 API Key。
                         </p>
                     </Form>
                 )}
