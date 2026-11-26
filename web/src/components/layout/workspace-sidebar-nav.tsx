@@ -1,4 +1,4 @@
-﻿import { Bot, ChevronRight, House, Image as ImageIcon, Settings2, Sun, Moon, UserRound } from "lucide-react";
+import { Bot, ChevronRight, House, Image as ImageIcon, Settings2, Sun, Moon, UserRound } from "lucide-react";
 import { useQuery } from "@tanstack/react-query";
 import { LayoutGroup, motion, useReducedMotion } from "motion/react";
 import { useEffect, useMemo, useRef, useState, type ComponentType, type CSSProperties } from "react";
@@ -28,7 +28,7 @@ export type WorkspaceNavItem = {
     shortcut?: string;
     badge?: string | number;
     disabled?: boolean;
-    action?: "search" | "relay";
+    action?: "search";
     children?: WorkspaceNavItem[];
 };
 
@@ -53,7 +53,6 @@ function buildNav(): { groups: WorkspaceNavGroup[]; footer: WorkspaceNavItem[] }
             { heading: "工作区", items: [
                 toolItem("canvas", "/canvas"),
                 toolItem("assets", "/assets"),
-                { id: "relay", title: "中转站账号", icon: UserRound, action: "relay" },
                 { id: "settings", title: "设置", icon: Settings2, to: "/settings" },
             ] },
             { heading: "Agent 配置", items: [
@@ -69,7 +68,6 @@ function NavItem({
     activeId,
     onSelect,
     onOpenSearch,
-    onOpenRelay,
     level = 0,
     collapsed = false,
 }: {
@@ -77,7 +75,6 @@ function NavItem({
     activeId: string;
     onSelect: (id: string) => void;
     onOpenSearch: () => void;
-    onOpenRelay: () => void;
     level?: number;
     collapsed?: boolean;
 }) {
@@ -136,10 +133,6 @@ function NavItem({
             onOpenSearch();
             return;
         }
-        if (item.action === "relay") {
-            onOpenRelay();
-            return;
-        }
         if (hasChildren) {
             setIsOpen((open) => !open);
             return;
@@ -185,7 +178,7 @@ function NavItem({
                     <div className="relative flex min-h-0 flex-col gap-0.5 overflow-hidden pt-0.5">
                         <span className="app-workspace-nav-guide-line" style={{ left: `${(level + 1) * 12 + 12.5}px` }} />
                         {item.children!.map((child) => (
-                            <NavItem key={child.id} item={child} activeId={activeId} onSelect={onSelect} onOpenSearch={onOpenSearch} onOpenRelay={onOpenRelay} level={level + 1} collapsed={false} />
+                            <NavItem key={child.id} item={child} activeId={activeId} onSelect={onSelect} onOpenSearch={onOpenSearch} level={level + 1} collapsed={false} />
                         ))}
                     </div>
                 </div>
@@ -194,7 +187,7 @@ function NavItem({
     );
 }
 
-function NavGroup({ group, activeId, onNavigate, onOpenSearch, onOpenRelay, collapsed }: { group: WorkspaceNavGroup; activeId: string; onNavigate: () => void; onOpenSearch: () => void; onOpenRelay: () => void; collapsed: boolean }) {
+function NavGroup({ group, activeId, onNavigate, onOpenSearch, collapsed }: { group: WorkspaceNavGroup; activeId: string; onNavigate: () => void; onOpenSearch: () => void; collapsed: boolean }) {
     const [isOpen, setIsOpen] = useState(true);
     const hasActive = group.items.some((item) => item.id === activeId || (item.id === "settings" && activeId.startsWith("settings:")));
 
@@ -206,7 +199,7 @@ function NavGroup({ group, activeId, onNavigate, onOpenSearch, onOpenRelay, coll
     const content = (
         <div className="flex flex-col gap-2">
             {group.items.map((item) => (
-                <NavItem key={item.id} item={item} activeId={activeId} onSelect={onNavigate} onOpenSearch={onOpenSearch} onOpenRelay={onOpenRelay} collapsed={collapsed} />
+                <NavItem key={item.id} item={item} activeId={activeId} onSelect={onNavigate} onOpenSearch={onOpenSearch} collapsed={collapsed} />
             ))}
         </div>
     );
@@ -284,18 +277,7 @@ export function WorkspaceSidebarNav({ onNavigate, onOpenSearch }: { onNavigate: 
     const collapsed = false;
     const relayConnected = useConfigStore((state) => relayChannelConnected(state.config.channels));
     const [relayOpen, setRelayOpen] = useState(false);
-    const { groups, footer } = useMemo(() => {
-        const built = buildNav();
-        return {
-            footer: built.footer,
-            groups: built.groups.map((group) => ({
-                ...group,
-                items: group.items.map((item) =>
-                    item.id === "relay" && !relayConnected ? { ...item, badge: "未连接" } : item,
-                ),
-            })),
-        };
-    }, [relayConnected]);
+    const { groups, footer } = useMemo(buildNav, []);
     const openRelay = () => setRelayOpen(true);
 
     const rawSlug = pathname === "/" ? "home" : pathname.split("/").filter(Boolean)[0] || "image";
@@ -325,7 +307,7 @@ export function WorkspaceSidebarNav({ onNavigate, onOpenSearch }: { onNavigate: 
                 className={cn("app-workspace-sidebar-scroll-area flex min-h-0 flex-1 flex-col gap-5 overflow-y-auto px-3 pb-3 pt-7", collapsed && "is-collapsed", scrollState.hasTopFade && "has-top-fade", scrollState.hasBottomFade && "has-bottom-fade")}
             >
                 {groups.map((group, index) => (
-                    <NavGroup key={index} group={group} activeId={activeId} onNavigate={onNavigate} onOpenSearch={onOpenSearch} onOpenRelay={openRelay} collapsed={collapsed} />
+                    <NavGroup key={index} group={group} activeId={activeId} onNavigate={onNavigate} onOpenSearch={onOpenSearch} collapsed={collapsed} />
                 ))}
             </div>
             </LayoutGroup>
@@ -334,7 +316,7 @@ export function WorkspaceSidebarNav({ onNavigate, onOpenSearch }: { onNavigate: 
                 {footer.length ? (
                     <div className="flex flex-col gap-0.5">
                         {footer.map((item) => (
-                            <NavItem key={item.id} item={item} activeId={activeId} onSelect={onNavigate} onOpenSearch={onOpenSearch} onOpenRelay={openRelay} collapsed={collapsed} />
+                            <NavItem key={item.id} item={item} activeId={activeId} onSelect={onNavigate} onOpenSearch={onOpenSearch} collapsed={collapsed} />
                         ))}
                     </div>
                 ) : null}
