@@ -1,4 +1,4 @@
-﻿@import "tailwindcss";
+@import "tailwindcss";
 @import "tw-animate-css";
 @import "shadcn/tailwind.css";
 @source "../../node_modules/streamdown/dist/*.js";
@@ -16344,27 +16344,6 @@ button.ant-btn-primary:not(.ant-btn-dangerous):not(.ant-btn-background-ghost):no
 .assets-cover-badge svg { width: 11px; height: 11px; }
 .assets-cover-badge.is-kind { background: rgba(10, 10, 10, .62); color: #fff; }
 .assets-cover-badge.is-category { border: 1px solid rgba(255, 255, 255, .2); background: rgba(10, 10, 10, .5); color: rgba(255, 255, 255, .86); }
-.assets-cover-clock {
-    position: absolute;
-    left: 8px;
-    bottom: 8px;
-    z-index: 2;
-    height: 20px;
-    padding: 0 7px;
-    border-radius: 6px;
-    background: rgba(10, 10, 10, .6);
-    color: #fff;
-    font-size: var(--fs-micro);
-    font-weight: 560;
-    line-height: 20px;
-    letter-spacing: .02em;
-    backdrop-filter: blur(6px);
-    font-variant-numeric: tabular-nums;
-}
-.assets-cover-play { position: absolute; inset: 0; z-index: 1; display: grid; place-items: center; color: #fff; opacity: 0; transition: opacity 180ms ease-out; }
-.assets-cover-play::before { position: absolute; width: 42px; height: 42px; border: 1.5px solid rgba(255, 255, 255, .78); border-radius: var(--r-full); background: rgba(10, 10, 10, .36); content: ""; backdrop-filter: blur(6px); }
-.assets-cover-play svg { position: relative; width: 17px; height: 17px; margin-left: 2px; filter: drop-shadow(0 1px 4px rgba(0, 0, 0, .45)); }
-.assets-cover-link:hover .assets-cover-play, .assets-cover-link:focus-visible .assets-cover-play { opacity: 1; }
 .assets-cover-link:hover .assets-cover-vignette, .assets-cover-link:focus-visible .assets-cover-vignette { opacity: 1; }
 .assets-cover-link > :where(img, video, .cached-resource-image-shell) { transition: transform 260ms cubic-bezier(.2,.75,.25,1), filter 180ms ease-out; }
 .assets-cover-link:hover > :where(img, video, .cached-resource-image-shell), .assets-cover-link:focus-visible > :where(img, video, .cached-resource-image-shell) { filter: saturate(1.04); transform: scale(1.025); }
@@ -16428,11 +16407,7 @@ button.ant-btn-primary:not(.ant-btn-dangerous):not(.ant-btn-background-ghost):no
 .assets-cover-more:focus-visible { outline: 2px solid var(--ring); outline-offset: 2px; }
 .asset-library-card:hover .assets-cover-more, .asset-library-card:focus-within .assets-cover-more { opacity: 1; }
 
-/* 音频：频谱条占位；文本：内容摘要底纹；模型：线框图标 */
-.assets-cover-wave { position: relative; display: flex; width: 100%; height: 100%; align-items: center; justify-content: center; gap: 3px; padding: 0 14%; background: radial-gradient(circle at 50% 42%, color-mix(in srgb, var(--workspace-accent) 16%, transparent), transparent 58%), color-mix(in srgb, var(--foreground) 4%, transparent); }
-.assets-cover-wave::after { position: absolute; inset: 50% 12% auto; height: 1px; background: color-mix(in srgb, var(--workspace-accent) 25%, transparent); content: ""; }
-.assets-cover-wave > span { display: block; width: 3px; min-height: 5px; flex: 0 1 3px; border-radius: var(--r-full); background: color-mix(in srgb, var(--workspace-accent) 46%, transparent); }
-.assets-cover-wave-glyph { position: absolute; top: 50%; right: 9%; width: 30px; height: 30px; transform: translateY(-50%); color: color-mix(in srgb, var(--workspace-accent) 36%, var(--foreground)); opacity: .68; }
+/* 文本：内容摘要底纹；模型：线框图标 */
 .assets-cover-text { width: 100%; height: 100%; padding: 16px 18px; overflow: hidden; background: color-mix(in srgb, var(--foreground) 4%, transparent); }
 .assets-cover-text p {
     display: -webkit-box;
@@ -16520,20 +16495,6 @@ button.ant-btn-primary:not(.ant-btn-dangerous):not(.ant-btn-background-ghost):no
 .asset-archive-subtitle { margin-top: 4px; color: color-mix(in srgb, var(--foreground) 46%, transparent); font-size: var(--fs-label); }
 .asset-archive-preview { overflow: hidden; border-radius: var(--r-xl); background: #050505; box-shadow: var(--elevation-hairline); }
 .asset-archive-preview-media { display: block; width: 100%; max-height: 400px; object-fit: contain; background: #050505; }
-.asset-video-player { position: relative; display: grid; min-height: 220px; place-items: center; overflow: hidden; background: #050505; }
-.asset-video-player .asset-archive-preview-media { width: 100%; }
-.asset-video-controls { position: absolute; right: 12px; bottom: 10px; left: 12px; display: flex; min-height: 44px; align-items: center; gap: 9px; padding: 5px 10px; border: 1px solid rgb(255 255 255 / 9%); border-radius: 12px; background: rgb(22 22 22 / 88%); color: #f1f1f1; backdrop-filter: blur(12px); }
-.asset-video-control-button { display: grid; width: 30px; height: 30px; flex: 0 0 auto; place-items: center; border: 0; border-radius: 7px; background: transparent; color: inherit; cursor: pointer; }
-.asset-video-control-button:hover { background: rgb(255 255 255 / 11%); }
-.asset-video-control-button:focus-visible { outline: 2px solid rgb(255 255 255 / 75%); outline-offset: 1px; }
-.asset-video-control-button svg { width: 17px; height: 17px; }
-.asset-video-time { flex: 0 0 auto; color: rgb(255 255 255 / 76%); font-size: 11px; font-variant-numeric: tabular-nums; }
-.asset-video-seek, .asset-video-volume-slider { height: 4px; appearance: none; border-radius: 999px; background: rgb(255 255 255 / 20%); cursor: pointer; }
-.asset-video-seek { min-width: 36px; flex: 1 1 auto; }
-.asset-video-volume { display: flex; flex: 0 0 auto; align-items: center; gap: 4px; }
-.asset-video-volume-slider { width: 64px; }
-.asset-video-seek::-webkit-slider-thumb, .asset-video-volume-slider::-webkit-slider-thumb { width: 12px; height: 12px; appearance: none; border: 0; border-radius: 50%; background: #f5f5f5; }
-.asset-video-seek::-moz-range-thumb, .asset-video-volume-slider::-moz-range-thumb { width: 12px; height: 12px; border: 0; border-radius: 50%; background: #f5f5f5; }
 .asset-detail-drawer .asset-archive-actions .asset-detail-download.ant-btn { border: 1px solid rgb(255 255 255 / 15%); background: #292929; background-image: none; color: #ededed; box-shadow: none; }
 .asset-detail-drawer .asset-archive-actions .asset-detail-download.ant-btn:hover { border-color: rgb(255 255 255 / 28%); background: #363636; background-image: none; color: #fff; }
 .asset-detail-drawer .asset-archive-actions .asset-detail-download.ant-btn:active { border-color: rgb(255 255 255 / 34%); background: #202020; color: #fff; }
@@ -16554,8 +16515,6 @@ button.ant-btn-primary:not(.ant-btn-dangerous):not(.ant-btn-background-ghost):no
 .asset-archive-preview-note { max-height: 400px; overflow: auto; padding: 26px 24px; color: color-mix(in srgb, var(--foreground) 72%, transparent); font-size: var(--fs-body); line-height: 1.75; white-space: pre-wrap; }
 .asset-archive-preview-model { display: flex; flex-direction: column; align-items: center; gap: 12px; padding: 40px 24px; background: color-mix(in srgb, var(--foreground) 3%, transparent); color: color-mix(in srgb, var(--foreground) 42%, transparent); }
 .asset-archive-preview-model > svg { width: 44px; height: 44px; color: color-mix(in srgb, var(--workspace-accent) 55%, var(--foreground)); stroke-width: 1; }
-.asset-archive-audio { padding: 22px 18px; background: color-mix(in srgb, var(--foreground) 3%, transparent); }
-.asset-archive-audio audio { width: 100%; }
 .asset-archive-facts { display: grid; grid-template-columns: repeat(2, minmax(0, 1fr)); gap: 1px; overflow: hidden; border: 1px solid color-mix(in srgb, var(--foreground) 9%, transparent); border-radius: var(--r-lg); background: color-mix(in srgb, var(--foreground) 9%, transparent); }
 .asset-archive-fact { min-width: 0; padding: 11px 14px; background: var(--surface-card); }
 .asset-archive-fact-label { display: block; color: color-mix(in srgb, var(--foreground) 38%, transparent); font-size: var(--fs-tiny); letter-spacing: .04em; }
@@ -16607,7 +16566,6 @@ button.ant-btn-primary:not(.ant-btn-dangerous):not(.ant-btn-background-ghost):no
     border: 1px solid rgb(255 255 255 / 8%);
     border-radius: 13px;
 }
-.asset-detail-drawer .asset-video-player { border-radius: 12px; }
 .asset-detail-drawer .asset-archive-facts {
     grid-template-columns: repeat(2, minmax(0, 1fr));
     border-color: rgb(255 255 255 / 8%);
@@ -16626,7 +16584,6 @@ button.ant-btn-primary:not(.ant-btn-dangerous):not(.ant-btn-background-ghost):no
 @media (max-width: 680px) {
     .assets-empty-cards { grid-template-columns: 1fr; }
     .assets-empty-banner { height: 150px; }
-    .assets-cover-play { opacity: 1; }
     .assets-empty-copy { align-items: flex-start; flex-wrap: wrap; }
     .assets-empty-copy > span:last-child { width: 100%; margin-left: 46px; margin-top: -4px; }
 }
@@ -16663,7 +16620,7 @@ button.ant-btn-primary:not(.ant-btn-dangerous):not(.ant-btn-background-ghost):no
 .assets-library-page .library-create-meta { margin-top: 4px; font-size: var(--fs-label); }
 @media (max-width: 899px) and (min-width: 640px) { .assets-library-page .assets-library-grid { grid-template-columns: repeat(auto-fill, minmax(180px, 1fr)); } }
 
-/* 4. 封面浮层统一：窄屏隐藏分类徽章；浅底封面（文本/音频/模型）改用自适应玻璃浮层 */
+/* 4. 封面浮层统一：窄屏隐藏分类徽章；浅底封面（文本/模型）改用自适应玻璃浮层 */
 @media (max-width: 1100px) { .assets-cover-badge.is-category { display: none; } }
 .assets-cover.is-light .assets-cover-badge.is-category {
     border-color: color-mix(in srgb, var(--foreground) 14%, transparent);
@@ -16671,19 +16628,12 @@ button.ant-btn-primary:not(.ant-btn-dangerous):not(.ant-btn-background-ghost):no
     color: color-mix(in srgb, var(--foreground) 72%, transparent);
     backdrop-filter: blur(6px);
 }
-.assets-cover.is-light .assets-cover-clock {
-    border: 1px solid color-mix(in srgb, var(--foreground) 12%, transparent);
-    background: color-mix(in srgb, var(--foreground) 6%, transparent);
-    color: color-mix(in srgb, var(--foreground) 62%, transparent);
-    line-height: 18px;
-}
 .assets-cover.is-light .assets-cover-more {
     border-color: color-mix(in srgb, var(--foreground) 12%, transparent);
     background: color-mix(in srgb, var(--surface-card) 82%, transparent);
     color: color-mix(in srgb, var(--foreground) 60%, transparent);
 }
 .assets-cover.is-light .assets-cover-more:hover { background: color-mix(in srgb, var(--foreground) 9%, transparent); color: var(--foreground); }
-.assets-cover.is-light .assets-cover-play::before { border-color: color-mix(in srgb, var(--foreground) 30%, transparent); background: color-mix(in srgb, var(--surface-card) 78%, transparent); }
 
 /* ===== AI Markdown ===== */
 

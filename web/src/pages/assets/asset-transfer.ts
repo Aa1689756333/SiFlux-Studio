@@ -30,7 +30,7 @@ export async function exportAssets(assets: Asset[]): Promise<OwnedMediaSaveResul
 
     await Promise.all(
         assets.map(async (asset) => {
-            if (asset.kind !== "image" && asset.kind !== "video" && asset.kind !== "audio" && asset.kind !== "model") return;
+            if (asset.kind !== "image" && asset.kind !== "model") return;
             const storageKey = asset.data.storageKey;
             if (!storageKey) {
                 missingFiles.push({ owner: asset.title || asset.id, reference: "媒体文件" });

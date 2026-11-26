@@ -7,7 +7,6 @@ import { resourceIdFromStorageKey } from "@/services/api/resources";
 import { getWorkspaceAsset } from "@/services/api/workspace-data";
 import { isLocalWorkspaceMode } from "@/services/workspace-mode";
 import type { GenerationTask, GenerationTaskOutput } from "@/services/api/task-center";
-import { getMediaBlob, resolveMediaUrl, setMediaBlob } from "@/services/file-storage";
 import { createGenerationTaskMaterializer, createIdempotentMaterializeOutput, type MaterializeGenerationTaskOutput } from "@/services/generation-task-materializer";
 import { withGenerationArtifactCommitLock } from "@/services/generation-asset-repository";
 import { uploadGeneratedAssetToConfiguredSources } from "@/services/external-asset-sources";
@@ -329,32 +328,6 @@ async function storedGenerationImage(result: NonNullable<BackendGenerationResult
     };
 }
 
-async function storedGenerationMedia(dataUrl: string, effectKey: string, mediaType: "video" | "audio", metadata: { width?: number; height?: number; durationMs?: number; bytes?: number; mimeType: string }, scope: string, signal?: AbortSignal) {
-    throwIfAborted(signal);
-    const storageKey = generationArtifactStorageKey(effectKey, mediaType, scope);
-    const blob = await loadOrStoreGenerationArtifact({
-        effectKey: storageKey,
-        read: (key) => getMediaBlob(key),
-        materialize: async () => (await fetch(dataUrl, { signal })).blob(),
-        write: async (key, artifact) => {
-            await setMediaBlob(key, artifact);
-        },
-    });
-    throwIfAborted(signal);
-    const url = await resolveMediaUrl(storageKey);
-    throwIfAborted(signal);
-    if (!url) throw new Error(`${mediaType === "video" ? "视频" : "音频"}结果资源不可用`);
-    return {
-        url,
-        storageKey,
-        width: metadata.width,
-        height: metadata.height,
-        durationMs: metadata.durationMs,
-        bytes: metadata.bytes || blob.size,
-        mimeType: metadata.mimeType || blob.type,
-    };
-}
-
 async function generationOutputAsset(input: Parameters<MaterializeGenerationTaskOutput>[0], scope: string): Promise<NewAsset> {
     throwIfAborted(input.signal);
     const result = generationTaskResult(input.task);
@@ -522,7 +495,6 @@ export function generationTaskMaterializedUrls(task: GenerationTask): string[] {
         const asset = output.materializedAssetId ? assets.find((candidate) => candidate.id === output.materializedAssetId) : undefined;
         if (!asset) return [];
         if (asset.kind === "image") return [asset.data.dataUrl || asset.coverUrl];
-        if (asset.kind === "video" || asset.kind === "audio") return [asset.data.url];
         return [];
     });
 }

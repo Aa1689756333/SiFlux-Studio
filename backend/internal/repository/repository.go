@@ -1,4 +1,4 @@
-package repository
+﻿package repository
 
 import (
 	"context"
@@ -908,65 +908,6 @@ func (r *Repository) Resources(userID string, limit int) ([]model.Resource, erro
 	}
 	err := r.db.Order("created_at desc").Limit(limit).Find(&resources, "user_id = ?", userID).Error
 	return resources, err
-}
-
-// ClaimPlaybackTranscode 原子地把仍为 READY 且待判定（空/none）的视频置为 processing。
-// 多实例或多 goroutine 并发转同一资源时仅一个能成功置位，其余返回 false 直接放弃，
-// 避免重复转码同一份文件，也不抢占已删除/非就绪行。
-func (r *Repository) ClaimPlaybackTranscode(id string) (bool, error) {
-	res := r.db.Model(&model.Resource{}).
-		Where("id = ? AND status = ? AND (playback_status = ? OR playback_status IS NULL OR playback_status = ?)",
-			id, model.ResourceStatusReady, "", model.PlaybackStatusNone).
-		Updates(map[string]any{"playback_status": model.PlaybackStatusProcessing, "playback_error": ""})
-	if res.Error != nil {
-		return false, res.Error
-	}
-	return res.RowsAffected > 0, nil
-}
-
-// ResetStuckPlaybackTranscodes 服务重启时把卡在 processing 的转码记录重置回待判定
-// （进程崩溃后转码 goroutine 随进程消亡，状态永远停在 processing）。
-func (r *Repository) ResetStuckPlaybackTranscodes() error {
-	return r.db.Model(&model.Resource{}).
-		Where("playback_status = ?", model.PlaybackStatusProcessing).
-		Updates(map[string]any{"playback_status": "", "playback_error": "", "updated_at": time.Now()}).Error
-}
-
-// ReleasePlaybackTranscodeClaim 把仍处于 processing 且资源仍 READY 的 claim 放回待判定，
-// 供 Runner 拒绝或 Stop 取消后由下次启动回填恢复。
-func (r *Repository) ReleasePlaybackTranscodeClaim(id string) error {
-	return r.db.Model(&model.Resource{}).
-		Where("id = ? AND playback_status = ? AND status = ?", id, model.PlaybackStatusProcessing, model.ResourceStatusReady).
-		Updates(map[string]any{"playback_status": "", "playback_error": "", "updated_at": time.Now()}).Error
-}
-
-// FinishPlaybackTranscode 仅在 claim 仍为 processing 且资源仍为 READY 时写入终态，
-// 避免整行 Save 把并发删除或其他更新复活/覆盖。
-func (r *Repository) FinishPlaybackTranscode(id, status, objectKey, errText string) (bool, error) {
-	res := r.db.Model(&model.Resource{}).
-		Where("id = ? AND playback_status = ? AND status = ?", id, model.PlaybackStatusProcessing, model.ResourceStatusReady).
-		Updates(map[string]any{
-			"playback_status":     status,
-			"playback_object_key": objectKey,
-			"playback_error":      errText,
-			"updated_at":          time.Now(),
-		})
-	if res.Error != nil {
-		return false, res.Error
-	}
-	return res.RowsAffected == 1, nil
-}
-
-// MarkPlaybackNone 只把 READY 且尚未进入 processing/ready/failed 的行标为 none。
-func (r *Repository) MarkPlaybackNone(id string) (bool, error) {
-	res := r.db.Model(&model.Resource{}).
-		Where("id = ? AND status = ? AND (playback_status = ? OR playback_status IS NULL OR playback_status = ?)",
-			id, model.ResourceStatusReady, "", model.PlaybackStatusNone).
-		Updates(map[string]any{"playback_status": model.PlaybackStatusNone, "playback_error": "", "updated_at": time.Now()})
-	if res.Error != nil {
-		return false, res.Error
-	}
-	return res.RowsAffected == 1, nil
 }
 
 func (r *Repository) ResourceCleanupCandidates(incompleteBefore time.Time, readyBefore time.Time, limit int) ([]model.Resource, error) {

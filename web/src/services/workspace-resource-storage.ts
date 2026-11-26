@@ -15,7 +15,7 @@ export function usesNativeLocalResourceStore() {
     return isLocalRuntimeMode() && isNativeDesktopRuntime();
 }
 
-const WORKSPACE_MEDIA_KINDS = new Set(["image", "video", "audio", "model"]);
+const WORKSPACE_MEDIA_KINDS = new Set(["image", "model"]);
 
 export function isWorkspaceMediaAssetKind(kind: string) {
     return WORKSPACE_MEDIA_KINDS.has(kind);

@@ -4,7 +4,6 @@ import { installLocalForageStoreFactoryForTests } from "../src/lib/localforage-s
 import { getActiveUserScope, setActiveUserScope } from "../src/lib/user-scope";
 import { UserScopeAbandonedError } from "../src/lib/user-scope-guard";
 import { apiClient } from "../src/services/api/request";
-import { getResourcePlaybackBlob } from "../src/services/api/resources";
 import { cacheResourceObjectUrl, getCachedResourceBlob } from "../src/services/resource-blob-cache";
 
 const originalAdapter = apiClient.defaults.adapter;
@@ -117,25 +116,6 @@ test("持久缓存读取期间切换工作区后，不返回旧 Blob", async () 
         const rejected = pending.catch((error) => error);
         await started.promise;
         setActiveUserScope("persisted-blob-owner-b");
-        gate.resolve();
-        expect(await rejected).toBeInstanceOf(UserScopeAbandonedError);
-    } finally { gate.resolve(); setActiveUserScope(previous); }
-});
-
-test("兼容视频下载也由统一请求层拒绝切换后的响应", async () => {
-    const previous = getActiveUserScope();
-    setActiveUserScope("playback-owner-a");
-    const started = deferred<void>();
-    const gate = deferred<void>();
-    apiClient.defaults.adapter = async (config) => {
-        started.resolve(); await gate.promise;
-        return { data: new Blob(["old-video"]), status: 200, statusText: "OK", headers: {}, config };
-    };
-    try {
-        const pending = getResourcePlaybackBlob("resource:playback-scope-preview");
-        const rejected = pending.catch((error) => error);
-        await started.promise;
-        setActiveUserScope("playback-owner-b");
         gate.resolve();
         expect(await rejected).toBeInstanceOf(UserScopeAbandonedError);
     } finally { gate.resolve(); setActiveUserScope(previous); }

@@ -119,7 +119,7 @@ export function useExternalAssetSources(open: boolean): ExternalAssetSourceState
 }
 
 function isPickerMedia(item: ExternalAssetItem) {
-    return item.kind === "image" || item.kind === "video" || item.kind === "audio";
+    return item.kind === "image" || item.kind === "text";
 }
 
 function externalCategory(sourceId: string) {
@@ -152,7 +152,7 @@ function toPickerItem(source: HostedAssetSource, item: ExternalAssetItem): Asset
         id: externalAssetPickerId(reference),
         title: item.title,
         category: externalCategory(source.id),
-        kindLabel: item.kind === "video" ? "视频" : item.kind === "audio" ? "音频" : "图片",
+        kindLabel: item.kind === "image" ? "图片" : item.kind === "model" ? "模型" : item.kind === "entity" ? "角色" : "文本",
         imageUrl: item.thumbnailUrl,
         description: folderPath || item.description || undefined,
         searchText: [item.title, ...(item.tags || []), item.description || "", folderPath || ""].join(" "),

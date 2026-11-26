@@ -1,4 +1,4 @@
-﻿import { ArrowDownUp, AudioLines, Box, Check, CheckCheck, Clapperboard, Copy, Download, FileText, FileUp, FileX2, FolderOpen, FolderPlus, History, Image as ImageIcon, LayoutGrid, List, Maximize2, MoreHorizontal, Pause, PencilLine, Play, Plus, RotateCcw, SlidersHorizontal, Trash2, Upload, Volume2, VolumeX, X, ZoomIn, ZoomOut, type LucideIcon } from "lucide-react";
+﻿import { ArrowDownUp, Box, Check, CheckCheck, Copy, Download, FileText, FileUp, FileX2, FolderOpen, FolderPlus, History, Image as ImageIcon, LayoutGrid, List, Maximize2, MoreHorizontal, PencilLine, Plus, RotateCcw, SlidersHorizontal, Trash2, Upload, X, ZoomIn, ZoomOut, type LucideIcon } from "lucide-react";
 import { useEffect, useMemo, useRef, useState } from "react";
 import { useQuery, useQueryClient } from "@tanstack/react-query";
 import { App, Button, Drawer, Dropdown, Form, Input, Modal, Popover, Progress, Select, Space, Tag, Typography } from "antd";
@@ -24,7 +24,6 @@ import {
 } from "@/components/assets/asset-view-session";
 import { Switch } from "@/components/ui/base/switch";
 import { ownedResourceIdFromMediaRef } from "@/services/api/resources";
-import { useResourceVideoPlayback } from "@/hooks/use-resource-video-playback";
 import { downloadOwnedOrBrowserMedia, reportOwnedMediaSave } from "@/services/desktop-media-save";
 import { mediaFileExtension, sanitizeDownloadFileName } from "@/lib/canvas/canvas-media-download";
 import { cn } from "@/lib/utils";
@@ -36,7 +35,7 @@ import { resourceStorageLabel, resourceStorageTitle } from "@/lib/canvas/resourc
 import { formatBytes, readFileAsDataUrl, readImageMeta } from "@/lib/image-utils";
 import { assertUserScope, captureUserScope, userScopeMatches, type CapturedUserScope } from "@/lib/user-scope-guard";
 import { uploadImage } from "@/services/image-storage";
-import { resolveMediaUrl, uploadMediaFile } from "@/services/file-storage";
+import { uploadMediaFile } from "@/services/file-storage";
 import { flushAssetStorePersistence, useAssetStore, type Asset, type AssetCategory, type AssetKind, type ImageAsset } from "@/stores/use-asset-store";
 import { exportAssets, readAssetPackage } from "./asset-transfer";
 import { assetStorageUsageQueryKey } from "./asset-storage-usage";
@@ -82,8 +81,6 @@ const kindOptions = [
     { label: "全部", value: "all" },
     { label: "文本", value: "text" },
     { label: "图片", value: "image" },
-    { label: "视频", value: "video" },
-    { label: "音频", value: "audio" },
 ];
 
 const categoryOptions = [{ label: "全部分类", value: "all" }, ...ASSET_CATEGORY_OPTIONS];
@@ -91,15 +88,13 @@ const categoryOptions = [{ label: "全部分类", value: "all" }, ...ASSET_CATEG
 // the new grid-first default once, while future user choices remain sticky.
 const ASSET_VIEW_MODE_KEY = "infinite-canvas:asset-view-mode:v2";
 const ASSET_HISTORY_PAGE_SIZE = 40;
-type GenerationHistoryKind = "all" | "image" | "video" | "audio";
+type GenerationHistoryKind = "all" | "image";
 type AssetFolderFilter = "all" | "uncategorized" | string;
 type AssetSortOrder = "updated_desc" | "updated_asc" | "name_asc";
 
 const assetKindIcons: Record<LibraryAsset["kind"], LucideIcon> = {
     text: FileText,
     image: ImageIcon,
-    video: Clapperboard,
-    audio: AudioLines,
     model: Box,
 };
 
@@ -677,7 +672,7 @@ function AssetsPageSession() {
     };
 
     const downloadImage = (asset: LibraryAsset) => {
-        if (asset.kind !== "image" && asset.kind !== "video" && asset.kind !== "audio" && asset.kind !== "model") return;
+        if (asset.kind !== "image" && asset.kind !== "model") return;
         const url = asset.kind === "image" ? asset.data.dataUrl : asset.data.url;
         const extension = asset.kind === "model" ? asset.data.fileName.split(".").pop() || "glb" : mediaFileExtension(asset.data.mimeType, url) || "bin";
         void reportOwnedMediaSave(message, downloadOwnedOrBrowserMedia({
@@ -1377,7 +1372,7 @@ function AssetCard({
     const menuItems: MenuProps["items"] = [
         { key: "rename", icon: <PencilLine className="size-3.5" />, label: "重命名", onClick: () => { setRenameDraft(asset.title); setRenaming(true); } },
         ...(asset.kind === "text" ? [{ key: "copy", icon: <Copy className="size-3.5" />, label: "复制文本", onClick: () => void onCopy(asset) }] : []),
-        ...(asset.kind === "image" || asset.kind === "video" || asset.kind === "audio" || asset.kind === "model" ? [{ key: "download", icon: <Download className="size-3.5" />, label: "下载", onClick: () => onDownload(asset) }] : []),
+        ...(asset.kind === "image" || asset.kind === "model" ? [{ key: "download", icon: <Download className="size-3.5" />, label: "下载", onClick: () => onDownload(asset) }] : []),
         { key: "move", icon: <FolderOpen className="size-3.5" />, label: "移动到分类", children: folderOptions.map((folder) => ({ key: folder.value || "uncategorized", label: folder.label, onClick: () => onMoveToFolder(folder.value) })) },
         { type: "divider" as const },
         { key: "delete", danger: true, icon: <Trash2 className="size-3.5" />, label: (
@@ -1425,21 +1420,17 @@ function AssetCard({
 }
 
 function isKnownAssetKind(kind: unknown): kind is AssetKind {
-    return kind === "image" || kind === "video" || kind === "audio" || kind === "model" || kind === "text";
+    return kind === "image" || kind === "model" || kind === "text";
 }
 
 function AssetCover({ asset, selected, onSelect, onOpen, menuItems, menuOpen, onMenuOpenChange, onMenuAction }: { asset: LibraryAsset; selected: boolean; onSelect: (selected: boolean) => void; onOpen: () => void; menuItems: MenuProps["items"]; menuOpen: boolean; onMenuOpenChange: (open: boolean) => void; onMenuAction: (key: string) => void }) {
     const kind = isKnownAssetKind(asset.kind) ? asset.kind : undefined;
     const KindIcon = kind ? assetKindIcons[kind] : FileText;
-    const clock = asset.kind === "video" || asset.kind === "audio" ? formatAssetClock(asset.data.durationMs) : null;
-    const showPlay = asset.kind === "video";
-    const isLight = asset.kind === "audio" || asset.kind === "text" || asset.kind === "model";
+    const isLight = asset.kind === "text" || asset.kind === "model";
     return (
         <AssetLibraryCardMedia className={isLight ? "assets-cover is-light" : "assets-cover"}>
             <button type="button" data-onboarding-asset={asset.id} className="assets-cover-link" onClick={onOpen} aria-label={`查看素材：${asset.title}`}>
-                {asset.kind === "audio" ? (
-                    <AudioWaveCover asset={asset} />
-                ) : asset.kind === "text" ? (
+                {asset.kind === "text" ? (
                     <TextCover asset={asset} />
                 ) : asset.kind === "model" ? (
                     <ModelCover asset={asset} />
@@ -1456,13 +1447,7 @@ function AssetCover({ asset, selected, onSelect, onOpen, menuItems, menuOpen, on
                     />
                 )}
                 <span className="assets-cover-vignette" aria-hidden="true" />
-                {showPlay ? (
-                    <span className="assets-cover-play">
-                        <Play className="size-4" />
-                    </span>
-                ) : null}
             </button>
-            {clock ? <span className="assets-cover-clock">{clock}</span> : null}
             <input type="checkbox" checked={selected} onClick={(event) => event.stopPropagation()} onChange={(event) => onSelect(event.target.checked)} className="assets-select-check" aria-label={`选择 ${asset.title}`} />
             <Dropdown overlayClassName="asset-actions-menu" trigger={["click"]} open={menuOpen} onOpenChange={onMenuOpenChange} menu={{ items: menuItems, onClick: ({ key }) => onMenuAction(key) }}>
                 <button
@@ -1477,18 +1462,6 @@ function AssetCover({ asset, selected, onSelect, onOpen, menuItems, menuOpen, on
                 </button>
             </Dropdown>
         </AssetLibraryCardMedia>
-    );
-}
-
-function AudioWaveCover({ asset }: { asset: LibraryAsset & { kind: "audio" } }) {
-    const bars = audioWaveBars(asset.id);
-    return (
-        <div className="assets-cover-wave" aria-hidden="true">
-            {bars.map((height, index) => (
-                <span key={index} style={{ height: `${height}%` }} />
-            ))}
-            <AudioLines className="assets-cover-wave-glyph" />
-        </div>
     );
 }
 
@@ -1624,10 +1597,8 @@ function GenerationHistorySurface({
     const counts = {
         all: generatedTotal,
         image: generatedKindCounts.image || 0,
-        video: generatedKindCounts.video || 0,
-        audio: generatedKindCounts.audio || 0,
     };
-    const typeTabs: Array<[GenerationHistoryKind, string, number]> = [["all", "全部", counts.all], ["image", "图片", counts.image], ["video", "视频", counts.video], ["audio", "音频", counts.audio]];
+    const typeTabs: Array<[GenerationHistoryKind, string, number]> = [["all", "全部", counts.all], ["image", "图片", counts.image]];
     const typeFilteredHistory = kind != null ? historyAssets : (activeType === "all" ? historyAssets : historyAssets.filter((asset) => asset.kind === activeType));
     const visibleHistoryAssets = typeFilteredHistory;
     const visibleGroups = [...new Set(visibleHistoryAssets.map((asset) => historyDay(asset.updatedAt)))];
@@ -1672,16 +1643,15 @@ function GenerationHistorySurface({
                             {visibleHistoryAssets.filter((asset) => historyDay(asset.updatedAt) === date).map((asset) => (
                                 <article key={asset.id} data-onboarding-task-id={asset.metadata?.taskId} className="generation-history-card" title={asset.title} aria-label={`查看生成结果：${asset.title}`} role="button" tabIndex={0} onClick={() => setPreviewAsset(asset)} onKeyDown={(event) => { if (event.key === "Enter" || event.key === " ") { event.preventDefault(); setPreviewAsset(asset); } }}>
                                     <div className="generation-history-thumb">
-                                        <AssetMediaPreview asset={asset} alt={asset.title} className="size-full object-cover" hoverPlayDelayMs={100} fallback={<GenerationHistoryMissingPreview asset={asset} />} />
+                                        <AssetMediaPreview asset={asset} alt={asset.title} className="size-full object-cover" fallback={<GenerationHistoryMissingPreview asset={asset} />} />
                                         <span className="generation-history-badge">AI生成</span>
-                                        {asset.kind === "video" || asset.kind === "audio" ? <span className={cn("generation-history-duration", asset.kind === "video" && "is-video-duration")}>{formatAssetClock(asset.data.durationMs)}</span> : null}
                                         <button type="button" className={cn("generation-history-select", selectedHistoryIds.has(asset.id) && "is-selected")} aria-label={`选择 ${asset.title}`} aria-pressed={selectedHistoryIds.has(asset.id)} onClick={(event) => { event.stopPropagation(); toggleHistorySelection(asset.id); }}>{selectedHistoryIds.has(asset.id) ? <Check className="size-4" /> : null}</button>
                                         <div className="generation-history-hover-actions" aria-label="生成结果操作">
                                             <button type="button" aria-label={`下载 ${asset.title}`} title="下载" onClick={(event) => { event.stopPropagation(); onDownload(asset); }}><Download className="size-4" /></button>
                                             <button type="button" aria-label={`永久删除 ${asset.title}`} title="永久删除" onClick={(event) => { event.stopPropagation(); setPendingDelete([asset]); }}><Trash2 className="size-4" /></button>
                                         </div>
                                     </div>
-                                    <div className="generation-history-card-meta"><strong>{asset.title}</strong><span>{asset.kind === "video" ? "视频" : asset.kind === "audio" ? "音频" : "图片"} · 本地</span></div>
+                                    <div className="generation-history-card-meta"><strong>{asset.title}</strong><span>图片 · 本地</span></div>
                                 </article>
                             ))}
                         </div>
@@ -1728,16 +1698,15 @@ function GenerationHistorySurface({
             {pendingDelete.length === 1 ? `删除「${pendingDelete[0].title}」后将无法恢复。` : `删除已选择的 ${pendingDelete.length} 个素材后将无法恢复。`}仍被画布或任务引用的文件会保留，其余文件将同步清理。
         </Modal>
         <Drawer className="assets-generation-preview-drawer" open={Boolean(previewAsset)} title={previewAsset?.title || "生成结果预览"} onClose={() => setPreviewAsset(null)} size="default">
-            {previewAsset ? <div className="generation-history-preview"><AssetMediaPreview asset={previewAsset} alt={previewAsset.title} className="generation-history-preview-media" fallback={<GenerationHistoryMissingPreview asset={previewAsset} />} /><div className="generation-history-preview-meta"><strong>{previewAsset.title}</strong><span>{previewAsset.kind === "video" ? "视频" : previewAsset.kind === "audio" ? "音频" : "图片"} · 本地生成</span><span>来源：{previewAsset.source || "生成任务"}</span>{typeof previewAsset.metadata?.taskId === "string" ? <span>任务 ID：{previewAsset.metadata.taskId}</span> : null}{typeof previewAsset.metadata?.generationEffectKey === "string" ? <span>生成标识：{previewAsset.metadata.generationEffectKey}</span> : null}</div></div> : null}
+            {previewAsset ? <div className="generation-history-preview"><AssetMediaPreview asset={previewAsset} alt={previewAsset.title} className="generation-history-preview-media" fallback={<GenerationHistoryMissingPreview asset={previewAsset} />} /><div className="generation-history-preview-meta"><strong>{previewAsset.title}</strong><span>图片 · 本地生成</span><span>来源：{previewAsset.source || "生成任务"}</span>{typeof previewAsset.metadata?.taskId === "string" ? <span>任务 ID：{previewAsset.metadata.taskId}</span> : null}{typeof previewAsset.metadata?.generationEffectKey === "string" ? <span>生成标识：{previewAsset.metadata.generationEffectKey}</span> : null}</div></div> : null}
         </Drawer>
         </>
     );
 }
 
 function GenerationHistoryMissingPreview({ asset }: { asset: LibraryAsset }) {
-    const kind = asset.kind === "video" ? "视频" : asset.kind === "audio" ? "音频" : "图片";
     const taskId = typeof asset.metadata?.taskId === "string" ? asset.metadata.taskId : "任务记录存在";
-    return <div className="generation-history-missing-preview"><strong>生成{kind}暂不可用</strong><span>{taskId}</span><small>原始生成资源未找到或已失效</small></div>;
+    return <div className="generation-history-missing-preview"><strong>生成图片暂不可用</strong><span>{taskId}</span><small>原始生成资源未找到或已失效</small></div>;
 }
 
 function AssetsEmptyState({ onImport }: { onImport: () => void }) {
@@ -1787,125 +1756,7 @@ function AssetFilterGroup({
     );
 }
 
-export function AssetVideoPreview({ storageKey, url, title, className }: { storageKey?: string; url: string; title: string; className: string }) {
-    const videoRef = useRef<HTMLVideoElement | null>(null);
-    const playback = useResourceVideoPlayback(storageKey || "", url);
-    const source = playback.url;
-    const error = Boolean(playback.error);
-    const [playing, setPlaying] = useState(false);
-    const [currentTime, setCurrentTime] = useState(0);
-    const [duration, setDuration] = useState(0);
-    const [volume, setVolume] = useState(1);
-    const [muted, setMuted] = useState(false);
-    return (
-        <div className="asset-video-player">
-            {source ? (
-                <>
-                    <video
-                        ref={videoRef}
-                        src={source}
-                        playsInline
-                        preload="metadata"
-                        aria-label={title}
-                        className={className}
-                        onError={() => { if (!playback.requestCompatible()) playback.fail(); }}
-                        onPlay={() => setPlaying(true)}
-                        onPause={() => setPlaying(false)}
-                        onLoadedMetadata={(event) => setDuration(Number.isFinite(event.currentTarget.duration) ? event.currentTarget.duration : 0)}
-                        onTimeUpdate={(event) => setCurrentTime(event.currentTarget.currentTime)}
-                        onVolumeChange={(event) => {
-                            setMuted(event.currentTarget.muted);
-                            setVolume(event.currentTarget.volume);
-                        }}
-                    />
-                    <div className="asset-video-controls" aria-label="视频播放控制">
-                        <button type="button" className="asset-video-control-button" aria-label={playing ? "暂停" : "播放"} onClick={() => {
-                            const video = videoRef.current;
-                            if (!video) return;
-                            if (video.paused) void video.play().catch(() => playback.fail());
-                            else video.pause();
-                        }}>
-                            {playing ? <Pause aria-hidden="true" /> : <Play aria-hidden="true" />}
-                        </button>
-                        <span className="asset-video-time">{formatAssetClock(currentTime * 1000) || "0:00"}</span>
-                        <input
-                            className="asset-video-seek"
-                            type="range"
-                            min={0}
-                            max={Math.max(duration, 0.1)}
-                            step={0.1}
-                            value={Math.min(currentTime, duration || 0)}
-                            aria-label="播放进度"
-                            onChange={(event) => {
-                                const time = Number(event.currentTarget.value);
-                                if (videoRef.current) videoRef.current.currentTime = time;
-                                setCurrentTime(time);
-                            }}
-                        />
-                        <span className="asset-video-time">{formatAssetClock(duration * 1000) || "0:00"}</span>
-                        <div className="asset-video-volume">
-                            <button type="button" className="asset-video-control-button" aria-label={muted || volume === 0 ? "开启声音" : "静音"} onClick={() => {
-                                const video = videoRef.current;
-                                if (!video) return;
-                                video.muted = !video.muted;
-                                setMuted(video.muted);
-                            }}>
-                                {muted || volume === 0 ? <VolumeX aria-hidden="true" /> : <Volume2 aria-hidden="true" />}
-                            </button>
-                            <input
-                                className="asset-video-volume-slider"
-                                type="range"
-                                min={0}
-                                max={1}
-                                step={0.05}
-                                value={volume}
-                                aria-label="音量"
-                                onChange={(event) => {
-                                    const nextVolume = Number(event.currentTarget.value);
-                                    if (videoRef.current) {
-                                        videoRef.current.volume = nextVolume;
-                                        videoRef.current.muted = nextVolume === 0;
-                                    }
-                                    setVolume(nextVolume);
-                                    setMuted(nextVolume === 0);
-                                }}
-                            />
-                        </div>
-                        <button type="button" className="asset-video-control-button" aria-label="全屏" onClick={() => void videoRef.current?.requestFullscreen?.()}>
-                            <Maximize2 aria-hidden="true" />
-                        </button>
-                    </div>
-                </>
-            ) : null}
-            {!source && !error ? <span className="text-sm text-white/65">正在加载视频…</span> : null}
-            {error ? (
-                <div className="absolute inset-0 grid place-content-center justify-items-center gap-3 bg-black px-4 text-center text-sm text-white/80">
-                    <span>视频加载失败，请检查资源服务后重试。</span>
-                    <Button size="small" onClick={playback.retry}>重试</Button>
-                </div>
-            ) : null}
-        </div>
-    );
-}
-
 function AssetDrawer({ asset, onClose, onCopy, onDownload }: { asset: LibraryAsset | null; onClose: () => void; onCopy: (asset: LibraryAsset) => void; onDownload: (asset: LibraryAsset) => void }) {
-    const [playable, setPlayable] = useState<{ asset: LibraryAsset; url: string } | null>(null);
-    useEffect(() => {
-        if (!asset || asset.kind !== "audio") {
-            setPlayable(null);
-            return;
-        }
-        let cancelled = false;
-        // Native media elements cannot attach the desktop session token.
-        // Resolve the owned resource just as the library thumbnails do.
-        void resolveMediaUrl(asset.data.storageKey, asset.data.url).then((url) => {
-            if (!cancelled) setPlayable({ asset, url });
-        }).catch(() => {
-            if (!cancelled) setPlayable(null);
-        });
-        return () => { cancelled = true; };
-    }, [asset]);
-    const mediaUrl = playable?.asset === asset ? playable?.url : undefined;
     const facts = asset ? assetArchiveFacts(asset) : [];
     return (
         <Drawer className="library-drawer asset-detail-drawer" title={null} closable={false} open={Boolean(asset)} size="large" onClose={onClose}>
@@ -1918,10 +1769,6 @@ function AssetDrawer({ asset, onClose, onCopy, onDownload }: { asset: LibraryAss
                     <div className="asset-archive-preview">
                         {asset.kind === "text" ? (
                             <div className="asset-archive-preview-note">{asset.data.content}</div>
-                        ) : asset.kind === "audio" ? (
-                            <div className="asset-archive-audio">
-                                <audio src={mediaUrl} controls />
-                            </div>
                         ) : asset.kind === "model" ? (
                             <div className="asset-archive-preview-model">
                                 <Box />
@@ -1929,8 +1776,6 @@ function AssetDrawer({ asset, onClose, onCopy, onDownload }: { asset: LibraryAss
                                     {asset.data.fileName} · {formatBytes(asset.data.bytes)}
                                 </span>
                             </div>
-                        ) : asset.kind === "video" ? (
-                            <AssetVideoPreview storageKey={asset.data.storageKey} url={asset.data.url} title={asset.title} className="asset-archive-preview-media" />
                         ) : (
                             <AssetImageZoom asset={asset} />
                         )}
@@ -1938,7 +1783,7 @@ function AssetDrawer({ asset, onClose, onCopy, onDownload }: { asset: LibraryAss
                     <div className="flex flex-wrap gap-1.5">
 
                         {asset.arkAssetId ? (
-                            <Tag className="m-0" color="geekblue" title="火山方舟素材 ID，生成视频时可直接 asset:// 引用">
+                            <Tag className="m-0" color="geekblue" title="火山方舟素材 ID">
                                 方舟 {asset.arkAssetId}
                             </Tag>
                         ) : null}
@@ -1965,7 +1810,7 @@ function AssetDrawer({ asset, onClose, onCopy, onDownload }: { asset: LibraryAss
                                 复制文本
                             </Button>
                         ) : null}
-                        {asset.kind === "image" || asset.kind === "video" || asset.kind === "audio" || asset.kind === "model" ? (
+                        {asset.kind === "image" || asset.kind === "model" ? (
                             <Button className="asset-detail-download" icon={<Download className="size-4" />} onClick={() => onDownload(asset)}>
                                 {assetDownloadLabel(asset)}
                             </Button>
@@ -2013,11 +1858,8 @@ function assetArchiveFacts(asset: LibraryAsset) {
         { label: "类型", value: assetKindLabel(asset.kind) },
         { label: "分类", value: assetCategoryLabel(asset.category) },
     ];
-    if (asset.kind === "image" || asset.kind === "video") {
+    if (asset.kind === "image") {
         facts.push({ label: "尺寸", value: assetSizeLabel(asset.data.width, asset.data.height) });
-    }
-    if (asset.kind === "video" || asset.kind === "audio") {
-        facts.push({ label: "时长", value: formatAssetClock(asset.data.durationMs) || "未知" });
     }
     if (asset.kind !== "text") {
         facts.push({ label: "大小", value: formatBytes(asset.data.bytes) });
@@ -2037,12 +1879,10 @@ function assetSearchText(asset: LibraryAsset) {
 }
 
 function assetKindLabel(kind: AssetKind) {
-    return kind === "image" ? "图片" : kind === "video" ? "视频" : kind === "audio" ? "音频" : kind === "model" ? "模型" : "文本";
+    return kind === "image" ? "图片" : kind === "model" ? "模型" : "文本";
 }
 
 function assetDownloadLabel(asset: LibraryAsset) {
-    if (asset.kind === "video") return "下载视频";
-    if (asset.kind === "audio") return "下载音频";
     if (asset.kind === "model") return "下载模型";
     return "下载图片";
 }
@@ -2063,14 +1903,6 @@ function assetCountMap<T extends { label: string; value: string }>(options: T[],
     return result;
 }
 
-function formatAssetClock(durationMs?: number) {
-    if (!durationMs || durationMs < 1000) return null;
-    const total = Math.round(durationMs / 1000);
-    const minutes = Math.floor(total / 60);
-    const seconds = total % 60;
-    return `${minutes}:${String(seconds).padStart(2, "0")}`;
-}
-
 function formatAssetTime(value: string) {
     const date = new Date(value);
     return Number.isNaN(date.getTime()) ? "-" : date.toLocaleDateString("zh-CN", { month: "2-digit", day: "2-digit" });
@@ -2085,17 +1917,4 @@ function formatAssetDateTime(value: string) {
     const date = new Date(value);
     if (Number.isNaN(date.getTime())) return "-";
     return date.toLocaleString("zh-CN", { year: "numeric", month: "2-digit", day: "2-digit", hour: "2-digit", minute: "2-digit" });
-}
-
-function audioWaveBars(seed: string) {
-    let hash = 0;
-    for (const char of seed) hash = (hash * 31 + char.charCodeAt(0)) >>> 0;
-    const bars: number[] = [];
-    for (let index = 0; index < 26; index += 1) {
-        hash = (hash * 9301 + 49297) % 233280;
-        const random = hash / 233280;
-        const envelope = 0.35 + 0.65 * Math.abs(Math.sin(index * 0.55 + 1.2));
-        bars.push(Math.round((0.18 + 0.82 * random * envelope) * 100));
-    }
-    return bars;
 }

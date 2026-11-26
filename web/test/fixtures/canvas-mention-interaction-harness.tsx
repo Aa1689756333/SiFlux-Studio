@@ -7,7 +7,6 @@ import { useAssetStore, type Asset } from "../../src/stores/use-asset-store";
 import type { CanvasResourceReference } from "../../src/lib/canvas/canvas-resource-references";
 
 const pixelDataUrl = "data:image/png;base64,iVBORw0KGgoAAAANSUhEUgAAAAEAAAABCAQAAAC1HAwCAAAAC0lEQVR42mP8/x8AAusB9Y9Zl9sAAAAASUVORK5CYII=";
-const audioDataUrl = "data:audio/wav;base64,UklGRiQAAABXQVZFZm10IBAAAAABAAEARKwAAIhYAQACABAAZGF0YQAAAAA=";
 
 const mockAssets: Asset[] = [
     {
@@ -33,18 +32,6 @@ const mockAssets: Asset[] = [
         createdAt: new Date().toISOString(),
         updatedAt: new Date().toISOString(),
         data: { dataUrl: pixelDataUrl, width: 100, height: 100, bytes: 100, mimeType: "image/jpeg" },
-    },
-    {
-        id: "asset-audio-1",
-        kind: "audio",
-        title: "音频",
-        coverUrl: "",
-        category: "material",
-        status: "confirmed",
-        tags: [],
-        createdAt: new Date().toISOString(),
-        updatedAt: new Date().toISOString(),
-        data: { url: audioDataUrl, durationMs: 1000, bytes: 100, mimeType: "audio/wav" },
     },
     {
         id: "asset-char-1",

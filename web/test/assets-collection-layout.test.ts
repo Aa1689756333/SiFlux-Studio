@@ -1,4 +1,4 @@
-﻿import { describe, expect, test } from "bun:test";
+import { describe, expect, test } from "bun:test";
 import { readFileSync } from "node:fs";
 import { resolve } from "node:path";
 
@@ -22,17 +22,28 @@ describe("asset library category sidebar", () => {
 });
 
 describe("asset upload entry points", () => {
-    test("empty state opens the native image/video picker and uploads without an intermediate modal", () => {
+    test("empty state opens the native image picker and uploads without an intermediate modal", () => {
         const page = readFileSync(resolve(import.meta.dir, "../src/pages/assets/index.tsx"), "utf8");
         const handler = readFileSync(resolve(import.meta.dir, "../src/services/workspace-asset-upload.ts"), "utf8");
         expect(page).toContain("<AssetsEmptyState onImport={() => assetUploadInputRef.current?.click()} />");
         expect(page).toContain('accept="image/*"');
+        expect(page).not.toContain('accept="video/*"');
+        expect(page).not.toContain('accept="audio/*"');
         expect(page).toContain("await uploadWorkspaceAssetFiles(files, folderId, entryScope)");
         expect(page).toContain('label: "上传资产"');
         expect(handler).toContain("await uploadImage(file, undefined, expected)");
         expect(handler).toContain("请选择图片文件");
         expect(page).not.toContain("AssetBatchUploadModal");
         expect(page).not.toContain("batchUploadOpen");
+    });
+
+    test("type tabs and labels no longer offer video or audio assets", () => {
+        const page = readFileSync(resolve(import.meta.dir, "../src/pages/assets/index.tsx"), "utf8");
+        expect(page).toContain('{ label: "图片", value: "image" }');
+        expect(page).not.toContain('{ label: "视频", value: "video" }');
+        expect(page).not.toContain('{ label: "音频", value: "audio" }');
+        expect(page).not.toContain("generation-history-duration");
+        expect(page).not.toContain("AssetVideoPreview");
     });
 
     test("matches LibTV personal-library new menu", () => {

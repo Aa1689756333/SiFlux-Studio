@@ -7,13 +7,11 @@ import type { ExternalAssetPickerReference } from "@/lib/plugins/plugin-types";
 import { assertUserScope, type CapturedUserScope } from "@/lib/user-scope-guard";
 import { useAssetStore, type Asset } from "@/stores/use-asset-store";
 
-type InsertableAsset = Extract<Asset, { kind: "text" | "image" | "video" | "audio" }>;
+type InsertableAsset = Extract<Asset, { kind: "text" | "image" }>;
 
 export type InsertAssetPayload =
     | { kind: "text"; content: string; title: string; assetId?: string }
-    | { kind: "image"; dataUrl: string; title: string; url?: string; storageKey?: string; width?: number; height?: number; bytes?: number; mimeType?: string; assetId?: string }
-    | { kind: "video"; url: string; title: string; storageKey?: string; width?: number; height?: number; durationMs?: number; hasAudio?: boolean; bytes?: number; mimeType?: string; assetId?: string }
-    | { kind: "audio"; url: string; title: string; storageKey?: string; durationMs?: number; bytes?: number; mimeType?: string; assetId?: string };
+    | { kind: "image"; dataUrl: string; title: string; url?: string; storageKey?: string; width?: number; height?: number; bytes?: number; mimeType?: string; assetId?: string };
 
 type Props = {
     open: boolean;
@@ -74,7 +72,7 @@ export function assetPickerItemsToInsertPayloads(ids: string[], items: AssetLibr
         if (!pickerItem) throw new Error("所选素材已不存在，请重新选择");
         if (pickerItem.external) return externalAssetToInsertPayload(pickerItem.external);
         const asset = pickerItem.asset;
-        if (!asset || (asset.kind !== "text" && asset.kind !== "image" && asset.kind !== "video" && asset.kind !== "audio")) {
+        if (!asset || (asset.kind !== "text" && asset.kind !== "image")) {
             throw new Error(`“${pickerItem.title}”不是可插入画布的素材`);
         }
         return localAssetToInsertPayload(asset);
@@ -83,21 +81,6 @@ export function assetPickerItemsToInsertPayloads(ids: string[], items: AssetLibr
 
 export function localAssetToInsertPayload(asset: InsertableAsset): InsertAssetPayload {
     if (asset.kind === "text") return { kind: "text", content: asset.data.content, title: asset.title, assetId: asset.id };
-    if (asset.kind === "audio") return { kind: "audio", url: asset.data.url, storageKey: asset.data.storageKey, title: asset.title, durationMs: asset.data.durationMs, bytes: asset.data.bytes, mimeType: asset.data.mimeType, assetId: asset.id };
-    if (asset.kind === "video")
-        return {
-            kind: "video",
-            url: asset.data.url,
-            storageKey: asset.data.storageKey,
-            title: asset.title,
-            width: asset.data.width,
-            height: asset.data.height,
-            durationMs: asset.data.durationMs,
-            hasAudio: asset.data.hasAudio,
-            bytes: asset.data.bytes,
-            mimeType: asset.data.mimeType,
-            assetId: asset.id,
-        };
     return { kind: "image", dataUrl: asset.data.dataUrl, storageKey: asset.data.storageKey, title: asset.title, width: asset.data.width, height: asset.data.height, bytes: asset.data.bytes, mimeType: asset.data.mimeType, assetId: asset.id };
 }
 
@@ -107,7 +90,5 @@ export function externalAssetToInsertPayload(reference: ExternalAssetPickerRefer
     if (!url) throw new Error(`“${item.title}”暂时无法读取，请先在 Eagle 中确认文件可用`);
     const assetId = `external:${reference.sourceId}:${item.id}`;
     if (item.kind === "image") return { kind: "image", dataUrl: url, url, title: item.title || "素材图片", width: item.width, height: item.height, bytes: item.bytes, mimeType: item.mimeType, assetId };
-    if (item.kind === "video") return { kind: "video", url, title: item.title, width: item.width, height: item.height, bytes: item.bytes, mimeType: item.mimeType, assetId };
-    if (item.kind === "audio") return { kind: "audio", url, title: item.title, bytes: item.bytes, mimeType: item.mimeType, assetId };
     throw new Error(`“${item.title}”不是可插入画布的媒体文件`);
 }

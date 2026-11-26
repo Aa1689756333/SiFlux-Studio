@@ -624,24 +624,10 @@ describe("workspace asset canonical reads", () => {
                     coverUrl: stale,
                     data: { dataUrl: stale, storageKey: "resource:res-1", width: 8, height: 8, bytes: 4, mimeType: "image/png" },
                 }),
-                {
-                    id: "stale-video",
-                    kind: "video",
-                    title: "旧地址视频",
-                    coverUrl: stale,
-                    tags: [],
-                    category: "material",
-                    status: "confirmed",
-                    data: { url: stale, storageKey: "resource:res-1", width: 8, height: 8, bytes: 4, mimeType: "video/mp4" },
-                    createdAt: "2026-10-02T00:00:00.000Z",
-                    updatedAt: "2026-10-02T00:00:00.000Z",
-                },
             ])), async () => loadWorkspaceAssetLibraryPage({ page: 1, pageSize: 40 }));
             const image = page.assets.find((asset) => asset.id === "stale-image");
-            const video = page.assets.find((asset) => asset.id === "stale-video");
             expect(image && "data" in image && "dataUrl" in image.data ? image.data.dataUrl : "").toBe(resourceFileUrl("res-1"));
             expect(image?.coverUrl).toBe(resourceFileUrl("res-1"));
-            expect(video && "data" in video && "url" in video.data ? video.data.url : "").toBe(resourceFileUrl("res-1"));
         } finally {
             restore();
         }

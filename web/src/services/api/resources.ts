@@ -19,10 +19,7 @@ export type RemoteResource = {
     height?: number;
     durationMs?: number;
     etag?: string;
-	playbackStatus?: string;
-	playbackObjectKey?: string;
-	playbackError?: string;
-	error?: string;
+    error?: string;
     createdAt: string;
     updatedAt: string;
 };
@@ -31,18 +28,6 @@ export type AccountFileStorageUsage = {
     usedBytes: number;
     totalBytes: number;
 };
-
-export async function prepareResourcePlayback(id: string, config?: HttpRequestConfig) {
-    const data = await http.post<{ resource: RemoteResource }>(`/resources/${encodeURIComponent(id)}/playback`, {}, config);
-    return data.resource;
-}
-
-export async function clearVideoPreviewCache(config?: HttpRequestConfig) {
-    const expectedScope = config?.expectedScope ?? captureUserScope();
-    const result = await http.delete<{ cleared: number }>("/resources/playback-cache", { ...config, expectedScope });
-    assertUserScope(expectedScope);
-    return result;
-}
 
 export type ArkPrivateAssetSync = {
     resourceId: string;
@@ -372,54 +357,11 @@ export function resourceFileUrl(id: string) {
     return `${base}/resources/${encodeURIComponent(id)}/file`;
 }
 
-function resourceProxyFileUrl(id: string) {
-    const base = String(apiBaseURL).replace(/\/+$/, "");
-    return `${base}/resources/${encodeURIComponent(id)}/file?proxy=1`;
-}
-
 export function resolveResourceUrl(storageKey?: string, fallback = "") {
     const id = resourceIdFromStorageKey(storageKey);
     // 资源引用本身已经包含稳定 ID；恢复/展示阶段不需要再查一遍元数据。
     // 需要 publicUrl、mime 或尺寸时必须显式调用 getResource，避免隐式 N+1。
     return id ? resourceFileUrl(id) : fallback;
-}
-
-// playbackVariantUrl 返回浏览器兼容播放副本 URL（H.265→H.264 转码结果）。
-// 副本就绪前由后端回退原件，调用方再按需降级。
-export function playbackVariantUrl(id: string) {
-    const base = String(apiBaseURL).replace(/\/+$/, "");
-    return `${base}/resources/${encodeURIComponent(id)}/file?variant=playback`;
-}
-
-/**
- * Load a browser-compatible video through the authenticated API client. Native
- * media elements cannot attach the desktop launch token, and large videos must
- * not inherit the API client's short JSON-request timeout.
- */
-export type ResourcePlayback = { blob: Blob; compatible: boolean };
-
-export async function getResourcePlayback(storageKey: string, config?: HttpRequestConfig): Promise<ResourcePlayback | null> {
-    const id = resourceIdFromStorageKey(storageKey);
-    if (!id) return null;
-    const response = await http.raw<Blob>({
-        ...config,
-        method: "get",
-        url: `/resources/${encodeURIComponent(id)}/file?variant=playback&proxy=1`,
-        expectedScope: config?.expectedScope ?? captureUserScope(),
-        responseType: "blob",
-        timeout: 0,
-    });
-    return {
-        blob: response.data instanceof Blob ? response.data : new Blob([response.data]),
-        // A ready database row may outlive its copy. The file endpoint then
-        // serves the original with its original ETag; it must remain eligible
-        // for decoder-error recovery.
-        compatible: String(response.headers.etag || "").endsWith(':pb"'),
-    };
-}
-
-export async function getResourcePlaybackBlob(storageKey: string, config?: HttpRequestConfig) {
-    return (await getResourcePlayback(storageKey, config))?.blob ?? null;
 }
 
 export async function getResourceBlob(storageKey: string, config?: HttpRequestConfig) {

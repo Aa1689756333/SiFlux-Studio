@@ -384,12 +384,6 @@ function applyResourceDisplayUrls(asset: Asset): Asset {
     if (!resourceId) return asset;
     const url = resourceFileUrl(resourceId);
     const coverUrl = rewriteResourceCoverUrl(asset.coverUrl, resourceId, url);
-    if (asset.kind === "video") {
-        return { ...asset, coverUrl, data: { ...asset.data, url } };
-    }
-    if (asset.kind === "audio") {
-        return { ...asset, coverUrl, data: { ...asset.data, url } };
-    }
     if (asset.kind === "model") {
         return { ...asset, coverUrl, data: { ...asset.data, url } };
     }
@@ -539,7 +533,7 @@ function matchesExtraClientFilters(asset: Asset, options: WorkspaceAssetLibraryP
 }
 
 export function isWorkspaceGeneratedHistoryAsset(asset: Pick<Asset, "kind" | "source" | "metadata">) {
-    if (asset.kind !== "image" && asset.kind !== "video" && asset.kind !== "audio") return false;
+    if (asset.kind !== "image") return false;
     return asset.source === "生成任务" || typeof asset.metadata?.generationEffectKey === "string";
 }
 
