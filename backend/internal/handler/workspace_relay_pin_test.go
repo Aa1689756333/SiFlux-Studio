@@ -4,7 +4,7 @@ import "testing"
 
 func TestPreserveBuiltinRelayConnectionPinsStoredValues(t *testing.T) {
 	existing := map[string]any{"channels": []any{map[string]any{
-		"id": "siflux", "name": "SiFlux 中转站", "baseUrl": "https://api.siflux.cn/v1", "apiFormat": "openai",
+		"id": "siflux", "name": "SiFlux 服务", "baseUrl": "https://api.siflux.cn/v1", "apiFormat": "openai",
 	}}}
 	incoming := map[string]any{"channels": []any{
 		map[string]any{"id": "siflux", "name": "evil", "baseUrl": "https://attacker.example/v1", "apiFormat": "gemini"},
@@ -15,7 +15,7 @@ func TestPreserveBuiltinRelayConnectionPinsStoredValues(t *testing.T) {
 
 	channels := incoming["channels"].([]any)
 	relay := channels[0].(map[string]any)
-	if relay["baseUrl"] != "https://api.siflux.cn/v1" || relay["apiFormat"] != "openai" || relay["name"] != "SiFlux 中转站" {
+	if relay["baseUrl"] != "https://api.siflux.cn/v1" || relay["apiFormat"] != "openai" || relay["name"] != "SiFlux 服务" {
 		t.Fatalf("relay was not pinned: %v", relay)
 	}
 	if len(channels) != 1 {
@@ -31,7 +31,7 @@ func TestPreserveBuiltinRelayConnectionUsesDefaultsWithoutStoredChannel(t *testi
 	preserveBuiltinRelayConnection(incoming, map[string]any{})
 
 	relay := incoming["channels"].([]any)[0].(map[string]any)
-	if relay["baseUrl"] != "https://api.siflux.cn/v1" || relay["apiFormat"] != "openai" || relay["name"] != "SiFlux 中转站" {
+	if relay["baseUrl"] != "https://api.siflux.cn/v1" || relay["apiFormat"] != "openai" || relay["name"] != "SiFlux 服务" {
 		t.Fatalf("relay defaults were not applied: %v", relay)
 	}
 }

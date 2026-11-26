@@ -192,7 +192,7 @@ func preserveBuiltinRelayConnection(incoming, existing map[string]any) {
 			filtered = append(filtered, copied)
 		} else {
 			filtered = append(filtered, map[string]any{
-				"id": builtinRelayChannelID, "name": "SiFlux 中转站",
+				"id": builtinRelayChannelID, "name": "SiFlux 服务",
 				"baseUrl": "https://api.siflux.cn/v1", "apiFormat": "openai",
 			})
 		}
@@ -224,7 +224,7 @@ func preserveBuiltinRelayConnection(incoming, existing map[string]any) {
 			case "apiFormat":
 				channel[key] = "openai"
 			case "name":
-				channel[key] = "SiFlux 中转站"
+				channel[key] = "SiFlux 服务"
 			case "referenceAssetOrigin", "secretKey":
 				channel[key] = ""
 			}

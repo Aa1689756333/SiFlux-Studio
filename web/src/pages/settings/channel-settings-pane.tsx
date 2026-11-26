@@ -1,4 +1,4 @@
-﻿import { Alert, App, Button, Form, Input, Popconfirm, Segmented, Select } from "antd";
+import { Alert, App, Button, Form, Input, Popconfirm, Segmented, Select } from "antd";
 import { Bug, Pencil, Plus, RefreshCw, Trash2, Workflow } from "lucide-react";
 import { useEffect, useRef, useState, useSyncExternalStore, type ReactNode } from "react";
 
@@ -464,10 +464,10 @@ export function ChannelSettingsPane({ onOpenDiagnostics, onOpenModels, onOpenRun
                 <WorkspaceState
                     icon="settings"
                     compact
-                    title="连接 SiFlux 中转站"
+                    title="连接 SiFlux 服务"
                     action={
                         <Button href="https://siflux.cn" target="_blank" rel="noopener noreferrer">
-                            打开中转站页面
+                            打开 SiFlux 服务
                         </Button>
                     }
                 />

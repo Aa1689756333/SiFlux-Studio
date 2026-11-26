@@ -4,7 +4,7 @@ import { refreshModelConfigFromServer } from "@/components/workspace/workspace-b
 import { useConfigStore } from "@/stores/use-config-store";
 
 /**
- * 中转站注册/登录成功后的收尾：
+ * 服务注册/登录成功后的收尾：
  * 后端已经把 API Key 写入本地渠道，这里把配置同步回内存并补齐模型能力。
  */
 export async function completeRelayConnection(channelId: string) {
@@ -22,7 +22,7 @@ export async function completeRelayConnection(channelId: string) {
     });
 }
 
-/** 判断内置中转站是否已经接入（已保存 API Key）。 */
+/** 判断内置服务是否已经接入（已保存 API Key）。 */
 export function relayChannelConnected(channels: { id: string; pinned?: boolean; apiKey?: string; hasApiKey?: boolean }[]) {
     const channel = channels.find((item) => item.id === "siflux" && item.pinned);
     if (!channel) return false;

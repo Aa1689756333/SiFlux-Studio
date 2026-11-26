@@ -7,7 +7,7 @@ func TestBuiltinRelayPresetIsPinnedWithoutFreezingRemoteModelCatalog(t *testing.
 	if !ok {
 		t.Fatal("builtin relay preset missing")
 	}
-	if preset.DisplayName != "SiFlux 中转站" || preset.BaseURL != "https://api.siflux.cn/v1" {
+	if preset.DisplayName != "SiFlux 服务" || preset.BaseURL != "https://api.siflux.cn/v1" {
 		t.Fatalf("unexpected relay identity: %#v", preset)
 	}
 	if preset.CatalogProtocol != "openai" {

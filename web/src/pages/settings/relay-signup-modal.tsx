@@ -1,4 +1,4 @@
-﻿import { useCallback, useEffect, useRef, useState } from "react";
+import { useCallback, useEffect, useRef, useState } from "react";
 import { Alert, Button, Form, Input, Modal, Segmented, Space, message } from "antd";
 import { CheckCircle2, Loader2, Mail, UserRound } from "lucide-react";
 import {
@@ -22,7 +22,7 @@ type RelaySignupModalProps = {
 const CODE_COOLDOWN_SECONDS = 60;
 
 /**
- * 内置中转站的接入向导：注册时走邮箱验证码，登录直接复用既有账号。
+ * 内置服务的接入向导：注册时走邮箱验证码，登录直接复用既有账号。
  * 密码只在本次请求里使用，后端不会保存，也不会返回值里带出。
  */
 export function RelaySignupModal({ open, onClose, onConnected }: RelaySignupModalProps) {
@@ -78,7 +78,7 @@ export function RelaySignupModal({ open, onClose, onConnected }: RelaySignupModa
                 if (!next.registerEnabled || !next.passwordRegisterEnabled) setMode("login");
             })
             .catch((reason: unknown) => {
-                setOptionsError(reason instanceof Error ? reason.message : "读取中转站配置失败");
+                setOptionsError(reason instanceof Error ? reason.message : "读取服务配置失败");
             })
             .finally(() => setLoadingOptions(false));
         return () => controller.abort();
@@ -129,7 +129,7 @@ export function RelaySignupModal({ open, onClose, onConnected }: RelaySignupModa
                           password: values.password,
                       });
             setResult(next);
-            message.success("中转站账号已接入");
+            message.success("SiFlux 服务已连接");
             onConnected(next);
         } catch (reason) {
             setError(reason instanceof Error ? reason.message : "接入失败，请稍后重试");
@@ -157,13 +157,13 @@ export function RelaySignupModal({ open, onClose, onConnected }: RelaySignupModa
             destroyOnHidden
             title={
                 <div className="flex flex-col gap-1 pr-6">
-                    <span className="text-base font-semibold">连接 SiFlux 中转站</span>
+                    <span className="text-base font-semibold">连接 SiFlux 服务</span>
                     <span className="text-xs font-normal leading-5 text-foreground/50">
                         {result
-                            ? "账号已接入，可以直接开始生图。"
+                            ? "已连接，可以直接开始生图。"
                             : mode === "register"
-                              ? "注册后自动生成 API Key、拉取模型并填入。"
-                              : "用已有账号登录，自动生成一枚应用专用 API Key。"}
+                              ? "注册后自动生成密钥、拉取模型并填入。"
+                              : "用已有账号登录，自动生成一枚应用专用密钥。"}
                     </span>
                 </div>
             }
@@ -189,12 +189,12 @@ export function RelaySignupModal({ open, onClose, onConnected }: RelaySignupModa
                 {loadingOptions ? (
                     <div className="mb-3 flex items-center gap-2 text-xs text-foreground/60">
                         <Loader2 className="size-3.5 animate-spin" />
-                        正在读取中转站配置…
+                        正在读取服务配置…
                     </div>
                 ) : null}
 
                 {optionsError ? (
-                    <Alert className="mb-3" type="error" showIcon message="无法连接中转站" description={optionsError} />
+                    <Alert className="mb-3" type="error" showIcon message="无法连接 SiFlux 服务" description={optionsError} />
                 ) : null}
 
                 {registerBlocked && !result ? (
@@ -202,7 +202,7 @@ export function RelaySignupModal({ open, onClose, onConnected }: RelaySignupModa
                         className="mb-3"
                         type="warning"
                         showIcon
-                        message={options?.turnstile ? "该中转站要求人机验证" : "该中转站暂未开放密码注册"}
+                        message={options?.turnstile ? "该服务要求人机验证" : "SiFlux 服务暂未开放密码注册"}
                         description="请前往网页完成注册后，回到这里用「已有账号」接入。"
                     />
                 ) : null}
@@ -214,8 +214,8 @@ export function RelaySignupModal({ open, onClose, onConnected }: RelaySignupModa
                         <div className="flex items-center gap-2.5 rounded-xl border border-emerald-500/25 bg-emerald-500/10 px-4 py-3">
                             <CheckCircle2 className="size-5 shrink-0 text-emerald-500" />
                             <div className="min-w-0">
-                                <div className="truncate text-sm font-medium">已接入{result.displayName || result.username}</div>
-                                <div className="text-xs text-foreground/55">API Key 已自动填入，无需手动复制。</div>
+                                <div className="truncate text-sm font-medium">已连接{result.displayName || result.username}</div>
+                                <div className="text-xs text-foreground/55">密钥已自动填入，无需手动复制。</div>
                             </div>
                         </div>
 
@@ -235,7 +235,7 @@ export function RelaySignupModal({ open, onClose, onConnected }: RelaySignupModa
                         ) : null}
 
                         <p className="m-0 text-xs leading-5 text-foreground/50">
-                            已在中转站创建专用令牌「{result.tokenName}」，可随时在中转站单独吊销。
+                            已创建专用密钥「{result.tokenName}」，可随时在 SiFlux 服务网站停用。
                         </p>
 
                         <Button type="primary" size="large" block onClick={handleClose}>
@@ -252,7 +252,7 @@ export function RelaySignupModal({ open, onClose, onConnected }: RelaySignupModa
                         >
                             <Input
                                 prefix={<UserRound className="mr-1 size-4 text-foreground/40" />}
-                                placeholder="用于登录中转站"
+                                placeholder="用于登录 SiFlux 服务"
                                 autoComplete="username"
                             />
                         </Form.Item>
@@ -316,7 +316,7 @@ export function RelaySignupModal({ open, onClose, onConnected }: RelaySignupModa
                             {mode === "register" ? "注册并接入" : "登录并接入"}
                         </Button>
                         <p className="m-0 pt-3 text-center text-xs leading-5 text-foreground/45">
-                            账号与充值在中转站完成，应用只保存自动生成的 API Key。
+                            账号与充值在 SiFlux 服务完成，应用只保存自动生成的密钥。
                         </p>
                     </Form>
                 )}

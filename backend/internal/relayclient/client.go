@@ -95,10 +95,10 @@ func New(baseURL string) (*Client, error) {
 	}
 	parsed, err := url.Parse(trimmed)
 	if err != nil || parsed.Host == "" {
-		return nil, errors.New("中转站地址无效")
+		return nil, errors.New("服务地址无效")
 	}
 	if parsed.Scheme != "https" && parsed.Scheme != "http" {
-		return nil, errors.New("中转站地址必须是 http(s)")
+		return nil, errors.New("服务地址必须是 http(s)")
 	}
 	return &Client{
 		baseURL: trimmed,
@@ -170,19 +170,19 @@ func (c *Client) Login(ctx context.Context, username, password string) (string, 
 	}
 	response, err := c.http.Do(request)
 	if err != nil {
-		return "", fmt.Errorf("连接中转站失败: %w", err)
+		return "", fmt.Errorf("连接 SiFlux 服务失败: %w", err)
 	}
 	defer response.Body.Close()
 	raw, err := io.ReadAll(io.LimitReader(response.Body, maxResponseBytes))
 	if err != nil {
-		return "", fmt.Errorf("读取中转站响应失败: %w", err)
+		return "", fmt.Errorf("读取 SiFlux 服务响应失败: %w", err)
 	}
 	if err := decodeEnvelope(response.StatusCode, raw); err != nil {
 		return "", err
 	}
 	cookies := response.Cookies()
 	if len(cookies) == 0 {
-		return "", &Error{Status: response.StatusCode, Message: "登录失败，中转站没有返回会话"}
+		return "", &Error{Status: response.StatusCode, Message: "登录失败，服务没有返回会话"}
 	}
 	parts := make([]string, 0, len(cookies))
 	for _, cookie := range cookies {
@@ -210,7 +210,7 @@ func (c *Client) CreateToken(ctx context.Context, session, name string) (Token, 
 		return token, nil
 	}
 	if token.ID <= 0 {
-		return Token{}, &Error{Status: http.StatusBadGateway, Message: "中转站没有返回令牌"}
+		return Token{}, &Error{Status: http.StatusBadGateway, Message: "服务没有返回密钥"}
 	}
 	key, err := c.tokenKey(ctx, session, token.ID)
 	if err != nil {
@@ -230,7 +230,7 @@ func (c *Client) tokenKey(ctx context.Context, session string, id int) (string, 
 		return "", err
 	}
 	if strings.TrimSpace(payload.Key) == "" {
-		return "", &Error{Status: http.StatusBadGateway, Message: "中转站没有返回令牌内容"}
+		return "", &Error{Status: http.StatusBadGateway, Message: "服务没有返回密钥内容"}
 	}
 	return payload.Key, nil
 }
@@ -239,7 +239,7 @@ func (c *Client) tokenKey(ctx context.Context, session string, id int) (string, 
 func (c *Client) Balance(ctx context.Context, apiKey string) (Balance, error) {
 	key := strings.TrimSpace(apiKey)
 	if key == "" {
-		return Balance{}, &Error{Status: http.StatusUnauthorized, Message: "尚未接入中转站"}
+		return Balance{}, &Error{Status: http.StatusUnauthorized, Message: "尚未连接 SiFlux 服务"}
 	}
 	subscription, err := c.getWithKey(ctx, "/v1/dashboard/billing/subscription", key)
 	if err != nil {
@@ -250,7 +250,7 @@ func (c *Client) Balance(ctx context.Context, apiKey string) (Balance, error) {
 		SoftLimitUSD float64 `json:"soft_limit_usd"`
 	}
 	if err := json.Unmarshal(subscription, &grant); err != nil {
-		return Balance{}, &Error{Status: http.StatusBadGateway, Message: "中转站返回的额度信息无法解析"}
+		return Balance{}, &Error{Status: http.StatusBadGateway, Message: "服务返回的余额信息无法解析"}
 	}
 	total := grant.HardLimitUSD
 	if total <= 0 {
@@ -285,12 +285,12 @@ func (c *Client) getWithKey(ctx context.Context, path, apiKey string) ([]byte, e
 	request.Header.Set("Authorization", "Bearer "+apiKey)
 	response, err := c.http.Do(request)
 	if err != nil {
-		return nil, fmt.Errorf("连接中转站失败: %w", err)
+		return nil, fmt.Errorf("连接 SiFlux 服务失败: %w", err)
 	}
 	defer response.Body.Close()
 	raw, err := io.ReadAll(io.LimitReader(response.Body, maxResponseBytes))
 	if err != nil {
-		return nil, fmt.Errorf("读取中转站响应失败: %w", err)
+		return nil, fmt.Errorf("读取 SiFlux 服务响应失败: %w", err)
 	}
 	if response.StatusCode != http.StatusOK {
 		return nil, &Error{Status: response.StatusCode, Message: failureMessage(raw, response.StatusCode)}
@@ -316,12 +316,12 @@ func (c *Client) Models(ctx context.Context, apiKey string) ([]string, error) {
 	request.Header.Set("Authorization", "Bearer "+strings.TrimSpace(apiKey))
 	response, err := c.http.Do(request)
 	if err != nil {
-		return nil, fmt.Errorf("连接中转站失败: %w", err)
+		return nil, fmt.Errorf("连接 SiFlux 服务失败: %w", err)
 	}
 	defer response.Body.Close()
 	raw, err := io.ReadAll(io.LimitReader(response.Body, maxResponseBytes))
 	if err != nil {
-		return nil, fmt.Errorf("读取中转站响应失败: %w", err)
+		return nil, fmt.Errorf("读取 SiFlux 服务响应失败: %w", err)
 	}
 	if response.StatusCode != http.StatusOK {
 		return nil, &Error{Status: response.StatusCode, Message: failureMessage(raw, response.StatusCode)}
@@ -332,7 +332,7 @@ func (c *Client) Models(ctx context.Context, apiKey string) ([]string, error) {
 		} `json:"data"`
 	}
 	if err := json.Unmarshal(raw, &payload); err != nil {
-		return nil, &Error{Status: response.StatusCode, Message: "中转站返回的模型列表无法解析"}
+		return nil, &Error{Status: response.StatusCode, Message: "服务返回的模型列表无法解析"}
 	}
 	models := make([]string, 0, len(payload.Data))
 	for _, item := range payload.Data {
@@ -355,12 +355,12 @@ func (c *Client) call(ctx context.Context, method, path string, body any, sessio
 	}
 	response, err := c.http.Do(request)
 	if err != nil {
-		return fmt.Errorf("连接中转站失败: %w", err)
+		return fmt.Errorf("连接 SiFlux 服务失败: %w", err)
 	}
 	defer response.Body.Close()
 	raw, err := io.ReadAll(io.LimitReader(response.Body, maxResponseBytes))
 	if err != nil {
-		return fmt.Errorf("读取中转站响应失败: %w", err)
+		return fmt.Errorf("读取 SiFlux 服务响应失败: %w", err)
 	}
 	if err := decodeEnvelope(response.StatusCode, raw); err != nil {
 		return err
@@ -372,10 +372,10 @@ func (c *Client) call(ctx context.Context, method, path string, body any, sessio
 		Data json.RawMessage `json:"data"`
 	}
 	if err := json.Unmarshal(raw, &envelope); err != nil || len(envelope.Data) == 0 {
-		return &Error{Status: response.StatusCode, Message: "中转站返回内容无法解析"}
+		return &Error{Status: response.StatusCode, Message: "服务返回内容无法解析"}
 	}
 	if err := json.Unmarshal(envelope.Data, out); err != nil {
-		return &Error{Status: response.StatusCode, Message: "中转站返回内容无法解析"}
+		return &Error{Status: response.StatusCode, Message: "服务返回内容无法解析"}
 	}
 	return nil
 }
@@ -405,12 +405,12 @@ func decodeEnvelope(status int, raw []byte) error {
 		if status >= http.StatusBadRequest {
 			return &Error{Status: status, Message: failureMessage(raw, status)}
 		}
-		return &Error{Status: status, Message: "中转站返回内容无法解析"}
+		return &Error{Status: status, Message: "服务返回内容无法解析"}
 	}
 	if envelope.Success != nil && !*envelope.Success {
 		message := strings.TrimSpace(envelope.Message)
 		if message == "" {
-			message = "中转站拒绝了这次请求"
+			message = "服务拒绝了这次请求"
 		}
 		return &Error{Status: status, Message: message}
 	}
@@ -436,7 +436,7 @@ func failureMessage(raw []byte, status int) string {
 			return message
 		}
 	}
-	return fmt.Sprintf("中转站返回 %d", status)
+	return fmt.Sprintf("服务返回 %d", status)
 }
 
 func mustJSON(value any) []byte {

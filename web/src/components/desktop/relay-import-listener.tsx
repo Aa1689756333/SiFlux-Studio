@@ -37,7 +37,7 @@ export function DesktopRelayImportListener() {
         const config = useConfigStore.getState().config;
         const channel = config.channels.find(isBuiltinRelayChannel);
         if (!channel) {
-            message.error("没有找到内置的 SiFlux 中转站渠道，无法应用这次导入");
+            message.error("没有找到内置的 SiFlux 服务渠道，无法应用这次导入");
             return;
         }
         const name = payload.name.trim();
@@ -62,11 +62,11 @@ export function DesktopRelayImportListener() {
                 return;
             }
             if (!result.models.length) {
-                message.warning("中转站没有返回模型，已保留现有模型列表");
+                message.warning("服务没有返回模型，已保留现有模型列表");
                 return;
             }
             useConfigStore.getState().replaceConfig(withChannels(latestConfig, latestConfig.channels.map((item) => (item.id === channel.id ? applyFetchedChannelModelCatalog(item, result) : item))));
-            message.success(`已从中转站导入 ${result.models.length} 个模型`);
+            message.success(`已从 SiFlux 服务导入 ${result.models.length} 个模型`);
         } catch (error) {
             message.error(channelModelFetchErrorMessage(error));
         }
@@ -74,8 +74,8 @@ export function DesktopRelayImportListener() {
 
     const promptImport = useCallback((payload: DesktopRelayImport) => {
         modal.confirm({
-            title: "使用中转站页面创建的密钥？",
-            content: `来源：${hostOf(payload.baseUrl)}。确认后会写入内置的 SiFlux 中转站渠道，并刷新模型列表。`,
+            title: "使用 SiFlux 服务创建的密钥？",
+            content: `来源：${hostOf(payload.baseUrl)}。确认后会写入内置的 SiFlux 服务渠道，并刷新模型列表。`,
             okText: "导入",
             cancelText: "忽略",
             onOk: () => applyImport(payload),

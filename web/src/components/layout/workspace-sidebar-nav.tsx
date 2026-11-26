@@ -243,7 +243,7 @@ function RelayAccountEntry({ connected, collapsed, onOpen }: { connected: boolea
                 className="h-9"
                 icon={collapsed ? <UserRound className="size-4" /> : undefined}
                 onClick={onOpen}
-                aria-label="注册或登录中转站"
+                aria-label="注册或登录 SiFlux 服务"
             >
                 {collapsed ? null : "注册 / 登录"}
             </Button>
@@ -255,14 +255,14 @@ function RelayAccountEntry({ connected, collapsed, onOpen }: { connected: boolea
             type="button"
             onClick={onOpen}
             className="flex w-full items-center justify-between gap-2 rounded-[var(--r-md)] border border-border/60 bg-surface/40 px-3 py-2 text-left transition-colors hover:border-primary/40 hover:bg-surface/70"
-            title="查看中转站账户与余额"
+            title="查看 SiFlux 服务账户与余额"
         >
             {collapsed ? (
                 <UserRound className="mx-auto size-4 text-foreground/70" />
             ) : (
                 <>
                     <span className="flex min-w-0 flex-col">
-                        <span className="text-[var(--fs-micro)] text-foreground/50">中转站余额</span>
+                        <span className="flex items-center gap-1.5 text-[var(--fs-micro)] text-foreground/50"><span className="size-1.5 rounded-full bg-emerald-500" aria-hidden />已连接 · 余额</span>
                         <span className="truncate text-sm font-semibold">{amount}</span>
                     </span>
                     <ChevronRight className="size-3.5 shrink-0 text-foreground/40" />

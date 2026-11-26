@@ -133,11 +133,11 @@ func RegisterRelayRoutes(r gin.IRouter, svc *app.Service) {
 			return
 		}
 		if !options.RegisterEnabled || !options.PasswordRegister {
-			fail(c, http.StatusBadRequest, errors.New("该中转站当前未开放密码注册"))
+			fail(c, http.StatusBadRequest, errors.New("SiFlux 服务暂未开放密码注册"))
 			return
 		}
 		if options.Turnstile {
-			fail(c, http.StatusBadRequest, errors.New("该中转站要求人机验证，请前往网页完成注册"))
+			fail(c, http.StatusBadRequest, errors.New("SiFlux 服务要求人机验证，请前往网页完成注册"))
 			return
 		}
 
@@ -167,7 +167,7 @@ func RegisterRelayRoutes(r gin.IRouter, svc *app.Service) {
 			return
 		}
 		if apiKey == "" {
-			fail(c, http.StatusBadRequest, errors.New("尚未接入中转站"))
+			fail(c, http.StatusBadRequest, errors.New("尚未连接 SiFlux 服务"))
 			return
 		}
 		client, err := relayClient()
@@ -332,7 +332,7 @@ func saveRelayAPIKey(c *gin.Context, svc *app.Service, apiKey string, models []s
 	if !updated {
 		channel := map[string]any{
 			"id":        builtinRelayChannelID,
-			"name":      "SiFlux 中转站",
+			"name":      "SiFlux 服务",
 			"baseUrl":   "https://api.siflux.cn/v1",
 			"apiFormat": "openai",
 			"apiKey":    apiKey,
@@ -372,7 +372,7 @@ func relayClient() (*relayclient.Client, error) {
 func failRelay(c *gin.Context, err error) {
 	relayErr, isRelay := relayclient.IsError(err)
 	if !isRelay {
-		fail(c, http.StatusBadGateway, errors.New("无法连接中转站，请检查网络后重试"))
+		fail(c, http.StatusBadGateway, errors.New("无法连接 SiFlux 服务，请检查网络后重试"))
 		return
 	}
 	status := http.StatusBadRequest

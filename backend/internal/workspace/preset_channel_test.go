@@ -15,7 +15,7 @@ func TestBuiltinRelayPresetOwnsIdentityAndKeepsLocalCredential(t *testing.T) {
 	if err != nil {
 		t.Fatal(err)
 	}
-	if channel["id"] != "siflux" || channel["name"] != "SiFlux 中转站" || channel["baseUrl"] != "https://api.siflux.cn/v1" {
+	if channel["id"] != "siflux" || channel["name"] != "SiFlux 服务" || channel["baseUrl"] != "https://api.siflux.cn/v1" {
 		t.Fatalf("preset identity must stay authoritative: %#v", channel)
 	}
 	if channel["apiFormat"] != "openai" || channel["pinned"] != true || channel["scope"] != "user" {

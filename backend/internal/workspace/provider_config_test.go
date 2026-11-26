@@ -35,7 +35,7 @@ func TestProviderConfigRepairsBuiltinPresetStateWithoutLosingLocalChoices(t *tes
 		t.Fatalf("health = %q", health)
 	}
 	channel := requireEffectiveChannel(t, effective, "siflux")
-	if channel["name"] != "SiFlux 中转站" || channel["baseUrl"] != "https://api.siflux.cn/v1" {
+	if channel["name"] != "SiFlux 服务" || channel["baseUrl"] != "https://api.siflux.cn/v1" {
 		t.Fatal("preset-owned identity was not repaired")
 	}
 	if channel["apiKey"] != "local-secret" || channel["enabled"] != false {
