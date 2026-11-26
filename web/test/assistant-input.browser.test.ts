@@ -120,7 +120,7 @@ beforeAll(async () => {
 afterAll(async () => { await browser?.close(); server?.stop(true); if (scratch) rmSync(scratch, { recursive: true, force: true }); });
 beforeEach(() => { registeredAssets.length = 0; assetScope = "guest"; });
 const openPages: Page[] = [];
-async function newPage(options?: Parameters<Browser["newPage"]>[0]) { const page = await newPage(options); openPages.push(page); return page; }
+async function newPage(options?: Parameters<Browser["newPage"]>[0]) { const page = await browser.newPage(options); openPages.push(page); return page; }
 afterEach(async () => { for (const page of openPages.splice(0)) await page.close().catch(() => undefined); });
 
 test("real Sidebar handles file, paste, drop, attachment-only, purpose, draft restore and busy supplement", async () => {
