@@ -1,8 +1,7 @@
-import { nanoid } from "nanoid";
+﻿import { nanoid } from "nanoid";
 import localforage from "localforage";
 import { parseAssetRecord } from "@/lib/asset-record";
 import { readUploadImageSize } from "@/lib/canvas/canvas-file-upload";
-import { probeMediaMetadata, type MediaMetadata } from "@/lib/media-metadata";
 import { assertUserScope, captureUserScope, type CapturedUserScope } from "@/lib/user-scope-guard";
 import { ownedResourceIdFromMediaRef, resourceFileUrl, resourceStorageKey, uploadResourceFile } from "@/services/api/resources";
 import { putWorkspaceAsset } from "@/services/api/workspace-data";
@@ -13,44 +12,31 @@ import type { AssistantAttachment, AssistantAttachmentPurpose, AssistantSkillSel
 
 export const ASSISTANT_ATTACHMENT_PURPOSES: { value: AssistantAttachmentPurpose; label: string }[] = [
     { value: "analysis", label: "仅分析" }, { value: "character", label: "人物参考" }, { value: "scene", label: "场景参考" },
-    { value: "style", label: "风格参考" }, { value: "motion", label: "运镜参考" }, { value: "first-frame", label: "首帧" },
-    { value: "last-frame", label: "尾帧" }, { value: "rhythm", label: "节奏参考" }, { value: "sound", label: "声音参考" },
+    { value: "style", label: "风格参考" }, { value: "first-frame", label: "首帧" }, { value: "last-frame", label: "尾帧" },
 ];
-export function assistantAttachmentPurposes(kind: AssistantAttachment["kind"]) {
-    const allowed: Record<AssistantAttachment["kind"], AssistantAttachmentPurpose[]> = {
-        image: ["analysis", "character", "scene", "style", "first-frame", "last-frame"],
-        video: ["analysis", "character", "scene", "style", "motion", "rhythm"],
-        audio: ["analysis", "rhythm", "sound"],
-    };
-    return ASSISTANT_ATTACHMENT_PURPOSES.filter(item => allowed[kind].includes(item.value));
+/** 助手只接收图片素材：视频与音频能力已从产品移除。 */
+export function assistantAttachmentPurposes() {
+    return ASSISTANT_ATTACHMENT_PURPOSES;
 }
 export function attachmentKind(mimeType: string): AssistantAttachment["kind"] | null {
-    return mimeType.startsWith("image/") ? "image" : mimeType.startsWith("video/") ? "video" : mimeType.startsWith("audio/") ? "audio" : null;
-}
-export function attachmentRangeError(attachment: AssistantAttachment): string | null {
-    if (attachment.start === undefined && attachment.end === undefined) return null;
-    const start = attachment.start ?? 0, end = attachment.end;
-    if (!Number.isFinite(start) || start < 0 || end === undefined || !Number.isFinite(end) || end <= start) return "请填写有效的起止时间（秒）";
-    if (attachment.durationMs && end * 1000 > attachment.durationMs + 50) return "结束时间超过素材时长";
-    return null;
+    return mimeType.startsWith("image/") ? "image" : null;
 }
 export async function uploadAssistantAttachment(file: File, expected = captureUserScope(), identity = nanoid()): Promise<AssistantAttachment> {
     const kind = attachmentKind(file.type);
-    if (!kind) throw new Error("请选择图片、视频或音频文件");
+    if (!kind) throw new Error("请选择图片文件");
     assertUserScope(expected);
-    const metadata: MediaMetadata | undefined = kind === "image" ? await readUploadImageSize(file) : await probeMediaMetadata(file);
+    const metadata = await readUploadImageSize(file);
     assertUserScope(expected);
     const resource = await uploadResourceFile(file, kind, { ...metadata, fileName: file.name, idempotencyKey: `assistant:${identity}`, expectedScope: expected });
     assertUserScope(expected);
     if (!resource.id || resource.status !== "ready") throw new Error("素材文件尚未保存成功，请重试上传");
     const url = resourceFileUrl(resource.id), now = new Date().toISOString();
     const positive = (value?: number) => value !== undefined && Number.isFinite(value) && value > 0 ? value : undefined;
-    const durationMs = positive(resource.durationMs) ?? metadata?.durationMs;
-    const asset = parseAssetRecord({ id: identity, kind, title: file.name, coverUrl: kind === "image" ? url : "", category: "material", tags: [], status: "confirmed",
+    const asset = parseAssetRecord({ id: identity, kind, title: file.name, coverUrl: url, category: "material", tags: [], status: "confirmed",
         source: "创作助手", createdAt: now, updatedAt: now,
-        data: { ...(kind === "image" ? { dataUrl: url } : { url }), storageKey: resourceStorageKey(resource.id),
+        data: { dataUrl: url, storageKey: resourceStorageKey(resource.id),
             width: metadata?.width ?? positive(resource.width) ?? 0, height: metadata?.height ?? positive(resource.height) ?? 0,
-            durationMs, bytes: resource.size || file.size, mimeType: resource.mimeType || file.type },
+            bytes: resource.size || file.size, mimeType: resource.mimeType || file.type },
     });
     const receipt = await putWorkspaceAsset(identity, asset, { expectedScope: expected });
     assertUserScope(expected);
@@ -62,7 +48,7 @@ export async function uploadAssistantAttachment(file: File, expected = captureUs
             createdAt: receipt.asset.createdAt || asset.createdAt, updatedAt: receipt.asset.updatedAt || asset.updatedAt });
         return { assets: live ? state.assets : [...state.assets, saved] };
     }));
-    return { resourceId: resource.id, assetId: identity, kind, name: file.name, mimeType: resource.mimeType || file.type, bytes: resource.size || file.size, durationMs, purpose: "analysis" };
+    return { resourceId: resource.id, assetId: identity, kind, name: file.name, mimeType: resource.mimeType || file.type, bytes: resource.size || file.size, purpose: "analysis" };
 }
 export function attachmentFromCanvasReference(reference: CanvasResourceReference): AssistantAttachment {
     if (reference.kind !== "image") throw new Error("请选择图片素材");

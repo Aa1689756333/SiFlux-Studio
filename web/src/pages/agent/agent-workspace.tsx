@@ -1,4 +1,4 @@
-import { Button, Dropdown } from "antd";
+﻿import { Button, Dropdown } from "antd";
 import { ArrowUpRight, History, MessageSquarePlus, X } from "lucide-react";
 import { useCallback, useEffect, useLayoutEffect, useRef, useState, useSyncExternalStore } from "react";
 import { useNavigate } from "react-router";
@@ -16,7 +16,7 @@ import { CanvasAssistantReply, CanvasAssistantUserMessage } from "@/pages/canvas
 import { useCanvasAssistant } from "@/pages/canvas/use-canvas-assistant";
 import { SkillInstallModal } from "@/pages/skills/skill-install-modal";
 import { WORKSPACE_AGENT_CONVERSATION_ID, type AssistantAttachment, type AssistantSkillSelection, type AssistantTurn } from "@/services/api/agent-assistant";
-import { attachmentRangeError, readAssistantInputDraft, saveAssistantInputDraft, uploadAssistantAttachment } from "@/services/assistant-attachments";
+import { readAssistantInputDraft, saveAssistantInputDraft, uploadAssistantAttachment } from "@/services/assistant-attachments";
 import { listAddedSkills, type Skill } from "@/services/api/skills";
 
 import "./agent.css";
@@ -162,7 +162,7 @@ export function AgentWorkspace() {
 
     const send = useCallback(() => {
         const text = draft;
-        if ((!text.trim() && !attachments.length) || !draftLoaded || loadedDraftIdentity !== draftIdentity || !userScopeMatches(inputScope.current) || uploads.length || attachments.some((item) => attachmentRangeError(item)) || assistant.awaitingReceipt || assistant.sessionBusy || assistant.supplementBusy || (assistant.streaming && !assistant.canSupplement)) return;
+        if ((!text.trim() && !attachments.length) || !draftLoaded || loadedDraftIdentity !== draftIdentity || !userScopeMatches(inputScope.current) || uploads.length || assistant.awaitingReceipt || assistant.sessionBusy || assistant.supplementBusy || (assistant.streaming && !assistant.canSupplement)) return;
         followLatestRef.current = true;
         setDraft("");
         setAttachments([]);
@@ -272,7 +272,7 @@ export function AgentWorkspace() {
                     canSupplement={assistant.canSupplement}
                     supplementBusy={assistant.supplementBusy}
                     hasAttachments={inputReady && attachments.length > 0}
-                    inputBusy={!draftLoaded || loadedDraftIdentity !== draftIdentity || assistant.awaitingReceipt || uploads.length > 0 || attachments.some((item) => Boolean(attachmentRangeError(item)))}
+                    inputBusy={!draftLoaded || loadedDraftIdentity !== draftIdentity || assistant.awaitingReceipt || uploads.length > 0}
                     onFiles={addFiles}
                     onOpenSkills={() => { setSkillsOpen((value) => !value); void loadSkills(); }}
                     inputContent={
