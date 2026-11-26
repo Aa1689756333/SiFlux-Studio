@@ -12,37 +12,28 @@ type CanvasProjectSelectionToolbarProps = {
     anchorRef: RefObject<HTMLDivElement | null>;
     containerRef: RefObject<HTMLDivElement | null>;
     count: number;
-    selectedVideoCount: number;
-    mergingVideos: boolean;
     onAlign: (mode: CanvasAlignmentMode) => void;
     onArrange: (mode: "row" | "column" | "grid" | "flow") => void;
-    onCreateStoryboard: () => void;
     onCreateReferenceGroup: () => void;
     onBatchConnect: () => void;
-    onMergeVideos: () => void;
     onAskAssistant: () => void;
 };
 
-export function CanvasProjectSelectionToolbar({ anchorRef, containerRef, count, selectedVideoCount, mergingVideos, onAlign, onArrange, onCreateStoryboard, onCreateReferenceGroup, onBatchConnect, onMergeVideos, onAskAssistant }: CanvasProjectSelectionToolbarProps) {
+export function CanvasProjectSelectionToolbar({ anchorRef, containerRef, count, onAlign, onArrange, onCreateReferenceGroup, onBatchConnect, onAskAssistant }: CanvasProjectSelectionToolbarProps) {
     const theme = canvasThemes[useCanvasThemeStore((state) => state.theme)];
 
     const handlers = {
-        onAlign, onArrange, onCreateStoryboard, onCreateReferenceGroup, onBatchConnect, onMergeVideos, onAskAssistant,
+        onAlign, onArrange, onCreateReferenceGroup, onBatchConnect, onAskAssistant,
     } as Partial<ToolbarHandlers> as ToolbarHandlers;
 
     const ctx: ToolContext = {
         selectedCount: count,
         selectedNodeTypes: new Set(),
-        selectedVideoCount,
         canvasTool: "move",
         workspaceMode: "professional",
         isProjectLinked: false,
         canUndo: false,
         canRedo: false,
-        extractingVideoFrames: false,
-        extractingAudio: false,
-        trimmingVideo: false,
-        mergingVideos,
         addPanelOpen: false,
         appearancePanelOpen: false,
         settingsPanelOpen: false,

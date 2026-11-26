@@ -275,18 +275,10 @@ func (s *Service) LogAPICall(log model.ApiCallLog) error {
 		var nextPollAt *time.Time
 		if stage == "create" && log.Status == model.ApiCallStatusSucceeded && log.ProviderRequestID != "" {
 			stage = "accepted"
-			delay := 2 * time.Second
-			if log.Capability == "video" {
-				delay = defaultVideoPollInterval
-			}
-			next := time.Now().Add(delay)
+			next := time.Now().Add(2 * time.Second)
 			nextPollAt = &next
 		} else if stage == "poll" {
-			delay := 5 * time.Second
-			if log.Capability == "video" {
-				delay = defaultVideoPollInterval
-			}
-			next := time.Now().Add(delay)
+			next := time.Now().Add(5 * time.Second)
 			nextPollAt = &next
 		}
 		if err := s.repo.UpdateTaskProviderState(log.TaskID, log.ProviderRequestID, stage, nextPollAt); err != nil {
@@ -294,11 +286,6 @@ func (s *Service) LogAPICall(log model.ApiCallLog) error {
 			// 重建，不能让一次状态写失败掩盖真实的上游调用。
 			stdlog.Printf("provider task state update failed: task_id=%s provider_request_id=%s error=%v", log.TaskID, log.ProviderRequestID, err)
 		}
-	}
-	if merged, err := s.mergeVideoAPICallLog(log); err != nil {
-		return err
-	} else if merged {
-		return nil
 	}
 	policy, err := s.RuntimePolicy()
 	if err != nil {
@@ -316,59 +303,6 @@ func (s *Service) LogAPICall(log model.ApiCallLog) error {
 	}
 	return s.repo.Create(&log)
 }
-
-func (s *Service) mergeVideoAPICallLog(log model.ApiCallLog) (bool, error) {
-	if log.Capability != "video" || (log.RequestKind != "poll" && log.RequestKind != "download") {
-		return false, nil
-	}
-	if log.TaskID == "" && log.ProviderRequestID == "" {
-		return false, nil
-	}
-	root, err := s.repo.VideoAPICallRoot(log)
-	if errors.Is(err, gorm.ErrRecordNotFound) {
-		return false, nil
-	}
-	if err != nil {
-		return false, err
-	}
-	if log.RequestKind == "poll" {
-		root.PollCount++
-		if log.ResponseBody != "" {
-			root.ResponseBody = log.ResponseBody
-		}
-	}
-	if log.ProviderRequestID != "" {
-		root.ProviderRequestID = log.ProviderRequestID
-	}
-	if log.ProviderStatus != "" {
-		root.ProviderStatus = log.ProviderStatus
-	}
-	startedAt := root.StartedAt
-	if startedAt.IsZero() {
-		startedAt = root.CreatedAt.Add(-time.Duration(root.DurationMs) * time.Millisecond)
-		root.StartedAt = startedAt
-	}
-	root.DurationMs = max(root.DurationMs, log.CreatedAt.Sub(startedAt).Milliseconds())
-	root.StatusCode = log.StatusCode
-	root.ConcurrencyLimit = log.ConcurrencyLimit
-	if log.Status == model.ApiCallStatusFailed {
-		root.Status = log.Status
-		root.ErrorCode = log.ErrorCode
-		root.Error = log.Error
-	} else {
-		root.Status = model.ApiCallStatusSucceeded
-		root.ErrorCode = ""
-		root.Error = ""
-	}
-	if log.UsageAvailable {
-		root.UsageAvailable = true
-		root.InputTokens = log.InputTokens
-		root.OutputTokens = log.OutputTokens
-		root.CachedTokens = log.CachedTokens
-	}
-	return true, s.repo.Save(root)
-}
-
 func (s *Service) APICallLogs(actor *model.User, limit int) ([]model.ApiCallLog, error) {
 	if actor == nil {
 		return nil, Unauthorized("请先登录")

@@ -13,7 +13,7 @@ func TestTaskWritesAreRejectedDuringDrain(t *testing.T) {
 	runtime.BeginDrain()
 	svc := &Service{workers: runtime}
 
-	if _, err := svc.CreateTask("user-1", CreateTaskRequest{}); !isAppErrorStatus(err, 503) {
+	if _, err := svc.CreateTask("user-1", CreateTaskRequest{Type: "canvas_image", Prompt: "排空中"}); !isAppErrorStatus(err, 503) {
 		t.Fatalf("CreateTask during drain error = %v, want 503", err)
 	}
 	if _, err := svc.RetryTask("user-1", "task-1"); !isAppErrorStatus(err, 503) {

@@ -1,7 +1,6 @@
 // 助手面板里所有用户可见文案的唯一来源：机器可读原因、操作名和改动摘要都在这里
 // 翻译成用户语。组件只负责排版，不自己拼文案，避免同一种状态在两处写出两句话。
 import type { AgentLifecycleEvent, AgentToolCall, AssistantGenerationProposal, AssistantSkillSelection, AssistantTurnChange, AssistantUndoFailure } from "@/services/api/agent-assistant";
-import { seedancePortraitLabel } from "@/lib/seedance-portrait";
 
 export type AssistantStatusAction = "model-settings" | "retry";
 
@@ -51,8 +50,6 @@ export function assistantActionLabel(tool: string | undefined): string {
             return "新建节点";
         case "canvas.node.update":
             return "修改节点";
-        case "canvas.timeline.update":
-            return "修改时间线";
         case "canvas.edge.create":
             return "连线";
         case "canvas.get":
@@ -89,7 +86,6 @@ export function assistantChangeSummary(change: AssistantTurnChange | null | unde
     if (deleted > 0) parts.push(`删除 ${deleted} 个节点`);
     if (edges > 0) parts.push(`连了 ${edges} 条线`);
     if (deletedEdges > 0) parts.push(`删除 ${deletedEdges} 条线`);
-    if (changes.some(item => item.timelineUpdated)) parts.push("修改时间线");
     if (changes.some(item => item.documentUpdated)) parts.push("修改画布内容");
     if (!parts.length) return null;
     return parts.join("，");
@@ -121,15 +117,14 @@ export function assistantUndoFailureText(failure: AssistantUndoFailure): string 
 /** 提议可能来自自建渠道，不能把所有费用都归到 BeefAPI。 */
 export function assistantProposalText(proposal: AssistantGenerationProposal, priceLines: string[] = []): string {
     const count = proposal.nodeIds?.length ?? 0;
-    const target = proposal.kind === "video" ? "视频" : "图片";
-    return `生成 ${count} ${target === "视频" ? "段视频" : "张参考图片"} · ${seedancePortraitLabel(proposal.model) || proposal.model}\n${priceLines.length ? priceLines.join("\n") + "\n" : ""}确认后开始，按所选渠道计费。`;
+    return `生成 ${count} 张参考图片 · ${proposal.model}\n${priceLines.length ? priceLines.join("\n") + "\n" : ""}确认后开始，按所选渠道计费。`;
 }
 
 export const ASSISTANT_STARTER_PROMPTS = [
-    "把剧本拆成分镜草案",
-    "给选中的镜头补充景别和情绪",
-    "整理画布并按顺序连线",
-    "检查哪些镜头还缺参考图",
+    "根据画布上的参考图起草生图提示词",
+    "给选中的图片补充画面细节和风格",
+    "整理画布并按生成顺序连线",
+    "检查哪些图片节点还缺参考图",
 ];
 
 /** 官方压缩/重试进度：只说现在在做什么，不提内部事件名。 */
@@ -215,8 +210,6 @@ function assistantActionTarget(call: AgentToolCall): string | null {
             return `media:${JSON.stringify(args)}`;
         case "canvas.node.update":
             return `update:${String(args.nodeId ?? "")}`;
-        case "canvas.timeline.update":
-            return "timeline";
         case "canvas.edge.create":
             return `edge:${String(args.fromNodeId ?? "")}>${String(args.toNodeId ?? "")}`;
         case "canvas.nodes.create":
@@ -255,9 +248,7 @@ export function assistantUnresolvedFailures(calls: AgentToolCall[] | undefined):
         });
         if (resolved) return;
         const label = call.tool.replace("_", ".") === "media.inspect"
-            ? call.args?.mode === "audio" ? "有音频片段听取未完成"
-                : call.args?.mode === "video" ? "有视频片段查看未完成"
-                    : !call.args?.mode || call.args.mode === "frames" ? "有素材的画面查看未完成" : `${assistantActionLabel(call.tool)}没有成功`
+            ? "有素材的画面查看未完成"
             : `${assistantActionLabel(call.tool)}没有成功`;
         counts.set(label, (counts.get(label) ?? 0) + 1);
     });

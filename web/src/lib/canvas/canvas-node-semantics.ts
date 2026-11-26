@@ -5,15 +5,9 @@ import {
     type CanvasNodeData,
     type CanvasNodeMetadata,
 } from "@/types/canvas";
-import { normalizeVideoBoolean } from "@/lib/video-generation-options";
-
-function normalizeAudioSetting(metadata: CanvasNodeMetadata): CanvasNodeMetadata {
-    const generateAudio = normalizeVideoBoolean(metadata.generateAudio);
-    return metadata.generateAudio === generateAudio ? metadata : { ...metadata, generateAudio };
-}
 
 export function isCanvasMediaNode(node: CanvasNodeData | null | undefined): boolean {
-    return node?.type === CanvasNodeType.Image || node?.type === CanvasNodeType.Video || node?.type === CanvasNodeType.Audio;
+    return node?.type === CanvasNodeType.Image;
 }
 
 function hasMediaResource(node: CanvasNodeData): boolean {
@@ -31,32 +25,17 @@ export function isCanvasMediaResultNode(node: CanvasNodeData | null | undefined)
 }
 
 export function mediaGeneratorMetadata(metadata: CanvasNodeMetadata = {}): CanvasNodeMetadata {
-    return { ...normalizeAudioSetting(metadata), nodeRole: "generator", resultOrigin: undefined };
+    return { ...metadata, nodeRole: "generator", resultOrigin: undefined };
 }
 
 export function mediaResultMetadata(origin: CanvasMediaResultOrigin, metadata: CanvasNodeMetadata = {}): CanvasNodeMetadata {
-    return { ...normalizeAudioSetting(metadata), nodeRole: "result", resultOrigin: origin };
-}
-
-function isDerivedMediaResult(node: CanvasNodeData): boolean {
-    const metadata = node.metadata;
-    return Boolean(
-        metadata?.audioExtractSourceNodeId
-        || metadata?.videoTrimSourceNodeId
-        || metadata?.videoCropSourceNodeId
-        || metadata?.videoSegmentSourceNodeId
-        || metadata?.videoAudioSourceNodeId
-        || metadata?.videoFrameSourceNodeId
-        || metadata?.videoRetakeSourceNodeId
-        || metadata?.videoMergeSourceNodeIds?.length,
-    );
+    return { ...metadata, nodeRole: "result", resultOrigin: origin };
 }
 
 /** Reads explicit provenance first and conservatively recovers legacy results. */
 export function canvasMediaNodeOrigin(node: CanvasNodeData | null | undefined): CanvasMediaResultOrigin | null {
     if (!node || (canvasMediaNodeRole(node) !== "result" && !hasMediaResource(node))) return null;
     if (node.metadata?.resultOrigin) return node.metadata.resultOrigin;
-    if (isDerivedMediaResult(node)) return "derived";
     if (node.metadata?.importSource) return "imported";
     if (node.metadata?.taskId) return "generated";
     if (node.metadata?.assetId) return "library";
@@ -83,24 +62,19 @@ export function canOpenCanvasNodePromptPanel(node: CanvasNodeData | null | undef
         return canvasMediaNodeRole(node) === "generator"
             || (canvasMediaNodeOrigin(node) === "generated" && Boolean((node.metadata?.composerContent || node.metadata?.prompt)?.trim()));
     }
-    return node.type !== CanvasNodeType.Script
-        && node.type !== CanvasNodeType.Drawing
-        && node.type !== CanvasNodeType.Panorama
-        && node.type !== CanvasNodeType.Director
-        && node.type !== "art-critique";
+    return true;
 }
 
 /** Adds durable semantics to legacy media nodes without mutating the loaded snapshot. */
 export function normalizeCanvasMediaNodeSemantics(node: CanvasNodeData): CanvasNodeData {
     if (!isCanvasMediaNode(node)) return node;
-    const metadata = normalizeAudioSetting(node.metadata || {});
     const nodeRole = canvasMediaNodeRole(node);
     const resultOrigin = canvasMediaNodeOrigin(node);
-    if (metadata === node.metadata && metadata.nodeRole === nodeRole && metadata.resultOrigin === resultOrigin) return node;
+    if (node.metadata?.nodeRole === nodeRole && node.metadata?.resultOrigin === resultOrigin) return node;
     return {
         ...node,
         metadata: {
-            ...metadata,
+            ...node.metadata,
             nodeRole: nodeRole || undefined,
             resultOrigin: resultOrigin || undefined,
         },

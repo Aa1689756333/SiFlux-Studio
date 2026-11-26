@@ -1,7 +1,7 @@
-import type { Asset, AssetKind, AssetStatus, AudioAsset, EntityAsset, ImageAsset, ModelAsset, TextAsset, VideoAsset } from "@/stores/use-asset-store";
+import type { Asset, AssetKind, AssetStatus, EntityAsset, ImageAsset, ModelAsset, TextAsset } from "@/stores/use-asset-store";
 import { parseAssetCategory } from "@/lib/asset-category";
 
-const ASSET_KINDS: readonly AssetKind[] = ["text", "image", "video", "audio", "model", "entity"];
+const ASSET_KINDS: readonly AssetKind[] = ["text", "image", "model", "entity"];
 const ASSET_STATUSES: readonly AssetStatus[] = ["draft", "review", "confirmed", "archived"];
 
 /**
@@ -57,37 +57,10 @@ export function parseAssetRecord(value: unknown): Asset {
             width: requirePositiveNumber(data, "width"),
             height: requirePositiveNumber(data, "height"),
             bytes: requireNonNegativeNumber(data, "bytes"),
-            mimeType: requireMediaMimeType(data, "image"),
+            mimeType: requireImageMimeType(data),
         };
         requireMediaLocator(parsed.dataUrl, parsed.storageKey, "图片", "dataUrl");
         return { ...base, kind, data: parsed } satisfies ImageAsset;
-    }
-    if (kind === "video") {
-        const parsed = {
-            url: requireString(data, "url"),
-            storageKey: optionalString(data, "storageKey"),
-            // 上游视频结果经常不带 width/height。0 表示未知，不是伪造尺寸；
-            // 若按「必须大于 0」拒绝，生成成功的视频会在入库时被判失败。
-            width: requireNonNegativeNumber(data, "width"),
-            height: requireNonNegativeNumber(data, "height"),
-            durationMs: optionalNonNegativeNumber(data, "durationMs"),
-            hasAudio: optionalBoolean(data, "hasAudio"),
-            bytes: requireNonNegativeNumber(data, "bytes"),
-            mimeType: requireMediaMimeType(data, "video"),
-        };
-        requireMediaLocator(parsed.url, parsed.storageKey, "视频", "url");
-        return { ...base, kind, data: parsed } satisfies VideoAsset;
-    }
-    if (kind === "audio") {
-        const parsed = {
-            url: requireString(data, "url"),
-            storageKey: optionalString(data, "storageKey"),
-            durationMs: optionalNonNegativeNumber(data, "durationMs"),
-            bytes: requireNonNegativeNumber(data, "bytes"),
-            mimeType: requireMediaMimeType(data, "audio"),
-        };
-        requireMediaLocator(parsed.url, parsed.storageKey, "音频", "url");
-        return { ...base, kind, data: parsed } satisfies AudioAsset;
     }
     if (kind === "model") {
         const parsed = {
@@ -186,19 +159,14 @@ function requireConcreteMimeType(record: Record<string, unknown>): string {
     return mimeType;
 }
 
-function requireMediaMimeType(record: Record<string, unknown>, kind: "image" | "video" | "audio"): string {
+function requireImageMimeType(record: Record<string, unknown>): string {
     const mimeType = requireConcreteMimeType(record);
     // application/octet-stream 是诚实的“类型未知”；除此之外必须与素材种类一致，
     // 防止图片记录携带 audio/* 等跨类型元数据后在下载、转码阶段才暴露错误。
-    if (mimeType !== "application/octet-stream" && !mimeType.startsWith(`${kind}/`)) {
-        throw new Error(`素材字段 mimeType 与 ${kind} 类型不匹配`);
+    if (mimeType !== "application/octet-stream" && !mimeType.startsWith("image/")) {
+        throw new Error("素材字段 mimeType 与 image 类型不匹配");
     }
     return mimeType;
-}
-
-function optionalNonNegativeNumber(record: Record<string, unknown>, key: string): number | undefined {
-    if (!Object.prototype.hasOwnProperty.call(record, key) || record[key] === undefined) return undefined;
-    return requireNonNegativeNumber(record, key);
 }
 
 function optionalBoolean(record: Record<string, unknown>, key: string): boolean | undefined {

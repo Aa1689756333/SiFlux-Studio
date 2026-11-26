@@ -71,6 +71,43 @@ describe("资源直传失败分类", () => {
         expect((oversize as ResourceUploadError).permanent).toBe(true);
     });
 
+
+    test("瞬时失败会用同一幂等键重试直传", async () => {
+        const previous = apiClient.defaults.adapter;
+        const keys: string[] = [];
+        let posts = 0;
+        apiClient.defaults.adapter = async (config) => {
+            const key = String((config.headers as { [name: string]: unknown } | undefined)?.["X-Idempotency-Key"] || "");
+            keys.push(key);
+            posts += 1;
+            if (posts < 3) {
+                throw new axios.AxiosError("Request failed with status code 503", "ERR_BAD_RESPONSE", config, undefined, {
+                    data: { code: 503, data: null, msg: "busy" },
+                    status: 503,
+                    statusText: "Error",
+                    headers: {},
+                    config,
+                });
+            }
+            return {
+                data: { code: 0, msg: "", data: { resource: { id: "res-retry", kind: "image", status: "ready", publicUrl: "", size: 1 } } },
+                status: 200,
+                statusText: "OK",
+                headers: {},
+                config,
+            };
+        };
+        try {
+            const resource = await uploadResourceFile(new Blob(["x"], { type: "image/png" }), "image", { fileName: "x.png" });
+            expect(resource.id).toBe("res-retry");
+            expect(posts).toBe(3);
+            expect(keys[0]).toBeTruthy();
+            expect(new Set(keys).size).toBe(1);
+        } finally {
+            apiClient.defaults.adapter = previous;
+        }
+    });
+
     test("成功响应仍返回后端资源本身", async () => {
         const resource = await uploadWith({
             status: 200,

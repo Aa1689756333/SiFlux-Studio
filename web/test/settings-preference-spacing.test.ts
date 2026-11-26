@@ -13,11 +13,10 @@ test("settings page focuses on channel and model configuration", () => {
     expect(source).toContain("ModelDefaultGrid");
 });
 
-test("wallet tabs and preference blocks keep a visible gap from neighboring surfaces", () => {
-    const css = readFileSync(resolve(import.meta.dir, "../src/styles/globals.css"), "utf8");
-    expect(css).toContain(".workspace-wallet-tabs {");
-    expect(css).toContain("margin: 12px 24px 0;");
-    expect(css).toContain("margin: 16px 24px 24px;");
+test("preference blocks keep a visible gap from neighbouring surfaces", () => {
+    const css = readFileSync(resolve(import.meta.dir, "../src/styles/globals.css"), "utf8").replace(/\r\n/g, "\n");
     expect(css).toContain(".settings-preference-heading { margin-bottom: var(--space-5); }");
     expect(css).toContain(".app-user-workspace.settings-page .settings-preference-block {\n    padding: 20px 20px 12px;");
+    // 积分中心弹窗已从产品移除，其布局规则不应残留。
+    expect(css).not.toContain(".workspace-wallet-tabs");
 });

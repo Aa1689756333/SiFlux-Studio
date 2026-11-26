@@ -9,7 +9,6 @@ import { buildSkillMentionReferences } from "@/lib/canvas/canvas-skill-mentions"
 import { buildCanvasSpatialIndex, canvasNodeBounds, type CanvasSpatialIndex, type CanvasSpatialIndexEntry } from "@/lib/canvas/canvas-spatial-index";
 import type { Skill } from "@/services/api/skills";
 import type { Asset, ImageAsset } from "@/stores/use-asset-store";
-import type { DirectorScene } from "@/types/director";
 import { CanvasNodeType, type CanvasConnection, type CanvasDisplayConnection, type CanvasMediaPerformanceMode, type CanvasNodeData, type ContextMenuState, type ViewportTransform } from "@/types/canvas";
 
 type DragPreview = { x: number; y: number; nodeIds: Set<string> } | null;
@@ -26,21 +25,15 @@ type UseCanvasRenderModelOptions = {
     dragPreview: DragPreview;
     collapsingBatchIds: Set<string>;
     addedSkills: Skill[];
-    directorScenes?: DirectorScene[];
     infoNodeId: string | null;
     maskEditNodeId: string | null;
     annotationNodeId: string | null;
-    splitNodeId: string | null;
     upscaleNodeId: string | null;
-    superResolveNodeId: string | null;
     angleNodeId: string | null;
     lightingNodeId: string | null;
-    emotionNodeId: string | null;
     previewNodeId: string | null;
     contextMenu: ContextMenuState | null;
     versionCompareRootId: string | null;
-    directorNodeId: string | null;
-    scriptEditorNodeId: string | null;
     dialogNodeId: string | null;
 };
 
@@ -56,21 +49,15 @@ export function useCanvasRenderModel({
     dragPreview,
     collapsingBatchIds,
     addedSkills,
-    directorScenes,
     infoNodeId,
     maskEditNodeId,
     annotationNodeId,
-    splitNodeId,
     upscaleNodeId,
-    superResolveNodeId,
     angleNodeId,
     lightingNodeId,
-    emotionNodeId,
     previewNodeId,
     contextMenu,
     versionCompareRootId,
-    directorNodeId,
-    scriptEditorNodeId,
     dialogNodeId,
 }: UseCanvasRenderModelOptions) {
     const reduceMediaEffects = useMemo(() => shouldReduceCanvasMediaEffects(mediaPerformanceMode, nodes), [mediaPerformanceMode, nodes]);
@@ -229,12 +216,9 @@ export function useCanvasRenderModel({
     const infoNode = infoNodeId ? nodeById.get(infoNodeId) || null : null;
     const maskEditNode = maskEditNodeId ? nodeById.get(maskEditNodeId) || null : null;
     const annotationNode = annotationNodeId ? nodeById.get(annotationNodeId) || null : null;
-    const splitNode = splitNodeId ? nodeById.get(splitNodeId) || null : null;
     const upscaleNode = upscaleNodeId ? nodeById.get(upscaleNodeId) || null : null;
-    const superResolveNode = superResolveNodeId ? nodeById.get(superResolveNodeId) || null : null;
     const angleNode = angleNodeId ? nodeById.get(angleNodeId) || null : null;
     const lightingNode = lightingNodeId ? nodeById.get(lightingNodeId) || null : null;
-    const emotionNode = emotionNodeId ? nodeById.get(emotionNodeId) || null : null;
     const previewNode = previewNodeId ? nodeById.get(previewNodeId) || null : null;
     const contextMenuNode = contextMenu?.type === "node" ? nodeById.get(contextMenu.nodeId) || null : null;
     // Hover only drives transient affordances (toolbar/handles). Selection is
@@ -251,18 +235,6 @@ export function useCanvasRenderModel({
         const bottom = Math.max(...selectedNodes.map((node) => node.position.y + node.height));
         return { left, top, width: right - left, height: bottom - top, count: selectedNodes.length };
     }, [nodeById, renderHiddenNodeIds, selectedNodeIds]);
-    const selectedVideoNodes = useMemo(
-        () =>
-            [...selectedNodeIds]
-                .map((nodeId) => nodeById.get(nodeId))
-                .filter((node): node is CanvasNodeData => Boolean(node && node.type === CanvasNodeType.Video && node.metadata?.content && !renderHiddenNodeIds.has(node.id)))
-                .sort((a, b) => {
-                    const shotA = a.metadata?.shotIndex ?? Number.MAX_SAFE_INTEGER;
-                    const shotB = b.metadata?.shotIndex ?? Number.MAX_SAFE_INTEGER;
-                    return shotA - shotB || a.position.y - b.position.y || a.position.x - b.position.x;
-                }),
-        [nodeById, renderHiddenNodeIds, selectedNodeIds],
-    );
     const relatedHighlight = useMemo(() => {
         const nodeIds = new Set<string>();
         const connectionIds = new Set<string>();
@@ -350,10 +322,7 @@ export function useCanvasRenderModel({
         configNodeIds.forEach((nodeId) => map.set(nodeId, buildNodeGenerationInputs(nodeId, semanticNodes, connections)));
         return map;
     }, [connections, dialogNodeId, nodeById, selectedNodeIds, semanticNodes, visibleNodes]);
-    const activeDirectorNode = useMemo(() => semanticNodes.find((node) => node.id === directorNodeId) || null, [directorNodeId, semanticNodes]);
     const activeStylePresetId = useMemo(() => semanticNodes.find((node) => node.metadata?.workflowKind === "styleboard")?.metadata?.stylePresetId, [semanticNodes]);
-    const activeScriptNode = useMemo(() => semanticNodes.find((node) => node.id === scriptEditorNodeId && node.type === CanvasNodeType.Script) || null, [scriptEditorNodeId, semanticNodes]);
-    const activeDirectorScene = useMemo(() => directorScenes?.find((scene) => scene.id === activeDirectorNode?.metadata?.directorSceneId) || null, [activeDirectorNode?.metadata?.directorSceneId, directorScenes]);
     const resourceReferenceTargetNodes = useMemo(() => {
         const targetNodes = [...visibleNodes];
         const activeId = dialogNodeId || activeNodeId;
@@ -377,14 +346,10 @@ export function useCanvasRenderModel({
     }, [connections, semanticNodes, skillMentionReferences, visibleNodes]);
 
     return {
-        activeDirectorNode,
-        activeDirectorScene,
         activeNodeId,
-        activeScriptNode,
         activeStylePresetId,
         angleNode,
         lightingNode,
-        emotionNode,
         annotationNode,
         batchChildCountById,
         batchMotionById,
@@ -404,11 +369,8 @@ export function useCanvasRenderModel({
         relatedHighlight,
         resourceReferenceByNodeId,
         selectedNodeBounds,
-        selectedVideoNodes,
         semanticNodes,
         skillMentionReferences,
-        splitNode,
-        superResolveNode,
         toolbarNode,
         upscaleNode,
         versionCompareNodes,

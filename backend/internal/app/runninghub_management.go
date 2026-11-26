@@ -17,7 +17,7 @@ func (s *Service) FetchRunningHubWorkflowInfo(ctx context.Context, req RunningHu
 	if err != nil {
 		return nil, err
 	}
-	return s.workflowClient(nil).FetchSettingsWorkflow(ctx, workflowConfigFromProvider(config), req)
+	return s.workflowClient().FetchSettingsWorkflow(ctx, workflowConfigFromProvider(config), req)
 }
 
 func (s *Service) FetchRunningHubAppInfo(ctx context.Context, req RunningHubWorkflowFetchRequest) (map[string]any, error) {

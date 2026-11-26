@@ -6,6 +6,7 @@ import (
 	"strings"
 	"time"
 
+	"infinite-canvas/backend/internal/generation"
 	"infinite-canvas/backend/internal/provider/workflow"
 )
 
@@ -53,7 +54,7 @@ func (s *Service) recordWorkflowProviderRequest(ctx context.Context, requestID s
 
 func (s *Service) runRunningHubWorkflow(ctx context.Context, input canvasGenerationInput) (map[string]interface{}, error) {
 	converted := s.workflowInputFromCanvas(ctx, input)
-	result, err := s.workflowClient(nil).Run(ctx, converted)
+	result, err := s.workflowClient().Run(ctx, converted)
 	if err != nil {
 		return nil, s.fenceWorkflowSubmission(ctx, converted, err)
 	}
@@ -81,9 +82,10 @@ func (s *Service) fenceWorkflowSubmission(ctx context.Context, input workflow.In
 	if !errors.As(err, &uncertain) {
 		return err
 	}
-	mapped := uncertainVideoSubmission(ctx, err)
+	mapped := generation.UncertainSubmission(ctx, err)
 	var unknown providerSubmissionUnknownError
-	if errors.As(mapped, &unknown) {
+	var notSent providerRequestNotSentError
+	if errors.As(mapped, &unknown) || errors.As(mapped, &notSent) {
 		return mapped
 	}
 	if errors.Is(mapped, context.Canceled) || safeRouteRejection(mapped) {
@@ -97,15 +99,15 @@ func (s *Service) fenceWorkflowSubmission(ctx context.Context, input workflow.In
 }
 
 func (s *Service) fetchRunningHubWorkflowJSON(ctx context.Context, root string, config providerConfig, workflowID string) (map[string]interface{}, error) {
-	return s.workflowClient(nil).FetchWorkflowJSON(ctx, root, workflowConfigFromProvider(config), workflowID)
+	return s.workflowClient().FetchWorkflowJSON(ctx, root, workflowConfigFromProvider(config), workflowID)
 }
 
 func (s *Service) uploadRunningHubMedia(ctx context.Context, root string, config providerConfig, media providerMedia) (string, error) {
-	return s.workflowClient(nil).UploadMedia(ctx, root, workflowConfigFromProvider(config), workflowMedia(media), s.IsLocalMode())
+	return s.workflowClient().UploadMedia(ctx, root, workflowConfigFromProvider(config), workflowMedia(media), s.IsLocalMode())
 }
 
 func (s *Service) runningHubJSON(ctx context.Context, config providerConfig, endpoint string, body interface{}, target *map[string]any) error {
-	result, err := s.workflowClient(nil).PostJSON(ctx, workflowConfigFromProvider(config), endpoint, "", body)
+	result, err := s.workflowClient().PostJSON(ctx, workflowConfigFromProvider(config), endpoint, "", body)
 	if err != nil {
 		return err
 	}
@@ -116,24 +118,15 @@ func (s *Service) runningHubJSON(ctx context.Context, config providerConfig, end
 }
 
 func (s *Service) pollRunningHubWorkflow(ctx context.Context, config providerConfig, root string, taskID string, mode string) (map[string]interface{}, error) {
-	return s.workflowClient(nil).Poll(ctx, workflowConfigFromProvider(config), root, taskID, mode)
-}
-
-func (s *Service) pollRunningHubVideoWorkflowWithPolicy(ctx context.Context, config providerConfig, root string, taskID string, policy videoPollPolicy) (map[string]interface{}, error) {
-	return s.workflowClient(&policy).PollVideo(ctx, workflowConfigFromProvider(config), root, taskID, toWorkflowPollPolicy(policy))
+	return s.workflowClient().Poll(ctx, workflowConfigFromProvider(config), root, taskID, mode)
 }
 
 func (s *Service) pollRunningHubWorkflowLegacy(ctx context.Context, config providerConfig, root string, taskID string) (map[string]interface{}, error) {
-	return s.workflowClient(nil).Poll(ctx, workflowConfigFromProvider(config), root, taskID, "image")
+	return s.workflowClient().Poll(ctx, workflowConfigFromProvider(config), root, taskID, "image")
 }
 
 func (s *Service) downloadWorkflowOutputs(ctx context.Context, urls []string) (map[string]interface{}, error) {
-	return s.workflowClient(nil).DownloadOutputs(ctx, urls, "", nil)
-}
-
-func (s *Service) downloadWorkflowVideoOutputs(ctx context.Context, urls []string, taskID string, policy videoPollPolicy) (map[string]interface{}, error) {
-	mapped := toWorkflowPollPolicy(policy)
-	return s.workflowClient(&policy).DownloadOutputs(ctx, urls, taskID, &mapped)
+	return s.workflowClient().DownloadOutputs(ctx, urls, "", nil)
 }
 
 func runningHubRootURL(value string) string { return workflow.RootURL(value) }

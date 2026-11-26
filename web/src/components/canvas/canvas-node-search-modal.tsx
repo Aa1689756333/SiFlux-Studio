@@ -1,10 +1,9 @@
 import { memo, useEffect, useMemo, useState, type KeyboardEvent } from "react";
 import { Input, Modal } from "antd";
-import { AudioLines, BookOpenText, Clock3, FileText, Image, Pencil, Search, Video } from "lucide-react";
+import { BookOpenText, Clock3, FileText, Image, Pencil, Search, SlidersHorizontal } from "lucide-react";
 
 import { WorkspaceState } from "@/components/layout/workspace-state";
 import { canvasNodeMaterialSummary, canvasNodeSearchContext, canvasNodeSearchTimes, searchCanvasNodes } from "@/lib/canvas/canvas-node-search";
-import { canvasNodeVideoPreviewUrl } from "@/lib/canvas/canvas-media-preview";
 import { getNodeListLabel } from "@/lib/canvas/node-registry";
 import { CanvasNodeType, type CanvasNodeData } from "@/types/canvas";
 
@@ -125,10 +124,8 @@ const CanvasNodeSearchResult = memo(function CanvasNodeSearchResult({ node, acti
 
 function CanvasNodeSearchThumbnail({ node }: { node: CanvasNodeData }) {
     const [failed, setFailed] = useState(false);
-    const mediaSource = node.type === CanvasNodeType.Video ? canvasNodeVideoPreviewUrl(node) : node.metadata?.drawingPreviewUrl
-        || node.metadata?.characterCoverUrl
-        || node.metadata?.folder?.themeCover
-        || ((node.type === CanvasNodeType.Image || node.type === CanvasNodeType.Panorama || node.type === CanvasNodeType.ColorGrade) ? node.metadata?.content : undefined);
+    const mediaSource = node.metadata?.folder?.themeCover
+        || (node.type === CanvasNodeType.Image ? node.metadata?.content : undefined);
     const commonClass = "h-11 w-16 rounded-[var(--r-sm)] border object-cover";
     const commonStyle = { borderColor: "color-mix(in srgb, var(--foreground) 9%, transparent)", background: "color-mix(in srgb, var(--foreground) 5%, transparent)" };
 
@@ -137,17 +134,15 @@ function CanvasNodeSearchThumbnail({ node }: { node: CanvasNodeData }) {
     }
 
     const textPreview = node.metadata?.previewContent || node.metadata?.composerContent || node.metadata?.prompt || node.metadata?.content;
-    if (textPreview && (node.type === CanvasNodeType.Text || node.type === CanvasNodeType.Markdown || node.type === CanvasNodeType.Script)) {
+    if (textPreview && node.type === CanvasNodeType.Text) {
         return <span aria-hidden="true" className="line-clamp-3 h-11 w-16 overflow-hidden rounded-[var(--r-sm)] border px-1.5 py-1 text-[8px] leading-[11px] text-foreground/55" style={commonStyle}>{textPreview}</span>;
     }
 
     return (
         <span aria-hidden="true" className="grid h-11 w-16 place-items-center rounded-[var(--r-sm)] border text-foreground/48" style={commonStyle}>
-            {node.type === CanvasNodeType.Image || node.type === CanvasNodeType.Panorama ? <Image className="size-4" />
-                : node.type === CanvasNodeType.Video ? <Video className="size-4" />
-                    : node.type === CanvasNodeType.Audio ? <AudioLines className="size-4" />
-                        : node.type === CanvasNodeType.Drawing ? <Pencil className="size-4" />
-                            : <FileText className="size-4" />}
+            {node.type === CanvasNodeType.Image ? <Image className="size-4" />
+                : node.type === CanvasNodeType.Config ? <SlidersHorizontal className="size-4" />
+                    : <FileText className="size-4" />}
         </span>
     );
 }

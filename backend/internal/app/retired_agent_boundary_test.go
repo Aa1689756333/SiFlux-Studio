@@ -109,6 +109,13 @@ func newLegacyAgentProbeWith(t *testing.T, s *Service, db *gorm.DB) (*Service, *
 	if err = db.Create(&model.ChannelModel{ID: "cm", ChannelID: "channel", ModelKey: "text-test", Capability: "text", Protocol: model.ChannelInterfaceChatCompletion, CapabilityConfigJSON: string(capabilityConfig), Enabled: true}).Error; err != nil {
 		t.Fatal(err)
 	}
+	imageCapabilityConfig, err := json.Marshal(DefaultModelCapabilityConfigForModel(string(model.ChannelInterfaceOpenAIImage), "image-test"))
+	if err != nil {
+		t.Fatal(err)
+	}
+	if err = db.Create(&model.ChannelModel{ID: "cm-image", ChannelID: "channel", ModelKey: "image-test", Capability: "image", Protocol: model.ChannelInterfaceOpenAIImage, CapabilityConfigJSON: string(imageCapabilityConfig), Enabled: true}).Error; err != nil {
+		t.Fatal(err)
+	}
 	return s, db, &upstreamHits
 }
 

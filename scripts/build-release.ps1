@@ -1,4 +1,4 @@
-# 构建 SiFlux 发行包（含 plugin-packages 的安装包）
+﻿# 构建 SiFlux 发行包（含 plugin-packages 的安装包）
 # 用法：powershell -ExecutionPolicy Bypass -File scripts\build-release.ps1 [-Version 1.0.2] [-SkipInstaller]
 
 [CmdletBinding()]
@@ -51,7 +51,7 @@ $publicKeyFile = Join-Path $Root "scripts\desktop-updater.pub"
 if (-not (Test-Path $publicKeyFile)) { throw "missing $publicKeyFile" }
 $publicKey = ([System.IO.File]::ReadAllText($publicKeyFile)).Trim()
 if (-not $publicKey) { throw "scripts/desktop-updater.pub is empty" }
-$feedURL = "https://ghclone.com/https://github.com/Aa1689756333/SiFlux-Studio/releases/latest/download/desktop-update.json"
+$feedURL = "https://gh-proxy.org/https://github.com/Aa1689756333/SiFlux-Studio/releases/latest/download/desktop-update.json"
 $ldflags = "-X infinite-canvas/backend/internal/buildinfo.Version=v$Version -X infinite-canvas/backend/internal/desktopupdate.FeedURL=$feedURL -X infinite-canvas/backend/internal/desktopupdate.PublicKey=$publicKey"
 
 Push-Location $Desktop
@@ -139,7 +139,7 @@ $privateKey = Join-Path $Root ".local\updater\private.key"
 if (-not (Test-Path $privateKey)) { throw "missing updater private key $privateKey" }
 $commit = (git -C $Root rev-parse HEAD).Trim()
 $feedOut = Join-Path $Bin "desktop-update.json"
-$downloadBase = "https://ghclone.com/https://github.com/Aa1689756333/SiFlux-Studio/releases/download"
+$downloadBase = "https://gh-proxy.org/https://github.com/Aa1689756333/SiFlux-Studio/releases/download"
 Write-Host "==> signing desktop-update.json"
 Push-Location (Join-Path $Root "backend")
 try {

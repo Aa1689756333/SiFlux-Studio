@@ -20,7 +20,7 @@ func TestConfigureRealBusinessReceiptReplayCASAndUndo(t *testing.T) {
 	var original map[string]any
 	json.Unmarshal(raw, &original)
 	node := original["nodes"].([]any)[0].(map[string]any)
-	node["type"] = "video"
+	node["type"] = "image"
 	node["metadata"] = map[string]any{"prompt": "submitted", "composerContent": "keep", "taskId": "old", "status": "success", "custom": "keep"}
 	raw, _ = json.Marshal(original)
 	created, err := env.service.UpsertUserCanvasProject(owner.ID, raw)
@@ -31,7 +31,7 @@ func TestConfigureRealBusinessReceiptReplayCASAndUndo(t *testing.T) {
 	json.Unmarshal(raw, &original)
 	const turnID = "cc112233445566aa"
 	env.beginTurn(t, turnID, assistantTurnInput(nil, nil))
-	params, _ := json.Marshal(map[string]any{"canvasId": env.canvasID, "nodeId": "n1", "kind": "video", "expectedRevision": created.Revision, "patch": map[string]any{"size": "16:9", "seconds": "10", "generateAudio": "false", "vquality": "720p"}})
+	params, _ := json.Marshal(map[string]any{"canvasId": env.canvasID, "nodeId": "n1", "kind": "image", "expectedRevision": created.Revision, "patch": map[string]any{"size": "16:9", "quality": "2k", "count": 2, "transparentBackground": "false"}})
 	for range 2 {
 		status, body := env.opsRaw("canvas.node.configure", "configure-stable", turnID, string(params))
 		if status != http.StatusOK {
@@ -41,7 +41,7 @@ func TestConfigureRealBusinessReceiptReplayCASAndUndo(t *testing.T) {
 	if status, _ := env.opsRaw("canvas.node.configure", "configure-stale", turnID, string(params)); status != http.StatusConflict {
 		t.Fatalf("stale CAS %d", status)
 	}
-	if status, _ := env.opsRaw("canvas.node.configure", "configure-foreign", turnID, `{"canvasId":"foreign","nodeId":"n1","kind":"video","expectedRevision":1,"patch":{"seconds":"10"}}`); status != http.StatusForbidden {
+	if status, _ := env.opsRaw("canvas.node.configure", "configure-foreign", turnID, `{"canvasId":"foreign","nodeId":"n1","kind":"image","expectedRevision":1,"patch":{"quality":"2k"}}`); status != http.StatusForbidden {
 		t.Fatalf("foreign canvas %d", status)
 	}
 	if revision, _ := env.canvasRevisionQuiet(); revision != created.Revision+1 {

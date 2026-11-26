@@ -406,9 +406,9 @@ describe("shouldSuppressOwnedCanvasCallback", () => {
     });
 });
 
-test("upload hook threads owner scope through persist, file, image, chapter and timeline waits", () => {
+test("upload hook threads owner scope through persist, file and image waits", () => {
     const hook = read("pages/canvas/use-canvas-upload.ts");
-    const persist = hook.slice(hook.indexOf("const persistMediaNode"), hook.indexOf("const persistTimelineMedia"));
+    const persist = hook.slice(hook.indexOf("const persistMediaNode"), hook.indexOf("const activeUploadsRef"));
     expect(persist).toContain("persistOwnedCanvasUploadNode");
     expect(persist).toContain("return result.confirmed");
     expect(persist).not.toContain("return true");
@@ -422,15 +422,6 @@ test("upload hook threads owner scope through persist, file, image, chapter and 
     const image = hook.slice(hook.indexOf("const createImageAssetNode"), hook.indexOf("const createTextNodeFromClipboard"));
     expect(image).toContain("uploadImage(content, undefined, guard.expectedScope)");
     expect(image).toContain("if (guard.suppress(error)) return");
-
-    const chapter = hook.slice(hook.indexOf("const handleProjectChapterInsert"), hook.indexOf("const handleUploadRequest"));
-    expect(chapter).toContain("getProjectUnit(chapter.projectId, chapter.id, guard.expectedScope, guard.signal)");
-    expect(chapter).toContain("if (!guard.alive()) return");
-
-    const timeline = hook.slice(hook.indexOf("const uploadTimelineMedia"), hook.indexOf("const createVideoNodeFromBlob"));
-    expect(timeline).toContain("uploadMediaFile(file, \"audio\", undefined, guard.expectedScope)");
-    expect(timeline).toContain("persistTimelineMedia(media, guard.expectedScope, guard.signal)");
-    expect(timeline).toContain("if (guard.suppress(error)) return []");
 });
 
 test("node editor threads owner scope through category change and save, and keeps confirmed=false draft copy", () => {

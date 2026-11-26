@@ -1,7 +1,7 @@
 import { EmptyState } from "@/components/ui/product/empty-state";
 import { Button, Spin } from "antd";
 import { ArrowLeft, Eye, History, Maximize, Minus, Plus } from "lucide-react";
-import { useCallback, useEffect, useLayoutEffect, useMemo, useRef, useState } from "react";
+import { useCallback, useLayoutEffect, useMemo, useRef, useState } from "react";
 import { InfiniteCanvas } from "@/components/canvas/infinite-canvas";
 import { CanvasNode } from "@/components/canvas/canvas-node";
 import { CanvasFrameNode } from "@/components/canvas/canvas-frame-node";
@@ -13,7 +13,6 @@ import { getCanvasNodesBounds, viewportAtScale, viewportForBounds } from "@/lib/
 import { resolveCanvasAppearance } from "@/lib/canvas/canvas-appearance";
 import { useActiveTheme } from "@/stores/canvas/use-canvas-theme-store";
 import { resourceFileUrl, resourceIdFromStorageKey } from "@/services/api/resources";
-import { resolveMediaUrl } from "@/services/file-storage";
 import type { CanvasNodeData, ViewportTransform } from "@/types/canvas";
 import type { CanvasVersionPreviewState } from "./canvas-version-history";
 
@@ -25,38 +24,15 @@ export function CanvasVersionPreview({ preview, busy = false, onReturn, onShowVe
     const containerRef = useRef<HTMLDivElement>(null);
     const [viewport, setViewport] = useState<ViewportTransform>({ x: 0, y: 0, k: 1 });
     const [selectedId, setSelectedId] = useState<string>();
-    const [localMedia, setLocalMedia] = useState<Record<string, string>>({});
-    const [mediaError, setMediaError] = useState("");
     const theme = useActiveTheme();
     const project = preview.project;
-    useEffect(() => {
-        const node = project?.nodes.find((item) => item.id === selectedId);
-        const key = node?.metadata?.storageKey;
-        if (!node || !key || resourceIdFromStorageKey(key) || !["video", "audio"].includes(node.type)) return;
-        let active = true;
-        setMediaError("");
-        void resolveMediaUrl(key, node.metadata?.content)
-            .then((url) => {
-                if (active) setLocalMedia((current) => ({ ...current, [node.id]: url }));
-            })
-            .catch(() => {
-                if (active) setMediaError("本机媒体读取失败，可下载草稿后检查素材");
-            });
-        return () => {
-            active = false;
-        };
-    }, [project, selectedId]);
     const nodes = useMemo(
         () =>
             (project?.nodes || []).map((node) => {
                 const resourceId = resourceIdFromStorageKey(node.metadata?.storageKey);
-                return resourceId && ["image", "video", "audio"].includes(node.type)
-                    ? { ...node, metadata: { ...node.metadata, content: resourceFileUrl(resourceId) } }
-                    : localMedia[node.id]
-                      ? { ...node, metadata: { ...node.metadata, content: localMedia[node.id] } }
-                      : node;
+                return resourceId ? { ...node, metadata: { ...node.metadata, content: resourceFileUrl(resourceId) } } : node;
             }),
-        [project, localMedia],
+        [project],
     );
     const visibleNodes = useMemo(() => nodes.filter((node) => !isNodeHiddenByCollapsedFrame(node, nodes)), [nodes]);
     const connections = useMemo(
@@ -163,7 +139,6 @@ export function CanvasVersionPreview({ preview, busy = false, onReturn, onShowVe
                                             scale={viewport.k}
                                             readOnly
                                             isSelected={selectedId === node.id}
-                                            mediaActive={selectedId === node.id}
                                             isRelated={false}
                                             isFocusRelated={false}
                                             isConnectionTarget={false}
@@ -188,11 +163,6 @@ export function CanvasVersionPreview({ preview, busy = false, onReturn, onShowVe
                             <EmptyState description="此版本没有节点" />
                         </div>
                     ) : null}
-                    {mediaError ? (
-                        <p role="alert" className="absolute left-5 top-3 rounded-md bg-sidebar p-2 text-xs text-destructive">
-                            {mediaError}
-                        </p>
-                    ) : null}
                     <div data-canvas-no-zoom className="absolute bottom-5 left-5 flex items-center gap-1 rounded-lg border border-border bg-sidebar p-1 text-foreground shadow-sm">
                         <Button type="text" aria-label="缩小预览" icon={<Minus size={15} />} onClick={() => zoom(viewport.k / 1.2)} />
                         <span className="w-12 text-center text-xs tabular-nums" aria-label="预览缩放比例">
@@ -208,22 +178,11 @@ export function CanvasVersionPreview({ preview, busy = false, onReturn, onShowVe
 }
 
 function renderReadOnlyContent(node: CanvasNodeData) {
-    const rows = node.metadata?.storyboard?.rows;
     return (
         <div className="flex h-full flex-col overflow-hidden rounded-lg bg-card text-card-foreground">
             <strong className="shrink-0 border-b border-border px-4 py-3 text-sm">{node.title}</strong>
             <div data-canvas-wheel-scroll className="min-h-0 flex-1 overflow-auto whitespace-pre-wrap break-words p-4 text-sm leading-6">
-                {rows?.length
-                    ? rows.map((row) => (
-                          <div key={row.id} className="mb-3 border-b border-border pb-3">
-                              <p className="text-xs text-muted-foreground">
-                                  镜头 {row.shotNumber} · {row.durationSeconds}s
-                              </p>
-                              <p>{row.plotDescription}</p>
-                              <p>{row.dialogue}</p>
-                          </div>
-                      ))
-                    : node.metadata?.content || node.metadata?.composerContent || node.metadata?.prompt || "此节点没有文本内容"}
+                {node.metadata?.content || node.metadata?.composerContent || node.metadata?.prompt || "此节点没有文本内容"}
             </div>
         </div>
     );

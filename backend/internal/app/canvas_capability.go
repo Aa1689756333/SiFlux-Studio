@@ -9,7 +9,7 @@ type canvasNodeCapability = capability.Descriptor
 var canvasCapabilityRegistry = capability.BuiltinRegistry()
 
 var generationModeAdapters = map[string]struct{}{
-	"image": {}, "video": {}, "audio": {},
+	"image": {},
 }
 
 func canvasNodeCapabilityForType(nodeType string) (canvasNodeCapability, bool) {

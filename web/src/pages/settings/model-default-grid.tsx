@@ -1,9 +1,8 @@
-import { AudioLines, Bot, Film, Image, MessageSquareText } from "lucide-react";
+import { Bot, Image, MessageSquareText } from "lucide-react";
 import { Button, Select } from "antd";
 import { useEffect, useRef } from "react";
 
 import { assistantModelOptions, normalizeAssistantModel } from "@/lib/assistant-model";
-import { groupModelsByDisplayName } from "@/lib/model-selection";
 import {
     compareModelNames,
     filterModelsByCapability,
@@ -17,7 +16,7 @@ import { workspaceCapabilities } from "@/services/workspace-mode";
 
 import { recordModelPickerChange, recordModelPickerOpenChange, recordModelPickerPress, watchModelPickerBlockers, type ModelPickerSnapshot } from "./model-settings-diagnostics";
 
-export type DefaultModelKey = "imageModel" | "videoModel" | "textModel" | "audioModel" | "assistantModel";
+export type DefaultModelKey = "imageModel" | "textModel" | "assistantModel";
 
 type CapabilityRow = {
     kind: "capability";
@@ -38,10 +37,8 @@ type AssistantRow = {
 
 const rows: Array<CapabilityRow | AssistantRow> = [
     { kind: "capability", id: "image", capability: "image", modelKey: "imageModel", title: "默认生图模型", icon: Image },
-    { kind: "capability", id: "video", capability: "video", modelKey: "videoModel", title: "默认视频模型", icon: Film },
     { kind: "capability", id: "text", capability: "text", modelKey: "textModel", title: "默认文本模型", icon: MessageSquareText },
     { kind: "assistant", id: "assistant", modelKey: "assistantModel", title: "助手模型", icon: Bot },
-    { kind: "capability", id: "audio", capability: "audio", modelKey: "audioModel", title: "默认音频模型", icon: AudioLines },
 ];
 
 export function ModelDefaultGrid({ config, onChange, onOpenChannels }: { config: AiConfig; onChange: (key: DefaultModelKey, model: string) => void; onOpenChannels?: () => void }) {
@@ -57,9 +54,7 @@ export function ModelDefaultGrid({ config, onChange, onOpenChannels }: { config:
                 const isAssistant = row.kind === "assistant";
                 const models = isAssistant ? assistantOptions : filterModelsByCapability(config.models, row.capability, config.channels);
                 const selected = isAssistant ? assistantModel : config[row.modelKey];
-                const groups = !isAssistant && row.capability === "video"
-                    ? groupModelsByDisplayName(config, models)
-                    : models.map((model) => ({ key: model, models: [model] }));
+                const groups = models.map((model) => ({ key: model, models: [model] }));
                 const options = groups.map((group) => {
                     const model = group.models.includes(selected) ? selected : group.models[0];
                     const label = modelDisplayName(config, model);

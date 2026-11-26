@@ -19,27 +19,25 @@ function node(type: CanvasNodeData["type"], metadata: CanvasNodeData["metadata"]
     };
 }
 
-test("媒体节点已有结果时只更新下一版提示词草稿", () => {
-    for (const type of [CanvasNodeType.Image, CanvasNodeType.Video, CanvasNodeType.Audio]) {
-        const current = node(type, {
-            content: `https://example.com/${type}`,
-            prompt: "已提交提示词",
-            composerContent: "旧草稿",
-            status: "success",
-        });
+test("图片节点已有结果时只更新下一版提示词草稿", () => {
+    const current = node(CanvasNodeType.Image, {
+        content: "https://example.com/image",
+        prompt: "已提交提示词",
+        composerContent: "旧草稿",
+        status: "success",
+    });
 
-        assert.equal(canvasNodeHasCommittedContent(current), true);
-        assert.deepEqual(writeCanvasNodePrompt(current, "下一版提示词").metadata, {
-            content: `https://example.com/${type}`,
-            prompt: "已提交提示词",
-            composerContent: "下一版提示词",
-            status: "success",
-        });
-    }
+    assert.equal(canvasNodeHasCommittedContent(current), true);
+    assert.deepEqual(writeCanvasNodePrompt(current, "下一版提示词").metadata, {
+        content: "https://example.com/image",
+        prompt: "已提交提示词",
+        composerContent: "下一版提示词",
+        status: "success",
+    });
 });
 
-test("空媒体草稿同时初始化提交提示词和编辑提示词", () => {
-    const current = node(CanvasNodeType.Video, { status: "idle" });
+test("空图片草稿同时初始化提交提示词和编辑提示词", () => {
+    const current = node(CanvasNodeType.Image, { status: "idle" });
 
     assert.equal(canvasNodeHasCommittedContent(current), false);
     assert.deepEqual(writeCanvasNodePrompt(current, "第一版提示词").metadata, {
@@ -70,10 +68,10 @@ test("文本提示词本身不构成已提交内容", () => {
 });
 
 test("调用方可先清理失败任务元数据，再由统一写入器保存草稿", () => {
-    const current = node(CanvasNodeType.Video, {
-        content: "https://example.com/video.mp4",
+    const current = node(CanvasNodeType.Image, {
+        content: "https://example.com/image.png",
         prompt: "已提交提示词",
-        promptTemplateOperation: "storyboard-video",
+        promptTemplateOperation: "image-generate",
         promptTemplateVariables: { shot: "1" },
         taskId: "failed-task",
     });

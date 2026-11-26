@@ -17,7 +17,7 @@ func connectFixture(t *testing.T) (*Service, string, int64) {
 		"nodes":[
 			{"id":"txt","type":"text","title":"文本","metadata":{"content":"正文"}},
 			{"id":"img","type":"image","title":"图片","metadata":{"prompt":"p","composerContent":"p"}},
-			{"id":"aud","type":"audio","title":"音频","metadata":{"prompt":"p","composerContent":"p"}}
+			{"id":"cfg","type":"config","title":"配置","metadata":{"generationMode":"image"}}
 		],"connections":[]}`))
 	if err != nil {
 		t.Fatal(err)
@@ -46,33 +46,28 @@ func TestConnectUserCanvasNodesEnforcesReferenceDirection(t *testing.T) {
 		t.Fatalf("image -> text 应被拒绝，实际 %v", err)
 	}
 
-	// image -> audio 非法：音频只接受文本输入。
-	if _, err = svc.ConnectUserCanvasNodesAtRevision("owner", canvasID, "img", "aud", summary.Revision); err == nil {
-		t.Fatal("image -> audio 应被拒绝")
+	// image -> config 非法：配置节点不接收任何输入。
+	if _, err = svc.ConnectUserCanvasNodesAtRevision("owner", canvasID, "img", "cfg", summary.Revision); err == nil {
+		t.Fatal("image -> config 应被拒绝")
 	}
 }
 
-// 目标类型声明的输入上限必须生效（音频只允许一个输入）。
+// 目标类型声明的输入上限或目标策略必须生效。
 func TestConnectUserCanvasNodesEnforcesInputCapacity(t *testing.T) {
 	svc := newCanvasHistoryTestService(t)
 	created, err := svc.UpsertUserCanvasProject("owner", json.RawMessage(`{
 		"id":"canvas-capacity","revision":0,"title":"输入上限",
 		"nodes":[
 			{"id":"t1","type":"text","title":"文本1","metadata":{"content":"a"}},
-			{"id":"t2","type":"text","title":"文本2","metadata":{"content":"b"}},
-			{"id":"aud","type":"audio","title":"音频","metadata":{"prompt":"p","composerContent":"p"}}
+			{"id":"cfg","type":"config","title":"配置","metadata":{"generationMode":"image"}}
 		],"connections":[]}`))
 	if err != nil {
 		t.Fatal(err)
 	}
-	first, err := svc.ConnectUserCanvasNodesAtRevision("owner", "canvas-capacity", "t1", "aud", created.Revision)
-	if err != nil {
-		t.Fatal(err)
-	}
-	_, err = svc.ConnectUserCanvasNodesAtRevision("owner", "canvas-capacity", "t2", "aud", first.Revision)
+	_, err = svc.ConnectUserCanvasNodesAtRevision("owner", "canvas-capacity", "t1", "cfg", created.Revision)
 	var appError *kernel.AppError
 	if !errors.As(err, &appError) || appError.Status != http.StatusBadRequest {
-		t.Fatalf("第二个输入应被输入上限拒绝，实际 %v", err)
+		t.Fatalf("不可作为目标的节点应被拒绝，实际 %v", err)
 	}
 }
 
@@ -87,7 +82,7 @@ func TestCreateUserCanvasNodesLayoutDoesNotOverlap(t *testing.T) {
 	if _, _, err := svc.CreateUserCanvasNodes("owner", "canvas-layout", []NodeDraft{
 		{Title: "文本", Type: "text"},
 		{Title: "图片", Type: "image"},
-		{Title: "音频", Type: "audio"},
+		{Title: "配置", Type: "config"},
 	}, created.Revision); err != nil {
 		t.Fatal(err)
 	}

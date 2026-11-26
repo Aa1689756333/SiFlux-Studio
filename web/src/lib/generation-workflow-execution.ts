@@ -2,7 +2,7 @@ import { normalizeRunningHubCapability, type AiConfig, type RunningHubCapability
 import { workflowProviderPluginEnabled } from "@/lib/plugins/builtin/workflows";
 import { usePluginStore } from "@/stores/use-plugin-store";
 
-export type GenerationWorkflowMode = "text" | "image" | "video" | "audio";
+export type GenerationWorkflowMode = "text" | "image";
 
 export type GenerationWorkflowExecution = {
 	provider: "runninghub";
@@ -66,8 +66,6 @@ function assertWorkflowCapability(providerName: string, capability: RunningHubCa
 }
 
 function workflowCapabilityName(value: GenerationWorkflowMode) {
-    if (value === "video") return "视频";
-    if (value === "audio") return "音频";
     if (value === "text") return "文本";
     return "图片";
 }

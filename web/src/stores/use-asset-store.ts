@@ -16,21 +16,17 @@ import { flushGenerationAssetStorageLocks, insertOrReturnGenerationAsset, withGe
 import { CANVAS_STORE_KEY, commitPendingCanvasStorePersistenceLocked, pendingCanvasStorePersistence, withCanvasStorePersistenceLock } from "@/stores/canvas/use-canvas-store";
 import { readAllCanvasSyncDrafts } from "@/services/canvas-sync-drafts";
 
-export type AssetKind = "text" | "image" | "video" | "audio" | "model" | "entity";
+export type AssetKind = "text" | "image" | "model" | "entity";
 export type { AssetCategory } from "@/lib/asset-category";
 export type AssetStatus = "draft" | "review" | "confirmed" | "archived";
 export type TextAsset = AssetBase<"text"> & { data: { content: string } };
 export type ImageAsset = AssetBase<"image"> & { data: { dataUrl: string; storageKey?: string; width: number; height: number; bytes: number; mimeType: string } };
-export type VideoAsset = AssetBase<"video"> & { data: { url: string; storageKey?: string; width: number; height: number; durationMs?: number; hasAudio?: boolean; bytes: number; mimeType: string } };
-export type AudioAsset = AssetBase<"audio"> & { data: { url: string; storageKey?: string; durationMs?: number; bytes: number; mimeType: string } };
 export type ModelAsset = AssetBase<"model"> & { data: { url: string; storageKey?: string; bytes: number; mimeType: string; fileName: string } };
 export type EntityAsset = AssetBase<"entity"> & { data: { definition: Record<string, unknown> } };
-export type Asset = TextAsset | ImageAsset | VideoAsset | AudioAsset | ModelAsset | EntityAsset;
+export type Asset = TextAsset | ImageAsset | ModelAsset | EntityAsset;
 export type NewAsset =
     | Omit<TextAsset, "id" | "createdAt" | "updatedAt">
     | Omit<ImageAsset, "id" | "createdAt" | "updatedAt">
-    | Omit<VideoAsset, "id" | "createdAt" | "updatedAt">
-    | Omit<AudioAsset, "id" | "createdAt" | "updatedAt">
     | Omit<ModelAsset, "id" | "createdAt" | "updatedAt">
     | Omit<EntityAsset, "id" | "createdAt" | "updatedAt">;
 
@@ -665,14 +661,12 @@ async function normalizePersistedAsset(asset: Asset): Promise<Asset> {
     const resourceId = resourceIdFromStorageKey(storageKey);
     if (resourceId) {
         const url = resourceFileUrl(resourceId);
-        if (asset.kind === "video" || asset.kind === "audio" || asset.kind === "model") return { ...asset, data: { ...asset.data, url } } as Asset;
+        if (asset.kind === "model") return { ...asset, data: { ...asset.data, url } } as Asset;
         if (asset.kind === "image") return { ...asset, coverUrl: asset.coverUrl.startsWith("blob:") ? url : asset.coverUrl, data: { ...asset.data, dataUrl: url } };
     }
 
     // 非 resource: key 是早期本地存储格式，必须继续从 localForage 恢复，
     // 但只在确有本地 key 时读取，不让远程资源重新走逐条网络查询。
-    if (asset.kind === "video" && storageKey) return { ...asset, data: { ...asset.data, url: await resolveMediaUrl(storageKey, asset.data.url) } };
-    if (asset.kind === "audio" && storageKey) return { ...asset, data: { ...asset.data, url: await resolveMediaUrl(storageKey, asset.data.url) } };
     if (asset.kind === "model" && storageKey) return { ...asset, data: { ...asset.data, url: await resolveMediaUrl(storageKey, asset.data.url) } };
     if (asset.kind !== "image") return asset;
     if (storageKey) {

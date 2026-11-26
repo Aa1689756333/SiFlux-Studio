@@ -22,8 +22,8 @@ func TestCanvasHistoryRestore(t *testing.T) {
 		}
 		return result
 	}
-	save(`{"id":"canvas","revision":0,"title":"original","nodes":[{"id":"video"}],"connections":[]}`)
-	save(`{"id":"canvas","revision":1,"title":"original","nodes":[{"id":"video"}],"connections":[],"viewport":{"x":20}}`)
+	save(`{"id":"canvas","revision":0,"title":"original","nodes":[{"id":"node-1","type":"image"}],"connections":[]}`)
+	save(`{"id":"canvas","revision":1,"title":"original","nodes":[{"id":"node-1","type":"image"}],"connections":[],"viewport":{"x":20}}`)
 	list, err := svc.CanvasHistory(actor.ID, "canvas")
 	if err != nil || len(list.Snapshots) != 0 {
 		t.Fatalf("no-op created snapshot: %#v %v", list, err)
@@ -38,7 +38,7 @@ func TestCanvasHistoryRestore(t *testing.T) {
 		t.Fatal("history list loaded full payload")
 	}
 	preview, err := svc.CanvasHistorySnapshot(actor.ID, "canvas", entry.ID)
-	if err != nil || !strings.Contains(preview.PayloadJSON, "video") {
+	if err != nil || !strings.Contains(preview.PayloadJSON, "node-1") {
 		t.Fatalf("preview = %#v %v", preview, err)
 	}
 	for _, scenario := range []struct {
@@ -78,7 +78,7 @@ func TestCanvasHistoryRestore(t *testing.T) {
 		t.Fatalf("restore = %#v %v", result, err)
 	}
 	raw, _ := svc.UserCanvasProject(actor.ID, "canvas")
-	if !strings.Contains(string(raw), "video") || !strings.Contains(string(raw), "original") {
+	if !strings.Contains(string(raw), "node-1") || !strings.Contains(string(raw), "original") {
 		t.Fatalf("wrong restored content: %s", raw)
 	}
 	list, _ = svc.CanvasHistory(actor.ID, "canvas")
@@ -90,7 +90,7 @@ func TestCanvasHistoryRestore(t *testing.T) {
 		t.Fatal(err)
 	}
 	raw, _ = svc.UserCanvasProject(actor.ID, "canvas")
-	if strings.Contains(string(raw), "video") {
+	if strings.Contains(string(raw), "node-1") {
 		t.Fatal("could not undo restore")
 	}
 }

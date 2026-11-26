@@ -81,7 +81,6 @@ func TestRetiredAgentEndpointsAreAbsentFromProductRouteGraph(t *testing.T) {
 	harness := newRetiredAgentHarness(t)
 	for _, route := range harness.router.Routes() {
 		// 退场的是旧内置 Agent 的 /api/agent/* 运行面。
-		// /api/agent-clients 是另一回事：外部 Agent 的凭据签发与吊销，只对受信任的桌面界面开放。
 		if route.Path == "/api/agent" || strings.HasPrefix(route.Path, "/api/agent/") {
 			t.Fatalf("旧 Agent 入口仍在产品路由图中: %s %s", route.Method, route.Path)
 		}
@@ -148,10 +147,10 @@ func TestGenericTaskAPICannotCreateRetiredAgentTasks(t *testing.T) {
 // 证明退场只切断 Agent，没有削弱普通任务创建。
 func TestManualCanvasTaskCreationStillReachesTaskAdmission(t *testing.T) {
 	harness := newRetiredAgentHarness(t)
-	seedSystemTextChannel(t, harness.db)
+	seedSystemImageChannel(t, harness.db)
 	recorder := harness.do(t, http.MethodPost, "/api/tasks", map[string]any{
-		"type": "canvas_text", "prompt": "手工写一段分镜", "model": "text-test",
-		"input": map[string]any{"mode": "text", "prompt": "手工写一段分镜", "config": map[string]any{"channelId": "channel", "model": "text-test"}},
+		"type": "canvas_image", "prompt": "手工画一张分镜稿", "model": "image-test",
+		"input": map[string]any{"mode": "image", "prompt": "手工画一张分镜稿", "config": map[string]any{"channelId": "channel", "model": "image-test"}},
 	})
 	if recorder.Code != http.StatusOK {
 		t.Fatalf("手工生成任务创建失败: status=%d body=%s", recorder.Code, recorder.Body.String())
@@ -190,6 +189,24 @@ func seedSystemTextChannel(t *testing.T, db *gorm.DB) {
 	rows := []any{
 		&model.ModelChannel{ID: "channel", Scope: model.ChannelScopeSystem, Enabled: true, Name: "本地测试渠道"},
 		&model.ChannelModel{ID: "cm", ChannelID: "channel", ModelKey: "text-test", Capability: "text", Protocol: model.ChannelInterfaceChatCompletion, CapabilityConfigJSON: string(capabilityConfig), Enabled: true},
+		&model.ChannelModelVariant{ID: "tier", ChannelModelID: "cm", SelectorKey: "{}", SelectorJSON: "{}", Enabled: true},
+	}
+	for _, row := range rows {
+		if err := db.Create(row).Error; err != nil {
+			t.Fatal(err)
+		}
+	}
+}
+
+func seedSystemImageChannel(t *testing.T, db *gorm.DB) {
+	t.Helper()
+	capabilityConfig, err := json.Marshal(app.DefaultModelCapabilityConfigForModel(string(model.ChannelInterfaceOpenAIImage), "image-test"))
+	if err != nil {
+		t.Fatal(err)
+	}
+	rows := []any{
+		&model.ModelChannel{ID: "channel", Scope: model.ChannelScopeSystem, Enabled: true, Name: "本地测试渠道"},
+		&model.ChannelModel{ID: "cm", ChannelID: "channel", ModelKey: "image-test", Capability: "image", Protocol: model.ChannelInterfaceOpenAIImage, CapabilityConfigJSON: string(capabilityConfig), Enabled: true},
 		&model.ChannelModelVariant{ID: "tier", ChannelModelID: "cm", SelectorKey: "{}", SelectorJSON: "{}", Enabled: true},
 	}
 	for _, row := range rows {

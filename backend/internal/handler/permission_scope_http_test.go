@@ -16,15 +16,15 @@ func TestReadOnlyRoundHTTPDiscoveryAndWritesCannotBeUpgradedByParams(t *testing.
 			t.Fatalf("workspace read missing %s", id)
 		}
 	}
-	for _, id := range []string{"canvas.generation.propose", "canvas.timeline.render", "canvas.node.move", "canvas.document.commit"} {
+	for _, id := range []string{"canvas.generation.propose", "canvas.node.move", "canvas.document.commit"} {
 		if listingHas(listed, id) {
 			t.Fatalf("readonly exposes %s", id)
 		}
 	}
 	rev, _ := env.canvasSnapshot(t)
-	for i, op := range []string{"canvas.node.update", "canvas.timeline.render", "canvas.generation.propose"} {
+	for i, op := range []string{"canvas.node.update", "canvas.generation.propose"} {
 		params := mustJSONString(t, map[string]any{"canvasId": env.canvasID, "nodeId": "n1", "expectedRevision": rev, "permissionMode": "full-access", "patch": map[string]any{"title": "bad"}})
-		status, _ := env.opsRaw(op, []string{"readonly-update", "readonly-render", "readonly-propose"}[i], turn, params)
+		status, _ := env.opsRaw(op, []string{"readonly-update", "readonly-propose"}[i], turn, params)
 		if status != http.StatusForbidden && status != http.StatusBadRequest {
 			t.Fatalf("readonly %s accepted: %d", op, status)
 		}

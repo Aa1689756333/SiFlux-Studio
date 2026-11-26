@@ -1,8 +1,8 @@
 import { afterEach, expect, test } from "bun:test";
 import axios, { AxiosError } from "axios";
+import { request } from "../src/services/api/request";
 import { assertChannelBlob, assertChannelPayload, ChannelResponseError, createChannelTransport, normalizeChannelFailure } from "../src/services/api/channel-transport";
 import { parseImagePayload, readAxiosError as readImageError } from "../src/services/api/image-response";
-import { unwrapEnvelope, assertVideoBlob, readAxiosError as readVideoError } from "../src/services/api/video-response";
 
 const adapter = axios.defaults.adapter;
 afterEach(() => {
@@ -26,25 +26,27 @@ test("HTTP 200 business rejection preserves normalized code and request ID", asy
 test("explicit error strings and success false cannot become empty media or phantom task", () => {
     for (const payload of [{ error: "upstream unavailable" }, { success: false, message: "quota exhausted" }, rejectedPayload]) {
         expect(() => parseImagePayload(payload as never)).toThrow(ChannelResponseError);
-        expect(() => unwrapEnvelope(payload, "missing task")).toThrow(ChannelResponseError);
+        expect(() => assertChannelPayload(payload)).toThrow(ChannelResponseError);
     }
     expect(() => assertChannelPayload({ data: { error: "rejected" } })).toThrow(ChannelResponseError);
 });
 
-test("valid zero and 200 success envelopes and normal task remain accepted", () => {
+test("valid zero and 200 success envelopes and normal task remain accepted", async () => {
     for (const code of [0, 200]) {
         const data = { id: "task-success" };
-        expect(unwrapEnvelope({ code, data, msg: "ok" }, "missing")).toBe(data);
+        expect(() => assertChannelPayload({ code, data, msg: "ok" })).not.toThrow();
         expect(parseImagePayload({ code, data: [{ url: "https://example.invalid/image.png" }] } as never)).toHaveLength(1);
     }
+    const data = { id: "task-success" };
+    expect(await request(Promise.resolve({ data: { code: 0, data, msg: "ok" } }))).toBe(data);
     expect(() => assertChannelPayload({ id: "task-success", status: "processing", error: null })).not.toThrow();
 });
 
-test("HTTP 200 JSON blob is rejected instead of returned as audio or video", async () => {
+test("HTTP 200 JSON blob is rejected instead of returned as a media artifact", async () => {
     axios.defaults.adapter = async (config) => ({ config, data: new Blob([JSON.stringify(rejectedPayload)], { type: "application/json" }), status: 200, statusText: "OK", headers: {} });
     await expect(transport().postBlob("https://example.invalid/v1/audio/speech", {})).rejects.toBeInstanceOf(ChannelResponseError);
     await expect(transport().getExternalBlob("https://example.invalid/output")).rejects.toBeInstanceOf(ChannelResponseError);
-    await expect(assertVideoBlob(new Blob(["{}"], { type: "application/json" }))).rejects.toBeInstanceOf(ChannelResponseError);
+    await expect(assertChannelBlob(new Blob(["{}"], { type: "application/json" }))).rejects.toBeInstanceOf(ChannelResponseError);
 });
 
 test("non-2xx blob errors decode once within bound without retaining Axios secrets", async () => {
@@ -82,13 +84,12 @@ test("cancellation identity survives transport normalization", async () => {
     await expect(normalizeChannelFailure(cancelled)).rejects.toBe(cancelled);
 });
 
-test("legacy image/video catch wrappers cannot flatten structured errors", () => {
-    for (const error of [new ChannelResponseError(rejectedPayload, 451), new DOMException("Aborted", "AbortError"), new axios.CanceledError("cancelled")])
-        for (const reader of [readImageError, readVideoError]) {
-            try {
-                throw new Error(reader(error, "fallback"));
-            } catch (caught) {
-                expect(caught).toBe(error);
-            }
+test("legacy image catch wrapper cannot flatten structured errors", () => {
+    for (const error of [new ChannelResponseError(rejectedPayload, 451), new DOMException("Aborted", "AbortError"), new axios.CanceledError("cancelled")]) {
+        try {
+            throw new Error(readImageError(error, "fallback"));
+        } catch (caught) {
+            expect(caught).toBe(error);
         }
+    }
 });

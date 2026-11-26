@@ -1,7 +1,8 @@
 import { expect, test } from "bun:test";
 import { serviceConnectionError, serviceModelProfile, modelCatalogRequestURL } from "../src/lib/model-service-presets";
 import { modelConnectionResultDetail, testChannelModelConnection } from "../src/lib/model-connection-test";
-import { applyFetchedChannelModelCatalog, modelConfigChannelStatusLabel } from "../src/pages/settings/channel-settings-pane";
+import { applyFetchedChannelModelCatalog } from "../src/lib/channel-config";
+import { modelConfigChannelStatusLabel } from "../src/pages/settings/channel-settings-pane";
 import { backendProviderConfig } from "../src/services/api/generation-task";
 import { configWithoutCachedSecrets, createModelChannel, defaultConfig } from "../src/stores/use-config-store";
 import { defaultModelCapabilityConfig } from "../src/lib/model-capabilities";
@@ -9,34 +10,32 @@ import type { ModelProtocolDefinition } from "../src/lib/model-protocols";
 import { currentModelConnectionReceipt, useModelConnectionTests } from "../src/stores/use-model-connection-tests";
 
 const protocols = [
-    ["chat-completion", "text"], ["gemini-generate-content", "text"], ["gemini-image", "image"],
-    ["volcengine-ark-video", "video"], ["newapi", "video"],
+    ["chat-completion", "text"], ["openai-response", "text"], ["gemini-generate-content", "text"],
+    ["openai-image", "image"], ["gemini-image", "image"], ["volcengine-ark-image", "image"],
 ].map(([value, capability]) => ({ value, capability, enabled: true } as ModelProtocolDefinition));
 
-test("persisted boolean video options are normalized without turning false back on", () => {
-    const channel = createModelChannel({ id: "custom", models: ["seedance-2.0-mini"], modelProfiles: [{ model: "seedance-2.0-mini", capability: "video", protocol: "newapi" }] });
-    for (const enabled of [true, false]) {
-        const persisted = JSON.parse(JSON.stringify({ ...defaultConfig, channels: [channel], model: "custom::seedance-2.0-mini", videoGenerateAudio: enabled, videoWatermark: false, videoArkPrivateAssetUpload: true }));
-        expect(backendProviderConfig(persisted, "video")).toMatchObject({ videoGenerateAudio: String(enabled), videoWatermark: "false", videoArkPrivateAssetUpload: "true" });
-    }
-});
+test("catalog endpoint metadata maps image endpoints and host presets to installed protocols", () => {
+    const channel = createModelChannel({ baseUrl: "https://api.example.com/v1", apiFormat: "openai" });
+    const item = { id: "image-endpoint", supportedEndpointTypes: ["images.generations"] };
+    const profile = serviceModelProfile(channel, item, protocols);
+    expect(profile.capability).toBe("image");
+    expect(profile.protocol).toBe("openai-image");
+    expect(profile.capabilityConfig?.image).toMatchObject({ size: { parameter: "size", default: "1:1" }, quality: { supported: true } });
 
-test("catalog endpoint metadata classifies opaque video names and selects only installed provider contracts", () => {
-    const channel = createModelChannel({ baseUrl: "https://video.example.com/v1" });
-    const item = { id: "原生不卡人脸-全参2.5", supportedEndpointTypes: ["full-video"] };
-    expect(serviceModelProfile(channel, item, protocols).protocol).toBeUndefined();
-    const installed = [...protocols, { value: "full-video", capability: "video", enabled: true } as ModelProtocolDefinition];
-    const profile = serviceModelProfile(channel, item, installed);
-    expect(profile.capability).toBe("video");
-    expect(profile.protocol).toBe("full-video");
-    for (const id of ["sd-native-full-2.0", "sd-native-full-2.5", "原生不卡人脸-全参2.0", "原生不卡人脸-全参2.5"]) {
-        expect(serviceModelProfile(channel, { id }, installed)).toMatchObject({ capability: "video", protocol: undefined });
+    // Opaque names carry no endpoint contract; they stay on the relay text default.
+    for (const id of ["sd-native-full-2.0", "原生不卡人脸-全参2.5"]) {
+        expect(serviceModelProfile(channel, { id, supportedEndpointTypes: ["full-video"] }, protocols)).toMatchObject({ capability: "text", protocol: "chat-completion" });
     }
-    expect(serviceModelProfile({ ...channel, baseUrl: "https://other.example" }, { id: "sd-native-full-2.5" }, installed).protocol).not.toBe("full-video");
-    expect(profile.capabilityConfig?.video).toMatchObject({ duration: { min: 4, max: 30 }, resolutions: ["480p", "720p"], references: { maxVideos: 10 } });
-    expect(serviceModelProfile(channel, { id: "H3-KS", supportedEndpointTypes: ["openai-video"] }, installed).protocol).toBe("newapi");
-    expect(serviceModelProfile({ ...channel, baseUrl: "https://other.example" }, item, installed).protocol).toBe("full-video");
-    expect(serviceModelProfile(channel, item, installed.map(p => ({ ...p, enabled: false }))).protocol).toBeUndefined();
+
+    // The host preset decides which installed image adapter is proposed.
+    const ark = createModelChannel({ baseUrl: "https://ark.cn-beijing.volces.com/api/v3" });
+    expect(serviceModelProfile(ark, { id: "doubao-seedream" }, protocols).protocol).toBe("volcengine-ark-image");
+    const regionalArk = { ...ark, baseUrl: "https://ark.cn-shanghai.volces.com/api/v3" };
+    expect(serviceModelProfile(regionalArk, { id: "doubao-seedream" }, protocols).protocol).toBe("volcengine-ark-image");
+
+    // Only installed, enabled adapters survive the lookup.
+    expect(serviceModelProfile(channel, item, protocols.map((p) => ({ ...p, enabled: false }))).protocol).toBeUndefined();
+    expect(serviceModelProfile(channel, item, protocols.filter((p) => p.value !== "openai-image")).protocol).toBeUndefined();
 });
 
 test("test receipts apply only to the exact tested connection and model profile", () => {
@@ -55,21 +54,19 @@ test("native provider models use installed native adapters and never invent a mi
     const gemini = createModelChannel({ baseUrl: "https://generativelanguage.googleapis.com", apiFormat: "gemini" });
     expect(serviceModelProfile(gemini, { id: "gemini-pro" }, protocols).protocol).toBe("gemini-generate-content");
     expect(serviceModelProfile(gemini, { id: "gemini-image" }, protocols).protocol).toBe("gemini-image");
-    expect(serviceModelProfile(gemini, { id: "veo-video" }, protocols).protocol).toBeUndefined();
+    expect(serviceModelProfile(gemini, { id: "gemini-image" }, protocols.filter((p) => p.value !== "gemini-image")).protocol).toBeUndefined();
     const ark = createModelChannel({ baseUrl: "https://ark.cn-beijing.volces.com/api/v3" });
-    expect(serviceModelProfile(ark, { id: "endpoint-abc" }, protocols, "video").protocol).toBe("volcengine-ark-video");
-    const regionalArk = { ...ark, baseUrl: "https://ark.cn-shanghai.volces.com/api/v3" };
-    expect(serviceModelProfile(regionalArk, { id: "endpoint-abc" }, protocols, "video").protocol).toBe("volcengine-ark-video");
+    expect(serviceModelProfile(ark, { id: "doubao-seedream" }, protocols, "image").protocol).toBe("volcengine-ark-image");
     const unrelated = { ...ark, baseUrl: "https://ark.cn-shanghai.volces.com.example.org/api/v3" };
-    expect(serviceModelProfile(unrelated, { id: "endpoint-abc" }, protocols, "video").protocol).toBe("newapi");
+    expect(serviceModelProfile(unrelated, { id: "doubao-seedream-image" }, protocols, "image").protocol).toBe("openai-image");
 });
 
 test("refresh keeps selected/manual models and user capability limits", () => {
-    const config = defaultModelCapabilityConfig("newapi", "video-manual")!;
-    const channel = createModelChannel({ id: "custom", models: ["video-manual"], modelProfiles: [{ model: "video-manual", capability: "video", protocol: "newapi", capabilityConfig: config }] });
-    const next = applyFetchedChannelModelCatalog(channel, { models: ["video-manual", "new-model"], catalog: [{ id: "video-manual", modelType: "text" }, { id: "new-model" }] });
-    expect(next.models).toEqual(["video-manual"]);
-    expect(next.modelProfiles?.find((p) => p.model === "video-manual")).toEqual(channel.modelProfiles![0]);
+    const config = defaultModelCapabilityConfig("openai-image", "image-manual")!;
+    const channel = createModelChannel({ id: "custom", models: ["image-manual"], modelProfiles: [{ model: "image-manual", capability: "image", protocol: "openai-image", capabilityConfig: config }] });
+    const next = applyFetchedChannelModelCatalog(channel, { models: ["image-manual", "new-model"], catalog: [{ id: "image-manual", modelType: "image" }, { id: "new-model" }] });
+    expect(next.models).toEqual(["image-manual"]);
+    expect(next.modelProfiles?.find((p) => p.model === "image-manual")).toEqual(channel.modelProfiles![0]);
 });
 
 test("connection validation rejects full endpoints and embedded credentials", () => {
@@ -85,10 +82,10 @@ test("connection validation rejects full endpoints and embedded credentials", ()
 });
 
 test("explicit asset origin survives channel creation and generation request assembly", () => {
-    const channel = createModelChannel({ id: "custom", baseUrl: "https://api.example.com/v1", referenceAssetOrigin: " https://assets.example.com ", models: ["sd-native-full-2.5"], modelProfiles: [{ model: "sd-native-full-2.5", capability: "video", protocol: "full-video" }] });
-    const config = { ...defaultConfig, channels: [channel], model: "custom::sd-native-full-2.5" };
+    const channel = createModelChannel({ id: "custom", baseUrl: "https://api.example.com/v1", referenceAssetOrigin: " https://assets.example.com ", models: ["gpt-image-1"], modelProfiles: [{ model: "gpt-image-1", capability: "image", protocol: "openai-image" }] });
+    const config = { ...defaultConfig, channels: [channel], model: "custom::gpt-image-1" };
     expect(channel.referenceAssetOrigin).toBe("https://assets.example.com");
-    expect(backendProviderConfig(config, "video")).toMatchObject({ referenceAssetOrigin: channel.referenceAssetOrigin, interfaceType: "full-video" });
+    expect(backendProviderConfig(config, "image")).toMatchObject({ referenceAssetOrigin: channel.referenceAssetOrigin, interfaceType: "openai-image" });
 });
 
 test("saved credentials do not imply tested generation and browser cache omits all credential copies", () => {
@@ -100,36 +97,34 @@ test("saved credentials do not imply tested generation and browser cache omits a
 });
 
 test("generation test uses production config including headers and waits for a final output", async () => {
-    const capabilityConfig = defaultModelCapabilityConfig("newapi", "test-video")!;
-    capabilityConfig.video!.duration = { selection: "enum", values: [8, 4, 12], default: 8 };
-    capabilityConfig.video!.resolutions = ["1080", "720"];
-    const channel = createModelChannel({ id: "manual", apiKey: "synthetic-key", models: ["test-video"], headers: [{ name: "X-Project", value: "test-project" }], modelProfiles: [{ model: "test-video", capability: "video", protocol: "newapi", capabilityConfig }] });
-    let resolve!: (value: { video: { dataUrl: string; storageKey: string } }) => void;
-    const completion = new Promise<{ video: { dataUrl: string; storageKey: string } }>((r) => { resolve = r; });
+    const capabilityConfig = defaultModelCapabilityConfig("openai-image", "test-image")!;
+    const channel = createModelChannel({ id: "manual", apiKey: "synthetic-key", models: ["test-image"], headers: [{ name: "X-Project", value: "test-project" }], modelProfiles: [{ model: "test-image", capability: "image", protocol: "openai-image", capabilityConfig }] });
+    let resolve!: (value: { images: Array<{ dataUrl: string; storageKey: string }> }) => void;
+    const completion = new Promise<{ images: Array<{ dataUrl: string; storageKey: string }> }>((r) => { resolve = r; });
     let done = false;
-    const testResult = testChannelModelConnection(channel, "test-video", "video", "newapi", async (options) => {
-        expect(options.config.videoSeconds).toBe("4");
-        expect(options.config.vquality).toBe("720");
-        const request = backendProviderConfig(options.config, "video");
-        expect(request).toMatchObject({ headers: channel.headers, model: "test-video", apiKey: "synthetic-key", interfaceType: "newapi" });
+    const testResult = testChannelModelConnection(channel, "test-image", "image", "openai-image", async (options) => {
+        expect(options.mode).toBe("image");
+        const request = backendProviderConfig(options.config, "image");
+        expect(request).toMatchObject({ headers: channel.headers, model: "test-image", apiKey: "synthetic-key", interfaceType: "openai-image" });
         return completion;
     }).then((value) => { done = true; return value; });
     await Promise.resolve();
     expect(done).toBe(false);
-    resolve({ video: { storageKey: "resource:generated", dataUrl: "" } });
-    expect(await testResult).toContain("已完成视频生成");
-    expect(() => modelConnectionResultDetail({}, "video")).toThrow("没有返回可用结果");
+    resolve({ images: [{ storageKey: "resource:generated", dataUrl: "" }] });
+    expect(await testResult).toContain("已完成图片生成");
+    expect(() => modelConnectionResultDetail({}, "image")).toThrow("没有返回可用结果");
     expect(() => modelConnectionResultDetail({ text: " " }, "text")).toThrow();
 });
 
-test("video test uses configured range defaults and ranks K resolutions above ordinary P tiers", async () => {
-    const capabilityConfig = defaultModelCapabilityConfig("newapi", "test-video")!;
-    capabilityConfig.video!.resolutions = ["2K", "768P"];
-    const channel = createModelChannel({ apiKey: "synthetic", modelProfiles: [{ model: "test-video", capability: "video", protocol: "newapi", capabilityConfig }] });
-    await testChannelModelConnection(channel, "test-video", "video", "newapi", async ({ config }) => {
-        expect(config.videoSeconds).toBe(String(capabilityConfig.video!.duration.default));
-        expect(config.videoSeconds).not.toBe("1");
-        expect(config.vquality).toBe("768P");
-        return { video: { storageKey: "fixture", dataUrl: "" } };
+test("image test uses the profile size and quality defaults", async () => {
+    const capabilityConfig = defaultModelCapabilityConfig("openai-image", "test-image")!;
+    capabilityConfig.image!.size.default = "16:9";
+    capabilityConfig.image!.quality.default = "high";
+    const channel = createModelChannel({ apiKey: "synthetic", modelProfiles: [{ model: "test-image", capability: "image", protocol: "openai-image", capabilityConfig }] });
+    await testChannelModelConnection(channel, "test-image", "image", "openai-image", async ({ config }) => {
+        expect(config.size).toBe("16:9");
+        expect(config.quality).toBe("high");
+        expect(config.imageModel.endsWith("::test-image")).toBe(true);
+        return { images: [{ storageKey: "fixture", dataUrl: "" }] };
     });
 });

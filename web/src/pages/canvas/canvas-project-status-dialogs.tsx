@@ -1,18 +1,13 @@
 import { Button, Modal } from "antd";
-import { ImagePlus, XCircle } from "lucide-react";
 import { useEffect, useState } from "react";
 
 import { CanvasImagePreview } from "@/components/canvas/canvas-image-preview";
 import { TaskDetailItem } from "./canvas-project-feedback";
 import { generationTaskShowsProgress, generationTaskStageLabel } from "@/lib/generation-task-display";
-import { canRetrieveVideoResult, formatTaskLog, type GenerationTask, type TaskLog } from "@/services/api/task-center";
+import { formatTaskLog, type GenerationTask, type TaskLog } from "@/services/api/task-center";
 import { CanvasNodeType, type CanvasNodeData } from "@/types/canvas";
-import { VideoPlayer } from "@/components/video-player";
-import { AppModal } from "@/components/ui/product/app-modal";
 import { modelDisplayName, useEffectiveConfig } from "@/stores/use-config-store";
 import { resolveImageUrl } from "@/services/image-storage";
-import { resolveMediaUrl } from "@/services/file-storage";
-import { buildLibTVVideoSourceUrl } from "@/lib/canvas/libtv-import";
 
 type CanvasProjectStatusDialogsProps = {
     theme: { node: { stroke: string; panel: string; muted: string; fill: string } };
@@ -22,11 +17,6 @@ type CanvasProjectStatusDialogsProps = {
     taskError?: boolean;
     onCloseTask: () => void;
     onCancelTask?: (task: GenerationTask) => void;
-    onRetrieveTask?: (task: GenerationTask) => void;
-    retrievingTaskId?: string | null;
-    superResolveNode: CanvasNodeData | null;
-    onCloseSuperResolve: () => void;
-    onUseLocalUpscale: () => void;
     previewNode: CanvasNodeData | null;
     onClosePreview: () => void;
     clearConfirmOpen: boolean;
@@ -34,7 +24,7 @@ type CanvasProjectStatusDialogsProps = {
     onConfirmClear: () => void;
 };
 
-export function CanvasProjectStatusDialogs({ theme, task, taskLogs, taskLoading, taskError, superResolveNode, previewNode, clearConfirmOpen, onCloseTask, onCancelTask, onRetrieveTask, retrievingTaskId, onCloseSuperResolve, onUseLocalUpscale, onClosePreview, onCancelClear, onConfirmClear }: CanvasProjectStatusDialogsProps) {
+export function CanvasProjectStatusDialogs({ theme, task, taskLogs, taskLoading, taskError, previewNode, clearConfirmOpen, onCloseTask, onCancelTask, onClosePreview, onCancelClear, onConfirmClear }: CanvasProjectStatusDialogsProps) {
     const config = useEffectiveConfig();
     const previewSource = useResolvedPreviewSource(previewNode);
     return (
@@ -63,15 +53,9 @@ export function CanvasProjectStatusDialogs({ theme, task, taskLogs, taskLoading,
                         </div>
                         <TaskGenerationParameters inputJson={task.inputJson} theme={theme} />
                         {task.error ? <p role="status" className="whitespace-pre-wrap break-words">{task.error}</p> : null}
-                        {onRetrieveTask && canRetrieveVideoResult(task) ? (
-                            <div className="flex flex-wrap items-center justify-between gap-3">
-                                <p>查询原任务并取回视频，不会重新生成。</p>
-                                <Button loading={retrievingTaskId === task.id} onClick={() => onRetrieveTask(task)}>取回结果</Button>
-                            </div>
-                        ) : null}
                         {onCancelTask && (task.status === "queued" || task.status === "running") ? (
                             <div className="flex justify-end">
-                                <Button danger icon={<XCircle className="size-4" />} onClick={() => onCancelTask(task)}>
+                                <Button danger onClick={() => onCancelTask(task)}>
                                     取消任务
                                 </Button>
                             </div>
@@ -87,33 +71,6 @@ export function CanvasProjectStatusDialogs({ theme, task, taskLogs, taskLoading,
                     </div>
                 ) : null}
             </Modal>
-
-            <Modal title="AI 超分" open={Boolean(superResolveNode?.metadata?.content)} centered footer={null} onCancel={onCloseSuperResolve}>
-                <div className="space-y-4 py-3">
-                    <div className="rounded-lg border p-3 text-sm leading-6" style={{ borderColor: theme.node.stroke, background: theme.node.panel, color: theme.node.muted }}>
-                        当前部署未配置独立的 AI 超分模型。你仍可以使用本地高质量插值放大，原图会保留，结果将作为新的图片节点放回画布。
-                    </div>
-                    <div className="flex justify-end gap-2">
-                        <Button onClick={onCloseSuperResolve}>取消</Button>
-                        <Button type="primary" icon={<ImagePlus className="size-4" />} onClick={onUseLocalUpscale}>使用本地高质量放大</Button>
-                    </div>
-                </div>
-            </Modal>
-
-            <AppModal
-                title="视频预览"
-                open={Boolean(previewNode?.metadata?.content && previewNode.type === CanvasNodeType.Video)}
-                centered
-                onCancel={onClosePreview}
-                footer={null}
-                width="min(1200px, calc(100vw - 32px))"
-                flush
-                styles={{ body: { display: "flex", justifyContent: "center", alignItems: "center", maxHeight: "84vh", overflow: "hidden", background: "var(--workspace-canvas-deep)" } }}
-            >
-                {previewSource && previewNode?.type === CanvasNodeType.Video ? (
-                    <VideoPlayer src={previewSource} mimeType={previewNode.metadata?.mimeType} title={previewNode.title || "视频预览"} hasAudio={typeof previewNode.metadata?.hasAudio === "boolean" ? previewNode.metadata.hasAudio : undefined} className="max-h-[84vh] max-w-full bg-black" />
-                ) : null}
-            </AppModal>
 
             {previewSource && previewNode?.type === CanvasNodeType.Image ? (
                 <CanvasImagePreview
@@ -147,21 +104,18 @@ function useResolvedPreviewSource(node: CanvasNodeData | null) {
     const [source, setSource] = useState("");
     useEffect(() => {
         let cancelled = false;
-        if (!node || (node.type !== CanvasNodeType.Image && node.type !== CanvasNodeType.Video)) {
+        if (!node || node.type !== CanvasNodeType.Image) {
             setSource("");
             return;
         }
         const content = node.metadata?.content || "";
-        const fallback = node.type === CanvasNodeType.Image
-            ? node.metadata?.previewContent || content
-            : node.metadata?.importSource?.provider === "libtv" ? buildLibTVVideoSourceUrl(content) : content;
+        const fallback = node.metadata?.previewContent || content;
         if (!node.metadata?.storageKey) {
             setSource(fallback);
             return;
         }
         setSource("");
-        const resolve = node.type === CanvasNodeType.Image ? resolveImageUrl : resolveMediaUrl;
-        void resolve(node.metadata.storageKey, fallback, { cacheMiss: true })
+        void resolveImageUrl(node.metadata.storageKey, fallback, { cacheMiss: true })
             .then((resolved) => { if (!cancelled) setSource(resolved || fallback); })
             .catch(() => { if (!cancelled) setSource(fallback); });
         return () => { cancelled = true; };
@@ -201,17 +155,9 @@ function taskParameterRows(inputJson?: string) {
         rows.push({ label, value: String(value) });
     };
     add("尺寸 / 比例", config.size);
-    add("分辨率", config.vquality || config.quality);
-    add("秒数", config.videoSeconds === undefined ? undefined : `${config.videoSeconds} 秒`);
+    add("质量", config.quality);
     add("生成数量", config.count);
-    add("生成声音", booleanLabel(config.videoGenerateAudio));
-    add("水印", booleanLabel(config.videoWatermark));
-    add("音色", config.audioVoice);
-    add("音频格式", config.audioFormat);
-    add("音频速度", config.audioSpeed);
     addReference("引用图片", input.referenceImages, "图片");
-    addReference("引用视频", input.referenceVideos, "视频");
-    addReference("引用音频", input.referenceAudios, "音频");
     return rows;
 
     function addReference(label: string, value: unknown, kind: string) {
@@ -226,12 +172,6 @@ function taskParameterRows(inputJson?: string) {
 
 function asRecord(value: unknown): Record<string, unknown> {
     return value && typeof value === "object" && !Array.isArray(value) ? value as Record<string, unknown> : {};
-}
-
-function booleanLabel(value: unknown) {
-    if (value === true || value === "true") return "开启";
-    if (value === false || value === "false") return "关闭";
-    return "";
 }
 
 function formatTaskTime(value?: string) {

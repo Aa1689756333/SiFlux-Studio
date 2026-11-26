@@ -1,8 +1,7 @@
-import { hideAgentDirectorMcp, IMAGE_ONLY_RELEASE } from "@/lib/release-flags";
-import { AudioLines, BarChart3, Bot, Box, ChevronRight, Home, Image as ImageIcon, MessageSquare, Plug, Plus, Settings2, HardDrive, Sun, Moon, Video } from "lucide-react";
+﻿import { Bot, ChevronRight, Image as ImageIcon, Settings2, Sun, Moon } from "lucide-react";
 import { LayoutGroup, motion, useReducedMotion } from "motion/react";
 import { useEffect, useMemo, useRef, useState, type ComponentType, type CSSProperties } from "react";
-import { Link, useLocation, useNavigate, useSearchParams } from "react-router";
+import { Link, useLocation } from "react-router";
 
 import { WorkspaceSidebarUpdate } from "@/components/layout/workspace-sidebar-update";
 import { WorkspaceSidebarSocialLinks } from "@/components/layout/workspace-sidebar-social-links";
@@ -11,9 +10,7 @@ import { navigationTools, type NavigationToolSlug } from "@/constant/navigation-
 import { aceternityMotion } from "@/lib/aceternity-motion";
 import { cn } from "@/lib/utils";
 import { preloadWorkspaceRoute } from "@/lib/workspace-route-modules";
-import { useUserStore, type FeatureAvailability } from "@/stores/use-user-store";
 import { useThemeStore } from "@/stores/use-theme-store";
-import { getDesktopAppBinding } from "@/services/desktop-runtime";
 import { AnimatedThemeToggler } from "@/components/ui/animated-theme-toggler";
 
 export type WorkspaceNavItem = {
@@ -38,42 +35,24 @@ function toolItem(slug: NavigationToolSlug, to: string): WorkspaceNavItem {
     return { id: slug, title: tool?.label ?? slug, icon: tool?.icon, to };
 }
 
-function buildNav(features: FeatureAvailability): { groups: WorkspaceNavGroup[]; footer: WorkspaceNavItem[] } {
-    const groups: WorkspaceNavGroup[] = [
-        {
-            items: [
-                { id: "new", title: "新建画布", icon: Plus, to: "/canvas?mode=new" },
-            ],
-        },
-        {
-            items: [
-                { id: "home", title: "首页", icon: Home, to: "/" },
-                { id: "agent", title: "Agent助手", icon: Bot, to: "/agent" },
-                { id: "chat", title: "文本对话", icon: MessageSquare, to: "/chat" },
-                { id: "image", title: "图片生成", icon: ImageIcon, to: "/generate/image" },
-                { id: "audio", title: "音频生成", icon: AudioLines, to: "/generate/audio" },
-                { id: "video", title: "视频生成", icon: Video, to: "/generate/video" },
-                { id: "director", title: "3D 导演台", icon: Box, to: "/canvas?mode=new&start=director" },
-                { ...toolItem("canvas", "/project"), title: "项目库" },
-                { ...toolItem("assets", "/assets"), title: "资产" },
-                { id: "settings:channels", title: "模型配置", icon: Settings2, to: "/settings?section=channels" },
-                { id: "usage", title: "用量统计", icon: BarChart3, to: "/usage" },
-                ...(getDesktopAppBinding()?.StorageSettings ? [{ id: "settings:storage", title: "存储设置", icon: HardDrive, to: "/settings?section=storage" }] : []),
-                { id: "agents", title: "MCP", icon: Plug, to: "/agents" },
-            ],
-        },
-    ];
-
-    if (hideAgentDirectorMcp()) {
-        groups[1].items = groups[1].items.filter((item) => item.id !== "agents" && item.id !== "agent" && item.id !== "director");
-    }
-    if (IMAGE_ONLY_RELEASE) {
-        groups[1].items = groups[1].items.filter((item) => item.id !== "chat" && item.id !== "audio" && item.id !== "video");
-    }
-
-    // 管理、设置和退出登录不再占据参考站式侧栏底部，而是通过用户卡片菜单进入。
-    // 路由和写操作仍保留，避免把用户端导航变成无法访问的装饰。
-    return { groups, footer: [] };
+function buildNav(): { groups: WorkspaceNavGroup[]; footer: WorkspaceNavItem[] } {
+    return {
+        groups: [
+            { items: [
+                { id: "image", title: "生图", icon: ImageIcon, to: "/generate/image" },
+                { id: "agent", title: "Agent 生图", icon: Bot, to: "/agent" },
+            ] },
+            { heading: "工作区", items: [
+                toolItem("canvas", "/canvas"),
+                toolItem("assets", "/assets"),
+                { id: "settings", title: "设置", icon: Settings2, to: "/settings" },
+            ] },
+            { heading: "Agent 配置", items: [
+                toolItem("skills", "/skills"),
+                    ] },
+        ],
+        footer: [],
+    };
 }
 
 function NavItem({
@@ -239,16 +218,11 @@ export function WorkspaceSidebarNav({ onNavigate, onOpenSearch }: { onNavigate: 
     const theme = useThemeStore((state) => state.theme);
     const setTheme = useThemeStore((state) => state.setTheme);
     const { pathname } = useLocation();
-    const [searchParams] = useSearchParams();
     const collapsed = false;
-    const features = useUserStore((state) => state.features);
-    const { groups, footer } = useMemo(() => buildNav(features), [features]);
+    const { groups, footer } = useMemo(buildNav, []);
 
-    const rawSlug = pathname.split("/").filter(Boolean)[0] || "home";
-    // `/project` is the LibTV-compatible alias for the existing canvas library route.
-    const slug = pathname.startsWith("/agents") ? "agents" : pathname.startsWith("/agent") ? "agent" : pathname.startsWith("/usage") ? "usage" : pathname.startsWith("/chat") ? "chat" : pathname.startsWith("/generate/audio") ? "audio" : pathname.startsWith("/generate/video") ? "video" : pathname.startsWith("/generate/image") ? "image" : pathname.startsWith("/canvas") && searchParams.get("start") === "director" ? "director" : rawSlug === "project" ? "canvas" : rawSlug;
-    const section = searchParams.get("section");
-    const activeId = slug === "settings" && section ? `settings:${section}` : slug;
+    const rawSlug = pathname.split("/").filter(Boolean)[0] || "image";
+    const activeId = pathname.startsWith("/generate/image") ? "image" : rawSlug === "project" || rawSlug === "projects" ? "canvas" : rawSlug;
 
     const scrollRef = useRef<HTMLDivElement>(null);
     const [scrollState, setScrollState] = useState({ hasTopFade: false, hasBottomFade: false });

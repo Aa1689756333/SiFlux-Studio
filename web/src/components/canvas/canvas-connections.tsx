@@ -3,16 +3,12 @@ import type { MouseEvent as ReactMouseEvent } from "react";
 
 import { canvasThemes } from "@/lib/canvas-theme";
 import { useActiveTheme } from "@/stores/canvas/use-canvas-theme-store";
-import { STORYBOARD_HEADER_HEIGHT, STORYBOARD_ROW_HEIGHT, storyboardTableHeight } from "@/lib/canvas/canvas-storyboard-layout";
-import { batchReferenceHandleY } from "@/lib/canvas/canvas-batch-table";
 import type { CanvasConnection, CanvasNodeData, ConnectionHandle, Position } from "@/types/canvas";
 
 export const ConnectionPath = React.memo(function ConnectionPath({
     connection,
     from,
     to,
-    fromScrollTop = 0,
-    toScrollTop = 0,
     active,
     visualMode = "full",
     hideVisual = false,
@@ -22,8 +18,6 @@ export const ConnectionPath = React.memo(function ConnectionPath({
     connection: CanvasConnection;
     from: CanvasNodeData;
     to: CanvasNodeData;
-    fromScrollTop?: number;
-    toScrollTop?: number;
     active: boolean;
     visualMode?: "full" | "hover-only";
     hideVisual?: boolean;
@@ -32,7 +26,7 @@ export const ConnectionPath = React.memo(function ConnectionPath({
 }) {
     const theme = canvasThemes[useActiveTheme()];
     const [hovered, setHovered] = useState(false);
-    const { pathD, startX, startY, endX, endY } = canvasConnectionPath(connection, from, to, fromScrollTop, toScrollTop);
+    const { pathD, startX, startY, endX, endY } = canvasConnectionPath(connection, from, to);
     const emphasized = active || hovered;
     // The public read-only LibTV overview uses hairline, low-contrast graph
     // wires at 10% zoom. Keep the fixture's wires visually faithful without
@@ -147,14 +141,14 @@ export const ConnectionPath = React.memo(function ConnectionPath({
             /> : null}
         </g>
     );
-}, (previous, next) => previous.connection === next.connection && previous.from === next.from && previous.to === next.to && previous.active === next.active && previous.visualMode === next.visualMode && previous.hideVisual === next.hideVisual && previous.fromScrollTop === next.fromScrollTop && previous.toScrollTop === next.toScrollTop);
+}, (previous, next) => previous.connection === next.connection && previous.from === next.from && previous.to === next.to && previous.active === next.active && previous.visualMode === next.visualMode && previous.hideVisual === next.hideVisual);
 
-export function canvasConnectionPath(connection: CanvasConnection, from: CanvasNodeData, to: CanvasNodeData, fromScrollTop = 0, toScrollTop = 0) {
+export function canvasConnectionPath(connection: CanvasConnection, from: CanvasNodeData, to: CanvasNodeData) {
     if (connection.pathD) return { pathD: connection.pathD, startX: from.position.x + from.width, startY: from.position.y + from.height / 2, endX: to.position.x, endY: to.position.y + to.height / 2 };
     const startX = from.position.x + from.width;
-    const startY = connectionHandleY(from, connection.fromHandleId, fromScrollTop);
+    const startY = connectionHandleY(from);
     const endX = to.position.x;
-    const endY = connectionHandleY(to, connection.toHandleId, toScrollTop);
+    const endY = connectionHandleY(to);
     const dx = Math.abs(endX - startX);
     const curvature = Math.max(dx * 0.5, 50);
     return { pathD: `M ${startX} ${startY} C ${startX + curvature} ${startY}, ${endX - curvature} ${endY}, ${endX} ${endY}`, startX, startY, endX, endY };
@@ -164,12 +158,12 @@ export function shouldShowConnectionVisual({ visualMode, hovered, hideVisual }: 
     return !hideVisual && (visualMode === "full" || hovered);
 }
 
-export function activeConnectionPath(node: CanvasNodeData | undefined, handle: ConnectionHandle, mouseWorld: Position, target?: CanvasNodeData, nodeScrollTop = 0) {
+export function activeConnectionPath(node: CanvasNodeData | undefined, handle: ConnectionHandle, mouseWorld: Position, target?: CanvasNodeData) {
     if (!node) return "";
     const startX = handle.handleType === "source" ? node.position.x + node.width : mouseWorld.x;
-    const startY = handle.handleType === "source" ? connectionHandleY(node, handle.handleId, nodeScrollTop) : mouseWorld.y;
+    const startY = handle.handleType === "source" ? connectionHandleY(node) : mouseWorld.y;
     const endX = handle.handleType === "source" ? mouseWorld.x : node.position.x;
-    const endY = handle.handleType === "source" ? mouseWorld.y : connectionHandleY(node, handle.handleId, nodeScrollTop);
+    const endY = handle.handleType === "source" ? mouseWorld.y : connectionHandleY(node);
     const snappedStartX = handle.handleType === "target" && target ? target.position.x + target.width : startX;
     const snappedStartY = handle.handleType === "target" && target ? connectionHandleY(target) : startY;
     const snappedEndX = handle.handleType === "source" && target ? target.position.x : endX;
@@ -181,20 +175,9 @@ export function activeConnectionPath(node: CanvasNodeData | undefined, handle: C
 /**
  * 连线在节点上的接入 Y。
  *
- * 单端口的一侧（左右各一个出入口，除分镜脚本外都是）**永远取边的正中**：
- * 之前按鼠标落点比例取 Y，多条线接同一个端口就会沿着边散开，视觉上像节点有很多端口。
- * 真正的多端口只存在于分镜脚本的 `row:` 句柄；普通节点始终连接到边缘
- * 垂直中心，避免同一个节点因鼠标落点产生漂移的“伪端口”。
+ * 单端口的一侧（左右各一个出入口）**永远取边的正中**：之前按鼠标落点比例取 Y，
+ * 多条线接同一个端口就会沿着边散开，视觉上像节点有很多端口。
  */
-export function connectionHandleY(node: CanvasNodeData, handleId?: string, scrollTop = 0) {
-    const batchY = batchReferenceHandleY(node, handleId);
-    if (batchY !== undefined) return batchY;
-    if (handleId === "storyboard:context") return node.position.y + node.height - (node.metadata?.storyboardComposerHeight || 104) / 2;
-    if (!handleId?.startsWith("row:")) return node.position.y + node.height / 2;
-    const rowId = handleId.slice(4);
-    const index = (node.metadata?.storyboard?.rows || []).findIndex((row) => row.id === rowId);
-    if (index < 0) return node.position.y + node.height / 2;
-    const tableHeight = storyboardTableHeight(node.height, node.metadata?.storyboardComposerHeight);
-    const localY = Math.min(Math.max(index * STORYBOARD_ROW_HEIGHT + STORYBOARD_ROW_HEIGHT / 2 - scrollTop, 4), tableHeight - 4);
-    return node.position.y + STORYBOARD_HEADER_HEIGHT + localY;
+export function connectionHandleY(node: CanvasNodeData) {
+    return node.position.y + node.height / 2;
 }

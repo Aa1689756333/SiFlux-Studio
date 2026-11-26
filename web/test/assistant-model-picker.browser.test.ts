@@ -1,4 +1,4 @@
-import { afterAll, beforeAll, beforeEach, expect, test } from "bun:test";
+﻿import { afterAll, beforeAll, beforeEach, expect, test } from "bun:test";
 import { existsSync } from "node:fs";
 import { chromium, type Browser } from "playwright";
 import { createModelChannel, defaultConfig } from "@/stores/use-config-store";
@@ -13,9 +13,6 @@ let submitted: string[] = [];
 let failSave = false;
 let release: (() => void) | undefined;
 let holdSave = false;
-let connectionState = "disconnected";
-let disconnectCalls = 0;
-let catalogReadFailures = 0;
 beforeEach(() => { saved = structuredClone(initial); writes = 0; submitted = []; failSave = false; holdSave = false; release = undefined; });
 beforeAll(async () => {
     const build = await Bun.build({ entrypoints: [import.meta.dir + "/fixtures/assistant-model-picker-harness.tsx"], target: "browser", define: { "import.meta.env.DEV": "false", "import.meta.env.PROD": "true", "import.meta.env.MODE": '"production"', "import.meta.env.VITE_CANVAS_LOCAL_MODE": '"true"', "import.meta.env.VITE_CANVAS_BACKEND_URL": '"/api"', "process.env.NODE_ENV": '"production"' }, plugins: [{ name: "source", setup(builder) {
@@ -33,7 +30,6 @@ beforeAll(async () => {
         if (path === "/harness.js") return new Response(js, { headers: { "Content-Type": "application/javascript" } });
         if (path === "/harness.css") return new Response(css, { headers: { "Content-Type": "text/css" } });
         if (path.includes("model-config")) {
-            if (req.method === "GET" && catalogReadFailures > 0) { catalogReadFailures--; return Response.json({ code: 500, msg: "Synthetic catalog read failure" }, { status: 500 }); }
             if (req.method === "GET") return ok({ config: saved, revision: writes });
             writes++;
             if (holdSave) await new Promise<void>(resolve => { release = resolve; });
@@ -41,9 +37,6 @@ beforeAll(async () => {
             const body = await req.json(); saved = body.config;
             return ok({ saved: true, revision: writes });
         }
-        if (path.endsWith("/beefapi/connection/start")) { connectionState = "connected"; saved.assistantModel = "beefapi::gpt-6-astra"; catalogReadFailures = 1; return ok({ state: connectionState }); }
-        if (path.endsWith("/beefapi/connection/disconnect")) { disconnectCalls++; connectionState = "disconnected"; return ok({ state: connectionState }); }
-        if (path.endsWith("/beefapi/connection")) return ok({ state: connectionState });
         if (path.endsWith("/assistant/ui-session")) return ok({ token: "synthetic-only", expiresAt: new Date(Date.now() + 1800000).toISOString() });
         if (path.endsWith("/assistant/status")) return ok({ available: true, model: { id: saved.assistantModel.split("::")[1], channelId: "beefapi" } });
         if (path.endsWith("/assistant/history")) return ok({ sessionId: "s1", turns: [] });
@@ -56,32 +49,6 @@ beforeAll(async () => {
     browser = await chromium.launch({ executablePath, headless: true });
 }, 60000);
 afterAll(async () => { release?.(); await browser?.close(); server?.stop(true); });
-
-test("connected account can disconnect and expose the authorization action again", async () => {
-    connectionState = "connected"; catalogReadFailures = 0; disconnectCalls = 0;
-    const page = await browser.newPage({ viewport: { width: 390, height: 700 } });
-    try {
-        await page.goto(new URL("/settings", server.url).toString());
-        await page.getByRole("button", { name: "断开连接", exact: true }).click();
-        const connect = page.locator("button:not(.ant-btn-loading)").filter({ hasText: /^连接 BeefTV$/ });
-        await connect.waitFor({ timeout: 5000 });
-        expect(disconnectCalls).toBe(1);
-        expect(connectionState).toBe("disconnected");
-        expect(await connect.isEnabled()).toBe(true);
-    } finally { await page.close(); }
-}, 30000);
-
-test("settings retries failed connected catalog read and retains authorization default intent", async () => {
-    connectionState = "disconnected"; catalogReadFailures = 0;
-    const page = await browser.newPage(); await page.goto(new URL("/settings", server.url).toString());
-    await page.getByRole("button", { name: "连接 BeefTV", exact: true }).click();
-    const retry = page.getByRole("button", { name: "重试更新模型列表" });
-    await retry.waitFor(); await retry.click();
-    await retry.waitFor({ state: "hidden" });
-    await page.getByRole("combobox", { name: "助手模型" }).click();
-    expect(await page.locator('.ant-select-item-option-selected').innerText()).toContain("gpt-6-astra");
-    await page.close();
-}, 30000);
 
 test("picker keyboard selection persists, respects busy and fits both themes at 390px", async () => {
     const page = await browser.newPage({ viewport: { width: 390, height: 700 } });

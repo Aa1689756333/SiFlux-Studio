@@ -3,9 +3,14 @@ package app
 import "testing"
 
 func TestCanvasCapabilityAliasesKeepMediaModes(t *testing.T) {
-	for _, mode := range []string{"image", "video", "audio"} {
+	for _, mode := range []string{"image"} {
 		if !generationModeSupported(mode) || !cloudAgentGenerationModeSupported(mode) {
 			t.Fatalf("%s must remain a supported generation mode for the local catalog", mode)
+		}
+	}
+	for _, mode := range []string{"video", "audio"} {
+		if generationModeSupported(mode) || cloudAgentGenerationModeSupported(mode) {
+			t.Fatalf("%s generation mode was removed from the canvas registry", mode)
 		}
 	}
 	if generationModeSupported("table-render") || cloudAgentGenerationModeSupported("table-render") {

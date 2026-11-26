@@ -27,7 +27,7 @@ const ordinaryChannel = {
 };
 
 const managedEnterprise = {
-    baseUrl: "https://enterprise.beefapi.com",
+    baseUrl: "https://api.siflux.cn",
     apiKey: "",
     apiFormat: "openai" as const,
     credentialRef: MANAGED_BEEFAPI_CREDENTIAL_REF,
@@ -52,15 +52,15 @@ test("Mac Wails ordinary custom channels call the configured upstream directly",
 
 test("Mac Wails managed enterprise is backend-relayed without a WebView secret", () => {
     stubLocation({ protocol: "wails:" });
-    const request = channelRequest(managedEnterprise, "https://enterprise.beefapi.com/v1/models");
-    expectBackendRelay(request, "https://enterprise.beefapi.com/v1/models", "https://enterprise.beefapi.com");
+    const request = channelRequest(managedEnterprise, "https://api.siflux.cn/v1/models");
+    expectBackendRelay(request, "https://api.siflux.cn/v1/models", "https://api.siflux.cn");
     expect(request.headers.authorization).toBe("Bearer");
 });
 
 test("Mac Wails enterprise host without credentialRef is still backend-relayed", () => {
     stubLocation({ protocol: "wails:" });
-    const request = channelRequest({ baseUrl: "https://enterprise.beefapi.com", apiKey: "", apiFormat: "openai" }, "https://enterprise.beefapi.com/v1/models");
-    expectBackendRelay(request, "https://enterprise.beefapi.com/v1/models", "https://enterprise.beefapi.com");
+    const request = channelRequest({ baseUrl: "https://api.siflux.cn", apiKey: "", apiFormat: "openai" }, "https://api.siflux.cn/v1/models");
+    expectBackendRelay(request, "https://api.siflux.cn/v1/models", "https://api.siflux.cn");
 });
 
 test("Windows Wails ordinary custom channels are backend-relayed for CORS", () => {
@@ -74,8 +74,8 @@ test("Windows Wails ordinary custom channels are backend-relayed for CORS", () =
 
 test("Windows Wails managed enterprise is backend-relayed without a WebView secret", () => {
     stubLocation({ protocol: "http:", hostname: "wails.localhost" });
-    const request = channelRequest(managedEnterprise, "https://enterprise.beefapi.com/v1/models");
-    expectBackendRelay(request, "https://enterprise.beefapi.com/v1/models", "https://enterprise.beefapi.com");
+    const request = channelRequest(managedEnterprise, "https://api.siflux.cn/v1/models");
+    expectBackendRelay(request, "https://api.siflux.cn/v1/models", "https://api.siflux.cn");
     expect(request.headers.authorization).toBe("Bearer");
 });
 
@@ -83,13 +83,13 @@ test("lookalike enterprise hosts are not treated as the managed origin", () => {
     stubLocation({ protocol: "wails:" });
     const request = channelRequest(
         {
-            baseUrl: "https://enterprise.beefapi.com.attacker.example",
+            baseUrl: "https://api.siflux.cn.attacker.example",
             apiKey: "user-key",
             apiFormat: "openai",
         },
-        "https://enterprise.beefapi.com.attacker.example/v1/models",
+        "https://api.siflux.cn.attacker.example/v1/models",
     );
-    expect(request.url).toBe("https://enterprise.beefapi.com.attacker.example/v1/models");
+    expect(request.url).toBe("https://api.siflux.cn.attacker.example/v1/models");
     expect(request.credentials).toBe("omit");
     expect(request.headers["x-canvas-upstream-url"]).toBeUndefined();
     expect(request.headers.authorization).toBe("Bearer user-key");

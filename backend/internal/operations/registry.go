@@ -226,13 +226,6 @@ func (r *Registry) Execute(req Request) (Result, error) {
 			return Result{}, InvalidArg("effect_identity_mismatch", "写操作 opId 必须是 attach-node:任务:节点:输出序号")
 		}
 	}
-	if op.ID == "conversation.message.attach" {
-		if key := messageEffectKey(params); key == "" {
-			return Result{}, InvalidArg("invalid_params", "conversationId、taskId、messageId 必填")
-		} else if opID != key {
-			return Result{}, InvalidArg("effect_identity_mismatch", "写操作 opId 必须是 attach-message:任务:消息:输出序号")
-		}
-	}
 	if op.ReadOnly && strings.TrimSpace(req.OpID) != "" {
 		return Result{}, InvalidArg("unexpected_op_id", "只读操作不支持 opId")
 	}

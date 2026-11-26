@@ -95,12 +95,9 @@ export function useCanvasKeyboard({
         const handleKeyDown = (event: KeyboardEvent) => {
             // Unconsumed Backspace is a history back in the desktop webview and
             // leaves the canvas route. Consume the default before any early
-            // return below (director, node toolbar, canvas controls) but keep
+            // return below (node toolbar, canvas controls) but keep
             // propagation so their own handlers still receive the key.
             if ((event.key === "Delete" || event.key === "Backspace") && !isTextEditableTarget(event.target)) event.preventDefault();
-            // Runtime guard complements the React `enabled` flag: the workbench
-            // owns keyboard input whenever mounted, regardless of stale canvas selection.
-            if (document.querySelector("[data-director-workbench='true']")) return;
             const target = event.target instanceof Element ? event.target : null;
             if (target?.closest(".canvas-node-toolbar, .canvas-node-toolbar-menu")) return;
             const key = event.key.toLowerCase();

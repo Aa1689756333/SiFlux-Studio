@@ -1,4 +1,4 @@
-#!/usr/bin/env python3
+﻿#!/usr/bin/env python3
 """Wrap the existing release payload; updater ZIPs remain unchanged."""
 import argparse
 from pathlib import Path
@@ -66,10 +66,7 @@ def package(version, platform, payload, output):
             icons = stage / 'usr/share/pixmaps'
             icons.mkdir(parents=True)
             shutil.copy2(ROOT / 'assets/app-icon.png', icons / 'siflux.png')
-            bins = stage / 'usr/bin'
-            bins.mkdir(parents=True)
-            (bins / 'siflux').symlink_to('/opt/siflux/SiFlux-linux/cli/siflux')
-            # copytree keeps build modes, including Node and bundled CLI executables.
+            # copytree keeps build modes, including bundled runtime executables.
             for path in stage.rglob('*'):
                 if path.is_dir():
                     path.chmod(0o755)

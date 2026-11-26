@@ -56,36 +56,15 @@ describe("parseAssetRecord", () => {
     test("parseAssetRecordList names the failing record", () => {
         expect(() => parseAssetRecordList([{ ...completeImage, id: "bad", tags: undefined }])).toThrow(/素材 bad/);
     });
+
+    test("rejects removed video and audio kinds instead of coercing them", () => {
+        expect(() => parseAssetRecord({ ...completeImage, kind: "video" })).toThrow(/不支持的素材类型 video/);
+        expect(() => parseAssetRecord({ ...completeImage, kind: "audio" })).toThrow(/不支持的素材类型 audio/);
+    });
 });
 
-const completeVideo = {
-    id: "video-1",
-    kind: "video",
-    title: "生成视频",
-    coverUrl: "https://example.com/a.mp4",
-    tags: ["生成"],
-    createdAt: "2026-08-29T00:00:00.000Z",
-    updatedAt: "2026-08-29T00:00:00.000Z",
-    data: { url: "https://example.com/a.mp4", width: 720, height: 1280, bytes: 1, mimeType: "video/mp4" },
-};
-
-describe("parseAssetRecord 视频尺寸", () => {
-    test("宽高未知（0）放行，视频照常入库", () => {
-        const parsed = parseAssetRecord({ ...completeVideo, data: { ...completeVideo.data, width: 0, height: 0 } });
-        expect(parsed.kind).toBe("video");
-        if (parsed.kind === "video") {
-            expect(parsed.data.width).toBe(0);
-            expect(parsed.data.height).toBe(0);
-        }
-    });
-
-    test("负数与非法值仍然拒", () => {
-        expect(() => parseAssetRecord({ ...completeVideo, data: { ...completeVideo.data, width: -1 } })).toThrow(/width/);
-        expect(() => parseAssetRecord({ ...completeVideo, data: { ...completeVideo.data, height: Number.NaN } })).toThrow(/height/);
-        expect(() => parseAssetRecord({ ...completeVideo, data: { ...completeVideo.data, width: "720" } })).toThrow(/width/);
-    });
-
-    test("图片不受影响：零尺寸仍然拒", () => {
+describe("parseAssetRecord 图片尺寸", () => {
+    test("零尺寸图片仍然拒", () => {
         expect(() => parseAssetRecord({ ...completeImage, data: { ...completeImage.data, width: 0, height: 1 } })).toThrow(/width/);
     });
 });

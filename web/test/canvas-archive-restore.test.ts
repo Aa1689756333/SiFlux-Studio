@@ -7,7 +7,6 @@ import { setActiveUserScope } from "@/lib/user-scope";
 import { ARCHIVE_MAX_ENTRY_BYTES, ARCHIVE_MAX_FILES, ARCHIVE_MAX_TOTAL_BYTES, createZip } from "@/lib/zip";
 import type { CanvasProject } from "@/stores/canvas/use-canvas-store";
 import type { CanvasNodeData } from "@/types/canvas";
-import type { TimelineProject } from "@/types/timeline";
 
 const encoder = new TextEncoder();
 
@@ -15,11 +14,11 @@ afterEach(() => {
     globalThis.window = undefined as unknown as Window & typeof globalThis;
 });
 
-function videoNode(storageKey = "video:clip"): CanvasNodeData {
+function imageNode(storageKey = "image:clip"): CanvasNodeData {
     return {
-        id: "n-video",
-        type: "video",
-        title: "镜头",
+        id: "n-image",
+        type: "image",
+        title: "主图",
         position: { x: 0, y: 0 },
         width: 320,
         height: 180,
@@ -32,18 +31,6 @@ function videoNode(storageKey = "video:clip"): CanvasNodeData {
     };
 }
 
-function drawingNode(): CanvasNodeData {
-    return {
-        id: "n-drawing",
-        type: "drawing",
-        title: "分镜手稿",
-        position: { x: 40, y: 0 },
-        width: 240,
-        height: 240,
-        metadata: { drawingId: "sketch" },
-    };
-}
-
 function textNode(): CanvasNodeData {
     return {
         id: "n-text",
@@ -53,23 +40,6 @@ function textNode(): CanvasNodeData {
         width: 200,
         height: 80,
         metadata: { content: "data:image/png;base64,not-a-file" },
-    };
-}
-
-function timeline(): TimelineProject {
-    return {
-        version: 2,
-        durationMs: 1000,
-        tracks: [{ id: "voice", kind: "audio", label: "配音", order: 0 }],
-        clips: [{
-            id: "c1",
-            kind: "audio",
-            nodeId: "n-video",
-            trackId: "voice",
-            startMs: 0,
-            durationMs: 1000,
-            directMedia: { id: "m1", kind: "audio", title: "配音", storageKey: "audio:voice", url: "blob:expired", assetId: "source-clip-asset" },
-        }],
     };
 }
 
@@ -86,43 +56,29 @@ function archiveData(overrides: Record<string, unknown> = {}) {
                 projectId: "source-business",
                 folderId: "folder-old",
                 title: "测试画布",
-                nodes: [videoNode(), drawingNode(), textNode()],
+                nodes: [imageNode(), textNode()],
                 connections: [],
-                timeline: timeline(),
             },
             files: [
-                { storageKey: "video:clip", path: "projects/old-canvas/files/clip.mp4", mimeType: "video/mp4", bytes: 4 },
-                { storageKey: "audio:voice", path: "projects/old-canvas/files/voice.wav", mimeType: "audio/wav", bytes: 5 },
+                { storageKey: "image:clip", path: "projects/old-canvas/files/clip.png", mimeType: "image/png", bytes: 4 },
             ],
-            drawingDocuments: [{
-                drawingId: "sketch",
-                version: 2,
-                engine: "excalidraw",
-                snapshot: { elements: [] },
-                revision: 2,
-                updatedAt: "2026-10-02T00:00:00.000Z",
-                shapeCount: 1,
-                pageCount: 1,
-            }],
         }],
         ...overrides,
     };
 }
 
-async function validZip(data = archiveData()) {
-    return createZip([
-        { name: "projects.json", data: JSON.stringify(data) },
-        { name: "projects/old-canvas/files/clip.mp4", data: new Uint8Array([1, 2, 3, 4]) },
-        { name: "projects/old-canvas/files/voice.wav", data: "voice" },
-    ]);
+async function validZip(data: { projects: Array<{ files?: Array<{ path: string }> }> } = archiveData()) {
+    const entries: Array<{ name: string; data: string | Uint8Array }> = [{ name: "projects.json", data: JSON.stringify(data) }];
+    for (const project of data.projects) {
+        for (const file of project.files ?? []) entries.push({ name: file.path, data: new Uint8Array([1, 2, 3, 4]) });
+    }
+    return createZip(entries);
 }
 
 function memoryHost(overrides: Partial<CanvasArchiveRestoreHost> = {}) {
     const folders: Array<{ id: string; name: string }> = [];
     const projects: CanvasProject[] = [];
     const media = new Map<string, Uint8Array>();
-    const drawings: string[] = [];
-    const drawingSnapshots = new Map<string, unknown>();
     const deleted: string[] = [];
     const deletedResources: string[] = [];
     const binds: Array<{ canvasId: string; node: CanvasNodeData }> = [];
@@ -159,8 +115,6 @@ function memoryHost(overrides: Partial<CanvasArchiveRestoreHost> = {}) {
                 backgroundMode: "dots",
                 showImageInfo: false,
                 viewport: { x: 0, y: 0, k: 1 },
-                directorScenes: project.directorScenes || [],
-                timeline: project.timeline,
             });
             return id;
         },
@@ -194,20 +148,12 @@ function memoryHost(overrides: Partial<CanvasArchiveRestoreHost> = {}) {
             binds.push(options);
             return `asset-${++assetSeq}`;
         },
-        saveDrawing: async (projectId, drawingId, _engine, snapshot) => {
-            drawings.push(`${projectId}:${drawingId}`);
-            drawingSnapshots.set(`${projectId}:${drawingId}`, snapshot);
-            return { version: 2, engine: "excalidraw", snapshot, revision: 1, updatedAt: "2026-10-02T00:00:00.000Z", shapeCount: 0, pageCount: 1 };
-        },
-        loadDrawing: async (projectId, drawingId) => (
-            drawings.includes(`${projectId}:${drawingId}`) ? { drawingId, revision: 1, snapshot: drawingSnapshots.get(`${projectId}:${drawingId}`) } : null
-        ),
         deleteResource: async (resourceId) => {
             deletedResources.push(resourceId);
         },
         ...overrides,
     };
-    return { host, folders, projects, media, drawings, deleted, deletedResources, binds, idempotencyKeys };
+    return { host, folders, projects, media, deleted, deletedResources, binds, idempotencyKeys };
 }
 
 test("preflight rejects missing media, invalid project, version, duplicate IDs, and data/blob keys before writes", async () => {
@@ -225,12 +171,12 @@ test("preflight rejects missing media, invalid project, version, duplicate IDs, 
             app: "infinite-canvas",
             version: 4,
             projects: [{
-                project: { id: "broken", title: "损坏画布", nodes: [videoNode()], connections: [] },
-                files: [{ storageKey: "video:clip", path: "projects/broken/files/missing.mp4", mimeType: "video/mp4", bytes: 3 }],
+                project: { id: "broken", title: "损坏画布", nodes: [imageNode()], connections: [] },
+                files: [{ storageKey: "image:clip", path: "projects/broken/files/missing.png", mimeType: "image/png", bytes: 3 }],
             }],
         }),
     }]);
-    await expect(restoreCanvasArchive(missing, host)).rejects.toThrow("missing.mp4");
+    await expect(restoreCanvasArchive(missing, host)).rejects.toThrow("missing.png");
     expect(writes).toEqual([]);
 
     const invalidProject = await createZip([{
@@ -258,23 +204,6 @@ test("preflight rejects missing media, invalid project, version, duplicate IDs, 
     }]);
     await expect(openCanvasArchive(duplicate)).rejects.toThrow("重复的画布");
 
-    const duplicateDrawing = await createZip([{
-        name: "projects.json",
-        data: JSON.stringify({
-            app: "infinite-canvas",
-            version: 4,
-            projects: [{
-                project: { id: "drawn", title: "重复画板", nodes: [drawingNode()], connections: [] },
-                files: [],
-                drawingDocuments: [
-                    { drawingId: "sketch", version: 2, engine: "excalidraw", snapshot: {}, revision: 1, updatedAt: "2026-10-02T00:00:00.000Z", shapeCount: 0, pageCount: 1 },
-                    { drawingId: "sketch", version: 2, engine: "excalidraw", snapshot: {}, revision: 1, updatedAt: "2026-10-02T00:00:00.000Z", shapeCount: 0, pageCount: 1 },
-                ],
-            }],
-        }),
-    }]);
-    await expect(openCanvasArchive(duplicateDrawing)).rejects.toThrow("重复画板");
-
     const dataKey = await createZip([
         {
             name: "projects.json",
@@ -282,7 +211,7 @@ test("preflight rejects missing media, invalid project, version, duplicate IDs, 
                 app: "infinite-canvas",
                 version: 4,
                 projects: [{
-                    project: { id: "data", title: "内嵌", nodes: [{ ...videoNode(), metadata: { storageKey: "data:image/png;base64,AAAA" } }], connections: [] },
+                    project: { id: "data", title: "内嵌", nodes: [{ ...imageNode(), metadata: { storageKey: "data:image/png;base64,AAAA" } }], connections: [] },
                     files: [{ storageKey: "data:image/png;base64,AAAA", path: "a.bin", mimeType: "image/png", bytes: 1 }],
                 }],
             }),
@@ -308,8 +237,8 @@ test("zip traversal and duplicate confined paths fail before restore writes", as
     await expect(createZip([{ name: "same", data: "A" }, { name: "same", data: "B" }])).rejects.toThrow("重名文件");
 });
 
-test("production restore remaps media and timeline, preserves drawings, and ignores prompt data/blob strings", async () => {
-    const { host, folders, projects, media, drawings, binds } = memoryHost();
+test("production restore remaps media and ignores prompt data/blob strings", async () => {
+    const { host, folders, projects, media, binds } = memoryHost();
     const result = await restoreCanvasArchive(await validZip(), host);
     expect(result.storage).toBe("backend");
     expect(result.count).toBe(1);
@@ -321,7 +250,7 @@ test("production restore remaps media and timeline, preserves drawings, and igno
     expect(projects[0].workspaceProjectId).toBe("imported-1");
     expect(projects[0].projectId).toBeFalsy();
     expect(projects[0].folderId).toBe("folder-1");
-    const node = projects[0].nodes.find((item) => item.type === "video")!;
+    const node = projects[0].nodes.find((item) => item.type === "image")!;
     expect(node.metadata?.storageKey).toStartWith("resource:");
     expect(node.metadata?.content).toStartWith("/api/resources/");
     expect(node.metadata?.prompt).toContain("data:image/png");
@@ -329,14 +258,8 @@ test("production restore remaps media and timeline, preserves drawings, and igno
     expect(node.metadata?.assetId).not.toBe("source-asset");
     const text = projects[0].nodes.find((item) => item.type === "text")!;
     expect(text.metadata?.content).toBe("data:image/png;base64,not-a-file");
-    const clip = projects[0].timeline?.clips[0].directMedia;
-    expect(clip?.storageKey).toStartWith("resource:");
-    expect(clip?.url).toStartWith("/api/resources/");
-    expect(clip?.assetId).toBe("asset-2");
-    expect(clip?.assetId).not.toBe("source-clip-asset");
     expect(binds.every((item) => !item.node.metadata?.assetId)).toBe(true);
-    expect([...media.keys()]).toHaveLength(2);
-    expect(drawings).toEqual(["imported-1:sketch"]);
+    expect([...media.keys()]).toHaveLength(1);
 });
 
 test("persist failure does not report saved and rolls back this attempt", async () => {
@@ -362,12 +285,12 @@ test("retrying a valid archive creates new IDs and never reuses archive workspac
     expect(one.projectIds[0]).not.toBe(two.projectIds[0]);
     expect(state.projects.map((project) => project.workspaceProjectId).sort()).toEqual(["imported-1", "imported-2"]);
     expect(state.projects.some((project) => project.id === "old-canvas" || project.workspaceProjectId === "old-workspace")).toBe(false);
-    expect(new Set([...one.resourceIds, ...two.resourceIds]).size).toBe(4);
+    expect(new Set([...one.resourceIds, ...two.resourceIds]).size).toBe(2);
 });
 
 test("archive media idempotency follows content, not source storage keys", async () => {
-    const same = new Blob([new Uint8Array([1, 2, 3, 4])], { type: "video/mp4" });
-    const changed = new Blob([new Uint8Array([1, 2, 3, 5])], { type: "video/mp4" });
+    const same = new Blob([new Uint8Array([1, 2, 3, 4])], { type: "image/png" });
+    const changed = new Blob([new Uint8Array([1, 2, 3, 5])], { type: "image/png" });
     const first = await archiveMediaIdempotencyKey(same);
     const retry = await archiveMediaIdempotencyKey(same);
     const next = await archiveMediaIdempotencyKey(changed);
@@ -378,71 +301,57 @@ test("archive media idempotency follows content, not source storage keys", async
 });
 
 test("readback mismatch is an explicit restore failure", () => {
-    const intended = {
+    const intended: Partial<CanvasProject> & Pick<CanvasProject, "id" | "nodes"> = {
         id: "imported-1",
         folderId: "folder-1",
-        nodes: [videoNode("resource:new")],
-        timeline: timeline(),
+        nodes: [imageNode("resource:new")],
     };
     expect(() => assertRestoredCanvasMatches(intended, { ...intended, id: "other" } as CanvasProject)).toThrow("画布未保存到工作区");
     expect(() => assertRestoredCanvasMatches(intended, { ...intended, folderId: "other" } as CanvasProject)).toThrow("画布文件夹未保存到工作区");
-    expect(() => assertRestoredCanvasMatches(intended, { ...intended, timeline: undefined } as CanvasProject)).toThrow("画布时间线未保存到工作区");
+    expect(() => assertRestoredCanvasMatches(intended, { ...intended, nodes: [imageNode("resource:other")] } as CanvasProject)).toThrow("画布媒体未保存到工作区");
 });
 
-test("restore readback rejects missing text, layout, or director content even with identical media references", () => {
-    const intended = { id: "canvas", title: "原文", nodes: [textNode()], connections: [], directorScenes: [{ id: "scene", title: "场景" }] } as CanvasProject;
+test("restore readback rejects missing text, layout, or connection content even with identical media references", () => {
+    const intended = { id: "canvas", title: "原文", nodes: [textNode()], connections: [] } as unknown as CanvasProject;
     for (const patch of [
         { title: "旧标题" },
         { nodes: [{ ...textNode(), metadata: { content: "丢失的正文" } }] },
         { nodes: [{ ...textNode(), position: { x: 99, y: 99 } }] },
-        { directorScenes: [] },
         { connections: [{ id: "unexpected", source: "a", target: "b" }] },
     ]) expect(() => assertRestoredCanvasMatches(intended, { ...intended, ...patch })).toThrow("画布内容未完整保存到工作区");
     expect(() => assertRestoredCanvasMatches(intended, { ...intended, revision: 8, updatedAt: "server-time" })).not.toThrow();
 });
 
 test("canonical restore readback permits local viewport differences without relaxing browser readback", () => {
-    const intended = { id: "canvas", nodes: [textNode()], viewport: { x: -17, y: 280, k: 0.38 } } as CanvasProject;
+    const intended = { id: "canvas", nodes: [textNode()], viewport: { x: -17, y: 280, k: 0.38 } } as unknown as CanvasProject;
     const saved = { ...intended, viewport: { x: 0, y: 0, k: 1 } };
     expect(() => assertRestoredCanvasMatches(intended, saved, "backend")).not.toThrow();
     expect(() => assertRestoredCanvasMatches(intended, saved)).toThrow("画布内容未完整保存到工作区");
     expect(() => assertRestoredCanvasMatches(intended, { ...saved, nodes: [] }, "backend")).toThrow("画布内容未完整保存到工作区");
 });
 
-test("restore remaps director panorama, object, and screenshot media into the destination workspace", async () => {
-    const data = archiveData();
-    const project = data.projects[0].project as Partial<CanvasProject>;
-    project.directorScenes = [{
-        id: "scene", panorama: { storageKey: "video:clip", url: "blob:old", rotation: 0 },
-        objects: [{ id: "actor", storageKey: "video:clip", url: "blob:old", assetId: "old-asset" }],
-        shots: [{ id: "shot", screenshots: [{ id: "capture", storageKey: "audio:voice", url: "blob:old" }] }],
-    }] as CanvasProject["directorScenes"];
-    const state = memoryHost();
-    await restoreCanvasArchive(await validZip(data), state.host);
-    const scene = state.projects[0].directorScenes[0];
-    expect(scene.panorama?.storageKey).toStartWith("resource:");
-    expect(scene.panorama?.url).toStartWith("/api/resources/");
-    expect(scene.objects[0].assetId).toBeUndefined();
-    expect(scene.objects[0].url).toBe(scene.panorama?.url);
-    expect(scene.shots[0].screenshots?.[0].url).toStartWith("/api/resources/");
-});
-
 test("one immediate upload rejection waits for delayed success then cleans that artifact", async () => {
     let closed = false;
     let delayedDone = false;
     const activeProgress = new Set<string>();
+    const data = archiveData();
+    data.projects[0].project.nodes = [imageNode("image:clip"), { ...imageNode("image:extra"), id: "n-image-2", position: { x: 340, y: 0 } }];
+    data.projects[0].files = [
+        { storageKey: "image:clip", path: "projects/old-canvas/files/clip.png", mimeType: "image/png", bytes: 4 },
+        { storageKey: "image:extra", path: "projects/old-canvas/files/extra.png", mimeType: "image/png", bytes: 4 },
+    ];
     const { host, deleted, deletedResources, projects, folders } = memoryHost({
         onProjectProgress: (id, value) => { if (value) activeProgress.add(id); else activeProgress.delete(id); },
         uploadMedia: async (_blob, _kind, meta) => {
             if (closed) throw new Error("post-cleanup write");
-            if (meta.storageKey === "video:clip") throw new Error("upload-fail");
+            if (meta.storageKey === "image:clip") throw new Error("upload-fail");
             await new Promise((resolve) => setTimeout(resolve, 40));
             if (closed) throw new Error("post-cleanup write");
             delayedDone = true;
             return { storageKey: "resource:delayed", url: "/api/resources/delayed/file", resourceId: "delayed" };
         },
     });
-    await expect(restoreCanvasArchive(await validZip(), host)).rejects.toThrow("upload-fail");
+    await expect(restoreCanvasArchive(await validZip(data), host)).rejects.toThrow("upload-fail");
     expect(delayedDone).toBe(true);
     expect(deletedResources).toEqual(["delayed"]);
     expect(projects).toEqual([]);
@@ -476,41 +385,6 @@ test("failed durable cleanup preserves the visible imported project and reports 
     expect((failure as AggregateError).errors[1].message).toBe("delete-failed");
     expect(state.projects).toHaveLength(1);
     expect(state.deletedResources).toEqual([]);
-});
-
-test("drawing failure waits for all sibling writes before deleting the imported project", async () => {
-    const data = archiveData();
-    data.projects[0].drawingDocuments.push({ ...data.projects[0].drawingDocuments[0], drawingId: "delayed" });
-    let release!: () => void;
-    let started!: () => void;
-    const pending = new Promise<void>((resolve) => { release = resolve; });
-    const startedPromise = new Promise<void>((resolve) => { started = resolve; });
-    const events: string[] = [];
-    const state = memoryHost();
-    const save = state.host.saveDrawing;
-    const remove = state.host.deleteProjects;
-    state.host.saveDrawing = async (...args) => {
-        if (args[1] === "sketch") throw new Error("drawing-save-failed");
-        started();
-        await pending;
-        events.push("drawing-saved");
-        return save(...args);
-    };
-    state.host.deleteProjects = async (ids) => { events.push("cleanup"); await remove(ids); };
-    const completion = restoreCanvasArchive(await validZip(data), state.host).catch((error: unknown) => error);
-    await startedPromise;
-    expect(events).toEqual([]);
-    release();
-    const failure = await completion;
-    expect((failure as Error).message).toBe("drawing-save-failed");
-    expect(events).toEqual(["drawing-saved", "cleanup"]);
-    expect(state.projects).toEqual([]);
-});
-
-test("drawing receipt must contain the saved snapshot", async () => {
-    const state = memoryHost({ loadDrawing: async (_projectId, drawingId) => ({ drawingId, revision: 1 }) });
-    await expect(restoreCanvasArchive(await validZip(), state.host)).rejects.toThrow("画板未保存到工作区");
-    expect(state.projects).toEqual([]);
 });
 
 test("folder covers require archive bytes before any writes and restore under the new folder ID", async () => {

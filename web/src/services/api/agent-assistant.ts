@@ -1,4 +1,4 @@
-// 内置创作助手：浏览器只与同源 Go 代理通信，宿主/owner/模型凭据都不进入页面。
+﻿// 内置创作助手：浏览器只与同源 Go 代理通信，宿主/owner/模型凭据都不进入页面。
 // 三个端点的真实路径都在 /api/assistant/* 下；写错路径会让面板永远拿不到回复。
 import { ApiError, apiBaseURL, http } from "./request";
 import { assertUserScope, captureUserScope, userScopeMatches, type CapturedUserScope } from "@/lib/user-scope-guard";
@@ -53,7 +53,6 @@ export type AssistantTurnChange = {
     createdNodeIds: string[];
     updatedNodeIds: string[];
     createdEdgeIds: string[];
-    timelineUpdated?: boolean;
     deletedNodeIds?: string[];
     deletedEdgeIds?: string[];
     documentUpdated?: boolean;
@@ -65,7 +64,7 @@ export type AssistantCanvasChange = Omit<AssistantTurnChange, "canvasChanges"> &
 /** 付费生成提议：后端只登记，不生成、不扣费，执行发生在画布既有生成链路。 */
 export type AssistantGenerationProposal = {
     proposalId: string;
-    kind: "image" | "video";
+    kind: "image";
     nodeIds: string[];
     model: string;
     modelKey: string;
@@ -116,7 +115,7 @@ export type AssistantTurn = {
 };
 
 /** Trusted render receipts in creation order; task/resource access still uses owned APIs. */
-export type AssistantTurnOutput = { taskId: string; kind: "video"; sourceRevision?: number };
+export type AssistantTurnOutput = { taskId: string; kind: "image"; sourceRevision?: number };
 
 export type AssistantSessionSummary = {
     sessionId: string;
@@ -361,23 +360,20 @@ export type AgentChatReference = {
     id: string;
 };
 
-export type AssistantAttachmentPurpose = "analysis" | "character" | "scene" | "style" | "motion" | "first-frame" | "last-frame" | "rhythm" | "sound";
+export type AssistantAttachmentPurpose = "analysis" | "character" | "scene" | "style" | "first-frame" | "last-frame";
 export type AssistantAttachment = {
     resourceId: string;
-    kind: "image" | "video" | "audio";
+    kind: "image";
     name: string;
     mimeType: string;
     bytes: number;
     purpose: AssistantAttachmentPurpose;
-    start?: number;
-    end?: number;
-    durationMs?: number;
     nodeId?: string;
     assetId?: string;
 };
 /** Only persisted resource descriptors cross HTTP; never copy local preview/File data. */
-function attachmentRequestValue({ resourceId, kind, name, mimeType, bytes, purpose, start, end, durationMs, nodeId, assetId }: AssistantAttachment): AssistantAttachment {
-    return { resourceId, kind, name, mimeType, bytes, purpose, start, end, durationMs, nodeId, assetId };
+function attachmentRequestValue({ resourceId, kind, name, mimeType, bytes, purpose, nodeId, assetId }: AssistantAttachment): AssistantAttachment {
+    return { resourceId, kind, name, mimeType, bytes, purpose, nodeId, assetId };
 }
 /** skillName/version 是后端在选定时记下的显示名；缺失表示技能已不可识别，界面不得退回显示标识。 */
 export type AssistantSkillSelection = { skillId: string; versionId: string; contentHash: string; skillName?: string; version?: string };

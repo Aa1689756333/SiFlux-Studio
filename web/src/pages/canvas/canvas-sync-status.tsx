@@ -148,7 +148,7 @@ export function CanvasSyncDraftMenu({ projectId }: { projectId?: string }) {
                                   return;
                               }
                               setExporting(true);
-                              void exportCanvasProjects([draft.project], `${draft.project.title}-本地草稿`, { includeLocalDrawings: false })
+                              void exportCanvasProjects([draft.project], `${draft.project.title}-本地草稿`)
                                   .then((result) => {
                                       if (result === "saved") message.success("草稿已下载，可从画布列表导入为新画布");
                                   })

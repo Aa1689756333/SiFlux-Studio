@@ -11,7 +11,6 @@ import (
 
 	"gorm.io/gorm"
 
-	"infinite-canvas/backend/internal/conversation"
 	"infinite-canvas/backend/internal/kernel"
 	"infinite-canvas/backend/internal/taskbinding"
 )
@@ -92,10 +91,6 @@ func mapDomainError(err error) error {
 	if errors.As(err, &bindErr) {
 		return mapBindError(bindErr.Status, bindErr.Reason, bindErr.Message)
 	}
-	var convErr *conversation.Error
-	if errors.As(err, &convErr) {
-		return mapBindError(convErr.Status, convErr.Reason, convErr.Message)
-	}
 	var appErr *kernel.AppError
 	if errors.As(err, &appErr) {
 		reason := string(appErr.Reason)
@@ -146,10 +141,6 @@ func isNotFoundError(err error) bool {
 	}
 	var bindErr *taskbinding.Error
 	if errors.As(err, &bindErr) && bindErr.Status == http.StatusNotFound {
-		return true
-	}
-	var convErr *conversation.Error
-	if errors.As(err, &convErr) && convErr.Status == http.StatusNotFound {
 		return true
 	}
 	var appErr *kernel.AppError

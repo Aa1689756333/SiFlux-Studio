@@ -1,6 +1,5 @@
 import type { EditorSlotKind, PluginManifest, PluginManifestV2, RegisteredPlugin } from "./plugin-types";
 import { unregisterPluginSlots } from "./editor-slot-registry";
-import { registerPluginCanvasNodes, unregisterNodeDefinitions } from "@/lib/canvas/node-registry";
 
 const registeredPlugins = new Map<string, RegisteredPlugin>();
 
@@ -64,14 +63,10 @@ export function registerPlugin(plugin: RegisteredPlugin) {
         // v2：编辑器插槽声明由注册器提取存储；UI 渲染函数由插件 activate() 阶段经 registerEditorSlot 提供。
         plugin.editorSlots = plugin.manifest.contributes.editorSlots ?? [];
     }
-    if (plugin.manifest.contributes.canvasNodes?.length) {
-        registerPluginCanvasNodes(plugin.manifest.id, plugin.manifest.contributes.canvasNodes);
-    }
     registeredPlugins.set(plugin.manifest.id, plugin);
 }
 
 export function unregisterPlugin(pluginId: string) {
-    unregisterNodeDefinitions(pluginId);
     unregisterPluginSlots(pluginId);
     registeredPlugins.delete(pluginId);
 }

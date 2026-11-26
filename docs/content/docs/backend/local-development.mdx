@@ -1,4 +1,4 @@
----
+﻿---
 title: 本地开发
 description: 在宿主机启动BeefTV前后端开发服务
 ---
@@ -107,22 +107,21 @@ curl -s -X POST http://127.0.0.1:8082/inference \
   -F 'file=@sample.wav' -F 'response_format=verbose_json'
 ```
 
-## 外部客户端连接本机工作区
+## 本机工作区凭据
 
-`beeftv` CLI 与 `beeftv mcp serve` 连接的是同一个本机工作区，凭据从环境变量读取：
+内置助手宿主与桌面 UI 各自使用后端注入的凭据访问本机工作区：
 
 | 变量 | 用途 |
 | --- | --- |
 | `SIFLUX_BASE_URL` | 本机工作区地址，默认 `http://127.0.0.1:8080/api`；只接受回环主机 |
-| `SIFLUX_OWNER_TOKEN` | owner 凭据：可执行写操作、登记客户端；运行时会把它写到数据目录下 0600 的文件 |
-| `SIFLUX_CLIENT_ID` / `SIFLUX_CLIENT_TOKEN` | 已登记客户端凭据：能力模式由服务端登记决定，不能自我提升 |
-| `SIFLUX_DESKTOP_TOKEN` | 仅供桌面管理操作（如登记客户端）通过入口守卫；不要交给外部 Agent |
+| `SIFLUX_OWNER_TOKEN` | owner 凭据：可执行写操作；运行时会把它写到数据目录下 0600 的文件 |
+| `SIFLUX_DESKTOP_TOKEN` | 桌面入口守卫使用的启动令牌，由桌面进程注入，不对外分发 |
 
-两条边界：
+边界：
 
-- 已登记的外部客户端只需自身凭据，即可访问同一个桌面工作区的 `/api/ops` 和 `/api/ops/:op`。它不能访问其他桌面 API、登记客户端或签发 UI 写会话。不要向外部 Agent 分发 owner 或桌面壳凭据。
+- 内置助手宿主只持有自己的宿主凭据，访问 `/api/ops` 与 `/api/ops/:op`；它不能签发 UI 写会话。
 - 内置 UI 通过 Wails 绑定获得独立的短期引导凭据，再签发 UI 会话；单独出示桌面启动令牌不能取得助手写会话。
-- 客户端登记（`beeftv client register`）按合同需要 owner 凭据；桌面形态下同时需要桌面启动令牌。令牌值只在本机进程环境与本机 0600 文件里流转，不写入日志、不写进文档示例。
+- 令牌值只在本机进程环境与本机 0600 文件里流转，不写入日志、不写进文档示例。
 
 桌面发行包自带内置助手及 Node 24.15.0，无需用户安装 Node。macOS 的运行时位于 `BeefTV.app/Contents/Resources/agent-host/runtime/bin/node`，Windows 位于 `BeefTV.exe` 同级的 `agent-host/runtime/node.exe`。桌面后端直接启动随包 Node 与 `server.mjs`。
 

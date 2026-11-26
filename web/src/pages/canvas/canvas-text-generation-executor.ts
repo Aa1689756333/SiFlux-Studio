@@ -70,9 +70,8 @@ export async function executeTextGeneration({
                     prompt: effectivePrompt,
                     config: generationConfig,
                     referenceImages: generationContext.referenceImages,
-                    referenceVideos: generationContext.referenceVideos,
                     signal: controller.signal,
-                    metadata: { sourceNodeId: nodeId, ...taskContext, resolvedCharacterVersions: generationContext.resolvedCharacterVersions, ...skillMetadata },
+                    metadata: { sourceNodeId: nodeId, ...taskContext, ...skillMetadata },
                 },
                 {
                     bindTask: (task) => bindGenerationTask(targetNodeId, task),

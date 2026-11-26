@@ -1,4 +1,4 @@
-package model
+﻿package model
 
 import (
 	"time"
@@ -86,12 +86,6 @@ const (
 	ResourceStatusReady   ResourceStatus = "ready"
 	ResourceStatusFailed  ResourceStatus = "failed"
 	ResourceStatusDeleted ResourceStatus = "deleted"
-
-	// 播放副本转码状态：空串/"none" = 无需转码（H.264 等可直接播放）。
-	PlaybackStatusNone       = "none"
-	PlaybackStatusProcessing = "processing"
-	PlaybackStatusReady      = "ready"
-	PlaybackStatusFailed     = "failed"
 
 	ResourceDeletionStatusPending    ResourceDeletionStatus = "pending"
 	ResourceDeletionStatusProcessing ResourceDeletionStatus = "processing"

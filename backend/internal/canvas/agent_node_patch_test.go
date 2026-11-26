@@ -85,13 +85,13 @@ func TestUpdateUserCanvasNodeFieldsKeepsTitleEditableForStructureNodes(t *testin
 	created, err := svc.UpsertUserCanvasProject("owner", json.RawMessage(`{
 		"id":"canvas-structure","revision":0,"title":"结构节点",
 		"nodes":[
-			{"id":"scr","type":"script","title":"旧脚本名","metadata":{"storyboard":{"rows":[]}}},
+			{"id":"cfg","type":"config","title":"旧配置名","metadata":{"generationMode":"image"}},
 			{"id":"frm","type":"frame","title":"旧背板名","metadata":{"frame":{"collapsed":false}}}
 		],"connections":[]}`))
 	if err != nil {
 		t.Fatal(err)
 	}
-	for index, nodeID := range []string{"scr", "frm"} {
+	for index, nodeID := range []string{"cfg", "frm"} {
 		if _, err := svc.UpdateUserCanvasNodeFields("owner", "canvas-structure", nodeID, map[string]any{"title": "新名字"}, created.Revision+int64(index)); err != nil {
 			t.Fatalf("%s 改名应成功，实际 %v", nodeID, err)
 		}
@@ -116,23 +116,23 @@ func TestUpdateUserCanvasNodeFieldsRejectsUnsupportedFieldWithoutWriting(t *test
 	svc := newCanvasHistoryTestService(t)
 	created, err := svc.UpsertUserCanvasProject("owner", json.RawMessage(`{
 		"id":"canvas-unsupported","revision":0,"title":"未支持字段",
-		"nodes":[{"id":"scr","type":"script","title":"脚本","metadata":{"storyboard":{"rows":[]}}}],
+		"nodes":[{"id":"txt","type":"text","title":"文本","metadata":{"content":"正文"}}],
 		"connections":[]}`))
 	if err != nil {
 		t.Fatal(err)
 	}
 
-	_, err = svc.UpdateUserCanvasNodeFields("owner", "canvas-unsupported", "scr", map[string]any{"content": "不该写入"}, created.Revision)
+	_, err = svc.UpdateUserCanvasNodeFields("owner", "canvas-unsupported", "txt", map[string]any{"invalidField": "不该写入"}, created.Revision)
 	var appError *kernel.AppError
 	if !errors.As(err, &appError) || appError.Status != http.StatusBadRequest {
-		t.Fatalf("script 的 content 应被明确拒绝，实际 %v", err)
+		t.Fatalf("text 的 invalidField 应被明确拒绝，实际 %v", err)
 	}
 	if appError.Reason != kernel.ReasonUnsupportedField {
 		t.Fatalf("reason 应为 unsupported_field，实际 %q", appError.Reason)
 	}
 
 	// 混入合法 title 也必须整批不写：不能出现「一半生效」。
-	if _, err = svc.UpdateUserCanvasNodeFields("owner", "canvas-unsupported", "scr", map[string]any{"title": "新名", "content": "不该写入"}, created.Revision); err == nil {
+	if _, err = svc.UpdateUserCanvasNodeFields("owner", "canvas-unsupported", "txt", map[string]any{"title": "新名", "invalidField": "不该写入"}, created.Revision); err == nil {
 		t.Fatal("含未支持字段的整批更新应被拒绝")
 	}
 	after, err := svc.UserCanvasProject("owner", "canvas-unsupported")
@@ -152,7 +152,7 @@ func TestUpdateUserCanvasNodeFieldsRejectsUnsupportedFieldWithoutWriting(t *test
 	if doc.Revision != created.Revision {
 		t.Fatalf("被拒绝的更新不应推进 revision：%d -> %d", created.Revision, doc.Revision)
 	}
-	if doc.Nodes[0].Title != "脚本" {
+	if doc.Nodes[0].Title != "文本" {
 		t.Fatalf("被拒绝的更新不应写入 title，实际 %q", doc.Nodes[0].Title)
 	}
 }

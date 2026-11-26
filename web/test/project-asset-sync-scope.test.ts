@@ -449,21 +449,21 @@ describe("ensureCanvasNodeAsset scope and canonical writes", () => {
         }
     });
 
-    test("hosted IDB-only video stays a draft and does not PUT", async () => {
+    test("hosted IDB-only image stays a draft and does not PUT", async () => {
         const restore = switchScope("owner-a");
         hostedBackend();
         const urls: string[] = [];
         const node: CanvasNodeData = {
-            id: "node-video",
-            type: CanvasNodeType.Video,
+            id: "node-image",
+            type: CanvasNodeType.Image,
             title: "视频",
             position: { x: 0, y: 0 },
             width: 8,
             height: 8,
             metadata: {
-                content: "blob:local-video",
-                storageKey: "file:owner-a:video",
-                mimeType: "video/webm",
+                content: "blob:local-image",
+                storageKey: "file:owner-a:image",
+                mimeType: "image/png",
                 bytes: 4,
             },
         };

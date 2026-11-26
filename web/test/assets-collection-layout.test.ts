@@ -22,17 +22,28 @@ describe("asset library category sidebar", () => {
 });
 
 describe("asset upload entry points", () => {
-    test("empty state opens the native image/video picker and uploads without an intermediate modal", () => {
+    test("empty state opens the native image picker and uploads without an intermediate modal", () => {
         const page = readFileSync(resolve(import.meta.dir, "../src/pages/assets/index.tsx"), "utf8");
         const handler = readFileSync(resolve(import.meta.dir, "../src/services/workspace-asset-upload.ts"), "utf8");
         expect(page).toContain("<AssetsEmptyState onImport={() => assetUploadInputRef.current?.click()} />");
-        expect(page).toContain('accept="image/*,video/*"');
+        expect(page).toContain('accept="image/*"');
+        expect(page).not.toContain('accept="video/*"');
+        expect(page).not.toContain('accept="audio/*"');
         expect(page).toContain("await uploadWorkspaceAssetFiles(files, folderId, entryScope)");
         expect(page).toContain('label: "上传资产"');
-        expect(handler).toContain("uploadMediaFile(file, \"video\"");
-        expect(handler).toContain("请选择图片或视频文件");
+        expect(handler).toContain("await uploadImage(file, undefined, expected)");
+        expect(handler).toContain("请选择图片文件");
         expect(page).not.toContain("AssetBatchUploadModal");
         expect(page).not.toContain("batchUploadOpen");
+    });
+
+    test("type tabs and labels no longer offer video or audio assets", () => {
+        const page = readFileSync(resolve(import.meta.dir, "../src/pages/assets/index.tsx"), "utf8");
+        expect(page).toContain('{ label: "图片", value: "image" }');
+        expect(page).not.toContain('{ label: "视频", value: "video" }');
+        expect(page).not.toContain('{ label: "音频", value: "audio" }');
+        expect(page).not.toContain("generation-history-duration");
+        expect(page).not.toContain("AssetVideoPreview");
     });
 
     test("matches LibTV personal-library new menu", () => {
@@ -44,19 +55,7 @@ describe("asset upload entry points", () => {
 });
 
 describe("project card actions", () => {
-    test("project cards expose the LibTV-style overflow actions", () => {
-        const page = readFileSync(resolve(import.meta.dir, "../src/pages/projects/index.tsx"), "utf8");
-        expect(page).toContain('aria-label={`${row.project.name} 更多操作`}');
-        expect(page).toContain('label: "打开"');
-        expect(page).toContain('label: "重命名"');
-        expect(page).toContain('label: "修改封面"');
-        expect(page).toContain('label: "创建副本"');
-        expect(page).toContain('label: "移动至文件夹"');
-        expect(page).toContain("duplicateProject");
-        expect(page).toContain("moveProjectToFolder");
-        expect(page).toContain('label: row.project.status === "archived" ? "恢复项目" : "归档项目"');
-        expect(page).toContain('label: "删除项目"');
-        expect(page).toContain("updateProject");
+    test("canvas project and folder cards expose the LibTV-style overflow actions", () => {
         const canvasCard = readFileSync(resolve(import.meta.dir, "../src/components/canvas/canvas-folder-card.tsx"), "utf8");
         expect(canvasCard).toContain('label: "打开"');
         expect(canvasCard).toContain('label: "重命名"');
@@ -70,7 +69,8 @@ describe("project card actions", () => {
         expect(canvasCard).not.toContain("summarizePreviewNodeTypes");
         expect(canvasCard).not.toContain("canvas-collection-node-types");
         const previewCard = readFileSync(resolve(import.meta.dir, "../src/components/canvas/canvas-project-card.tsx"), "utf8");
-        expect(previewCard).toContain('preload="auto"');
+        expect(previewCard).toContain('loading="lazy"');
+        expect(previewCard).toContain('decoding="async"');
         expect(previewCard).toContain("projectPreviewMediaCandidates(project.nodes, preferLatestImage).find");
         expect(previewCard).toContain("<Workflow className=\"canvas-project-empty-icon\"");
         const canvasPage = readFileSync(resolve(import.meta.dir, "../src/pages/canvas/index.tsx"), "utf8");
@@ -135,7 +135,6 @@ describe("project card actions", () => {
         const globalStyles = readFileSync(resolve(import.meta.dir, "../src/styles/globals.css"), "utf8");
         expect(globalStyles).toContain("min-height: 230.8px");
         expect(globalStyles).toContain("height: 34.8px !important");
-        expect(page).toContain('label: "打开"');
     });
 });
 

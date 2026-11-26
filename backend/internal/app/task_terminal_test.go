@@ -7,6 +7,7 @@ import (
 	"testing"
 	"time"
 
+	"infinite-canvas/backend/internal/generation"
 	"infinite-canvas/backend/internal/model"
 	"infinite-canvas/backend/internal/repository"
 )
@@ -82,19 +83,25 @@ func (o *taskTerminalOutputStub) RegisterTaskOutputFromTask(model.Task) error {
 }
 
 func newTaskTerminalCoordinatorForTest(repo taskTerminalRepository, replay *taskTerminalReplayStub, logger *taskTerminalLoggerStub, outputs *taskTerminalOutputStub) *taskTerminalCoordinator {
-	return &taskTerminalCoordinator{repo: repo, replay: replay, logger: logger, outputs: outputs, userFacingMessage: func(err error) string { return "public: " + err.Error() }}
+	// 文本回放已退场；保留桩参数只为让调用点保持可读的「无回放」语义。
+	_ = replay
+	return &taskTerminalCoordinator{repo: repo, logger: logger, outputs: outputs, userFacingMessage: func(err error) string { return "public: " + err.Error() }}
 }
 
 func TestTaskTerminalConflictDoesNotFinalize(t *testing.T) {
 	repo := &taskTerminalRepositoryStub{terminalConflict: true}
 	replay := &taskTerminalReplayStub{}
-	c := newTaskTerminalCoordinatorForTest(repo, replay, &taskTerminalLoggerStub{}, &taskTerminalOutputStub{})
+	logger := &taskTerminalLoggerStub{}
+	c := newTaskTerminalCoordinatorForTest(repo, replay, logger, &taskTerminalOutputStub{})
 	err := c.handleExecutionFailure(&model.Task{ID: "task", LeaseOwner: "stale", Status: model.TaskStatusRunning}, errors.New("upstream failed"), false, false)
 	if !errors.Is(err, repository.ErrTaskStateConflict) {
 		t.Fatalf("missing conflict: %v", err)
 	}
-	if len(replay.statuses) != 0 {
-		t.Fatal("stale worker performed terminal side effects")
+	if repo.terminalCalls != 1 {
+		t.Fatalf("conflict must surface after exactly one terminal write attempt, got %d", repo.terminalCalls)
+	}
+	if len(logger.messages) != 0 {
+		t.Fatalf("conflicting terminal write still logged side effects: %v", logger.messages)
 	}
 }
 
@@ -120,6 +127,22 @@ func TestTaskTerminalPreservesImageAndVideoSubmissionUncertainty(t *testing.T) {
 	}
 }
 
+func TestTaskTerminalMarksRequestNotSentRetryable(t *testing.T) {
+	cause := generation.RequestNotSentError{Cause: context.DeadlineExceeded}
+	task := &model.Task{ID: "task", Status: model.TaskStatusRunning}
+	repo := &taskTerminalRepositoryStub{task: task}
+	coordinator := newTaskTerminalCoordinatorForTest(repo, &taskTerminalReplayStub{}, &taskTerminalLoggerStub{}, &taskTerminalOutputStub{})
+	if err := coordinator.handleExecutionFailure(task, cause, false, false); !errors.Is(err, cause) {
+		t.Fatalf("original failure lost: %v", err)
+	}
+	if task.Stage != "request_not_sent" || persistedFailureBlocksRetry(persistableTaskFailureMessage(cause), task.Stage) {
+		t.Fatalf("unsent request blocked retry: %+v", task)
+	}
+	if classifyTaskFailure(cause).Uncertain || classifyTaskFailure(cause).Category != generation.CategoryRequestNotSent {
+		t.Fatalf("unsent request classification = %+v", classifyTaskFailure(cause))
+	}
+}
+
 func TestTaskTerminalCoordinatorHandlesCancellation(t *testing.T) {
 	task := &model.Task{ID: "task-1", UserID: "user-1"}
 	repo := &taskTerminalRepositoryStub{task: task}
@@ -131,8 +154,8 @@ func TestTaskTerminalCoordinatorHandlesCancellation(t *testing.T) {
 	if task.Status != model.TaskStatusCancelled || task.Error != "任务已取消" {
 		t.Fatalf("unexpected cancelled task state: status=%s error=%q", task.Status, task.Error)
 	}
-	if len(replay.statuses) != 1 || replay.statuses[0] != model.TaskStatusCancelled || len(logger.messages) != 1 || repo.terminalCalls != 1 {
-		t.Fatalf("expected cancellation side effects, replay=%v logs=%v terminalCalls=%d", replay.statuses, logger.messages, repo.terminalCalls)
+	if len(logger.messages) != 1 || repo.terminalCalls != 1 {
+		t.Fatalf("expected cancellation side effects, logs=%v terminalCalls=%d", logger.messages, repo.terminalCalls)
 	}
 }
 
@@ -147,9 +170,6 @@ func TestTaskTerminalCoordinatorRecordsProviderFailure(t *testing.T) {
 	}
 	if task.Status != model.TaskStatusFailed || task.Error != "public: provider unavailable" {
 		t.Fatalf("unexpected failed task state: status=%s error=%q", task.Status, task.Error)
-	}
-	if len(replay.statuses) != 1 || replay.statuses[0] != model.TaskStatusFailed {
-		t.Fatalf("unexpected replay statuses: %v", replay.statuses)
 	}
 }
 

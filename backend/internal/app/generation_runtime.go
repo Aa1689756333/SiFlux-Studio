@@ -10,7 +10,6 @@ import (
 
 	"infinite-canvas/backend/internal/generation"
 	"infinite-canvas/backend/internal/model"
-	"infinite-canvas/backend/internal/outbound"
 )
 
 type appResourcePort struct{ service *Service }
@@ -98,30 +97,6 @@ func (p appTaskStagePort) SetStage(ctx context.Context, stage string) error {
 	return p.service.repo.WithContext(ctx).UpdateTaskStageForLease(p.task.ID, p.task.LeaseOwner, stage)
 }
 
-// appTaskDeliveryPort mirrors in-generation result downloads into the same
-// task delivery projection that post-success artifact delivery uses.
-type appTaskDeliveryPort struct {
-	service *Service
-	taskID  string
-}
-
-func (p appTaskDeliveryPort) ReportDelivery(progress outbound.ResumableProgress) {
-	taskID := strings.TrimSpace(p.taskID)
-	if p.service == nil || taskID == "" {
-		return
-	}
-	identity := taskID + ":0"
-	p.service.deliveryProgressRegistry().record(identity, deliveryProgressFromOutbound(identity, progress))
-}
-
-func (p appTaskDeliveryPort) ClearDelivery() {
-	taskID := strings.TrimSpace(p.taskID)
-	if p.service == nil || taskID == "" {
-		return
-	}
-	p.service.deliveryProgressRegistry().clear(taskID + ":0")
-}
-
 func (p appReceiptPort) Observe(observation generation.TransportObservation) {
 	if observation.Request == nil {
 		return
@@ -130,6 +105,8 @@ func (p appReceiptPort) Observe(observation generation.TransportObservation) {
 		StartedAt:             observation.StartedAt.Format(time.RFC3339Nano),
 		ResponseLimitBytes:    observation.ResponseLimitBytes,
 		Dispatched:            observation.Dispatched,
+		TransportPhase:        observation.TransportPhase,
+		TransportRoute:        observation.TransportRoute,
 		HTTPStatus:            observation.HTTPStatus,
 		DeclaredResponseBytes: observation.DeclaredResponseBytes,
 		ReceivedBytes:         observation.ReceivedBytes,
@@ -148,14 +125,14 @@ func (p appReceiptPort) NotifyPoll(ctx context.Context, event string, err error)
 	if strings.TrimSpace(call.TaskID) == "" {
 		return
 	}
-	message := "上游视频查询暂时异常，将继续轮询原任务"
+	message := "上游图片任务查询暂时异常，将继续查询原任务"
 	level := "warn"
 	payload := ""
 	if err != nil {
 		payload = err.Error()
 	}
-	if videoPollEvent(event) == videoPollEventRecovered {
-		message = "上游视频查询已恢复"
+	if event == "recovered" {
+		message = "上游图片任务查询已恢复"
 		level = "info"
 	}
 	_ = p.service.log(call.UserID, call.TaskID, level, message, payload)
@@ -223,17 +200,6 @@ func (p appConfigPort) ApplyCapabilities(ctx context.Context, input *generation.
 	switch input.Mode {
 	case "image":
 		return p.service.validateResolvedImageCapability(input)
-	case "video":
-		if isBeefAPISeedancePreuploadConfig(ctx, input.Config) {
-			if err := p.service.resolveVideoCapability(ctx, input); err != nil {
-				return err
-			}
-			if input.VideoCapability != nil {
-				return validateVideoTaskParameters(input.VideoCapability, *input)
-			}
-			return nil
-		}
-		return p.service.validateResolvedVideoCapabilityContext(ctx, input)
 	default:
 		return nil
 	}
@@ -244,13 +210,6 @@ func (p appConfigPort) RequireWorkflow(interfaceType string) error {
 		return errors.New("无法执行工作流任务，请重试")
 	}
 	return p.service.RequireWorkflowPluginForInterface(interfaceType)
-}
-
-func (p appConfigPort) SyncArkPrivateAssets(ctx context.Context, userID string, input *generation.Input) error {
-	if p.service == nil || input == nil {
-		return nil
-	}
-	return p.service.prepareArkPrivateAssetReferences(ctx, userID, input)
 }
 
 type appStylePort struct{ service *Service }
@@ -266,12 +225,6 @@ type appWorkflowPort struct{ service *Service }
 
 func (p appWorkflowPort) Execute(ctx context.Context, input generation.Input) (map[string]interface{}, error) {
 	return p.service.runWorkflowProviderTask(ctx, input)
-}
-
-type appMediaProbe struct{}
-
-func (appMediaProbe) ProbeSeedance2Video(config generation.Config, index int, media *generation.Media, data []byte) error {
-	return applySeedance2VideoProbe(config, index, media, data)
 }
 
 func resourceInfoFromModel(userID string, resource *model.Resource) generation.ResourceInfo {
@@ -318,13 +271,11 @@ func (s *Service) applyGenerationRuntime(ctx context.Context, meta generation.Ca
 		Prompt:    appPromptPort{service: s},
 		Config:    appConfigPort{service: s},
 		Style:     appStylePort{service: s},
-		Probe:     appMediaProbe{},
 		Call:      meta,
 	}
 	if existing, ok := generation.RuntimeFromContext(ctx); ok {
 		runtime.Endpoints = existing.Endpoints
 		runtime.Stages = existing.Stages
-		runtime.Delivery = existing.Delivery
 		if !replaceCall {
 			runtime.Call = generation.IdentityCallMeta(existing.Call, meta)
 		}

@@ -1,14 +1,12 @@
-import { afterAll, beforeAll, beforeEach, expect, test } from "bun:test";
-import { existsSync, mkdtempSync, readFileSync, rmSync } from "node:fs";
+﻿import { afterAll, afterEach, beforeAll, beforeEach, expect, test } from "bun:test";
+import { existsSync, mkdtempSync, rmSync } from "node:fs";
 import { tmpdir } from "node:os";
-import { execFileSync } from "node:child_process";
-import { chromium, type Browser } from "playwright";
+import { chromium, type Browser, type Page } from "playwright";
 
 let browser: Browser, server: ReturnType<typeof Bun.serve>;
 let scratch: string;
 const resources = new Map<string, { bytes: Buffer; kind: string; mimeType: string }>();
 const chats: Record<string, any>[] = [], supplements: Record<string, any>[] = [];
-const externalConnections: Record<string, any>[] = [];
 const undoRequests: Record<string, any>[] = [];
 let rejectNextUndo = false;
 let running = false, cancelled = false, nextId = 0, failNextAsset = false;
@@ -20,8 +18,8 @@ const uploadMetadata: { name: string; width: string | null; height: string | nul
 const registeredAssets: Record<string, any>[] = [];
 let assetScope = "guest";
 const turns: Record<string, any>[] = [];
-let png = Buffer.from("iVBORw0KGgoAAAANSUhEUgAAAAEAAAABCAQAAAC1HAwCAAAAC0lEQVR42mP8/x8AAusB9Y9Zl9sAAAAASUVORK5CYII=", "base64");
-let wav: Buffer, longWav: Buffer, video: Buffer, jpeg: Buffer;
+let png = Buffer.from("iVBORw0KGgoAAAANSUhEUgAAAEAAAAAwCAYAAAChS3wfAAAAAXNSR0IArs4c6QAAAARnQU1BAACxjwv8YQUAAAAJcEhZcwAADsMAAA7DAcdvqGQAAAB0SURBVGhD5cgxAQAADMOg+TfdGYgDDh7ubrNlSjIlmZJMSaYkU5IpyZRkSjIlmZJMSaYkU5IpyZRkSjIlmZJMSaYkU5IpyZRkSjIlmZJMSaYkU5IpyZRkSjIlmZJMSaYkU5IpyZRkSjIlmZJMSaYkU5Kp2B7ImelaTkonqgAAAABJRU5ErkJggg==", "base64");
+let jpeg = Buffer.from("/9j/4AAQSkZJRgABAQEAYABgAAD/2wBDAAgGBgcGBQgHBwcJCQgKDBQNDAsLDBkSEw8UHRofHh0aHBwgJC4nICIsIxwcKDcpLDAxNDQ0Hyc5PTgyPC4zNDL/2wBDAQkJCQwLDBgNDRgyIRwhMjIyMjIyMjIyMjIyMjIyMjIyMjIyMjIyMjIyMjIyMjIyMjIyMjIyMjIyMjIyMjIyMjL/wAARCAAwAEADASIAAhEBAxEB/8QAHwAAAQUBAQEBAQEAAAAAAAAAAAECAwQFBgcICQoL/8QAtRAAAgEDAwIEAwUFBAQAAAF9AQIDAAQRBRIhMUEGE1FhByJxFDKBkaEII0KxwRVS0fAkM2JyggkKFhcYGRolJicoKSo0NTY3ODk6Q0RFRkdISUpTVFVWV1hZWmNkZWZnaGlqc3R1dnd4eXqDhIWGh4iJipKTlJWWl5iZmqKjpKWmp6ipqrKztLW2t7i5usLDxMXGx8jJytLT1NXW19jZ2uHi4+Tl5ufo6erx8vP09fb3+Pn6/8QAHwEAAwEBAQEBAQEBAQAAAAAAAAECAwQFBgcICQoL/8QAtREAAgECBAQDBAcFBAQAAQJ3AAECAxEEBSExBhJBUQdhcRMiMoEIFEKRobHBCSMzUvAVYnLRChYkNOEl8RcYGRomJygpKjU2Nzg5OkNERUZHSElKU1RVVldYWVpjZGVmZ2hpanN0dXZ3eHl6goOEhYaHiImKkpOUlZaXmJmaoqOkpaanqKmqsrO0tba3uLm6wsPExcbHyMnK0tPU1dbX2Nna4uPk5ebn6Onq8vP09fb3+Pn6/9oADAMBAAIRAxEAPwDxyiiiv3E8wKKKKACiiigAooooAKKKKACiiigAooooAKKKKACiiigAooooAKKKKACiiigD/9k=", "base64");
 const mediaRequests: { path: string; token: string | null }[] = [];
 let holdFirstPreview = true, releaseFirstPreview: (() => void) | null = null;
 const selectedSkill = { skillId: "story", versionId: "story-v1", contentHash: "a".repeat(64), skillName: "分镜", version: "1.0", status: 1, isAdded: true };
@@ -30,15 +28,6 @@ const skillInstalls: { sourceType: string; isPrivate: string; fileName: string }
 let holdSkillInstall = false, releaseSkillInstall: (() => void) | null = null;
 beforeAll(async () => {
     scratch = mkdtempSync(tmpdir() + "/assistant-input-");
-    execFileSync("ffmpeg", ["-v", "error", "-f", "lavfi", "-i", "sine=frequency=440:sample_rate=24000:duration=0.25", scratch + "/beat.wav"]);
-    execFileSync("ffmpeg", ["-v", "error", "-f", "lavfi", "-i", "sine=frequency=440:sample_rate=24000:duration=12", scratch + "/long-beat.wav"]);
-    execFileSync("ffmpeg", ["-v", "error", "-f", "lavfi", "-i", "color=red:s=64x48:r=24:d=0.25", "-c:v", "libx264", "-pix_fmt", "yuv420p", scratch + "/motion.mp4"]);
-    execFileSync("ffmpeg", ["-v", "error", "-f", "lavfi", "-i", "color=blue:s=64x48", "-frames:v", "1", "-threads", "1", scratch + "/portrait.png"]);
-    png = readFileSync(scratch + "/portrait.png");
-    execFileSync("ffmpeg", ["-v", "error", "-f", "lavfi", "-i", "color=blue:s=64x48", "-frames:v", "1", "-threads", "1", scratch + "/portrait.jpg"]);
-    jpeg = readFileSync(scratch + "/portrait.jpg");
-    wav = readFileSync(scratch + "/beat.wav"); video = readFileSync(scratch + "/motion.mp4");
-    longWav = readFileSync(scratch + "/long-beat.wav");
     const build = await Bun.build({ entrypoints: [import.meta.dir + "/fixtures/assistant-input-harness.tsx"], target: "browser", define: {
         "import.meta.env.DEV": "false", "import.meta.env.PROD": "true", "import.meta.env.MODE": '"production"', "import.meta.env.VITE_CANVAS_LOCAL_MODE": '"true"',
         "import.meta.env.VITE_CANVAS_BACKEND_URL": '"/api"', "process.env.NODE_ENV": '"production"',
@@ -54,10 +43,6 @@ beforeAll(async () => {
         const pathname = new URL(req.url).pathname;
         if (pathname === "/harness.js") return new Response(js, { headers: { "content-type": "application/javascript" } });
         if (pathname === "/harness.css") return new Response(css, { headers: { "content-type": "text/css" } });
-        if (pathname === "/api/agent-clients" && req.method === "POST") {
-            externalConnections.push(await req.json());
-            return ok({ client: { id: "external-fixture", kind: "codex", label: "Codex", mode: "read-write" }, setup: { kind: "codex", title: "Codex", command: "beeftv connect fixture-only" } });
-        }
         if (pathname === "/api/resources" && req.method === "POST") {
             uploadKeys.push(req.headers.get("X-Idempotency-Key") || "");
             const form = await req.formData(), file = form.get("file") as File, kind = String(form.get("kind"));
@@ -75,7 +60,7 @@ beforeAll(async () => {
         }
         if (/^\/api\/resources\/[^/]+$/.test(pathname)) {
             const id = pathname.split("/")[3], file = resources.get(id);
-            return ok({ resource: { id, status: "ready", provider: "local", kind: file?.kind || "video", playbackStatus: file?.kind === "video" ? "ready" : "none" } });
+            return ok({ resource: { id, status: "ready", provider: "local", kind: file?.kind || "image", playbackStatus: "none" } });
         }
         if (pathname.startsWith("/api/assets/") && req.method === "PUT") {
             if (failNextAsset) { failNextAsset = false; return Response.json({ code: 500, message: "素材登记失败" }, { status: 500 }); }
@@ -114,7 +99,7 @@ beforeAll(async () => {
             const mainChange = { revisionBefore: 1, revisionAfter: 2, createdNodeIds: ["main-new"], updatedNodeIds: [], deletedNodeIds: ["gone"], createdEdgeIds: [], deletedEdgeIds: ["old-edge"] };
             const change = body.message === "改两个画布" ? { ...mainChange, canvasChanges: [
                 { ...mainChange, canvasId: "input-canvas", operationIds: ["op1"] },
-                { revisionBefore: 4, revisionAfter: 5, createdNodeIds: ["other-new"], updatedNodeIds: [], createdEdgeIds: [], timelineUpdated: true, canvasId: "other-canvas", operationIds: ["op2"] },
+                { revisionBefore: 4, revisionAfter: 5, createdNodeIds: ["other-new"], updatedNodeIds: [], createdEdgeIds: [], canvasId: "other-canvas", operationIds: ["op2"] },
             ] } : null;
             const turn = { turnId: "t" + chats.length, userText: body.message, permissionMode: body.permissionMode, selectedNodeIds: [], reply: "已读取提供的参考素材。", attachments: body.attachments, skills: body.skills,
                 toolCalls: [], proposals: [], change, error: null, cancelled: false, createdAt: "2026-10-08" };
@@ -124,14 +109,22 @@ beforeAll(async () => {
         if (pathname.startsWith("/api/")) return ok({});
         return new Response('<html><meta name="viewport" content="width=device-width"><style>:root{--background:#fff;--foreground:#222;--muted:#f4f4f4;--muted-foreground:#666;--border:#ddd;--card:#fff;--fs-body:14px}*{box-sizing:border-box}body{margin:0}</style><link rel="stylesheet" href="/harness.css"><div id="root"></div><script type="module" src="/harness.js"></script></html>', { headers: { "content-type": "text/html" } });
     } });
-    const executablePath = [process.env.CHROME_PATH, "/Applications/Google Chrome.app/Contents/MacOS/Google Chrome"].find((item): item is string => Boolean(item && existsSync(item)));
-    browser = await chromium.launch({ executablePath, headless: true });
+    await ensureBrowser();
 }, 60000);
 afterAll(async () => { await browser?.close(); server?.stop(true); if (scratch) rmSync(scratch, { recursive: true, force: true }); });
-beforeEach(() => { registeredAssets.length = 0; assetScope = "guest"; });
+/** 浏览器在单条用例里崩溃后，后续用例仍应能各跑一遍，而不是整体连锁失败。 */
+async function ensureBrowser() {
+    if (browser?.isConnected()) return;
+    const executablePath = [process.env.CHROME_PATH, "/Applications/Google Chrome.app/Contents/MacOS/Google Chrome"].find((item): item is string => Boolean(item && existsSync(item)));
+    browser = await chromium.launch({ executablePath, headless: true });
+}
+beforeEach(async () => { registeredAssets.length = 0; assetScope = "guest"; await ensureBrowser(); });
+const openPages: Page[] = [];
+async function newPage(options?: Parameters<Browser["newPage"]>[0]) { const page = await browser.newPage(options); openPages.push(page); return page; }
+afterEach(async () => { for (const page of openPages.splice(0)) await page.close().catch(() => undefined); });
 
-test("real Sidebar handles file, paste, drop, attachment-only, purpose/range, draft restore and busy supplement", async () => {
-    const page = await browser.newPage({ viewport: { width: 390, height: 900 } }); await page.goto(server.url.toString().replace("localhost", "127.0.0.1"));
+test("real Sidebar handles file, paste, drop, attachment-only, purpose, draft restore and busy supplement", async () => {
+    const page = await newPage({ viewport: { width: 390, height: 900 } }); await page.goto(server.url.toString().replace("localhost", "127.0.0.1"));
     await page.waitForFunction(() => !document.querySelector<HTMLButtonElement>('button[aria-label="添加参考素材"]')?.disabled);
     await page.locator('input[type="file"]').setInputFiles({ name: "portrait.jpg", mimeType: "image/jpeg", buffer: jpeg });
     await page.getByRole("combobox", { name: "portrait.jpg 的用途" }).waitFor();
@@ -153,46 +146,41 @@ test("real Sidebar handles file, paste, drop, attachment-only, purpose/range, dr
     expect(chats[0]?.skills).toEqual([{ skillId: "story", versionId: "story-v1", contentHash: "a".repeat(64) }]);
     await page.evaluate(bytes => { const transfer = new DataTransfer(); transfer.items.add(new File([new Uint8Array(bytes)], "paste.png", { type: "image/png" })); document.querySelector('.canvas-assistant-composer')!.dispatchEvent(new ClipboardEvent("paste", { bubbles: true, clipboardData: transfer })); }, [...png]);
     await page.getByRole("combobox", { name: "paste.png 的用途" }).waitFor();
-    await page.evaluate(bytes => { const transfer = new DataTransfer(); transfer.items.add(new File([new Uint8Array(bytes)], "motion.mp4", { type: "video/mp4" })); document.querySelector('.canvas-assistant-composer')!.dispatchEvent(new DragEvent("drop", { bubbles: true, dataTransfer: transfer })); }, [...video]);
-    await page.getByRole("combobox", { name: "motion.mp4 的用途" }).waitFor();
-    await page.waitForFunction(() => { const video = document.querySelector<HTMLVideoElement>('video[aria-label="motion.mp4"]'); return video?.src.startsWith("blob:") && video.readyState >= 1 && video.videoWidth === 64; });
-    expect(mediaRequests.some(item => item.path.includes("variant=playback") && item.token === "synthetic-desktop-preview")).toBe(true);
-    await page.getByRole("combobox", { name: "motion.mp4 的用途" }).click(); await page.locator('.ant-select-item-option-content').getByText("运镜参考", { exact: true }).click();
-    await page.getByRole("spinbutton", { name: "motion.mp4 起始秒" }).fill("0"); await page.getByRole("spinbutton", { name: "motion.mp4 结束秒" }).fill("0.2");
-    await page.getByRole("spinbutton", { name: "motion.mp4 结束秒" }).press("Tab");
-    await page.waitForFunction(async () => (await (window as any).assistantInputFixture.draft())?.attachments.some((item: any) => item.name === "motion.mp4" && item.end === 0.2));
-    await page.reload(); await page.getByRole("combobox", { name: "motion.mp4 的用途" }).waitFor();
-    expect(await page.getByRole("spinbutton", { name: "motion.mp4 结束秒" }).inputValue()).toBe("0.2");
+    await page.evaluate(bytes => { const transfer = new DataTransfer(); transfer.items.add(new File([new Uint8Array(bytes)], "drop.png", { type: "image/png" })); document.querySelector('.canvas-assistant-composer')!.dispatchEvent(new DragEvent("drop", { bubbles: true, dataTransfer: transfer })); }, [...png]);
+    await page.getByRole("combobox", { name: "drop.png 的用途" }).waitFor();
+    await page.waitForFunction(() => { const image = document.querySelector<HTMLImageElement>('img[alt="drop.png"]'); return image?.src.startsWith("blob:") && image.complete && image.naturalWidth === 64; });
+    await page.getByRole("combobox", { name: "drop.png 的用途" }).click(); await page.locator('.ant-select-item-option-content').getByText("风格参考", { exact: true }).click();
+    await page.waitForFunction(async () => (await (window as any).assistantInputFixture.draft())?.attachments.some((item: any) => item.name === "drop.png" && item.purpose === "style"));
+    await page.reload(); await page.getByRole("combobox", { name: "drop.png 的用途" }).waitFor();
+    expect(await page.locator('.canvas-assistant-attachment').filter({ hasText: "drop.png" }).locator('.ant-select').innerText()).toBe("风格参考");
     await page.getByRole("button", { name: "画布素材", exact: true }).click(); await page.getByRole("button", { name: "画布人像", exact: true }).click();
     await page.getByRole("button", { name: "发送", exact: true }).click();
     await page.waitForFunction(() => document.querySelectorAll('.canvas-assistant-log .canvas-assistant-reply').length === 2);
-    expect(chats[1]?.attachments.some((item: any) => item.name === "motion.mp4" && item.purpose === "motion" && item.end === 0.2)).toBe(true);
+    expect(chats[1]?.attachments.some((item: any) => item.name === "drop.png" && item.purpose === "style")).toBe(true);
     expect(chats[1]?.attachments.some((item: any) => item.nodeId === "n1" && item.resourceId === "existing")).toBe(true);
     running = true; await page.reload(); await page.getByRole("button", { name: "停止", exact: true }).waitFor();
-    await page.locator('input[type="file"]').setInputFiles({ name: "beat.wav", mimeType: "audio/wav", buffer: wav });
-    await page.getByRole("combobox", { name: "beat.wav 的用途" }).waitFor();
-    await page.waitForFunction(() => { const audio = document.querySelector<HTMLAudioElement>('audio[aria-label="beat.wav"]'); return audio?.src.startsWith("blob:") && audio.readyState >= 1; });
-    expect(mediaRequests.every(item => item.token === "synthetic-desktop-preview")).toBe(true);
-    await page.getByRole("combobox", { name: "beat.wav 的用途" }).click();
-    await page.locator('.ant-select-dropdown:visible .ant-select-item-option-content').getByText("声音参考", { exact: true }).waitFor();
-    const audioPurposes = await (await page.waitForFunction(() => { const labels = [...document.querySelectorAll(".ant-select-dropdown:not(.ant-select-dropdown-hidden) .ant-select-item-option-content")].map(item => item.textContent); return labels.length === 3 ? labels : null; })).jsonValue();
-    expect(audioPurposes).toEqual(["仅分析", "节奏参考", "声音参考"]);
-    expect(audioPurposes).not.toContain("首帧"); expect(audioPurposes).not.toContain("人物参考");
-    await page.locator('.ant-select-dropdown:visible .ant-select-item-option-content').getByText("声音参考", { exact: true }).click();
+    await page.locator('input[type="file"]').setInputFiles({ name: "beat.png", mimeType: "image/png", buffer: png });
+    await page.getByRole("combobox", { name: "beat.png 的用途" }).waitFor();
+    await page.waitForFunction(() => { const image = document.querySelector<HTMLImageElement>('img[alt="beat.png"]'); return image?.src.startsWith("blob:") && image.complete && image.naturalWidth === 64; });
+    await page.getByRole("combobox", { name: "beat.png 的用途" }).click();
+    await page.locator('.ant-select-dropdown:visible .ant-select-item-option-content').getByText("首帧", { exact: true }).waitFor();
+    const supplementPurposes = await (await page.waitForFunction(() => { const labels = [...document.querySelectorAll(".ant-select-dropdown:not(.ant-select-dropdown-hidden) .ant-select-item-option-content")].map(item => item.textContent); return labels.length === 6 ? labels : null; })).jsonValue();
+    expect(supplementPurposes).toEqual(["仅分析", "人物参考", "场景参考", "风格参考", "首帧", "尾帧"]);
+    await page.locator('.ant-select-dropdown:visible .ant-select-item-option-content').getByText("首帧", { exact: true }).click();
     await page.getByRole("button", { name: /^补\s*充$/ }).click({ timeout: 8000 }).catch(async error => { throw new Error(error.message + " UI " + await page.locator('body').innerText()); }); await page.getByText("助手已收到补充要求。", { exact: true }).waitFor({ timeout: 8000 });
-    expect(supplements).toHaveLength(1); expect(supplements[0]?.message).toBe(""); expect(supplements[0]?.attachments[0]?.kind).toBe("audio"); expect(supplements[0]?.attachments[0]?.purpose).toBe("sound");
+    expect(supplements).toHaveLength(1); expect(supplements[0]?.message).toBe(""); expect(supplements[0]?.attachments[0]?.kind).toBe("image"); expect(supplements[0]?.attachments[0]?.purpose).toBe("first-frame");
     expect(chats).toHaveLength(2);
     running = false;
-    turns.push({ turnId: "busy", userText: "继续创作", selectedNodeIds: [], reply: "补充的音频已加入本次创作。", attachments: [], skills: [], supplements: [], supplementInputs: supplements.map(item => ({ message: item.message, attachments: item.attachments, skills: item.skills })), toolCalls: [], proposals: [], change: null, error: null, cancelled: false, createdAt: "2026-10-08" });
-    await page.getByText("补充的音频已加入本次创作。", { exact: true }).waitFor({ timeout: 8000 });
+    turns.push({ turnId: "busy", userText: "继续创作", selectedNodeIds: [], reply: "补充的图片已加入本次创作。", attachments: [], skills: [], supplements: [], supplementInputs: supplements.map(item => ({ message: item.message, attachments: item.attachments, skills: item.skills })), toolCalls: [], proposals: [], change: null, error: null, cancelled: false, createdAt: "2026-10-08" });
+    await page.getByText("补充的图片已加入本次创作。", { exact: true }).waitFor({ timeout: 8000 });
     expect(await page.getByRole("button", { name: "停止", exact: true }).count()).toBe(0);
     expect(chats).toHaveLength(2);
-    expect(await page.evaluate(() => document.documentElement.scrollWidth <= innerWidth)).toBe(true);
+    expect(await page.evaluate(() => { const width = document.documentElement.clientWidth; return [...document.querySelectorAll<HTMLElement>("body *")].filter(node => node.getBoundingClientRect().right > width + 1).slice(0, 6).map(node => `${node.tagName.toLowerCase()}.${String(node.className)} right=${Math.round(node.getBoundingClientRect().right)} width=${width}`); })).toEqual([]);
     await page.screenshot({ path: "/tmp/beeftv-assistant-input-ui.png" }); await page.close();
 }, 30000);
 
-test("asset registration failure remains unsent; explicit upload retry keeps its idempotency key and invalid range blocks send", async () => {
-    const page = await browser.newPage({ viewport: { width: 390, height: 900 } });
+test("asset registration failure remains unsent and an explicit upload retry keeps its idempotency key", async () => {
+    const page = await newPage({ viewport: { width: 390, height: 900 } });
     await page.goto(server.url.toString().replace("localhost", "127.0.0.1"));
     await page.waitForFunction(() => !document.querySelector<HTMLButtonElement>('button[aria-label="添加参考素材"]')?.disabled);
     const before = chats.length, firstKey = uploadKeys.length;
@@ -206,38 +194,13 @@ test("asset registration failure remains unsent; explicit upload retry keeps its
     await page.getByRole("button", { name: "重试上传", exact: true }).click();
     await page.getByRole("combobox", { name: "retry.png 的用途" }).waitFor();
     expect(uploadKeys[firstKey]).not.toBe(""); expect(uploadKeys[firstKey + 1]).toBe(uploadKeys[firstKey]);
-    await page.locator('input[type="file"]').setInputFiles({ name: "range.wav", mimeType: "audio/wav", buffer: wav });
-    await page.getByRole("spinbutton", { name: "range.wav 结束秒" }).fill("3");
-    await page.getByText("结束时间超过素材时长", { exact: true }).waitFor();
-    expect(await page.getByRole("button", { name: "发送", exact: true }).isDisabled()).toBe(true);
-    expect(chats).toHaveLength(before);
-    await page.waitForFunction(async () => (await (window as any).assistantInputFixture.draft())?.attachments.some((item: any) => item.name === "range.wav" && item.end === 3));
-    await page.evaluate(() => new Promise<void>((resolve, reject) => {
-        const opening = indexedDB.open("beeftv-assistant-input");
-        opening.onerror = () => reject(opening.error);
-        opening.onsuccess = () => {
-            const database = opening.result, transaction = database.transaction("drafts", "readwrite"), store = transaction.objectStore("drafts");
-            const read = store.get("guest:input-canvas");
-            read.onsuccess = () => { const draft = read.result; draft.attachments.find((item: { kind: string }) => item.kind === "audio").purpose = "first-frame"; store.put(draft, "guest:input-canvas"); };
-            transaction.oncomplete = () => { database.close(); resolve(); };
-            transaction.onerror = () => reject(transaction.error);
-        };
-    }));
-    await page.reload();
-    const legacy = page.locator('.canvas-assistant-attachment').filter({ hasText: "range.wav" });
-    await legacy.locator('.ant-select').getByText("首帧", { exact: true }).waitFor({ timeout: 4000 }).catch(async error => { throw new Error(error.message + " UI " + await page.locator("body").innerText()); });
-    expect(await legacy.locator('.ant-select').innerText()).toBe("首帧");
-    await page.getByRole("combobox", { name: "range.wav 的用途" }).click();
-    await page.locator('.ant-select-dropdown:visible .ant-select-item-option-content').getByText("声音参考", { exact: true }).waitFor();
-    expect(await (await page.waitForFunction(() => { const labels = [...document.querySelectorAll(".ant-select-dropdown:not(.ant-select-dropdown-hidden) .ant-select-item-option-content")].map(item => item.textContent); return labels.length === 3 ? labels : null; })).jsonValue()).toEqual(["仅分析", "节奏参考", "声音参考"]);
-    await page.getByRole("combobox", { name: "range.wav 的用途" }).press("Escape");
-    await page.waitForFunction(async () => (await (window as any).assistantInputFixture.draft())?.attachments.some((item: any) => item.name === "range.wav" && item.purpose === "first-frame"));
-    expect(await legacy.locator('.ant-select').innerText()).toBe("首帧");
+    await page.waitForFunction(async () => (await (window as any).assistantInputFixture.draft())?.attachments.some((item: any) => item.name === "retry.png"));
+    expect(await page.getByRole("button", { name: "发送", exact: true }).isDisabled()).toBe(false);
     await page.close();
 }, 15000);
 
 test("native-local Sidebar publishes accepted uploads for immediate @ reuse, while removal and scope changes preserve ownership", async () => {
-    const page = await browser.newPage({ viewport: { width: 390, height: 900 } });
+    const page = await newPage({ viewport: { width: 390, height: 900 } });
     await page.goto(server.url.toString().replace("localhost", "127.0.0.1"));
     await page.waitForFunction(() => !document.querySelector<HTMLButtonElement>('button[aria-label="添加参考素材"]')?.disabled);
     expect(await page.evaluate(() => (window as any).assistantInputFixture.nativeLocal())).toBe(true);
@@ -278,29 +241,9 @@ test("native-local Sidebar publishes accepted uploads for immediate @ reuse, whi
     await page.close();
 }, 15000);
 
-test("missing resource duration is recovered from a real twelve-second WAV for registration, draft and range validation", async () => {
-    const page = await browser.newPage({ viewport: { width: 390, height: 900 } });
-    await page.goto(server.url.toString().replace("localhost", "127.0.0.1"));
-    await page.waitForFunction(() => !document.querySelector<HTMLButtonElement>('button[aria-label="添加参考素材"]')?.disabled);
-    await page.locator('input[type="file"]').setInputFiles({ name: "twelve-seconds.wav", mimeType: "audio/wav", buffer: longWav });
-    await page.getByRole("combobox", { name: "twelve-seconds.wav 的用途" }).waitFor();
-    await page.waitForFunction(async () => (await (window as any).assistantInputFixture.draft())?.attachments.some((item: any) => item.name === "twelve-seconds.wav" && item.durationMs === 12000));
-    expect(uploadMetadata.find(upload => upload.name === "twelve-seconds.wav")?.durationMs).toBe("12000");
-    const draft = await page.evaluate(() => (window as any).assistantInputFixture.draft());
-    expect(draft.attachments[0].durationMs).toBe(12000);
-    expect(registeredAssets.find(asset => asset.title === "twelve-seconds.wav")?.data.durationMs).toBe(12000);
-    expect((await page.evaluate(() => (window as any).assistantInputFixture.assets()))[0].data.durationMs).toBe(12000);
-    const before = chats.length;
-    await page.getByRole("spinbutton", { name: "twelve-seconds.wav 结束秒" }).fill("12.1");
-    await page.getByText("结束时间超过素材时长", { exact: true }).waitFor();
-    expect(await page.getByRole("button", { name: "发送", exact: true }).isDisabled()).toBe(true);
-    expect(chats).toHaveLength(before);
-    await page.close();
-}, 15000);
-
 test("permission choices persist by workspace; trusted active mode locks the turn and supplements cannot elevate it", async () => {
     running = false; cancelled = false;
-    const page = await browser.newPage({ viewport: { width: 390, height: 900 } });
+    const page = await newPage({ viewport: { width: 390, height: 900 } });
     await page.goto(server.url.toString().replace("localhost", "127.0.0.1"));
     const selector = page.getByRole("combobox", { name: "助手权限" });
     await page.waitForFunction(() => !document.querySelector<HTMLInputElement>('input[aria-label="助手权限"]')?.disabled);
@@ -308,7 +251,7 @@ test("permission choices persist by workspace; trusted active mode locks the tur
     expect(await selectedText()).toBe("当前画布");
     await selector.click();
     await page.locator('.ant-select-dropdown:visible .ant-select-item-option-content').getByText("完全访问", { exact: true }).click();
-    await page.getByRole("textbox", { name: "给助手的消息" }).fill("查看全部项目");
+    await page.getByRole("textbox", { name: "给助手的消息" }).fill("查看全部画布");
     const sent = page.waitForResponse(response => response.url().endsWith("/assistant/chat"));
     await page.getByRole("button", { name: "发送", exact: true }).click(); await sent;
     expect(chats.at(-1)?.permissionMode).toBe("full-access");
@@ -344,36 +287,21 @@ test("permission choices persist by workspace; trusted active mode locks the tur
     await page.evaluate(() => (window as any).assistantInputFixture.switchScope("guest"));
     await page.waitForFunction(() => !document.querySelector<HTMLInputElement>('input[aria-label="助手权限"]')?.disabled);
     expect(await selectedText()).toBe("完全访问");
-    expect(await page.evaluate(() => document.documentElement.scrollWidth <= innerWidth)).toBe(true);
+    expect(await page.evaluate(() => { const width = document.documentElement.clientWidth; return [...document.querySelectorAll<HTMLElement>("body *")].filter(node => node.getBoundingClientRect().right > width + 1).slice(0, 6).map(node => `${node.tagName.toLowerCase()}.${String(node.className)} right=${Math.round(node.getBoundingClientRect().right)} width=${width}`); })).toEqual([]);
     await page.screenshot({ path: "/tmp/beeftv-assistant-permissions-390.png" });
     await page.close();
 }, 20000);
 
-test("external Agent connection has no permission chooser and submits only the client kind", async () => {
-    const page = await browser.newPage({ viewport: { width: 1280, height: 900 } });
-    await page.goto(server.url.toString().replace("localhost", "127.0.0.1"));
-    await page.getByRole("button", { name: "连接外部 Agent", exact: true }).click();
-    const panel = page.locator(".agent-connect-panel");
-    await panel.getByText("连接后可使用 BeefTV 的全部创作工具。每次操作的审批由 Codex 负责。", { exact: true }).waitFor();
-    expect(await panel.getByRole("radio").count()).toBe(0);
-    const connected = page.waitForResponse(response => response.url().endsWith("/agent-clients"));
-    await panel.getByRole("button", { name: "生成连接配置", exact: true }).click(); await connected;
-    expect(externalConnections.at(-1)).toEqual({ kind: "codex" });
-    await panel.getByRole("status").filter({ hasText: "等待工具连接" }).waitFor();
-    await page.screenshot({ path: "/tmp/beeftv-external-agent-connect.png" });
-    await page.close();
-}, 15000);
-
 test("cross-canvas receipts report every target and one atomic undo refreshes all canvases only after success", async () => {
     running = false;
-    const page = await browser.newPage({ viewport: { width: 1280, height: 900 } });
+    const page = await newPage({ viewport: { width: 1280, height: 900 } });
     await page.goto(server.url.toString().replace("localhost", "127.0.0.1"));
     await page.waitForFunction(() => !document.querySelector<HTMLInputElement>('input[aria-label="助手权限"]')?.disabled);
     await page.getByRole("combobox", { name: "助手权限" }).click();
     await page.locator('.ant-select-dropdown:visible .ant-select-item-option-content').getByText("完全访问", { exact: true }).click();
     await page.getByRole("textbox", { name: "给助手的消息" }).fill("改两个画布");
     await page.getByRole("button", { name: "发送", exact: true }).click();
-    await page.getByText("修改了 2 个画布，新建 2 个节点，删除 1 个节点，删除 1 条线，修改时间线", { exact: true }).waitFor();
+    await page.getByText("修改了 2 个画布，新建 2 个节点，删除 1 个节点，删除 1 条线", { exact: true }).waitFor();
     await page.getByText("撤销会恢复这 2 个画布本轮的全部改动。", { exact: true }).waitFor();
     expect(await page.evaluate(() => (window as any).assistantInputFixture.changedCanvases())).toEqual(["input-canvas", "other-canvas"]);
     await page.getByRole("button", { name: "在画布上查看", exact: true }).click();
@@ -396,7 +324,7 @@ test("cross-canvas receipts report every target and one atomic undo refreshes al
 for (const mode of ["markdown", "zip"] as const) {
     test(`assistant installs ${mode} privately and sends the installed version pin`, async () => {
         running = false; installedSkills = [];
-        const page = await browser.newPage();
+        const page = await newPage();
         await page.goto(server.url.toString().replace("localhost", "127.0.0.1"));
         await page.getByRole("button", { name: "选择技能", exact: true }).click();
         await page.getByText("还没有已安装的技能。", { exact: true }).waitFor();
@@ -405,7 +333,7 @@ for (const mode of ["markdown", "zip"] as const) {
         expect(await dialog.getByText("公开状态", { exact: true }).isVisible()).toBe(false);
         expect(await dialog.getByRole("button", { name: "从空白创建单文件技能" }).count()).toBe(0);
         if (mode === "zip") await dialog.getByText("ZIP 技能包", { exact: true }).click();
-        await dialog.locator('input[type="file"]').setInputFiles({ name: mode === "zip" ? "coffee.zip" : "SKILL.md", mimeType: mode === "zip" ? "application/zip" : "text/markdown", buffer: Buffer.from("# Coffee review\nCheck the actual video.") });
+        await dialog.locator('input[type="file"]').setInputFiles({ name: mode === "zip" ? "coffee.zip" : "SKILL.md", mimeType: mode === "zip" ? "application/zip" : "text/markdown", buffer: Buffer.from("# Coffee review\nCheck the actual photo.") });
         await dialog.getByRole("button", { name: "安装技能", exact: true }).click();
         await dialog.waitFor({ state: "hidden" });
         await page.getByRole("button", { name: "移除技能 咖啡审片", exact: true }).waitFor();
@@ -421,7 +349,7 @@ for (const mode of ["markdown", "zip"] as const) {
 
 test("an installation completing after an account switch cannot select a skill in the replacement draft", async () => {
     running = false; installedSkills = []; holdSkillInstall = true;
-    const page = await browser.newPage();
+    const page = await newPage();
     try {
         await page.goto(server.url.toString().replace("localhost", "127.0.0.1"));
         await page.getByRole("button", { name: "选择技能", exact: true }).click();

@@ -1,4 +1,7 @@
 import { expect, test } from "bun:test";
+import { closeSync, mkdtempSync, openSync, readFileSync, rmSync } from "node:fs";
+import { tmpdir } from "node:os";
+import { join, resolve } from "node:path";
 import { canvasUnconfirmedDiagnostic, canvasUnconfirmedReason, type CanvasUnconfirmedState } from "@/lib/canvas/canvas-unconfirmed-edits";
 import type { CanvasProject } from "@/stores/canvas/use-canvas-store";
 
@@ -40,10 +43,10 @@ test("unknown document edits still block, while diagnostics omit their dynamic n
 test("fixed node and media metadata names identify runtime changes without exposing values", () => {
     const live = structuredClone(base);
     Object.assign(live.nodes[0], { updatedAt: "SECRET-TIME", position: { x: 899, y: 734 }, title: "SECRET-NODE-TITLE" });
-    Object.assign(live.nodes[0].metadata!, { videoPreview: "SECRET-URL", hasAudio: true, generateAudio: true, watermark: true });
+    Object.assign(live.nodes[0].metadata!, { mimeType: "image/SECRET", nodeRole: "SECRET-ROLE", watermark: true });
     const result = canvasUnconfirmedDiagnostic({ ...clean, live });
     expect(result?.nodeFields).toEqual(["updatedAt", "title", "position"]);
-    expect(result?.metadataFields).toEqual(["videoPreview", "hasAudio", "generateAudio", "watermark"]);
+    expect(result?.metadataFields).toEqual(["mimeType", "nodeRole", "watermark"]);
     expect(JSON.stringify(result)).not.toContain("SECRET");
     expect(JSON.stringify(result)).not.toContain("899");
 });
@@ -58,7 +61,7 @@ test("malformed legacy baseline nodes do not make diagnostics throw or unblock e
 });
 
 
-test("diagnostic collection and logger failures never replace the original canvas-dirty rejection", () => {
+test("diagnostic collection and logger failures never replace the original canvas-dirty rejection", async () => {
     // Separate process prevents module mocks from contaminating other repository tests.
     const script = `
         import { mock } from "bun:test";
@@ -87,8 +90,21 @@ test("diagnostic collection and logger failures never replace the original canva
         }
         if (writes !== 1) throw new Error("logger failure branch not exercised");
     `;
-    const result = Bun.spawnSync([process.execPath, "-e", script], { cwd: new URL("..", import.meta.url).pathname, stdout: "pipe", stderr: "pipe" });
-    expect(result.exitCode, new TextDecoder().decode(result.stderr)).toBe(0);
+    // Redirect the child's stdio to files: sandboxed runs cannot hand it a named pipe.
+    const dir = mkdtempSync(join(tmpdir(), "siflux-unconfirmed-"));
+    const stdoutPath = join(dir, "stdout.log");
+    const stderrPath = join(dir, "stderr.log");
+    const stdoutFd = openSync(stdoutPath, "w");
+    const stderrFd = openSync(stderrPath, "w");
+    try {
+        const child = Bun.spawn([process.execPath, "-e", script], { cwd: resolve(import.meta.dir, ".."), stdout: stdoutFd, stderr: stderrFd });
+        const exitCode = await child.exited;
+        expect(exitCode, readFileSync(stderrPath, "utf8")).toBe(0);
+    } finally {
+        closeSync(stdoutFd);
+        closeSync(stderrFd);
+        rmSync(dir, { recursive: true, force: true });
+    }
 });
 
 

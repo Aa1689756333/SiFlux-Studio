@@ -5,7 +5,6 @@ import { renderToStaticMarkup } from "react-dom/server";
 import { chromium, type Browser, type Page } from "playwright";
 
 import { CanvasNodeContent } from "@/components/canvas/canvas-node-content";
-import { CanvasVideoCropEditor } from "@/components/canvas/canvas-video-crop-dialog";
 import { CanvasImageCropEditor } from "@/components/canvas/canvas-node-crop-dialog";
 import { canvasThemes } from "@/lib/canvas-theme";
 import { CanvasNodeType, type CanvasNodeData } from "@/types/canvas";
@@ -70,30 +69,6 @@ async function setZoom(zoom: number) {
     }, zoom);
 }
 
-test("video crop controls stay legible and clickable at 20% zoom", async () => {
-    const markup = renderToStaticMarkup(<CanvasVideoCropEditor videoUrl="data:video/mp4;base64,AAAA" videoDimensions={{ width: 1920, height: 1080 }} onCancel={() => {}} onConfirm={() => {}} />);
-    await page.setContent(`${layout}<div id="world"><div id="node">${markup}</div></div>`);
-    await setZoom(1);
-    const fullSizeSelection = await page.locator(".cursor-move").boundingBox();
-    await setZoom(0.2);
-
-    const toolbar = await page.getByRole("button", { name: "取消裁切" }).boundingBox();
-    const handle = await page.getByRole("button", { name: "resize-nw" }).boundingBox();
-    const zoomedSelection = await page.locator(".cursor-move").boundingBox();
-    const label = page.locator("[data-video-crop-inline] span").first();
-    expect(toolbar?.height).toBeGreaterThanOrEqual(30);
-    expect(handle?.width).toBeGreaterThanOrEqual(16);
-    expect(await label.evaluate((element) => element.getBoundingClientRect().height)).toBeGreaterThanOrEqual(12);
-    expect(zoomedSelection!.width / fullSizeSelection!.width).toBeCloseTo(0.2, 2);
-    const hit = await page.evaluate(({ x, y }) => document.elementFromPoint(x, y)?.getAttribute("aria-label"), { x: handle!.x + handle!.width / 2, y: handle!.y + handle!.height / 2 });
-    expect(hit).toBe("resize-nw");
-    const nodeBox = await page.locator("#node").boundingBox();
-    expect(toolbar!.y).toBeGreaterThanOrEqual(nodeBox!.y + nodeBox!.height + 8);
-    const confirm = await page.getByRole("button", { name: "确认裁切" }).boundingBox();
-    const toolbarHit = await page.evaluate(({ x, y }) => document.elementFromPoint(x, y)?.closest("button")?.getAttribute("aria-label"), { x: confirm!.x + confirm!.width / 2, y: confirm!.y + confirm!.height / 2 });
-    expect(toolbarHit).toBe("确认裁切");
-});
-
 test("image crop controls remain screen-sized and outside the image at 20% zoom", async () => {
     const markup = renderToStaticMarkup(<CanvasImageCropEditor imageUrl="data:image/png;base64,AAAA" imageDimensions={{ width: 1200, height: 800 }} onCancel={() => {}} onConfirm={() => {}} />);
     await page.setContent(`${layout}<div id="world"><div id="node">${markup}</div></div>`);
@@ -117,7 +92,7 @@ test("image crop controls remain screen-sized and outside the image at 20% zoom"
 
 test("failed node notice stays readable without overflowing its node at 20% zoom", async () => {
     const node = {
-        id: "failed-video", type: CanvasNodeType.Video, title: "视频 2", position: { x: 0, y: 0 }, width: 700, height: 400,
+        id: "failed-image", type: CanvasNodeType.Image, title: "图片 2", position: { x: 0, y: 0 }, width: 700, height: 400,
         metadata: { status: "error", errorDetails: "模型服务请求失败，请检查账户余额后重试" },
     } as CanvasNodeData;
     const markup = renderToStaticMarkup(<CanvasNodeContent node={node} theme={canvasThemes.dark} isEditingContent={false} textareaRef={createRef<HTMLTextAreaElement>()} isBatchRoot={false} batchCount={0} batchExpanded={false} batchOpening={false} batchRecovering={false} onContentChange={() => {}} onStopEditing={() => {}} mentionReferences={[]} onRetry={() => {}} />);
@@ -146,7 +121,7 @@ test("failed node notice stays readable without overflowing its node at 20% zoom
 
 test("crop toolbar remains inside a narrow viewport at 20% zoom", async () => {
     await page.setViewportSize({ width: 360, height: 480 });
-    const markup = renderToStaticMarkup(<CanvasVideoCropEditor videoUrl="data:video/mp4;base64,AAAA" videoDimensions={{ width: 1920, height: 1080 }} onCancel={() => {}} onConfirm={() => {}} />);
+    const markup = renderToStaticMarkup(<CanvasImageCropEditor imageUrl="data:image/png;base64,AAAA" imageDimensions={{ width: 1200, height: 800 }} onCancel={() => {}} onConfirm={() => {}} />);
     await page.setContent(`${layout}<div id="world"><div id="node">${markup}</div></div>`);
     await setZoom(0.2);
     const cancel = await page.getByRole("button", { name: "取消裁切" }).boundingBox();

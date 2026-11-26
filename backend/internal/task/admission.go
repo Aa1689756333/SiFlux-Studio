@@ -11,6 +11,16 @@ import (
 )
 
 func (s *Service) admit(userID string, req CreateRequest) (*model.Task, error) {
+	if IsRetiredAgentTaskInput(req.Operation, req.Input) {
+		return nil, kernel.BadAuthRequest(RetiredAgentBoundaryMessage)
+	}
+	taskType := strings.TrimSpace(req.Type)
+	if err := ValidateType(taskType); err != nil {
+		return nil, kernel.BadAuthRequest(err.Error())
+	}
+	if err := ValidateImageInput(req.Input); err != nil {
+		return nil, err
+	}
 	operationKey, err := ClientOperationID(req.Input)
 	if err != nil {
 		return nil, err
@@ -34,9 +44,6 @@ func (s *Service) admit(userID string, req CreateRequest) (*model.Task, error) {
 			return admitExisting(*existing, req, s.deps.Present)
 		}
 	}
-	if strings.TrimSpace(req.AdmissionID) == "" && IsRetiredAgentTaskInput(req.Operation, req.Input) {
-		return nil, kernel.BadAuthRequest(RetiredAgentBoundaryMessage)
-	}
 	if err := s.requireAdmitCollaborators(); err != nil {
 		return nil, err
 	}
@@ -46,10 +53,6 @@ func (s *Service) admit(userID string, req CreateRequest) (*model.Task, error) {
 	prompt := strings.TrimSpace(req.Prompt)
 	if prompt == "" {
 		return nil, kernel.BadAuthRequest(PromptRequiredMessage)
-	}
-	taskType := strings.TrimSpace(req.Type)
-	if err := ValidateType(taskType); err != nil {
-		return nil, kernel.BadAuthRequest(err.Error())
 	}
 	normalizedInput, err := NormalizeInput(req.Input)
 	if err != nil {
@@ -74,13 +77,8 @@ func (s *Service) admit(userID string, req CreateRequest) (*model.Task, error) {
 	if selected.Input != nil {
 		normalizedInput = selected.Input
 	}
-	if strings.HasPrefix(taskType, "video_") {
-		if !s.deps.Catalog.HasExecutableVideoConfig(normalizedInput) {
-			if mode, _ := normalizedInput["mode"].(string); mode != "video" {
-				return nil, kernel.BadAuthRequest(VideoModeRequiredMessage)
-			}
-			return nil, kernel.BadAuthRequest(VideoConfigRequiredMessage)
-		}
+	if err := ValidateImageInput(normalizedInput); err != nil {
+		return nil, err
 	}
 	if err := s.deps.Catalog.RequireCustomChannels(normalizedInput); err != nil {
 		return nil, err
@@ -95,22 +93,19 @@ func (s *Service) admit(userID string, req CreateRequest) (*model.Task, error) {
 		return nil, err
 	}
 
-	textReplay := s.deps.TextReplay.IsRequest(normalizedInput)
 	limit, err := s.deps.Policy.ActiveTaskLimit()
 	if err != nil {
 		return nil, err
 	}
-	if !textReplay {
-		if s.store == nil {
-			return nil, localStorageFailed(errStoreRequired)
-		}
-		activeTasks, err := s.store.ActiveTaskCount(userID)
-		if err != nil {
-			return nil, localStorageFailed(err)
-		}
-		if activeTasks >= int64(limit) {
-			return nil, activeLimitError(limit)
-		}
+	if s.store == nil {
+		return nil, localStorageFailed(errStoreRequired)
+	}
+	activeTasks, err := s.store.ActiveTaskCount(userID)
+	if err != nil {
+		return nil, localStorageFailed(err)
+	}
+	if activeTasks >= int64(limit) {
+		return nil, activeLimitError(limit)
 	}
 
 	task := model.Task{
@@ -128,11 +123,6 @@ func (s *Service) admit(userID string, req CreateRequest) (*model.Task, error) {
 		Provider:  req.Provider,
 		Model:     req.Model,
 	}
-	if textReplay {
-		task.Status = model.TaskStatusTextReplay
-		task.Stage = "文本持久化（前端自管）"
-		task.Model = strings.TrimSpace(req.Model)
-	}
 	if operationKey != "" {
 		task.ClientOperationID = &operationKey
 		task.ClientOperationHash = operationHash
@@ -140,7 +130,7 @@ func (s *Service) admit(userID string, req CreateRequest) (*model.Task, error) {
 	if id := strings.TrimSpace(req.AdmissionID); id != "" {
 		task.ID = id
 	}
-	if !textReplay && selected.Binding != nil {
+	if selected.Binding != nil {
 		binding := selected.Binding
 		task.LogicalModelID = binding.LogicalModelID
 		task.LogicalModelRevisionID = binding.LogicalModelRevisionID
@@ -179,19 +169,15 @@ func (s *Service) admit(userID string, req CreateRequest) (*model.Task, error) {
 	if mapped, mapErr := mapPersistError(err, req, s.deps.Present, limit); mapErr != nil || mapped != nil {
 		return mapped, mapErr
 	}
-	if !textReplay && s.deps.Activity != nil {
+	if s.deps.Activity != nil {
 		s.deps.Activity.Record(userID, "task", 1)
 	}
-	if textReplay {
-		s.log(userID, task.ID, "info", "文本持久化任务已创建（前端自管）", "")
-	} else {
-		s.log(userID, task.ID, "info", "任务已进入队列", "")
-	}
+	s.log(userID, task.ID, "info", "任务已进入队列", "")
 	return presentTask(s.deps.Present, task)
 }
 
 func (s *Service) requireAdmitCollaborators() error {
-	if s.deps.Runtime == nil || s.deps.Catalog == nil || s.deps.Secrets == nil || s.deps.Media == nil || s.deps.Projects == nil || s.deps.Policy == nil || s.deps.TextReplay == nil {
+	if s.deps.Runtime == nil || s.deps.Catalog == nil || s.deps.Secrets == nil || s.deps.Media == nil || s.deps.Projects == nil || s.deps.Policy == nil {
 		return unavailable()
 	}
 	return nil

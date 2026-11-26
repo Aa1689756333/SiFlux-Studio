@@ -1,6 +1,6 @@
 import { describe, expect, test } from "bun:test";
 
-import { canGenerateImageInPlace, canGenerateMediaInPlace, canGenerateTextInPlace, findAvailableGenerationGroupPosition, generationFailureNodeStatus, imageGenerationGroupSize, planTextGenerationTargets } from "../src/lib/canvas/canvas-generation-layout";
+import { canGenerateImageInPlace, canGenerateTextInPlace, findAvailableGenerationGroupPosition, generationFailureNodeStatus, imageGenerationGroupSize, planTextGenerationTargets } from "../src/lib/canvas/canvas-generation-layout";
 import { CanvasNodeType, type CanvasNodeData } from "../src/types/canvas";
 
 function node(id: string, x: number, y: number, width = 340, height = 240): CanvasNodeData {
@@ -70,9 +70,4 @@ describe("canGenerateImageInPlace", () => {
         expect(plan).toEqual({ generateInPlace: true, targetIds: ["text-source", "child-1", "child-2"], childIds: ["child-1", "child-2"] });
     });
 
-    test("视频复制节点与图片使用相同的结果落点规则", () => {
-        const video = { ...node("video-copy", 0, 0), type: CanvasNodeType.Video, metadata: { content: "video-url", generationResultPlacement: "replace-node" as const } };
-        expect(canGenerateMediaInPlace(video, CanvasNodeType.Video)).toBe(true);
-        expect(canGenerateMediaInPlace({ ...video, metadata: { ...video.metadata, generationResultPlacement: "new-version" } }, CanvasNodeType.Video)).toBe(false);
-    });
 });

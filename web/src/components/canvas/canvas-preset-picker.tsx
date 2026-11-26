@@ -47,7 +47,7 @@ export function CanvasPresetPicker({
                     name: reference.skill.skillName,
                     description: reference.skill.description || reference.skill.instruction || "已加入技能",
                     prompt: `@${reference.skill.skillName} `,
-                    modes: ["text", "image", "video", "audio"],
+                    modes: ["text", "image"],
                     source: "skill",
                 },
             ];

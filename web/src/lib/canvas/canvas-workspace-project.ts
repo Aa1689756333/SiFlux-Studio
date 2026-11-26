@@ -43,11 +43,11 @@ export function listCanvasWorkspaceProjectRoots<T extends CanvasWorkspaceProject
 }
 
 /** Collect media across every canvas in the workspace, before choosing a cover. */
-export function previewNodesForWorkspaceProject<T extends CanvasWorkspaceProjectRecord & { nodes: Array<{ type: string; metadata?: { storageKey?: string; content?: string; previewContent?: string; videoPreview?: { content?: string; storageKey?: string } } }> }>(canvases: readonly T[], projectId: string): T["nodes"] {
+export function previewNodesForWorkspaceProject<T extends CanvasWorkspaceProjectRecord & { nodes: Array<{ type: string; metadata?: { storageKey?: string; content?: string; previewContent?: string } }> }>(canvases: readonly T[], projectId: string): T["nodes"] {
     return canvases
         .filter((canvas) => canvasWorkspaceProjectId(canvas) === projectId)
         .flatMap((canvas) => canvas.nodes)
-        .filter((node) => (node.type === "image" || node.type === "video") && Boolean(node.metadata?.storageKey || node.metadata?.content || node.metadata?.previewContent || node.metadata?.videoPreview?.content || node.metadata?.videoPreview?.storageKey)) as T["nodes"];
+        .filter((node) => node.type === "image" && Boolean(node.metadata?.storageKey || node.metadata?.content || node.metadata?.previewContent)) as T["nodes"];
 }
 
 export function canvasIdsForWorkspaceProjects<T extends CanvasWorkspaceProjectRecord>(canvases: readonly T[], selectedCanvasIds: readonly string[]): string[] {

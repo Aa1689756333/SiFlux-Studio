@@ -9,7 +9,8 @@ test("assets history keeps LibTV source tabs and local media filtering", async (
     expect(page).toContain('searchParams.get("tab") === "history"');
     expect(page).toContain('navigate("/assets?tab=history")');
     expect(page).toContain('"生成历史"');
-    for (const label of ["全部", "图片", "视频", "音频"]) expect(page).toContain(label);
+    for (const label of ["全部", "图片"]) expect(page).toContain(label);
+    for (const label of ["视频", "音频"]) expect(page).not.toContain(label);
     for (const label of ["所有评级", "已评级", "未评级"]) expect(page).not.toContain(label);
     expect(page).toContain("generation-history-preview");
     expect(page).toContain("generation-history-badge");

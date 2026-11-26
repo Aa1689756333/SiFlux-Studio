@@ -22,21 +22,20 @@ function configWithTextChannel(overrides: Partial<AiConfig> = {}): AiConfig {
 function assistantSelection(config: AiConfig) {
     const markup = renderToStaticMarkup(<ModelDefaultGrid config={config} onChange={() => {}} />);
     const start = markup.indexOf('id="default-assistant-title"');
-    const end = markup.indexOf('id="default-audio-title"');
     expect(start).toBeGreaterThan(-1);
-    expect(end).toBeGreaterThan(start);
-    return markup.slice(start, end).match(/class="ant-select-content[^"]*" title="([^"]*)"/)?.[1];
+    return markup.slice(start).match(/class="ant-select-content[^"]*" title="([^"]*)"/)?.[1];
 }
 
 describe("模型配置页的助手模型一行", () => {
-    test("排在默认文本模型之后、默认音频模型之前", () => {
+    test("排在默认生图模型和默认文本模型之后", () => {
         const markup = renderToStaticMarkup(<ModelDefaultGrid config={configWithTextChannel()} onChange={() => {}} />);
+        const imageIndex = markup.indexOf("默认生图模型");
         const textIndex = markup.indexOf("默认文本模型");
         const assistantIndex = markup.indexOf("助手模型");
-        const audioIndex = markup.indexOf("默认音频模型");
-        expect(textIndex).toBeGreaterThan(-1);
+        expect(imageIndex).toBeGreaterThan(-1);
+        expect(textIndex).toBeGreaterThan(imageIndex);
         expect(assistantIndex).toBeGreaterThan(textIndex);
-        expect(audioIndex).toBeGreaterThan(assistantIndex);
+        expect(markup).not.toContain("默认音频模型");
     });
 
     test("默认显示跟随默认文本模型，并提供可访问的助手模型选择框", () => {

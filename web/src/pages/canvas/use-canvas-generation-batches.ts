@@ -64,7 +64,7 @@ export function useCanvasGenerationBatches({ projectId, projectLoaded, nodes, no
             const activeNodeIds = new Set((sourceNode.metadata?.generationBatches || []).flatMap((batch) => batch.items.filter((item) => ["waiting", "submitting", "queued", "running"].includes(item.status)).map((item) => item.nodeId)));
             const availableTargets = targets.filter((target) => !activeNodeIds.has(target.nodeId));
             if (!availableTargets.length) {
-                message.info("所选镜头已在生成批次中");
+                message.info("所选图片已在生成批次中");
                 return;
             }
             const now = new Date().toISOString();
@@ -203,7 +203,7 @@ export function useCanvasGenerationBatches({ projectId, projectLoaded, nodes, no
             for (const { batch, item, node } of candidates) {
                 const key = batchItemKey(batch.id, item.id);
                 if (controllersRef.current.has(key)) continue;
-                const generationMode: CanvasNodeGenerationMode = batch.mode === "storyboard_video" ? "video" : "image";
+                const generationMode: CanvasNodeGenerationMode = "image";
                 const generationConfig = buildGenerationConfig(effectiveConfig, node, generationMode);
                 if (!isAiConfigReady(generationConfig, generationConfig.model)) {
                     updateBatch(batch.sourceNodeId, batch.id, (current) => withUpdatedItem(current, item.id, { status: "failed", errorDetails: "生成模型未配置，请完成配置后重试" }));
@@ -247,7 +247,7 @@ export function useCanvasGenerationBatches({ projectId, projectLoaded, nodes, no
                 return item.submissionUncertain || shouldBlockAutomaticRetry({ code: node?.metadata?.generationErrorCode || node?.metadata?.taskErrorCode, message: item.errorDetails || node?.metadata?.errorDetails }, node?.metadata?.taskStage);
             });
             const retryableItems = failedItems.filter((item) => !blockedItems.includes(item));
-            if (blockedItems.length) message.warning(`${blockedItems.length} 个镜头需要先处理失败原因，请打开对应节点查看`);
+            if (blockedItems.length) message.warning(`${blockedItems.length} 个图片需要先处理失败原因，请打开对应节点查看`);
             if (!retryableItems.length) return;
             const retry = async () => {
                 const retryContexts = new Map<string, Awaited<ReturnType<typeof createGenerationRetryContext>>>();

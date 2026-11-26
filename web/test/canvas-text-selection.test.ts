@@ -5,10 +5,11 @@ const source = readFileSync(new URL("../src/components/canvas/canvas-node-conten
 const textContent = source.slice(source.indexOf("function TextContent("), source.indexOf("function ", source.indexOf("function TextContent(") + 1));
 
 describe("text node selection (#429)", () => {
-    test("media generators open the generation panel while all media results use tools", () => {
+    test("image generators open the generation panel while image results use tools", () => {
         const project = readFileSync(new URL("../src/pages/canvas/project.tsx", import.meta.url), "utf8");
         const clickHandler = project.slice(project.indexOf("const handleSelectedNodeClick ="), project.indexOf("const handleNodeBringToFront ="));
-        expect(clickHandler).toContain("node.type === CanvasNodeType.Image || node.type === CanvasNodeType.Video || node.type === CanvasNodeType.Audio");
+        expect(clickHandler).toContain("node.type === CanvasNodeType.Image");
+        expect(clickHandler).not.toContain("CanvasNodeType.Video");
         expect(clickHandler).toMatch(/canOpenCanvasNodePromptPanel\(node\)[\s\S]*?setToolbarNodeId\(null\);[\s\S]*?setDialogNodeId\(node\.id\);[\s\S]*?setDialogNodeId\(null\);[\s\S]*?setToolbarNodeId\(node\.id\);/);
     });
 

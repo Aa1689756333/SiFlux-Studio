@@ -1,4 +1,4 @@
-import { CanvasNodeType, type CanvasNodeData, type CanvasNodeTypeId } from "@/types/canvas";
+import { type CanvasNodeData } from "@/types/canvas";
 
 const FILE_NAME_PART_LIMIT = 80;
 
@@ -11,33 +11,13 @@ const MIME_EXTENSIONS: Record<string, string> = {
     "image/avif": "avif",
     "image/bmp": "bmp",
     "image/tiff": "tiff",
-    "video/mp4": "mp4",
-    "video/webm": "webm",
-    "video/quicktime": "mov",
-    "video/ogg": "ogv",
-    "video/mpeg": "mpeg",
-    "video/x-msvideo": "avi",
-    "video/x-matroska": "mkv",
-    "audio/mpeg": "mp3",
-    "audio/mp4": "m4a",
-    "audio/wav": "wav",
-    "audio/x-wav": "wav",
-    "audio/wave": "wav",
-    "audio/vnd.wave": "wav",
-    "audio/x-pn-wav": "wav",
-    "audio/aac": "aac",
-    "audio/flac": "flac",
-    "audio/ogg": "ogg",
-    "audio/opus": "opus",
-    "audio/webm": "webm",
-    "audio/x-m4a": "m4a",
 };
 
-const CONTENT_EXTENSIONS = new Set(Object.values(MIME_EXTENSIONS).concat(["jpeg", "mpg"]));
+const CONTENT_EXTENSIONS = new Set(Object.values(MIME_EXTENSIONS));
 
 export function buildCanvasMediaDownloadFileName(canvasTitle: string, node: CanvasNodeData, now = new Date()) {
     const canvasName = safeFileNamePart(canvasTitle, "未命名画布");
-    const nodeName = safeFileNamePart(node.title, defaultNodeName(node.type));
+    const nodeName = safeFileNamePart(node.title, defaultNodeName());
     return `${canvasName}_${nodeName}_${formatDownloadDate(now)}.${canvasMediaFileExtension(node)}`;
 }
 
@@ -53,7 +33,7 @@ export function sanitizeDownloadFileName(value: string, fallback = "未命名文
 
 export function canvasMediaFileExtension(node: CanvasNodeData) {
     return mediaFileExtension(node.metadata?.mimeType, node.metadata?.content)
-        || defaultExtension(node.type);
+        || defaultExtension();
 }
 
 export function mediaFileExtension(mimeType?: string, content?: string) {
@@ -74,7 +54,6 @@ function extensionFromContent(content?: string) {
     const extension = path.match(/\.([a-z0-9]+)$/i)?.[1]?.toLowerCase();
     if (!extension || !CONTENT_EXTENSIONS.has(extension)) return undefined;
     if (extension === "jpeg") return "jpg";
-    if (extension === "mpg") return "mpeg";
     return extension;
 }
 
@@ -98,14 +77,10 @@ function formatDownloadDate(date: Date) {
     return `${year}${month}${day}`;
 }
 
-function defaultNodeName(type: CanvasNodeTypeId) {
-    if (type === CanvasNodeType.Video) return "视频节点";
-    if (type === CanvasNodeType.Audio) return "音频节点";
+function defaultNodeName(): string {
     return "图片节点";
 }
 
-function defaultExtension(type: CanvasNodeTypeId) {
-    if (type === CanvasNodeType.Video) return "mp4";
-    if (type === CanvasNodeType.Audio) return "mp3";
+function defaultExtension(): string {
     return "png";
 }

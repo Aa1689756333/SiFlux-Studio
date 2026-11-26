@@ -223,7 +223,6 @@ export async function executeImageGeneration({
                         metadata: {
                             sourceNodeId: nodeId,
                             ...taskContext,
-                            resolvedCharacterVersions: generationContext.resolvedCharacterVersions,
                             promptTemplateOperation: sourceNode?.metadata?.promptTemplateOperation,
                             promptTemplateVariables: sourceNode?.metadata?.promptTemplateVariables,
                             ...styleMetadata,

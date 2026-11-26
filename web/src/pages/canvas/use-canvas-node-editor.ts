@@ -236,7 +236,7 @@ export function useCanvasNodeEditor({
     }, [message, nodesRef, persistOwnedEditorNode, setNodes]);
 
     const downloadNodeImage = useCallback((node: CanvasNodeData) => {
-        if ((node.type !== CanvasNodeType.Image && node.type !== CanvasNodeType.Video && node.type !== CanvasNodeType.Audio) || !node.metadata?.content) return;
+        if (node.type !== CanvasNodeType.Image || !node.metadata?.content) return;
         void reportOwnedMediaSave(message, downloadOwnedOrBrowserMedia({
             fileName: buildCanvasMediaDownloadFileName(canvasTitle, node),
             resourceId: ownedResourceIdFromMediaRef(node.metadata?.storageKey, node.metadata?.content),
@@ -245,7 +245,7 @@ export function useCanvasNodeEditor({
     }, [canvasTitle, message]);
 
     const saveNodeAsset = useCallback(async (node: CanvasNodeData) => {
-        if (node.type !== CanvasNodeType.Text && node.type !== CanvasNodeType.Image && node.type !== CanvasNodeType.Video && node.type !== CanvasNodeType.Audio) return message.error("当前节点类型不能保存为素材");
+        if (node.type !== CanvasNodeType.Text && node.type !== CanvasNodeType.Image) return message.error("当前节点类型不能保存为素材");
         if (!node.metadata?.content?.trim()) return message.error("当前节点没有可保存的内容");
         const { guard, result } = await persistOwnedEditorNode(node);
         if (!guard.alive()) return;

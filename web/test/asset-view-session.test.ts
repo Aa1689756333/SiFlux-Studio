@@ -257,7 +257,6 @@ describe("asset page and picker wiring", () => {
         expect(page).toContain("await uploadWorkspaceAssetFiles(files, folderId, entryScope)");
         expect(handler).toContain("expected: CapturedUserScope");
         expect(handler).not.toContain("useEffect");
-        expect(handler).toContain("uploadMediaFile(file, \"video\", undefined, expected)");
         expect(handler).toContain("uploadImage(file, undefined, expected)");
         expect(handler).toContain("persistWorkspaceAssetChanges(expected)");
         expect(handler).toContain("if (!userScopeMatches(expected)) return");
@@ -265,36 +264,12 @@ describe("asset page and picker wiring", () => {
     });
 
     test("picker parents carry expectedScope into async confirm, upload, and insert work", () => {
-        const create = read("../src/pages/create/index.tsx");
-        expect(create).toContain("const uploadLibraryAssets = async (files: FileList | File[], expectedScope: CapturedUserScope)");
-        expect(create).toContain("const handleLibrarySelect = (selectedIds: string[], expectedScope: CapturedUserScope)");
-        expect(create).toContain("uploadImage(file, undefined, expectedScope)");
-        expect(create).toContain("uploadMediaFile(file, \"create-upload\", undefined, expectedScope)");
-        expect(create).toContain("externalAssetSources.uploadExternalFiles(files, folderId, undefined, expectedScope)");
-
         const canvasPicker = read("../src/components/canvas/asset-picker-modal.tsx");
         expect(canvasPicker).toContain("onInsert: (payloads: InsertAssetPayload[], expectedScope: CapturedUserScope)");
         expect(canvasPicker).toContain("await onInsert(assetPickerItemsToInsertPayloads(ids, items), expectedScope)");
 
-        const projectPicker = read("../src/components/canvas/canvas-project-asset-modal.tsx");
-        expect(projectPicker).toContain("getWorkspaceAsset(item.project.id, undefined, { expectedScope })");
-        expect(projectPicker).toContain("await onInsertFolder(folderId, expectedScope)");
-
         const canvasUpload = read("../src/pages/canvas/use-canvas-upload.ts");
         expect(canvasUpload).toContain("uploadImage(payload.dataUrl, undefined, expectedScope)");
         expect(canvasUpload).toContain("expectedScope && !userScopeMatches(expectedScope)");
-
-        const projectAssets = read("../src/pages/projects/detail/assets.tsx");
-        expect(projectAssets).toContain("linkProjectAsset(detail.project.id,");
-        expect(projectAssets).toContain("undefined, expectedScope");
-        expect(projectAssets).toContain("replaceProjectCharacterRepresentations(detail.project.id, imageAsset.id");
-        expect(projectAssets).toContain("expectedScope");
-        expect(projectAssets).toContain("uploadMediaFile(file, \"character-voice\", undefined, expectedScope)");
-        expect(projectAssets).toContain("shouldSuppressAssetViewError(error, variables.expectedScope)");
-
-        const projectSettings = read("../src/pages/projects/detail/settings.tsx");
-        expect(projectSettings).toContain("uploadImage(file, undefined, expectedScope)");
-        expect(projectSettings).toContain("updateProject(projectId, { coverResourceId }, expectedScope)");
-        expect(projectSettings).toContain("shouldSuppressAssetViewError(error, variables.expectedScope)");
     });
 });

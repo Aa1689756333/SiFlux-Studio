@@ -311,17 +311,8 @@ func validateArchive(platform, zipPath string) error {
 	hasMacExec := false
 	hasWinExec := false
 	hasLinuxExec := false
-	hasCLI := false
 	requiredMedia := map[string]map[string]bool{}
-	cliPath := "cli/siflux.exe"
-	if strings.HasPrefix(platform, "darwin-") {
-		cliPath = "SiFlux.app/Contents/MacOS/cli/siflux"
-	}
-	if platform == platformLinuxAMD64 {
-		cliPath = linuxBundleName + "/cli/siflux"
-	}
 	pluginCount := 0
-	cliSeen := false
 	agentFilesSeen := false
 	agentPrefix := "agent-host/"
 	nodeRelative := "runtime/node.exe"
@@ -347,19 +338,6 @@ func validateArchive(platform, zipPath string) error {
 					}
 				}
 			}
-		}
-		cliPrefix := path.Dir(cliPath) + "/"
-		if name == cliPath || (strings.HasPrefix(name, cliPrefix) && !strings.HasSuffix(name, "/")) {
-			cliSeen = true
-		}
-		if strings.TrimSuffix(name, "/") == cliPath {
-			if !file.Mode().IsRegular() || file.UncompressedSize64 == 0 {
-				return fmt.Errorf("bundled CLI must be a nonempty regular file: %s", cliPath)
-			}
-			if platform != platformWindowsAMD64 && file.Mode()&0o111 == 0 {
-				return fmt.Errorf("bundled CLI must retain executable mode: %s", cliPath)
-			}
-			hasCLI = true
 		}
 		if rel, ok := strings.CutPrefix(name, agentPrefix); ok {
 			agentFilesSeen = true
@@ -400,9 +378,6 @@ func validateArchive(platform, zipPath string) error {
 		case strings.HasPrefix(name, "SiFlux.app/Contents/Resources/"+pluginDirName+"/") && strings.HasSuffix(name, pluginSuffix) && file.Mode().IsRegular():
 			pluginCount++
 		}
-	}
-	if (platform != platformWindowsAMD64 || cliSeen) && !hasCLI {
-		return fmt.Errorf("archive missing bundled CLI: %s", cliPath)
 	}
 	for prefix, resources := range requiredMedia {
 		for name, found := range resources {

@@ -43,11 +43,4 @@ describe("project library covers", () => {
         expect(component).not.toContain('<span className="canvas-project-empty-image" aria-hidden="true" />');
         expect(css).not.toContain(".canvas-project-empty-image { width: 64px; height: 48px;");
     });
-
-    test("home recents use the same complete project preview as the library", () => {
-        const home = readFileSync(new URL("../src/pages/home/index.tsx", import.meta.url), "utf8");
-        const dashboard = readFileSync(new URL("../src/pages/home/home-dashboard.tsx", import.meta.url), "utf8");
-        expect(home).toContain("previewNodesForWorkspaceProject(localProjects, project.id)");
-        expect(dashboard).toContain("<ProjectPreview project={{ id: project.id, nodes: project.previewNodes }}");
-    });
 });

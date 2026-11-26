@@ -1,26 +1,25 @@
 import { describe, expect, test } from "bun:test";
 
-import { autoMentionCanvasResourceReferences, findCanvasResourceAutoLinkMatch, type CanvasResourceReference, applyCanvasConnectionPromptSync, buildAssetMentionReferences, buildCanvasNodeMentionReferenceMap, buildNodeMentionReferences, buildOrderedCanvasResourceReferences, canvasResourceMentionToken, collectUpstreamVideoNodes, imageGenerationReferenceConnections, reorderCanvasResourceConnections, replaceCanvasMentionToken, replaceCanvasReferenceMentions } from "../src/lib/canvas/canvas-resource-references";
+import { autoMentionCanvasResourceReferences, findCanvasResourceAutoLinkMatch, type CanvasResourceReference, applyCanvasConnectionPromptSync, buildAssetMentionReferences, buildCanvasNodeMentionReferenceMap, buildNodeMentionReferences, buildOrderedCanvasResourceReferences, canvasResourceMentionToken, imageGenerationReferenceConnections, reorderCanvasResourceConnections, replaceCanvasReferenceMentions } from "../src/lib/canvas/canvas-resource-references";
 import { bindCanvasNodeResourceAsset, bindMissingCanvasResourceAssets, canvasNodeToAsset, canvasNodesMissingResourceAssetBinding } from "../src/lib/canvas/canvas-node-asset";
-import { buildNodeGenerationInputs } from "../src/components/canvas/canvas-node-generation";
 import { CanvasNodeType, type CanvasConnection, type CanvasNodeData } from "../src/types/canvas";
 
 const smartReferences: CanvasResourceReference[] = [
     { id: "image-6", nodeId: "image-6", kind: "image", label: "图片6", title: "宫门全景", active: true },
-    { id: "character", nodeId: "character", kind: "character", label: "角色1", title: "唐妙菱", active: true },
+    { id: "text-1", nodeId: "text-1", kind: "text", label: "文本1", title: "唐妙菱", active: true },
 ];
 
 describe("canvas smart references", () => {
     test("converts repeated names and aliases without rewriting existing mentions", () => {
         expect(autoMentionCanvasResourceReferences("图片6在前景，图6退后；宫门全景可见。唐妙菱看向图片60。", smartReferences))
-            .toBe("@图片6 在前景，@图片6 退后；@图片6 可见。@角色1 看向图片60。");
+            .toBe("@图片6 在前景，@图片6 退后；@图片6 可见。@文本1 看向图片60。");
         const existing = "已有 @图片6 和 @[node:image-6]、@[asset:宫门全景]。";
         expect(autoMentionCanvasResourceReferences(existing, smartReferences)).toBe(existing);
-        expect(autoMentionCanvasResourceReferences("请使用 2。不要改约2秒。", smartReferences)).toBe("请使用 @角色1。不要改约2秒。");
+        expect(autoMentionCanvasResourceReferences("请使用 2。不要改约2秒。", smartReferences)).toBe("请使用 @文本1。不要改约2秒。");
     });
 
     test("returns exact replacement offsets for names and shelf orders", () => {
-        for (const alias of ["唐妙菱", "角色1", "2", "image2", "image 2"]) {
+        for (const alias of ["唐妙菱", "文本1", "2", "image2", "image 2"]) {
             const prompt = `请使用 ${alias}，然后继续`;
             expect(findCanvasResourceAutoLinkMatch(prompt, 4 + alias.length, smartReferences))
                 .toEqual({ reference: smartReferences[1], start: 4, end: 4 + alias.length, query: alias });
@@ -57,15 +56,15 @@ describe("canvas smart references", () => {
     });
 });
 
-function videoNode(id: string): CanvasNodeData {
+function configNode(id: string): CanvasNodeData {
     return {
         id,
-        type: CanvasNodeType.Video,
+        type: CanvasNodeType.Config,
         title: id,
         position: { x: 0, y: 0 },
-        width: 100,
-        height: 100,
-        metadata: { content: `data:video/mp4;base64,${id}` },
+        width: 320,
+        height: 180,
+        metadata: {},
     };
 }
 
@@ -93,50 +92,18 @@ function imageNode(id: string): CanvasNodeData {
     };
 }
 
-function audioNode(id: string): CanvasNodeData {
-    return {
-        id,
-        type: CanvasNodeType.Audio,
-        title: id,
-        position: { x: 0, y: 0 },
-        width: 100,
-        height: 60,
-        metadata: { content: `data:audio/mpeg;base64,${id}` },
-    };
-}
-
 function connection(fromNodeId: string, toNodeId: string): CanvasConnection {
     return { id: `conn-${fromNodeId}-${toNodeId}`, fromNodeId, toNodeId };
 }
 
-describe("collectUpstreamVideoNodes", () => {
-    test("下游视频节点能回溯到上游视频源", () => {
-        const source = videoNode("source-video");
-        const segment = videoNode("segment-video");
-        const target = videoNode("target-video");
-        const text = textNode("script");
-        const nodes = [target, segment, source, text];
-        const connections = [connection("source-video", "segment-video"), connection("segment-video", "target-video"), connection("script", "segment-video")];
-        expect(collectUpstreamVideoNodes("target-video", nodes, connections).map((node) => node.id)).toEqual(["target-video", "segment-video", "source-video"]);
-    });
-
-    test("存在环时不会死循环", () => {
-        const a = videoNode("a");
-        const b = videoNode("b");
-        const nodes = [a, b];
-        const connections = [connection("a", "b"), connection("b", "a")];
-        expect(collectUpstreamVideoNodes("a", nodes, connections).length).toBe(2);
-    });
-});
-
 describe("canvas resource mention slots", () => {
     test("finds resource-backed media nodes that must be linked before syncing a canvas snapshot", () => {
-        const source = videoNode("legacy-video");
-        source.metadata = { content: "https://cdn.example.com/video.mp4", storageKey: "resource:video-resource" };
+        const source = imageNode("legacy-image");
+        source.metadata = { content: "https://cdn.example.com/image.png", storageKey: "resource:image-resource" };
         const urlOnly = imageNode("url-only-image");
         urlOnly.metadata = { content: "/api/resources/image-resource/file" };
-        const alreadyBound = videoNode("bound-video");
-        alreadyBound.metadata = { content: "https://cdn.example.com/other.mp4", storageKey: "resource:other-resource", assetId: "asset-other" };
+        const alreadyBound = imageNode("bound-image");
+        alreadyBound.metadata = { content: "https://cdn.example.com/other.png", storageKey: "resource:other-resource", assetId: "asset-other" };
         const localOnly = imageNode("local-image");
         localOnly.metadata = { content: "data:image/png;base64,local" };
         const substringInQuery = imageNode("query-image");
@@ -144,7 +111,7 @@ describe("canvas resource mention slots", () => {
         const substringInNote = imageNode("note-image");
         substringInNote.metadata = { content: "note: see /api/resources/fake-res/file" };
 
-        expect(canvasNodesMissingResourceAssetBinding([source, urlOnly, alreadyBound, localOnly, substringInQuery, substringInNote]).map((node) => node.id)).toEqual(["legacy-video", "url-only-image"]);
+        expect(canvasNodesMissingResourceAssetBinding([source, urlOnly, alreadyBound, localOnly, substringInQuery, substringInNote]).map((node) => node.id)).toEqual(["legacy-image", "url-only-image"]);
 
         const urlOnlyAsset = canvasNodeToAsset(urlOnly, { canvasId: "canvas-1", source: "canvas-upload" });
         expect(urlOnlyAsset?.kind).toBe("image");
@@ -152,12 +119,12 @@ describe("canvas resource mention slots", () => {
     });
 
     test("history insert reuses the owned asset for the same resource without guessing across conflicting siblings", () => {
-        const original = videoNode("original");
-        original.metadata = { assetId: "asset-owned", storageKey: "resource:audio-owned", content: "/api/resources/audio-owned/file" };
-        const conflictingSibling = videoNode("conflicting");
-        conflictingSibling.metadata = { assetId: "asset-other-copy", storageKey: "resource:audio-owned", content: "/api/resources/audio-owned/file" };
-        const history = videoNode("history");
-        history.metadata = { storageKey: "resource:audio-owned", content: "/api/resources/audio-owned/file" };
+        const original = imageNode("original");
+        original.metadata = { assetId: "asset-owned", storageKey: "resource:image-owned", content: "/api/resources/image-owned/file" };
+        const conflictingSibling = imageNode("conflicting");
+        conflictingSibling.metadata = { assetId: "asset-other-copy", storageKey: "resource:image-owned", content: "/api/resources/image-owned/file" };
+        const history = imageNode("history");
+        history.metadata = { storageKey: "resource:image-owned", content: "/api/resources/image-owned/file" };
         const bound = bindCanvasNodeResourceAsset(history, [original], []);
         expect(bound.metadata?.assetId).toBe("asset-owned");
         expect(canvasNodesMissingResourceAssetBinding([original, bound])).toEqual([]);
@@ -165,25 +132,25 @@ describe("canvas resource mention slots", () => {
 
         const fromStore = bindCanvasNodeResourceAsset(history, [], [{
             id: "asset-from-store",
-            kind: "audio",
-            title: "旁白",
+            kind: "image",
+            title: "场景图",
             coverUrl: "",
             tags: [],
             createdAt: "2026-09-24T00:00:00.000Z",
             updatedAt: "2026-09-24T00:00:00.000Z",
-            data: { url: "/api/resources/audio-owned/file", storageKey: "resource:audio-owned", bytes: 8, mimeType: "audio/mpeg" },
+            data: { dataUrl: "/api/resources/image-owned/file", storageKey: "resource:image-owned", width: 100, height: 100, bytes: 8, mimeType: "image/png" },
         }]);
         expect(fromStore.metadata?.assetId).toBe("asset-from-store");
         expect(bindCanvasNodeResourceAsset(history, [], []).metadata?.assetId).toBeUndefined();
     });
 
     test("history insert binds cached unbound siblings and the new node to the same resource", async () => {
-        const original = videoNode("original");
-        original.metadata = { assetId: "asset-owned", storageKey: "resource:audio-owned", content: "/api/resources/audio-owned/file" };
-        const cachedHistory = videoNode("cached-history");
-        cachedHistory.metadata = { storageKey: "resource:audio-owned", content: "/api/resources/audio-owned/file" };
-        const inserted = videoNode("inserted-history");
-        inserted.metadata = { storageKey: "resource:audio-owned", content: "/api/resources/audio-owned/file" };
+        const original = imageNode("original");
+        original.metadata = { assetId: "asset-owned", storageKey: "resource:image-owned", content: "/api/resources/image-owned/file" };
+        const cachedHistory = imageNode("cached-history");
+        cachedHistory.metadata = { storageKey: "resource:image-owned", content: "/api/resources/image-owned/file" };
+        const inserted = imageNode("inserted-history");
+        inserted.metadata = { storageKey: "resource:image-owned", content: "/api/resources/image-owned/file" };
         const ensured: string[] = [];
         const bound = await bindMissingCanvasResourceAssets([original, cachedHistory, inserted], [], async (node) => {
             ensured.push(node.id);
@@ -194,8 +161,8 @@ describe("canvas resource mention slots", () => {
         expect(bound.map((node) => node.metadata?.assetId)).toEqual(["asset-owned", "asset-owned", "asset-owned"]);
         expect(canvasNodesMissingResourceAssetBinding(bound)).toEqual([]);
 
-        const unboundOriginal = videoNode("unbound-original");
-        unboundOriginal.metadata = { storageKey: "resource:audio-owned", content: "/api/resources/audio-owned/file" };
+        const unboundOriginal = imageNode("unbound-original");
+        unboundOriginal.metadata = { storageKey: "resource:image-owned", content: "/api/resources/image-owned/file" };
         const created: string[] = [];
         const repaired = await bindMissingCanvasResourceAssets([unboundOriginal, cachedHistory, inserted], [], async (node) => {
             created.push(node.id);
@@ -205,120 +172,54 @@ describe("canvas resource mention slots", () => {
         expect(repaired.map((node) => node.metadata?.assetId)).toEqual(["asset-ensured", "asset-ensured", "asset-ensured"]);
     });
 
-    test("素材库视频优先使用封面，没有封面时保留首帧视频回退源", () => {
-        const poster = buildAssetMentionReferences([{
-            id: "video-with-poster",
-            kind: "video",
-            title: "带封面视频",
-            coverUrl: "https://cdn.example.com/poster.jpg",
-            tags: [],
-            createdAt: "2026-08-31T00:00:00.000Z",
-            updatedAt: "2026-08-31T00:00:00.000Z",
-            data: { url: "https://cdn.example.com/video.mp4", storageKey: "resource:video", width: 1280, height: 720, bytes: 1, mimeType: "video/mp4" },
-        }])[0];
-        expect(poster?.previewUrl).toBe("https://cdn.example.com/poster.jpg");
-        expect(poster?.mediaUrl).toBeUndefined();
+    test("素材库图片与文本引用分别暴露预览与正文", () => {
+        const references = buildAssetMentionReferences([
+            {
+                id: "image-asset",
+                kind: "image",
+                title: "场景图",
+                coverUrl: "https://cdn.example.com/cover.png",
+                tags: [],
+                createdAt: "2026-08-31T00:00:00.000Z",
+                updatedAt: "2026-08-31T00:00:00.000Z",
+                data: { dataUrl: "https://cdn.example.com/image.png", storageKey: "resource:image", width: 1280, height: 720, bytes: 1, mimeType: "image/png" },
+            },
+            {
+                id: "text-asset",
+                kind: "text",
+                title: "旁白",
+                coverUrl: "https://cdn.example.com/text-cover.png",
+                tags: [],
+                createdAt: "2026-08-31T00:00:00.000Z",
+                updatedAt: "2026-08-31T00:00:00.000Z",
+                data: { content: "第一幕" },
+            },
+        ]);
 
-        const legacy = buildAssetMentionReferences([{
-            id: "legacy-video",
-            kind: "video",
-            title: "旧视频",
-            coverUrl: "https://cdn.example.com/video.mp4",
-            tags: [],
-            createdAt: "2026-08-31T00:00:00.000Z",
-            updatedAt: "2026-08-31T00:00:00.000Z",
-            data: { url: "https://cdn.example.com/video.mp4", storageKey: "resource:legacy-video", width: 1280, height: 720, bytes: 1, mimeType: "video/mp4" },
-        }])[0];
-        expect(legacy?.previewUrl).toBe("");
-        expect(legacy?.mediaUrl).toBe("https://cdn.example.com/video.mp4");
-    });
-
-    test("保存画布视频资产时保留节点已有的静态首帧", () => {
-        const node = videoNode("video-with-poster");
-        node.metadata = {
-            content: "https://cdn.example.com/video.mp4",
-            videoPreview: { content: "https://cdn.example.com/poster.jpg", storageKey: "resource:poster" },
-        };
-        const asset = canvasNodeToAsset(node, { canvasId: "canvas", source: "canvas-upload" });
-        expect(asset?.kind).toBe("video");
-        expect(asset && "coverUrl" in asset ? asset.coverUrl : "").toBe("https://cdn.example.com/poster.jpg");
+        expect(references[0]?.kind).toBe("image");
+        expect(references[0]?.previewUrl).toBe("https://cdn.example.com/image.png");
+        expect(references[0]?.storageKey).toBe("resource:image");
+        expect(references[1]?.kind).toBe("text");
+        expect(references[1]?.previewUrl).toBe("https://cdn.example.com/text-cover.png");
+        expect(references[1]?.text).toBe("第一幕");
     });
 
     test("仅有持久资源键的媒体节点仍可恢复为素材且不伪造临时地址", () => {
-        const node = videoNode("storage-key-only-video");
+        const node = imageNode("storage-key-only-image");
         node.metadata = {
-            storageKey: "  video:user:durable  ",
-            mimeType: "video/mp4",
+            storageKey: "  image:user:durable  ",
+            mimeType: "image/png",
         };
 
         const asset = canvasNodeToAsset(node, { canvasId: "canvas", source: "canvas-upload" });
 
-        expect(asset?.kind).toBe("video");
-        expect(asset?.kind === "video" ? asset.data.url : "not-video").toBe("");
-        expect(asset?.kind === "video" ? asset.data.storageKey : undefined).toBe("video:user:durable");
-    });
-
-    test("上传视频作为生成设置引用时携带首帧预览，而不是播放器地址", () => {
-        const source = videoNode("uploaded-video");
-        source.metadata = {
-            content: "https://cdn.example.com/video.mp4",
-            storageKey: "video:user:uploaded",
-            videoPreview: { content: "blob:poster", storageKey: "image:user:poster", width: 400, height: 225 },
-        };
-        const config: CanvasNodeData = {
-            id: "config",
-            type: CanvasNodeType.Config,
-            title: "生成设置",
-            position: { x: 0, y: 0 },
-            width: 320,
-            height: 180,
-            metadata: {},
-        };
-        const inputs = buildNodeGenerationInputs(config.id, [source, config], [connection(source.id, config.id)]);
-        expect(inputs).toHaveLength(1);
-        expect(inputs[0]?.type).toBe("video");
-        expect(inputs[0]?.previewUrl).toBe("blob:poster");
-        expect(inputs[0]?.previewUrl).not.toBe(source.metadata.content);
-    });
-
-    test("视频引用只暴露静态首帧，不把原视频当缩略图", () => {
-        const genericVideo = videoNode("generic-video");
-        genericVideo.metadata = { content: "https://example.com/video.mp4" };
-        const libtvVideo = videoNode("libtv-video");
-        libtvVideo.metadata = { content: "https://libtv-res.liblib.art/path/video.mp4" };
-
-        const references = buildOrderedCanvasResourceReferences([genericVideo, libtvVideo]);
-        expect(references[0]?.previewUrl).toBe("");
-        expect(references[1]?.previewUrl).toContain("video%2Fsnapshot");
-
-        const uploaded = videoNode("uploaded-video");
-        uploaded.metadata = {
-            content: "https://cdn.example.com/video.mp4",
-            storageKey: "video:user:source",
-            videoPreview: { content: "https://cdn.example.com/poster.jpg", storageKey: "image:user:poster" },
-        };
-        const [uploadedReference] = buildOrderedCanvasResourceReferences([uploaded]);
-        expect(uploadedReference?.previewStorageKey).toBe("image:user:poster");
-        expect(uploadedReference?.storageKey).toBe("video:user:source");
-    });
-
-    test("绘图引用保留本地预览定位信息", () => {
-        const drawing: CanvasNodeData = {
-            id: "drawing-a",
-            type: CanvasNodeType.Drawing,
-            title: "草图 A",
-            position: { x: 0, y: 0 },
-            width: 100,
-            height: 100,
-            metadata: { drawingId: "drawing-document-a", drawingRevision: 3 },
-        };
-        const target = videoNode("target");
-        const [reference] = buildNodeMentionReferences(target, [drawing, target], [connection(drawing.id, target.id)]);
-        expect(reference).toMatchObject({ kind: "image", label: "绘图1", drawingId: "drawing-document-a", drawingRevision: 3 });
+        expect(asset?.kind).toBe("image");
+        expect(asset?.kind === "image" ? asset.data.dataUrl : "not-image").toBe("");
+        expect(asset?.kind === "image" ? asset.data.storageKey : undefined).toBe("image:user:durable");
     });
 
     test("画布节点引用只保存类型位置，不保存节点 ID", () => {
-        const target = videoNode("target");
+        const target = configNode("target");
         const image = imageNode("image-a");
         const [reference] = buildNodeMentionReferences(target, [image, target], [connection(image.id, target.id)]);
 
@@ -327,25 +228,25 @@ describe("canvas resource mention slots", () => {
         expect(canvasResourceMentionToken(reference)).not.toContain(image.id);
     });
 
-    test("图片、音频和文本分别按各自类型顺序编号", () => {
-        const target = videoNode("target");
-        const nodes = [imageNode("image-a"), audioNode("audio-a"), imageNode("image-b"), textNode("text-a"), target];
+    test("图片和文本分别按各自类型顺序编号", () => {
+        const target = configNode("target");
+        const nodes = [imageNode("image-a"), textNode("text-a"), imageNode("image-b"), target];
         const connections = nodes.slice(0, -1).map((node) => connection(node.id, target.id));
 
-        expect(buildNodeMentionReferences(target, nodes, connections).map((reference) => reference.label)).toEqual(["图片1", "音频1", "图片2", "文本1"]);
+        expect(buildNodeMentionReferences(target, nodes, connections).map((reference) => reference.label)).toEqual(["图片1", "文本1", "图片2"]);
     });
 
     test("批量索引保持直接引用和配置节点引用语义", () => {
         const image = imageNode("image-a");
-        const audio = audioNode("audio-a");
-        const target = videoNode("target");
-        const config: CanvasNodeData = { id: "config", type: CanvasNodeType.Config, title: "config", position: { x: 0, y: 0 }, width: 100, height: 100, metadata: {} };
-        const nodes = [image, audio, target, config];
-        const connections = [connection(image.id, target.id), connection(target.id, config.id), connection(audio.id, config.id)];
+        const text = textNode("text-a");
+        const target = imageNode("target");
+        const config = configNode("config");
+        const nodes = [image, text, target, config];
+        const connections = [connection(image.id, target.id), connection(target.id, config.id), connection(text.id, config.id)];
         const references = buildCanvasNodeMentionReferenceMap(nodes, connections);
 
-        expect(references.get(target.id)?.map((reference) => reference.nodeId)).toEqual([audio.id]);
-        expect(references.get(config.id)?.map((reference) => reference.nodeId)).toEqual([target.id, audio.id]);
+        expect(references.get(target.id)?.map((reference) => reference.nodeId)).toEqual([text.id]);
+        expect(references.get(config.id)?.map((reference) => reference.nodeId)).toEqual([target.id, text.id]);
         expect(references.get(image.id)?.map((reference) => reference.nodeId)).toEqual([]);
         expect(buildNodeMentionReferences(image, nodes, connections).map((reference) => reference.nodeId)).toEqual([image.id]);
     });
@@ -361,13 +262,19 @@ describe("canvas resource mention slots", () => {
             active: false,
         })).toBe("@[asset:asset-a]");
     });
+
+    test("按连线顺序暴露画布资源引用，并按类型稳定编号", () => {
+        const references = buildOrderedCanvasResourceReferences([imageNode("image-a"), textNode("text-a")]);
+        expect(references.map((reference) => reference.label)).toEqual(["图片1", "文本1"]);
+        expect(references.map((reference) => reference.active)).toEqual([true, true]);
+    });
 });
 
 describe("remove canvas resource mention tokens", () => {
     test("断开首图时同步紧邻中文、连续引用及两位数编号", () => {
         const images = Array.from({ length: 10 }, (_, index) => imageNode(`image-${index}`));
         const target = {
-            ...videoNode("target"),
+            ...configNode("target"),
             metadata: { composerContent: "@图片1@图片2的人物参考@图片10，@[node:image-1]保持一致" },
         };
         const nodes = [...images, target];
@@ -380,7 +287,7 @@ describe("remove canvas resource mention tokens", () => {
     test("取消引用后会清掉对应的 @图片N", () => {
         const image = imageNode("image-a");
         const target = {
-            ...videoNode("target"),
+            ...configNode("target"),
             metadata: { composerContent: "@图片1 生成角色设定图：保持同一角色身份。" },
         };
         const previousConnections = [connection(image.id, target.id)];
@@ -393,7 +300,7 @@ describe("remove canvas resource mention tokens", () => {
     test("同时存在节点 token 时一并清掉", () => {
         const image = imageNode("image-a");
         const target = {
-            ...videoNode("target"),
+            ...configNode("target"),
             metadata: { composerContent: "让 @图片1 和 @[node:image-a] 一起进入画面" },
         };
         const [nextTarget] = applyCanvasConnectionPromptSync([image, target], [connection(image.id, target.id)], [image, target], []).filter((node) => node.id === target.id);
@@ -406,7 +313,7 @@ describe("remove canvas resource mention tokens", () => {
         const imageA = imageNode("image-a");
         const imageB = imageNode("image-b");
         const target = {
-            ...videoNode("target"),
+            ...configNode("target"),
             metadata: { composerContent: "比较 @图片1 和 @图片2" },
         };
         const previousConnections = [connection(imageA.id, target.id), connection(imageB.id, target.id)];
@@ -434,7 +341,7 @@ describe("reorder canvas resource connections", () => {
     test("直接引用按指定顺序换位并同步编号提示词", () => {
         const imageA = imageNode("image-a");
         const imageB = imageNode("image-b");
-        const target = { ...videoNode("target"), metadata: { composerContent: "比较 @图片1 和 @图片2" } };
+        const target = { ...configNode("target"), metadata: { composerContent: "比较 @图片1 和 @图片2" } };
         const nodes = [imageA, imageB, target];
         const previousConnections = [connection(imageA.id, target.id), connection(imageB.id, target.id)];
         const nextConnections = reorderCanvasResourceConnections(target.id, [imageB.id, imageA.id], nodes, previousConnections);
@@ -446,9 +353,9 @@ describe("reorder canvas resource connections", () => {
     test("配置节点承接的引用可排序且不改变主链和无关连线", () => {
         const imageA = imageNode("image-a");
         const imageB = imageNode("image-b");
-        const target = videoNode("target");
-        const config: CanvasNodeData = { id: "config", type: CanvasNodeType.Config, title: "config", position: { x: 0, y: 0 }, width: 100, height: 100, metadata: {} };
-        const other = videoNode("other");
+        const target = imageNode("target");
+        const config = configNode("config");
+        const other = textNode("other");
         const main = connection(target.id, config.id);
         const unrelated = connection(imageA.id, other.id);
         const previousConnections = [main, connection(imageA.id, config.id), unrelated, connection(imageB.id, config.id)];

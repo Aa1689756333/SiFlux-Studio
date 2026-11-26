@@ -174,8 +174,8 @@ export function useCanvasVersionHistory(projectId: string, onRestore: (snapshotI
         if (!preview?.project || !isCurrentContext()) return;
         setExporting(true);
         try {
-            // Drawing strokes are not versioned; never mix today's local strokes into an old snapshot.
-            const result = await exportCanvasProjects([preview.project], `${preview.project.title}-${preview.label}`, { includeLocalDrawings: false });
+            // 版本预览只导出快照本身，不回填画布以外的本地内容。
+            const result = await exportCanvasProjects([preview.project], `${preview.project.title}-${preview.label}`);
             if (result === "saved") message.success("已下载，可从画布列表导入为新画布");
         } catch (cause) {
             message.error(cause instanceof Error ? cause.message : "下载失败，请重试");
@@ -345,7 +345,6 @@ export function CanvasVersionHistory({ history }: { history: CanvasVersionHistor
                                 {preview.project.nodes.length} 个节点 · {preview.project.connections.length} 条连线
                             </small>
                         ) : null}
-                        {preview.project?.nodes.some((node) => node.type === "drawing") ? <p className="canvas-version-hint">绘图仅保留已上传的预览，不含本机历史笔画。</p> : null}
                         <div className="canvas-version-actions">
                             {preview.kind === "cloud" ? <Button block type="primary" loading={restoring} disabled={!preview.project || currentRevision === undefined || loading} onClick={history.restore}>
                                     恢复此版本

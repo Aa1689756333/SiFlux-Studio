@@ -11,11 +11,7 @@ const BATCH_CHILD_GAP = 36;
 const NODE_CLEARANCE = 36;
 
 export function canGenerateImageInPlace(sourceNode: CanvasNodeData | undefined) {
-    return canGenerateMediaInPlace(sourceNode, CanvasNodeType.Image);
-}
-
-export function canGenerateMediaInPlace(sourceNode: CanvasNodeData | undefined, mediaType: typeof CanvasNodeType.Image | typeof CanvasNodeType.Video | typeof CanvasNodeType.Audio) {
-    if (sourceNode?.type !== mediaType) return false;
+    if (sourceNode?.type !== CanvasNodeType.Image) return false;
     if (sourceNode.metadata?.generationResultPlacement) return sourceNode.metadata.generationResultPlacement === "replace-node";
     if (!sourceNode.metadata?.content) return true;
     if (canvasMediaNodeRole(sourceNode) === "generator") return true;

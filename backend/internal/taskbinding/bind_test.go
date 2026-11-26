@@ -79,27 +79,6 @@ func TestBindMediaUsesDurableOutputNotClientURL(t *testing.T) {
 	}
 }
 
-func TestBindTextUsesDurableResultJSON(t *testing.T) {
-	ports := &fakePorts{
-		task: &model.Task{
-			ID: "task-text", UserID: "user-1", ProjectID: "canvas-1", Type: "canvas_text",
-			Status:     model.TaskStatusSucceeded,
-			InputJSON:  `{"metadata":{"nodeId":"node-text"}}`,
-			ResultJSON: `{"text":"成片旁白","rows":[{"shotNumber":1,"action":"开门"}]}`,
-		},
-	}
-	receipt, err := Bind(ports, "user-1", Request{CanvasID: "canvas-1", TaskID: "task-text", NodeID: "node-text"})
-	if err != nil {
-		t.Fatal(err)
-	}
-	if receipt.Content != "成片旁白" || ports.lastPatch.Storyboard == nil {
-		t.Fatalf("text receipt = %#v patch=%#v", receipt, ports.lastPatch)
-	}
-	if ports.binds != 1 {
-		t.Fatalf("text bind must go through the same receipt write, got %d", ports.binds)
-	}
-}
-
 func TestBindRejectsUnreadableAndNotReadyOutputs(t *testing.T) {
 	unreadable := &fakePorts{
 		task:      testImageTask(),
@@ -155,23 +134,6 @@ func TestBindRetriesRevisionConflictThenStops(t *testing.T) {
 	}
 	if ports.binds != maxBindRevisionAttempts {
 		t.Fatalf("retries = %d", ports.binds)
-	}
-}
-
-func TestBindTextRejectsNonZeroOutputIndex(t *testing.T) {
-	ports := &fakePorts{
-		task: &model.Task{
-			ID: "task-text", UserID: "user-1", ProjectID: "canvas-1", Type: "canvas_text",
-			Status:     model.TaskStatusSucceeded,
-			InputJSON:  `{"metadata":{"nodeId":"node-text"}}`,
-			ResultJSON: `{"text":"成片旁白"}`,
-		},
-	}
-	if _, err := Bind(ports, "user-1", Request{CanvasID: "canvas-1", TaskID: "task-text", NodeID: "node-text", OutputIndex: 1}); !isBindReason(err, "invalid_params") {
-		t.Fatalf("text index 1 = %v", err)
-	}
-	if ports.binds != 0 {
-		t.Fatalf("text index 1 still bound, binds=%d", ports.binds)
 	}
 }
 

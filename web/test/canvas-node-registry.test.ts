@@ -1,6 +1,6 @@
 import { describe, expect, test } from "bun:test";
 
-import { getNodeDefinition, getNodeGenerationMode, getNodeInputKind, getNodeListLabel, getNodeMinSize, getNodeResourceKind, listCreatableNodeDefinitions, listNodeDefinitions, shouldKeepAspectRatio } from "../src/lib/canvas/node-registry";
+import { getNodeDefinition, getNodeGenerationMode, getNodeInputKind, getNodeListLabel, getNodeMinSize, getNodeResourceKind, listCreatableNodeDefinitions, shouldKeepAspectRatio } from "../src/lib/canvas/node-registry";
 import { connectionInputSummary } from "../src/lib/canvas/canvas-connection-policy";
 import { CanvasNodeType, type CanvasConnection, type CanvasNodeData, type CanvasNodeMetadata } from "../src/types/canvas";
 
@@ -16,26 +16,22 @@ describe("节点注册表——覆盖完整性", () => {
         for (const type of ALL_TYPES) expect(getNodeMinSize(type)).toBeDefined();
     });
 
-    test("仅技能与生成配置不进创建菜单", () => {
+    test("仅生成配置不进创建菜单", () => {
         const hidden = ALL_TYPES.filter((type) => !listCreatableNodeDefinitions().some((def) => def.type === type));
-        expect(hidden.sort()).toEqual([CanvasNodeType.Config, CanvasNodeType.Skill].sort());
+        expect(hidden.sort()).toEqual([CanvasNodeType.Config].sort());
     });
 });
 
 describe("节点注册表——几何", () => {
     test("最小尺寸按类型区分", () => {
         expect(getNodeMinSize(CanvasNodeType.Image)).toEqual({ width: 420, height: 236 });
-        expect(getNodeMinSize(CanvasNodeType.Video)).toEqual({ width: 420, height: 236 });
-        expect(getNodeMinSize(CanvasNodeType.Script).width).toBe(800);
         expect(getNodeMinSize(CanvasNodeType.Text)).toEqual({ width: 220, height: 160 });
     });
 
-    test("仅图片（未开自由比例）与视频锁定宽高比", () => {
+    test("仅图片（未开自由比例）锁定宽高比", () => {
         expect(shouldKeepAspectRatio(node(CanvasNodeType.Image))).toBe(true);
         expect(shouldKeepAspectRatio(node(CanvasNodeType.Image, { freeResize: true }))).toBe(false);
-        expect(shouldKeepAspectRatio(node(CanvasNodeType.Video))).toBe(true);
-        expect(shouldKeepAspectRatio(node(CanvasNodeType.Video, { freeResize: true }))).toBe(true);
-        for (const type of [CanvasNodeType.Text, CanvasNodeType.Drawing, CanvasNodeType.Script, CanvasNodeType.Skill, CanvasNodeType.Config, CanvasNodeType.Audio, CanvasNodeType.Frame]) {
+        for (const type of [CanvasNodeType.Text, CanvasNodeType.Config, CanvasNodeType.Frame]) {
             expect(shouldKeepAspectRatio(node(type))).toBe(false);
         }
     });
@@ -45,15 +41,6 @@ describe("节点注册表——素材类型（resourceKind）", () => {
     test("有内容才算素材，空节点不算", () => {
         expect(getNodeResourceKind(node(CanvasNodeType.Image, { content: "x" }))).toBe("image");
         expect(getNodeResourceKind(node(CanvasNodeType.Image))).toBeNull();
-        expect(getNodeResourceKind(node(CanvasNodeType.Video, { content: "x" }))).toBe("video");
-        expect(getNodeResourceKind(node(CanvasNodeType.Video))).toBeNull();
-        expect(getNodeResourceKind(node(CanvasNodeType.Audio, { content: "x" }))).toBe("audio");
-        expect(getNodeResourceKind(node(CanvasNodeType.Audio))).toBeNull();
-    });
-
-    test("绘图按图片计，且认的是 drawingId 而非 content", () => {
-        expect(getNodeResourceKind(node(CanvasNodeType.Drawing, { drawingId: "d1" }))).toBe("image");
-        expect(getNodeResourceKind(node(CanvasNodeType.Drawing, { content: "x" }))).toBeNull();
     });
 
     test("文本认 content 或 prompt", () => {
@@ -62,13 +49,8 @@ describe("节点注册表——素材类型（resourceKind）", () => {
         expect(getNodeResourceKind(node(CanvasNodeType.Text))).toBeNull();
     });
 
-    test("技能按文本计，认 skillSnapshot 或 content", () => {
-        expect(getNodeResourceKind(node(CanvasNodeType.Skill, { content: "x" }))).toBe("text");
-        expect(getNodeResourceKind(node(CanvasNodeType.Skill))).toBeNull();
-    });
-
-    test("分镜脚本、生成配置、背板都不是素材", () => {
-        for (const type of [CanvasNodeType.Script, CanvasNodeType.Config, CanvasNodeType.Frame]) {
+    test("生成配置、背板都不是素材", () => {
+        for (const type of [CanvasNodeType.Config, CanvasNodeType.Frame]) {
             expect(getNodeResourceKind(node(type, { content: "x" }))).toBeNull();
         }
     });
@@ -77,21 +59,15 @@ describe("节点注册表——素材类型（resourceKind）", () => {
 describe("节点注册表——生成模式（generationMode）", () => {
     test("按类型映射", () => {
         expect(getNodeGenerationMode(node(CanvasNodeType.Image))).toBe("image");
-        expect(getNodeGenerationMode(node(CanvasNodeType.Video))).toBe("video");
-        expect(getNodeGenerationMode(node(CanvasNodeType.Audio))).toBe("audio");
-        expect(getNodeGenerationMode(node(CanvasNodeType.Text))).toBe("text");
-        expect(getNodeGenerationMode(node(CanvasNodeType.Script))).toBe("text");
     });
 
     test("生成配置由 metadata 决定，缺省按图片", () => {
-        expect(getNodeGenerationMode(node(CanvasNodeType.Config, { generationMode: "video" }))).toBe("video");
+        expect(getNodeGenerationMode(node(CanvasNodeType.Config, { generationMode: "image" }))).toBe("image");
         expect(getNodeGenerationMode(node(CanvasNodeType.Config))).toBe("image");
     });
 
-    test("绘图、技能、背板不产生生成行为", () => {
-        for (const type of [CanvasNodeType.Drawing, CanvasNodeType.Skill, CanvasNodeType.Frame]) {
-            expect(getNodeGenerationMode(node(type))).toBeNull();
-        }
+    test("背板不产生生成行为", () => {
+        expect(getNodeGenerationMode(node(CanvasNodeType.Frame))).toBeNull();
     });
 });
 
@@ -100,12 +76,7 @@ describe("节点注册表——输入计数类别（inputKind）", () => {
         expect(getNodeInputKind(CanvasNodeType.Config)).toBeUndefined();
         expect(getNodeInputKind(CanvasNodeType.Frame)).toBeUndefined();
         expect(getNodeInputKind(CanvasNodeType.Image)).toBe("image");
-        expect(getNodeInputKind(CanvasNodeType.Drawing)).toBe("image");
-        expect(getNodeInputKind(CanvasNodeType.Video)).toBe("video");
-        expect(getNodeInputKind(CanvasNodeType.Audio)).toBe("audio");
-        for (const type of [CanvasNodeType.Text, CanvasNodeType.Script, CanvasNodeType.Skill]) {
-            expect(getNodeInputKind(type)).toBe("text");
-        }
+        expect(getNodeInputKind(CanvasNodeType.Text)).toBe("text");
     });
 });
 
@@ -117,16 +88,15 @@ describe("connectionInputSummary——计数与跨类型覆盖", () => {
         expect(connectionInputSummary("target", nodes, [conn("img", "target")]).imageCount).toBe(1);
     });
 
-    test("绘图计入 imageCount，脚本与技能计入 textCount", () => {
+    test("文本节点计入 textCount", () => {
         const nodes = [
-            node(CanvasNodeType.Drawing, undefined, "draw"),
-            node(CanvasNodeType.Script, undefined, "script"),
-            node(CanvasNodeType.Skill, undefined, "skill"),
+            node(CanvasNodeType.Image, undefined, "img"),
+            node(CanvasNodeType.Text, undefined, "text"),
             node(CanvasNodeType.Text, undefined, "target"),
         ];
-        const summary = connectionInputSummary("target", nodes, [conn("draw", "target"), conn("script", "target"), conn("skill", "target")]);
+        const summary = connectionInputSummary("target", nodes, [conn("img", "target"), conn("text", "target")]);
         expect(summary.imageCount).toBe(1);
-        expect(summary.textCount).toBe(2);
+        expect(summary.textCount).toBe(1);
     });
 
     test("生成配置与背板作为上游一律不计数", () => {
@@ -136,7 +106,7 @@ describe("connectionInputSummary——计数与跨类型覆盖", () => {
             node(CanvasNodeType.Text, undefined, "target"),
         ];
         const summary = connectionInputSummary("target", nodes, [conn("config", "target"), conn("frame", "target")]);
-        expect(summary).toEqual({ textCount: 0, imageCount: 0, videoCount: 0, audioCount: 0, characterCount: 0 });
+        expect(summary).toEqual({ textCount: 0, imageCount: 0, characterCount: 0 });
     });
 
     test("角色卡覆盖类型归类：图片节点带角色元数据记为角色而非图片", () => {
@@ -153,15 +123,10 @@ describe("connectionInputSummary——计数与跨类型覆盖", () => {
 });
 
 describe("节点注册表——列表标签", () => {
-    test("派生自 label，背板显式钉住不带「节点」后缀", () => {
+    test("派生自 label，分组显式钉住不带「节点」后缀", () => {
         expect(getNodeListLabel(CanvasNodeType.Image)).toBe("图片节点");
-        expect(getNodeListLabel(CanvasNodeType.Text)).toBe("文本节点");
-        expect(getNodeListLabel(CanvasNodeType.Drawing)).toBe("绘图节点");
-        expect(getNodeListLabel(CanvasNodeType.Script)).toBe("分镜脚本节点");
-        expect(getNodeListLabel(CanvasNodeType.Skill)).toBe("技能节点");
-        expect(getNodeListLabel(CanvasNodeType.Config)).toBe("生成配置节点");
-        expect(getNodeListLabel(CanvasNodeType.Video)).toBe("视频节点");
-        expect(getNodeListLabel(CanvasNodeType.Audio)).toBe("音频节点");
-        expect(getNodeListLabel(CanvasNodeType.Frame)).toBe("背板");
+        expect(getNodeListLabel(CanvasNodeType.Text)).toBe("提示词节点");
+        expect(getNodeListLabel(CanvasNodeType.Config)).toBe("生图配置节点");
+        expect(getNodeListLabel(CanvasNodeType.Frame)).toBe("分组");
     });
 });

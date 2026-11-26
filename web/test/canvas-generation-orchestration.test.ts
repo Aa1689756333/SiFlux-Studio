@@ -31,20 +31,6 @@ describe("canvasNodeRetryPlan", () => {
         expect(canvasNodeRetryPlan(imageNode("depth", { depthSourceNodeId: "source" }), []).kind).toBe("single");
     });
 
-    test("script retry requires prompt content", () => {
-        const empty: CanvasNodeData = {
-            id: "script",
-            type: CanvasNodeType.Script,
-            title: "分镜",
-            position: { x: 0, y: 0 },
-            width: 920,
-            height: 360,
-            metadata: { prompt: "  " },
-        };
-        expect(canvasNodeRetryPlan(empty, []).kind).toBe("script-empty");
-        expect(canvasNodeRetryPlan({ ...empty, metadata: { composerContent: "一场雨" } }, [])).toEqual({ kind: "script", prompt: "一场雨" });
-    });
-
     test("image batch root and child plans keep the failed children and root id", () => {
         const root = imageNode("root", { isBatchRoot: true, batchChildIds: ["child-fail", "child-ok"] });
         const childFail = imageNode("child-fail", { batchRootId: "root", status: "error" });

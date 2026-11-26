@@ -43,6 +43,7 @@ func Bind(ports Ports, userID string, req Request) (Receipt, error) {
 	if strings.TrimSpace(task.UserID) != userID {
 		return Receipt{}, forbidden("task_foreign", "任务不属于当前用户")
 	}
+	if task.Type != "canvas_image" { return Receipt{}, invalid("unsupported_task_type", "仅支持生图任务绑定") }
 	if task.Status != model.TaskStatusSucceeded {
 		return Receipt{}, precondition("task_not_succeeded", "只有成功的任务才能绑定到画布")
 	}
@@ -79,9 +80,6 @@ func Bind(ports Ports, userID string, req Request) (Receipt, error) {
 }
 
 func durablePatch(ports Ports, userID string, task model.Task, req Request) (NodePatch, error) {
-	if isTextTask(task) {
-		return textPatch(task, req)
-	}
 	outputs, err := ports.GenerationOutputs(task.ID)
 	if err != nil {
 		return NodePatch{}, mapPortError(err)

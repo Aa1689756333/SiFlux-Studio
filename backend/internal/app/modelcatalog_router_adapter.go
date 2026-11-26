@@ -6,6 +6,7 @@ import (
 	"log"
 	"time"
 
+	"infinite-canvas/backend/internal/generation"
 	"infinite-canvas/backend/internal/model"
 	"infinite-canvas/backend/internal/modelcatalog"
 	"infinite-canvas/backend/internal/repository"
@@ -140,10 +141,6 @@ func (s *Service) routeCatalogSideEffects(context.Context) {
 			log.Printf("logical model route catalog distributed invalidation failed: %v", err)
 		}
 	}
-	s.initReadCaches()
-	if s.routeVersionReadCache != nil {
-		s.routeVersionReadCache.Clear()
-	}
 }
 
 func routeFailureInfo(err error) modelcatalog.FailureInfo {
@@ -151,8 +148,17 @@ func routeFailureInfo(err error) modelcatalog.FailureInfo {
 	if err == nil {
 		return info
 	}
+	var unknown generation.SubmissionUnknownError
+	if errors.As(err, &unknown) {
+		return info
+	}
 	if isImageRecoveryError(err) {
 		info.ImageRecovery = true
+	}
+	var notSent generation.RequestNotSentError
+	var preparation generation.RequestPreparationError
+	if errors.As(err, &notSent) || errors.As(err, &preparation) {
+		info.PreparationFailed = true
 	}
 	if code, _ := ChannelSlotFailureDetails(err); code != "" {
 		info.SlotCode = code

@@ -12,8 +12,6 @@ import (
 	"infinite-canvas/backend/internal/taskruntime"
 )
 
-const newAPIChannel2TaskSyncMaxAge = 5 * time.Minute
-
 // taskWorkerCoordinator 是 app 侧兼容入口：保留现有方法名给测试和 Service 调用方，
 // 实际领取、租约、排空和执行窗口由 internal/taskruntime 拥有。
 type taskWorkerCoordinator struct {
@@ -39,8 +37,6 @@ func (s *Service) taskWorker() *taskWorkerCoordinator {
 
 func (w *taskWorkerCoordinator) start(ctx context.Context) {
 	s := w.service
-	s.startTextReplayCleanup(ctx)
-	s.startProviderCancellationReconciliation(ctx)
 	s.startGenerationDeliveryRecovery(ctx)
 	// 旧内置 Agent 的后台调度已整体从产品生命周期移出：
 	//   - 不再启动记忆自动压缩（它会按周期调用用户的文本模型）；
@@ -73,24 +69,16 @@ func (w *taskWorkerCoordinator) executeClaimed(session taskruntime.Session) task
 		return taskruntime.Outcome{Kind: taskruntime.KindRejected, Err: err, Applied: err == nil}
 	}
 	terminal := s.terminalCoordinator()
+	if err := validateTaskType(task.Type); err != nil {
+		refuseErr := terminal.refuse(task, "功能已下线", err.Error())
+		return taskruntime.Outcome{Kind: taskruntime.KindRejected, Err: refuseErr, Applied: refuseErr == nil}
+	}
 	_ = s.log(task.UserID, task.ID, "info", "后端任务开始处理", "")
 	// 取消请求可能在任务领取和注册 worker context 之间到达；再次读取终态
 	// 可以避免这种极窄窗口仍然向上游发起调用。
 	if latest, latestErr := s.repo.Task(task.ID); latestErr == nil && latest.Status == model.TaskStatusCancelled {
 		err := terminal.handleAlreadyCancelled(*latest)
 		return taskruntime.Outcome{Kind: taskruntime.KindCancelled, Err: err, Applied: true}
-	}
-
-	// 时间线转写由本地 whisper.cpp 执行，不经模型渠道路由，
-	// 在进入通用生成流程前按类型分叉到独立执行器。
-	if task.Type == model.TaskTypeTimelineTranscription {
-		return w.specialTaskOutcome(session, w.processTimelineTranscription)
-	}
-	if task.Type == model.TaskTypeTimelineRender {
-		return w.specialTaskOutcome(session, w.processTimelineRender)
-	}
-	if task.Type == model.TaskTypeDepthCapture {
-		return w.specialTaskOutcome(session, w.processDepthCapture)
 	}
 
 	task.Stage = "调用生成模型"
@@ -131,9 +119,6 @@ func (w *taskWorkerCoordinator) executeClaimed(session taskruntime.Session) task
 	if err == nil {
 		result, err = s.persistTaskGeneratedMediaResult(*task, result)
 	}
-	if err == nil {
-		_, err = s.finalizeCharacterTurnaroundTask(*task, result)
-	}
 	if err != nil {
 		channelSlotFailedBeforeRequest := false
 		if code, _ := ChannelSlotFailureDetails(err); code != "" {
@@ -143,35 +128,9 @@ func (w *taskWorkerCoordinator) executeClaimed(session taskruntime.Session) task
 			_ = s.log(task.UserID, task.ID, "warn", "任务租约失效，等待其他 worker 恢复", session.LostErr().Error())
 			return leaseLostOutcome(session, providerAccepted)
 		}
-		decryptedInput, decryptErr := s.decryptTaskInputJSON(task.InputJSON)
 		if s.shouldDeferImageRecovery(*task, err, providerSucceeded) {
 			deferErr := s.deferImageRecovery(*task)
 			return taskruntime.Outcome{Kind: taskruntime.KindSuspended, Err: deferErr, Applied: deferErr == nil, ProviderAccepted: true}
-		}
-		if decryptErr == nil && s.shouldDeferVideoProviderTask(*task, decryptedInput, err) {
-			stage := "后台仍在生成"
-			message := "前台等待结束，上游视频仍在生成，将继续回查原任务"
-			var downloadErr videoDownloadError
-			if errors.As(err, &downloadErr) {
-				stage = "正在取回生成结果"
-				message = "视频已生成，下载暂时中断，将继续取回原任务结果"
-			}
-			var pendingErr providerStatePendingError
-			if errors.As(err, &pendingErr) {
-				stage = "等待上游任务同步"
-				message = "上游任务状态暂未同步，将继续回查原任务"
-			}
-			if task.FailureDiagnostics != nil {
-				task.FailureDiagnostics.ExecutionResult = "pending"
-			}
-			if deferErr := s.repo.DeferRunningTaskForProviderPoll(task.ID, task.LeaseOwner, stage, 15*time.Second, task.FailureDiagnostics); deferErr != nil {
-				return taskruntime.Outcome{Kind: taskruntime.KindFailed, Err: deferErr, ProviderAccepted: true}
-			}
-			_ = s.log(task.UserID, task.ID, "info", message, task.PollStage)
-			return taskruntime.Outcome{Kind: taskruntime.KindSuspended, Applied: true, ProviderAccepted: true}
-		}
-		if newAPIChannel2TaskSyncExpired(*task, err, time.Now()) {
-			err = errors.New("上游任务长时间未同步，已停止自动查询，请确认渠道任务状态后重试。")
 		}
 		var imageRecovery imageRecoveryError
 		if errors.Is(err, context.DeadlineExceeded) && !errors.As(err, &imageRecovery) {
@@ -207,20 +166,6 @@ func (w *taskWorkerCoordinator) executeClaimed(session taskruntime.Session) task
 	}
 	termErr := terminal.handleSuccess(task)
 	return taskruntime.Outcome{Kind: taskruntime.KindCompleted, Err: termErr, Applied: true, ProviderAccepted: true}
-}
-
-func (w *taskWorkerCoordinator) specialTaskOutcome(session taskruntime.Session, run func(*model.Task, context.Context) error) taskruntime.Outcome {
-	err := run(session.Task(), session.Context())
-	if session.Lost() {
-		return leaseLostOutcome(session, false)
-	}
-	if err == nil {
-		return taskruntime.Outcome{Kind: taskruntime.KindCompleted, Applied: true}
-	}
-	if errors.Is(err, context.Canceled) {
-		return taskruntime.Outcome{Kind: taskruntime.KindCancelled, Err: err}
-	}
-	return taskruntime.Outcome{Kind: taskruntime.KindFailed, Err: err}
 }
 
 func leaseLostOutcome(session taskruntime.Session, providerAccepted bool) taskruntime.Outcome {
@@ -273,7 +218,7 @@ func terminalWriteApplied(termErr, cause error) bool {
 }
 
 func taskUsesUpstreamReportedProgress(taskType string) bool {
-	return taskType == "canvas_image" || taskType == "canvas_video" || strings.HasPrefix(taskType, "video_")
+	return taskType == "canvas_image"
 }
 
 func taskFailureMessage(err error) string {
@@ -284,73 +229,11 @@ func taskFailureMessage(err error) string {
 }
 
 func taskExecutionTimeoutWithPolicy(taskType string, policy RuntimeTaskPolicy) time.Duration {
-	switch {
-	case strings.HasPrefix(taskType, "canvas_video") || strings.HasPrefix(taskType, "video_"):
-		return max(time.Duration(policy.VideoTimeoutMinutes)*time.Minute, 5*time.Minute)
-	case strings.HasPrefix(taskType, "canvas_image"):
-		return time.Duration(policy.ImageTimeoutMinutes) * time.Minute
-	case strings.HasPrefix(taskType, "canvas_audio"):
-		return time.Duration(policy.AudioTimeoutMinutes) * time.Minute
-	case strings.HasPrefix(taskType, "canvas_text"):
-		return time.Duration(policy.TextTimeoutMinutes) * time.Minute
-	case taskType == model.TaskTypeTimelineTranscription:
-		// 本地转写受媒体时长影响，给出独立宽松超时。
-		return 20 * time.Minute
-	case taskType == model.TaskTypeTimelineRender:
-		// 渲染是整条时间线的重编码，耗时随长度线性增长。
-		return 60 * time.Minute
-	case taskType == model.TaskTypeDepthCapture:
-		// 首次执行包含可选 Runtime 和模型下载。
-		return 2 * time.Hour
-	default:
-		return time.Duration(policy.DefaultTimeoutMinutes) * time.Minute
-	}
-}
-
-func (s *Service) shouldDeferVideoProviderTask(task model.Task, decryptedInput string, err error) bool {
-	providerRequestID := strings.TrimSpace(task.ProviderRequestID)
-	if providerRequestID == "" || (!strings.HasPrefix(task.Type, "canvas_video") && !strings.HasPrefix(task.Type, "video_")) {
-		return false
-	}
-	deferSignal := errors.Is(err, context.DeadlineExceeded)
-	var downloadErr videoDownloadError
-	if errors.As(err, &downloadErr) {
-		deferSignal, _ = retryableVideoPollError(context.Background(), downloadErr.Cause)
-	}
-	// Bound automatic recovery; keep the original ID for manual retrieval later.
-	if task.StartedAt != nil && time.Since(*task.StartedAt) >= 24*time.Hour {
-		return false
-	}
-	var pendingErr providerStatePendingError
-	if errors.As(err, &pendingErr) {
-		deferSignal = strings.TrimSpace(pendingErr.TaskID) == providerRequestID && !newAPIChannel2TaskSyncExpired(task, err, time.Now())
-	}
-	if !deferSignal {
-		return false
-	}
-	var input canvasGenerationInput
-	if json.Unmarshal([]byte(decryptedInput), &input) != nil {
-		return false
-	}
-	resolved, resolveErr := s.resolveProviderConfig(input.Config)
-	return resolveErr == nil && (resolved.InterfaceType == string(model.ChannelInterfaceNewAPIChannel2) || isBeefAPIVideoConfig(context.Background(), resolved))
-}
-
-func newAPIChannel2TaskSyncExpired(task model.Task, err error, now time.Time) bool {
-	var pendingErr providerStatePendingError
-	if !errors.As(err, &pendingErr) || strings.TrimSpace(pendingErr.TaskID) == "" || strings.TrimSpace(pendingErr.TaskID) != strings.TrimSpace(task.ProviderRequestID) {
-		return false
-	}
-	if task.StartedAt == nil {
-		return true
-	}
-	return !now.Before(task.StartedAt.Add(newAPIChannel2TaskSyncMaxAge))
+	if taskType == "canvas_image" { return time.Duration(policy.ImageTimeoutMinutes) * time.Minute }
+	return time.Duration(policy.DefaultTimeoutMinutes) * time.Minute
 }
 
 func taskTimeoutMessage(taskType string) string {
-	if strings.HasPrefix(taskType, "canvas_video") || strings.HasPrefix(taskType, "video_") {
-		return "视频生成等待超时，请稍后到任务中心查看或重试。"
-	}
 	if strings.HasPrefix(taskType, "canvas_image") {
 		return "图片生成等待超时，请稍后重试。"
 	}

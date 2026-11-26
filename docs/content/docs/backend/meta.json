@@ -5,15 +5,11 @@
   "pages": [
     "local-development",
     "http-api",
-    "storyboard-operations",
     "code-map",
     "backend-database",
     "task-runtime-stability",
     "generation-errors",
-    "seedance-task-constraints",
-    "video-model-contracts",
     "desktop-updater",
-    "desktop-account",
-    "depth-video-runtime"
+    "desktop-account"
   ]
 }

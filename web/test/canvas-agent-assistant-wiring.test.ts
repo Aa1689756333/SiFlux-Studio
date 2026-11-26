@@ -98,14 +98,12 @@ describe("助手前端接线", () => {
         const keyboard = read("src/pages/canvas/use-canvas-keyboard.ts");
         const shortcuts = read("src/lib/canvas/canvas-shortcuts.ts");
         const selectionTools = read("src/lib/canvas/tool-registry/definitions/selection-toolbar-tools.tsx");
-        const emptyState = read("src/components/canvas/canvas-short-drama-entry.tsx");
         expect(topBar).toContain("canvas-topbar-agent-button");
         expect(topBar).toContain('aria-pressed={assistantOpen}');
         expect(keyboard).toContain('key === "j"');
         expect(keyboard).toContain("onToggleAssistant?.()");
         expect(shortcuts).toContain('id: "assistant"');
         expect(selectionTools).toContain("问助手");
-        expect(emptyState).toContain("或让助手搭个草案");
     });
 
     test("付费生成由画布既有生成链路执行，面板不自己调模型", () => {

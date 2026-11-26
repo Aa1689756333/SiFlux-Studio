@@ -19,8 +19,7 @@ export function searchCanvasNodes(nodes: CanvasNodeData[], query: string, limit 
 }
 
 export function canvasNodeSearchContext(node: CanvasNodeData) {
-    const location = [node.metadata?.chapterTitle, typeof node.metadata?.shotIndex === "number" ? `镜头 ${node.metadata.shotIndex + 1}` : ""].filter(Boolean).join(" · ");
-    return location || node.metadata?.prompt || node.metadata?.composerContent || node.metadata?.workflowDescription || textualNodeContent(node) || getNodeListLabel(node.type);
+    return node.metadata?.prompt || node.metadata?.composerContent || node.metadata?.workflowDescription || textualNodeContent(node) || getNodeListLabel(node.type);
 }
 
 export function canvasNodeMaterialSummary(node: CanvasNodeData) {
@@ -28,7 +27,6 @@ export function canvasNodeMaterialSummary(node: CanvasNodeData) {
     const width = node.metadata?.naturalWidth;
     const height = node.metadata?.naturalHeight;
     if (width && height) details.push(`${width}×${height}`);
-    if (node.metadata?.durationMs) details.push(formatDuration(node.metadata.durationMs));
     if (node.metadata?.bytes) details.push(formatBytes(node.metadata.bytes));
     if (node.metadata?.model) details.push(node.metadata.model);
     return details.slice(0, 3).join(" · ");
@@ -54,18 +52,14 @@ function canvasNodeSearchTerms(node: CanvasNodeData) {
         node.metadata?.prompt,
         node.metadata?.composerContent,
         node.metadata?.model,
-        node.metadata?.chapterTitle,
         node.metadata?.workflowTitle,
         node.metadata?.workflowDescription,
-        typeof node.metadata?.shotIndex === "number" ? `镜头 ${node.metadata.shotIndex + 1}` : "",
         ...(node.metadata?.assetTags || []),
     ].filter((value): value is string => typeof value === "string" && Boolean(value));
 }
 
 function textualNodeContent(node: CanvasNodeData) {
-    if (node.type !== CanvasNodeType.Text && node.type !== CanvasNodeType.Markdown && node.type !== CanvasNodeType.Script && node.type !== CanvasNodeType.Skill) {
-        return undefined;
-    }
+    if (node.type !== CanvasNodeType.Text) return undefined;
     const content = node.metadata?.content;
     return typeof content === "string" && content ? content : undefined;
 }
@@ -73,12 +67,6 @@ function textualNodeContent(node: CanvasNodeData) {
 function timestampValue(value?: string) {
     const timestamp = value ? Date.parse(value) : 0;
     return Number.isFinite(timestamp) ? timestamp : 0;
-}
-
-function formatDuration(durationMs: number) {
-    const seconds = Math.max(0, Math.round(durationMs / 1000));
-    if (seconds < 60) return `${seconds}秒`;
-    return `${Math.floor(seconds / 60)}分${seconds % 60}秒`;
 }
 
 function formatBytes(bytes: number) {

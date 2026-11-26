@@ -1,5 +1,5 @@
 import { localForageStorageForScope } from "@/lib/localforage-storage";
-import { parseStandaloneMediaReferences, type StandaloneMediaReference } from "@/lib/standalone-generation-reference";
+import { parseStandaloneMediaReferences, type StandaloneImageReference } from "@/lib/standalone-generation-reference";
 import { getActiveUserScope } from "@/lib/user-scope";
 
 export const STANDALONE_IMAGE_HISTORY_KEY = "standalone-image-history-v1";
@@ -19,7 +19,7 @@ export type ImageGenerationJob = {
     status: ImageGenerationJobStatus;
     taskIds: string[];
     assetIds: string[];
-    references?: StandaloneMediaReference[];
+    references?: StandaloneImageReference[];
     error?: string;
     generationErrorCode?: string;
 };

@@ -23,8 +23,8 @@ export function canvasUnconfirmedReason(state: CanvasUnconfirmedState): CanvasUn
     return "no-baseline";
 }
 
-const documentFields = ["title", "canvasTitle", "workspaceProjectId", "projectId", "folderId", "starterMode", "nodes", "connections", "chatSessions", "activeChatId", "directorScenes", "timeline"] as const;
-const metadataFields = ["prompt", "composerContent", "content", "storageKey", "assetId", "mimeType", "bytes", "naturalWidth", "naturalHeight", "durationMs", "nodeRole", "resultOrigin", "status", "taskId", "taskStatus", "taskStage", "taskProgress", "taskUpdatedAt", "taskCompletedAt", "taskFailureDiagnostics", "generationEffectKeys", "model", "size", "count", "quality", "videoSeconds", "references", "resourceReloadAvailable", "videoPreview", "hasAudio", "generateAudio", "watermark"] as const;
+const documentFields = ["title", "canvasTitle", "workspaceProjectId", "projectId", "folderId", "starterMode", "nodes", "connections", "chatSessions", "activeChatId"] as const;
+const metadataFields = ["prompt", "composerContent", "content", "storageKey", "assetId", "mimeType", "bytes", "naturalWidth", "naturalHeight", "nodeRole", "resultOrigin", "status", "taskId", "taskStatus", "taskStage", "taskProgress", "taskUpdatedAt", "taskCompletedAt", "taskFailureDiagnostics", "generationEffectKeys", "model", "size", "count", "quality", "references", "resourceReloadAvailable", "watermark"] as const;
 
 const nodeFields = ["createdAt", "updatedAt", "type", "title", "width", "height", "position", "parentId"] as const;
 

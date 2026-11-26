@@ -6,6 +6,7 @@ import (
 	"fmt"
 	"time"
 
+	"infinite-canvas/backend/internal/generation"
 	"infinite-canvas/backend/internal/model"
 	"infinite-canvas/backend/internal/repository"
 )
@@ -16,7 +17,6 @@ import (
 // 不能散落在 provider/worker 分支中。
 type taskTerminalCoordinator struct {
 	repo              taskTerminalRepository
-	replay            taskReplayLifecycle
 	logger            taskLifecycleLogger
 	outputs           taskOutputLifecycle
 	userFacingMessage func(error) string
@@ -26,10 +26,6 @@ type taskTerminalCoordinator struct {
 type taskTerminalRepository interface {
 	Task(id string) (*model.Task, error)
 	UpdateTaskTerminalState(id string, owner string, expected model.TaskStatus, status model.TaskStatus, stage string, errorText string, completedAt time.Time, diagnostics ...*model.TaskFailureDiagnostics) (bool, error)
-}
-
-type taskReplayLifecycle interface {
-	finalizeTaskTextReplay(taskID string, status model.TaskStatus) error
 }
 
 type taskLifecycleLogger interface {
@@ -42,14 +38,9 @@ type taskOutputLifecycle interface {
 }
 
 type taskTerminalServiceAdapter struct {
-	finalizeReplay func(string, model.TaskStatus) error
 	writeLog       func(string, string, string, string, string) error
 	deliver        func(model.Task) error
 	registerOutput func(model.Task) error
-}
-
-func (a taskTerminalServiceAdapter) finalizeTaskTextReplay(taskID string, status model.TaskStatus) error {
-	return a.finalizeReplay(taskID, status)
 }
 
 func (a taskTerminalServiceAdapter) log(userID string, taskID string, level string, message string, payload string) error {
@@ -69,14 +60,12 @@ func (a taskTerminalServiceAdapter) RegisterTaskOutputFromTask(task model.Task) 
 
 func newTaskTerminalCoordinator(s *Service) *taskTerminalCoordinator {
 	adapter := taskTerminalServiceAdapter{
-		finalizeReplay: s.finalizeTaskTextReplay,
 		writeLog:       s.log,
 		deliver:        s.DeliverSucceededTask,
 		registerOutput: s.RegisterTaskOutputFromTask,
 	}
 	return &taskTerminalCoordinator{
 		repo:              s.repo,
-		replay:            adapter,
 		logger:            adapter,
 		outputs:           adapter,
 		userFacingMessage: s.UserFacingErrorMessage,
@@ -130,7 +119,6 @@ func (c *taskTerminalCoordinator) handleExecutionFailure(task *model.Task, err e
 		if terminalErr := c.markTerminalState(task); terminalErr != nil {
 			return terminalErr
 		}
-		c.finalizeReplay(task, model.TaskStatusCancelled, "文本回放草稿归并失败")
 		_ = c.logger.log(task.UserID, task.ID, "warn", "任务已取消", "")
 		return nil
 	}
@@ -143,28 +131,28 @@ func (c *taskTerminalCoordinator) handleExecutionFailure(task *model.Task, err e
 	task.Status = model.TaskStatusFailed
 	c.ensureFailedAttemptLogged(task, err)
 	task.Stage = "任务失败"
+	var notSent generation.RequestNotSentError
 	var imageRecovery imageRecoveryError
 	var unknown providerSubmissionUnknownError
-	if errors.As(err, &imageRecovery) || errors.As(err, &unknown) {
+	if errors.As(err, &notSent) {
+		task.Stage = "request_not_sent"
+	} else if errors.As(err, &imageRecovery) || errors.As(err, &unknown) {
 		task.Stage = "submission_unknown"
 	}
 	task.Error = c.userFacingMessage(err)
 	if terminalErr := c.markTerminalState(task); terminalErr != nil {
 		return errors.Join(err, terminalErr)
 	}
-	c.finalizeReplay(task, model.TaskStatusFailed, "文本回放草稿归并失败")
 	_ = c.logger.log(task.UserID, task.ID, "error", "任务处理失败", task.Error)
 	return err
 }
 
 func (c *taskTerminalCoordinator) handleAlreadyCancelled(task model.Task) error {
-	c.finalizeReplay(&task, model.TaskStatusCancelled, "文本回放草稿归并失败")
 	_ = c.logger.log(task.UserID, task.ID, "warn", "任务已取消，worker 已停止执行", "")
 	return nil
 }
 
 func (c *taskTerminalCoordinator) handleCancelledResult(task model.Task) error {
-	c.finalizeReplay(&task, model.TaskStatusCancelled, "文本回放草稿归并失败")
 	_ = c.logger.log(task.UserID, task.ID, "warn", "任务已取消，丢弃生成结果", "")
 	return nil
 }
@@ -189,7 +177,6 @@ func (c *taskTerminalCoordinator) handleResultPersistenceFailure(task *model.Tas
 	if terminalErr := c.markTerminalState(task); terminalErr != nil {
 		return false, errors.Join(saveErr, terminalErr)
 	}
-	c.finalizeReplay(task, model.TaskStatusFailed, "文本回放草稿归并失败")
 	_ = c.logger.log(task.UserID, task.ID, "error", "任务结果保存失败", task.Error)
 	return false, saveErr
 }
@@ -202,7 +189,6 @@ func (c *taskTerminalCoordinator) ensureFailedAttemptLogged(task *model.Task, er
 }
 
 func (c *taskTerminalCoordinator) handleSuccess(task *model.Task) error {
-	c.finalizeReplay(task, model.TaskStatusSucceeded, "文本回放窗口更新失败")
 	var completionErr error
 	completedTask, fetchErr := c.repo.Task(task.ID)
 	if fetchErr != nil {
@@ -240,8 +226,3 @@ func (c *taskTerminalCoordinator) markTerminalState(task *model.Task) error {
 	return nil
 }
 
-func (c *taskTerminalCoordinator) finalizeReplay(task *model.Task, status model.TaskStatus, message string) {
-	if err := c.replay.finalizeTaskTextReplay(task.ID, status); err != nil {
-		_ = c.logger.log(task.UserID, task.ID, "error", message, err.Error())
-	}
-}

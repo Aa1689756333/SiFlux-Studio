@@ -27,11 +27,11 @@ func (s *Service) Retry(userID, id string) (*model.Task, error) {
 	if err != nil {
 		return nil, err
 	}
-	if task.CreationSubmissionID != nil {
-		return nil, kernel.NewAppError(kernel.CodeConflict, CreationRetryConflictMessage)
-	}
 	if RetiredAgentTask(task) {
 		return nil, kernel.BadAuthRequest(RetiredAgentBoundaryMessage)
+	}
+	if err := ValidateType(task.Type); err != nil {
+		return nil, kernel.BadAuthRequest(err.Error())
 	}
 	if task.Status != model.TaskStatusFailed && task.Status != model.TaskStatusCancelled {
 		return nil, errors.New(RetryOnlyFailedOrCancelled)
@@ -61,6 +61,9 @@ func (s *Service) Retry(userID, id string) (*model.Task, error) {
 	}
 	var taskInput map[string]any
 	if err := json.Unmarshal([]byte(decryptedInput), &taskInput); err != nil {
+		return nil, err
+	}
+	if err := ValidateImageInput(taskInput); err != nil {
 		return nil, err
 	}
 	if err := s.deps.Catalog.PrepareRetry(task, taskInput); err != nil {
@@ -145,11 +148,6 @@ func (s *Service) Cancel(ctx context.Context, userID, id string) (*model.Task, e
 	task.CompletedAt = &now
 	s.deps.Runtime.StopLocalWait(task.ID)
 
-	if s.deps.TextReplay != nil {
-		if err := s.deps.TextReplay.Finalize(task.ID, model.TaskStatusCancelled); err != nil {
-			s.log(task.UserID, task.ID, "error", "取消任务后归并文本回放失败", err.Error())
-		}
-	}
 	s.log(task.UserID, task.ID, "warn", "用户主动取消任务", "")
 
 	if task.ProviderRequestID != "" && s.deps.Provider != nil {

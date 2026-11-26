@@ -141,11 +141,11 @@ func TestCreateTaskDoesNotClassifyCustomChannelAsMissingSystemModel(t *testing.T
 	}
 
 	_, err := svc.CreateTask("user-1", CreateTaskRequest{
-		Type:   "canvas_text",
+		Type:   "canvas_image",
 		Prompt: "test custom channel",
 		Input: map[string]any{
-			"mode":   "text",
-			"config": providerConfig{BaseURL: "https://example.com/v1", APIKey: "private-key", Model: "text-model"},
+			"mode":   "image",
+			"config": providerConfig{BaseURL: "https://example.com/v1", APIKey: "private-key", Model: "image-model"},
 		},
 	})
 	if err == nil {

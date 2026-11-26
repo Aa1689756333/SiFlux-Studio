@@ -17,7 +17,7 @@ export function isCanvasFolderNode(node?: CanvasNodeData | null) {
 }
 
 export function canFrameContain(node: CanvasNodeData) {
-    return node.type === CanvasNodeType.Image || node.type === CanvasNodeType.Text || node.type === CanvasNodeType.Drawing || node.type === CanvasNodeType.Script || node.type === CanvasNodeType.Video;
+    return node.type === CanvasNodeType.Image || node.type === CanvasNodeType.Text;
 }
 
 export function canFolderContain(node: CanvasNodeData) {
@@ -25,7 +25,7 @@ export function canFolderContain(node: CanvasNodeData) {
 }
 
 export function canLinkedFolderArchive(node: CanvasNodeData) {
-    return (node.type === CanvasNodeType.Image || node.type === CanvasNodeType.Video || node.type === CanvasNodeType.Audio || node.type === CanvasNodeType.Text) && Boolean(node.metadata?.assetId || node.metadata?.content?.trim());
+    return (node.type === CanvasNodeType.Image || node.type === CanvasNodeType.Text) && Boolean(node.metadata?.assetId || node.metadata?.content?.trim());
 }
 
 export function getFrameChildren(frameId: string, nodes: CanvasNodeData[]) {

@@ -4,9 +4,7 @@ import { CanvasNodeType, type CanvasNodeTypeId } from "@/types/canvas";
 export const CANVAS_DEVELOPING_LABEL = "正在开发";
 
 const developingNodeTypes = new Set<CanvasNodeTypeId>([
-    CanvasNodeType.MediaConversion,
     CanvasNodeType.Frame,
-    CanvasNodeType.Script,
 ]);
 
 export function getCanvasNodeCreationDisabledReason(type: CanvasNodeTypeId) {

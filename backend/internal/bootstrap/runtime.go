@@ -16,8 +16,6 @@ import (
 
 	"infinite-canvas/backend/internal/app"
 	"infinite-canvas/backend/internal/assistantruntime"
-	"infinite-canvas/backend/internal/buildinfo"
-	"infinite-canvas/backend/internal/conversation"
 	"infinite-canvas/backend/internal/database"
 	"infinite-canvas/backend/internal/eagle"
 	canvasHandler "infinite-canvas/backend/internal/handler"
@@ -184,74 +182,21 @@ func Open(_ context.Context, raw Config) (result *Runtime, openErr error) {
 		Tasks:              localRoot.Tasks,
 		Generation:         localRoot.Generation,
 		AssistantHost:      assistantHost,
-		Conversations:      conversation.New(conversation.NewStore(repo)),
-		TextReplay:         svc.TextReplay(),
 		Appearance:         svc.AppearanceDomain(),
 		Diagnostics:        svc.DiagnosticsDomain(),
 		Eagle:              eagle.New(),
 		DesktopTrust:       desktopTrust(launchToken, uiBootstrapToken),
 	})
-	businessCatalog := canvasHandler.NewBusinessCatalog(router.Routes())
-	canvasHandler.RegisterBusinessDiscovery(api, businessCatalog, svc)
 	router.NoRoute(func(c *gin.Context) {
 		c.JSON(http.StatusNotFound, gin.H{"code": http.StatusNotFound, "msg": "请求不存在"})
 	})
 
+	// 桌面形态的整张 API 只由启动令牌把关。owner 通道、内置宿主与 UI 会话都在各自
+	// 路由内按凭据判定身份，不经过外层豁免。
 	rootHandler := http.Handler(router)
-	protected := rootHandler
 	if launchToken != "" {
-		protected = httptransport.RequireLaunchToken(launchToken)(rootHandler)
+		rootHandler = httptransport.RequireLaunchToken(launchToken)(rootHandler)
 	}
-	clients := agentops.NewClientRegistry(svc.DataDir())
-	rootHandler = http.HandlerFunc(func(w http.ResponseWriter, r *http.Request) {
-		if tool, allowed := businessCatalog.Match(r.Method, r.URL.Path); allowed && isLoopbackRemote(r.RemoteAddr) {
-			if reg, valid := clients.Lookup(r.Header.Get("x-siflux-Client"), strings.TrimSpace(strings.TrimPrefix(r.Header.Get("Authorization"), "Bearer "))); valid {
-				if reg.Mode == agentops.ClientReadOnly && !tool.ReadOnly {
-					w.Header().Set("Content-Type", "application/json")
-					w.WriteHeader(http.StatusForbidden)
-					_, _ = w.Write([]byte(`{"code":403,"reason":"read_only_client","msg":"此连接仅支持读取"}`))
-					return
-				}
-				if r.Header.Get("x-siflux-Agent-Turn") != "" || r.Header.Get("x-siflux-Agent-Token") != "" || !canvasHandler.IsLocalBusinessRequest(r) {
-					w.Header().Set("Content-Type", "application/json")
-					w.WriteHeader(http.StatusForbidden)
-					_, _ = w.Write([]byte(`{"code":403,"reason":"invalid_external_identity","msg":"外部调用不能使用助手身份"}`))
-					return
-				}
-				router.ServeHTTP(w, canvasHandler.WithExternalBusinessPrincipal(r, reg.Mode == agentops.ClientReadOnly))
-				return
-			}
-			if r.Header.Get("x-siflux-Client") == "" && agentops.OwnerTokenMatches(svc.DataDir(), strings.TrimSpace(r.Header.Get("x-siflux-Owner"))) && canvasHandler.IsLocalBusinessRequest(r) {
-				if launchToken != "" && r.Header.Get("X-Desktop-Token") != launchToken {
-					protected.ServeHTTP(w, r)
-					return
-				}
-				router.ServeHTTP(w, canvasHandler.WithExternalBusinessPrincipal(r, false))
-				return
-			}
-		}
-		// External clients receive only their own capability token, never shell credentials.
-		// Shared operations also accept registered local clients. Business handlers
-		// above use the same mounted catalog for discovery and authorization.
-		// Credential issuance and runtime administration retain desktop trust.
-		if isOpsEntryPath(r) && isLoopbackRemote(r.RemoteAddr) {
-			if _, ok := clients.Lookup(r.Header.Get("x-siflux-Client"), strings.TrimSpace(strings.TrimPrefix(r.Header.Get("Authorization"), "Bearer "))); ok {
-				router.ServeHTTP(w, r)
-				return
-			}
-		}
-		if r.Header.Get("x-siflux-Client") != "" {
-			if launchToken != "" && r.Header.Get("X-Desktop-Token") != launchToken {
-				protected.ServeHTTP(w, r)
-				return
-			}
-			w.Header().Set("Content-Type", "application/json")
-			w.WriteHeader(http.StatusForbidden)
-			_, _ = w.Write([]byte(`{"code":403,"reason":"external_business_forbidden","msg":"该接口不支持外部调用"}`))
-			return
-		}
-		protected.ServeHTTP(w, r)
-	})
 	return &Runtime{
 		workspaceLock:    workspaceLock,
 		cfg:              cfg,
@@ -273,7 +218,6 @@ func initializeService(svc *app.Service) error {
 	}
 	initializers := []func() error{
 		svc.EnsureDefaultPromptTemplates,
-		svc.EnsureBuiltinProjectWorkflowTemplate,
 		svc.EnsureBuiltinSkills,
 		svc.EnsureSkillPackages,
 	}
@@ -306,11 +250,6 @@ func (r *Runtime) Start() error {
 	} else {
 		r.service.StartWorker()
 	}
-	r.background.Add(1)
-	go func() {
-		defer r.background.Done()
-		r.service.RecoverPlaybackTranscodes()
-	}()
 	// The assistant loads its operation catalog from this server before becoming
 	// healthy. Accept requests before synchronously waiting for child readiness.
 	go func() {
@@ -324,11 +263,6 @@ func (r *Runtime) Start() error {
 	// 关闭时由 Runtime.Close 收尾，保证「应用启动链」而不是手工点按钮。
 	if r.cfg.Profile == ProfileDesktop {
 		opsURL := "http://" + r.listener.Addr().String() + "/api"
-		// 运行时发现：端口是动态的，外部客户端靠工作区对应的运行时描述文件找到当前地址，
-		// 而不是靠猜端口或拿到桌面启动令牌。写失败不影响应用启动。
-		if err := runtimeinfo.Write(r.cfg.DataDir, opsURL, buildinfo.Current().Version); err != nil {
-			log.Printf("未能写入运行时地址（外部 Agent 需手动指定 SIFLUX_BASE_URL）：%v", err)
-		}
 		if r.assistantHost != nil {
 			if err := r.assistantHost.Start(opsURL, r.launchToken); err != nil {
 				log.Printf("内置创作助手宿主未启动（不影响应用启动）：%v", err)
@@ -376,12 +310,6 @@ func (r *Runtime) Close(ctx context.Context) error {
 		r.closed.Store(true)
 		r.status.beginDrain()
 		var failures []error
-		// 干净退出先撤掉运行时地址：留着会让下一次发现连到一个已经不在的端口。
-		if r.cfg.Profile == ProfileDesktop {
-			if err := runtimeinfo.Remove(r.cfg.DataDir); err != nil {
-				failures = append(failures, fmt.Errorf("清理运行时地址：%w", err))
-			}
-		}
 		if r.httpServer != nil {
 			httpCtx, cancel := context.WithTimeout(ctx, min(30*time.Second, r.cfg.ShutdownTimeout))
 			if err := r.httpServer.Shutdown(httpCtx); err != nil {
@@ -457,30 +385,6 @@ func desktopCORSMiddleware() gin.HandlerFunc {
 		}
 		c.Next()
 	}
-}
-
-// isOpsEntryPath 只认操作层的两个入口：GET /api/ops 与 POST /api/ops/<op>。
-// /api/ops/clients 是凭据签发，不在豁免范围；带子路径的形态也一律不算。
-func isOpsEntryPath(r *http.Request) bool {
-	path := r.URL.Path
-	if r.Method == http.MethodGet && path == "/api/ops" {
-		return true
-	}
-	if r.Method != http.MethodPost || !strings.HasPrefix(path, "/api/ops/") {
-		return false
-	}
-	op := strings.TrimPrefix(path, "/api/ops/")
-	return op != "" && op != "clients" && !strings.Contains(op, "/")
-}
-
-// isLoopbackRemote 保证豁免只对本机连接生效。
-func isLoopbackRemote(remoteAddr string) bool {
-	host, _, err := net.SplitHostPort(remoteAddr)
-	if err != nil {
-		host = remoteAddr
-	}
-	parsed := net.ParseIP(strings.Trim(host, "[]"))
-	return parsed != nil && parsed.IsLoopback()
 }
 
 // desktopTrust 用桌面启动令牌判定请求是否来自受信任的桌面壳。

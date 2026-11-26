@@ -1,20 +1,17 @@
 import React, { useCallback, useEffect, useRef, useState } from "react";
 import type { ReactNode } from "react";
-import { AlertCircle, BookOpenCheck, CheckCircle2, ChevronRight, Clapperboard, Copy, Download, FileText, GripVertical, Image as ImageIcon, Lock, Maximize2, Move3d, Music2, Pencil, RefreshCw, ScanSearch, Settings2, Star, Trash2, Video, WandSparkles } from "lucide-react";
+import { AlertCircle, CheckCircle2, ChevronRight, Copy, Download, FileText, GripVertical, Image as ImageIcon, Lock, Maximize2, Pencil, RefreshCw, ScanSearch, Settings2, Star, Trash2 } from "lucide-react";
 
 import { useCanvasNodeActions } from "./canvas-node-action-context";
 import { shouldBlockAutomaticRetry } from "@/lib/generation-error";
 
 import { canvasThemes } from "@/lib/canvas-theme";
 import { canvasConnectionTilt } from "@/lib/canvas/canvas-connection-tilt";
-import { storyboardMinNodeHeight } from "@/lib/canvas/canvas-storyboard-layout";
 import { useActiveTheme } from "@/stores/canvas/use-canvas-theme-store";
 import { CanvasNodeType, type CanvasNodeData, type CanvasNodeTypeId, type Position } from "@/types/canvas";
 import type { CanvasResourceReference } from "@/lib/canvas/canvas-resource-references";
-import { ART_CRITIQUE_NODE_TYPE } from "@/lib/art-critique/contracts";
 import { getNodeDefinition, getNodeMinSize, shouldKeepAspectRatio } from "@/lib/canvas/node-registry";
 import { CanvasNodeContent } from "./canvas-node-content";
-import { CanvasVideoCropEditor, type CanvasVideoCropRect } from "./canvas-video-crop-dialog";
 import { CanvasImageCropEditor, type CanvasImageCropRect } from "./canvas-node-crop-dialog";
 import { CanvasImageAnnotationEditor } from "./canvas-node-annotation-dialog";
 import { CanvasImageMaskEditor, type CanvasImageMaskEditPayload } from "./canvas-node-mask-edit-dialog";
@@ -29,7 +26,6 @@ type CanvasNodeProps = {
     dragOffset?: Position;
     scale: number;
     isSelected: boolean;
-    mediaActive?: boolean;
     isRelated: boolean;
     isFocusRelated: boolean;
     isConnectionTarget: boolean;
@@ -67,8 +63,6 @@ type CanvasNodeProps = {
     onViewImage?: (node: CanvasNodeData) => void;
     onReplaceMedia?: (node: CanvasNodeData) => void;
     onOpenTextEditor?: (node: CanvasNodeData) => void;
-    onOpenDrawing?: (node: CanvasNodeData) => void;
-    onMediaPlayRequest?: (nodeId: string) => void;
     imageCropActive?: boolean;
     onCancelImageCrop?: () => void;
     onConfirmImageCrop?: (node: CanvasNodeData, crop: CanvasImageCropRect) => void | Promise<void>;
@@ -79,9 +73,6 @@ type CanvasNodeProps = {
     maskEditConfig?: AiConfig;
     onCancelMaskEdit?: () => void;
     onConfirmMaskEdit?: (node: CanvasNodeData, payload: CanvasImageMaskEditPayload) => void | Promise<void>;
-    videoCropActive?: boolean;
-    onCancelVideoCrop?: () => void;
-    onConfirmVideoCrop?: (node: CanvasNodeData, crop: CanvasVideoCropRect, sourceDimensions: { width: number; height: number }) => void | Promise<void>;
     onContextMenu: (event: React.MouseEvent, nodeId: string) => void;
 };
 
@@ -90,7 +81,6 @@ export const CanvasNode = React.memo(function CanvasNode({
     dragOffset,
     scale,
     isSelected,
-    mediaActive = false,
     isRelated,
     isFocusRelated,
     isConnectionTarget,
@@ -100,7 +90,6 @@ export const CanvasNode = React.memo(function CanvasNode({
     readOnly = false,
     mentionReferences = [],
     renderNodeContent,
-    drawingProjectId,
     batchCount = 0,
     batchPreviewNodes,
     batchExpanded = false,
@@ -125,8 +114,6 @@ export const CanvasNode = React.memo(function CanvasNode({
     onOpenVersions,
     onViewImage,
     onOpenTextEditor,
-    onOpenDrawing,
-    onMediaPlayRequest,
     imageCropActive = false,
     onCancelImageCrop,
     onConfirmImageCrop,
@@ -137,9 +124,6 @@ export const CanvasNode = React.memo(function CanvasNode({
     maskEditConfig,
     onCancelMaskEdit,
     onConfirmMaskEdit,
-    videoCropActive = false,
-    onCancelVideoCrop,
-    onConfirmVideoCrop,
     onContextMenu,
 }: CanvasNodeProps) {
     const theme = canvasThemes[useActiveTheme()];
@@ -149,17 +133,13 @@ export const CanvasNode = React.memo(function CanvasNode({
     const [titleDraft, setTitleDraft] = useState(data.title);
     const { download: downloadNode, duplicate: duplicateNode, deleteNode } = useCanvasNodeActions();
     const hasImageContent = data.type === CanvasNodeType.Image && Boolean(data.metadata?.content);
-    const hasVideoContent = data.type === CanvasNodeType.Video && Boolean(data.metadata?.content);
-    const hasAudioContent = data.type === CanvasNodeType.Audio && Boolean(data.metadata?.content || data.metadata?.storageKey);
     const isComposerNode = data.type === CanvasNodeType.Config;
-    const isDirectorNode = data.type === CanvasNodeType.Director || Boolean(data.metadata?.directorSceneId);
     const isBatchRoot = data.type === CanvasNodeType.Image && Boolean(data.metadata?.isBatchRoot) && batchCount > 1;
     const isBatchChild = data.type === CanvasNodeType.Image && Boolean(data.metadata?.batchRootId);
     const showStatusTrack = Boolean(data.metadata?.locked || isBatchRoot || (isBatchChild && !readOnly));
     const isActive = isConnectionTarget || isSelected || isFocusRelated;
     const nodeState = isFocusRelated ? "focus" : isConnectionTarget ? "target" : isSelected ? "selected" : isRelated && !isBatchChild ? "related" : "idle";
     const showOutputConnection = getNodeDefinition(data.type)?.showOutputConnection !== false;
-    const scriptMinHeight = data.type === CanvasNodeType.Script ? storyboardMinNodeHeight(data.metadata?.storyboardComposerHeight) : null;
     const textareaRef = useRef<HTMLTextAreaElement>(null);
     const resizeRef = useRef({
         isResizing: false,
@@ -217,8 +197,7 @@ export const CanvasNode = React.memo(function CanvasNode({
             const dy = (event.clientY - resizeRef.current.startY) / scale;
             const minSize = getNodeMinSize(data.type);
             const minWidth = minSize.width;
-            // 分镜脚本的高度由表格内容动态撑开，覆盖注册表里的静态下限。
-            const minHeight = scriptMinHeight || minSize.height;
+            const minHeight = minSize.height;
             const startRight = resizeRef.current.startLeft + resizeRef.current.startWidth;
             const startBottom = resizeRef.current.startTop + resizeRef.current.startHeight;
             const fromLeft = resizeRef.current.corner.includes("left");
@@ -249,7 +228,7 @@ export const CanvasNode = React.memo(function CanvasNode({
                 y: fromTop ? startBottom - height : resizeRef.current.startTop,
             });
         },
-        [data.id, data.type, onResize, scale, scriptMinHeight],
+        [data.id, data.type, onResize, scale],
     );
 
     const handleResizeUp = useCallback(() => {
@@ -297,8 +276,8 @@ export const CanvasNode = React.memo(function CanvasNode({
     const connectionTilt = isConnectionTarget && !reduceMediaEffects && !dragOffset
         ? canvasConnectionTilt(data, connectionApproach) : undefined;
     // 分镜远景以分组标题和缩略图表达结构；子节点标题在 25% 以下会互相挤压，
-    // 只对内置分镜 Fixture 的子节点收起外置标题，回到近景后仍恢复完整标题。
-    const hideDistantStoryboardChildHeader = scale < 0.5 && Boolean(data.parentId) && (data.metadata?.fixture === "libtv-storyboard" || data.type === CanvasNodeType.Image || data.type === CanvasNodeType.Video);
+    // 只对图片子节点收起外置标题，回到近景后仍恢复完整标题。
+    const hideDistantChildHeader = scale < 0.5 && Boolean(data.parentId) && data.type === CanvasNodeType.Image;
 
     return (
         <div
@@ -315,28 +294,10 @@ export const CanvasNode = React.memo(function CanvasNode({
             data-task-cancellable={data.metadata?.status === "loading" && (data.metadata?.taskStatus === "queued" || data.metadata?.taskStatus === "running") ? "true" : "false"}
             data-task-stage={data.metadata?.taskStage || undefined}
             data-task-progress={typeof data.metadata?.taskProgress === "number" ? String(data.metadata.taskProgress) : undefined}
-            data-subtitle-count={data.metadata?.subtitleEntries?.length ? String(data.metadata.subtitleEntries.length) : undefined}
-            data-subtitle-updated-at={data.metadata?.subtitleUpdatedAt || undefined}
-            data-subtitle-first-text={data.metadata?.subtitleEntries?.[0]?.text || undefined}
-            data-subtitle-position={data.metadata?.subtitleStyle?.position || undefined}
-            data-conversion-status={data.metadata?.mediaConversion?.status || undefined}
-            data-conversion-operation={data.metadata?.mediaConversion?.operation || undefined}
-            data-conversion-result={data.metadata?.mediaConversion?.resultStorageKey || undefined}
-            data-video-segment-source={data.metadata?.videoSegmentSourceNodeId || undefined}
-            data-video-segment-range={data.metadata?.videoSegmentStartMs !== undefined && data.metadata?.videoSegmentEndMs !== undefined ? `${data.metadata.videoSegmentStartMs}-${data.metadata.videoSegmentEndMs}` : undefined}
-            data-video-crop-source={data.metadata?.videoCropSourceNodeId || undefined}
-            data-video-crop-rect={data.metadata?.videoCrop ? `${data.metadata.videoCrop.x},${data.metadata.videoCrop.y},${data.metadata.videoCrop.width},${data.metadata.videoCrop.height}` : undefined}
-            data-video-retake-source={data.metadata?.videoRetakeSourceNodeId || undefined}
-            data-video-retake-count={data.metadata?.videoRetakeCount !== undefined ? String(data.metadata.videoRetakeCount) : undefined}
-            data-audio-extract-source={data.metadata?.audioExtractSourceNodeId || undefined}
-            data-audio-extract-range={data.metadata?.audioExtractStartMs !== undefined && data.metadata?.audioExtractEndMs !== undefined ? `${data.metadata.audioExtractStartMs}-${data.metadata.audioExtractEndMs}` : undefined}
-            data-video-frame-source={data.metadata?.videoFrameSourceNodeId || undefined}
-            data-video-frame-time={data.metadata?.videoFrameTimeMs !== undefined ? String(data.metadata.videoFrameTimeMs) : undefined}
-            data-video-merge-source-count={data.metadata?.videoMergeSourceNodeIds?.length ? String(data.metadata.videoMergeSourceNodeIds.length) : undefined}
             data-media-operation-error={data.metadata?.mediaOperationError || undefined}
             data-node-hovered={hovered ? "true" : undefined}
             data-asset-category={data.metadata?.assetCategory || undefined}
-            className={`node-element absolute flex select-none flex-col ${dragOffset ? "cursor-grabbing" : data.type === CanvasNodeType.Drawing ? "cursor-pointer" : "cursor-default"} ${isSelected ? "z-[var(--z-node-toolbar)]" : isFocusRelated || isConnectionTarget ? "z-[var(--z-node-active)]" : "z-[var(--z-node)]"}`}
+            className={`node-element absolute flex select-none flex-col ${dragOffset ? "cursor-grabbing" : "cursor-default"} ${isSelected ? "z-[var(--z-node-toolbar)]" : isFocusRelated || isConnectionTarget ? "z-[var(--z-node-active)]" : "z-[var(--z-node)]"}`}
             style={{
                 transform: `translate(${data.position.x + (dragOffset?.x || 0)}px, ${data.position.y + (dragOffset?.y || 0)}px)`,
                 width: data.width,
@@ -353,7 +314,7 @@ export const CanvasNode = React.memo(function CanvasNode({
             }}
             onContextMenu={(event) => onContextMenu(event, data.id)}
         >
-            {hideDistantStoryboardChildHeader ? null : (
+            {hideDistantChildHeader ? null : (
                 <NodeExternalHeader
                     node={data}
                     scale={scale}
@@ -377,10 +338,10 @@ export const CanvasNode = React.memo(function CanvasNode({
                 data-connection-tilt={connectionTilt ? "true" : undefined}
                 data-state={data.metadata?.status || (isActive ? "active" : isRelated ? "related" : "idle")}
                 style={{
-                    background: hasImageContent || hasVideoContent || isDirectorNode ? "transparent" : theme.node.fill,
+                    background: hasImageContent ? "transparent" : theme.node.fill,
                     // 固定占位但不绘制描边，避免聚焦切换时边框宽度变化造成白边跳动。
-                    border: isComposerNode || isDirectorNode ? "0" : `1px solid ${isSelected || isFocusRelated || isConnectionTarget ? theme.node.activeStroke : "transparent"}`,
-                    boxShadow: isComposerNode || isDirectorNode ? "none" : isSelected || isFocusRelated ? theme.node.hoverShadow : theme.node.shadow,
+                    border: isComposerNode ? "0" : `1px solid ${isSelected || isFocusRelated || isConnectionTarget ? theme.node.activeStroke : "transparent"}`,
+                    boxShadow: isComposerNode ? "none" : isSelected || isFocusRelated ? theme.node.hoverShadow : theme.node.shadow,
                     "--connection-tilt-x": `${connectionTilt?.rotateX || 0}deg`,
                     "--connection-tilt-y": `${connectionTilt?.rotateY || 0}deg`,
                     transformOrigin: connectionTilt?.origin,
@@ -397,15 +358,6 @@ export const CanvasNode = React.memo(function CanvasNode({
                         onViewImage?.(data);
                         return;
                     }
-                    if (data.metadata?.directorSceneId) {
-                        event.stopPropagation();
-                        return;
-                    }
-                    if (data.type === CanvasNodeType.Drawing) {
-                        event.stopPropagation();
-                        onOpenDrawing?.(data);
-                        return;
-                    }
                     if (!readOnly && data.type === CanvasNodeType.Text && data.metadata?.workflowKind === "character" && data.metadata.characterAssetId) {
                         event.stopPropagation();
                         onOpenTextEditor?.(data);
@@ -417,10 +369,10 @@ export const CanvasNode = React.memo(function CanvasNode({
                 }}
             >
                 <div
-                    className={`relative flex h-full w-full items-center justify-center rounded-[inherit] ${annotationActive || maskEditActive || (imageCropActive && hasImageContent) || (videoCropActive && hasVideoContent) || isBatchRoot || data.type === CanvasNodeType.Script || data.type === CanvasNodeType.BatchTable || isComposerNode ? "overflow-visible" : "overflow-hidden"}`}
+                    className={`relative flex h-full w-full items-center justify-center rounded-[inherit] ${annotationActive || maskEditActive || (imageCropActive && hasImageContent) || isBatchRoot || isComposerNode ? "overflow-visible" : "overflow-hidden"}`}
                     style={
                         {
-                            background: hasImageContent || hasVideoContent || hasAudioContent || isDirectorNode ? "transparent" : theme.node.fill,
+                            background: hasImageContent ? "transparent" : theme.node.fill,
                             "--batch-from-x": `${batchMotion?.x || 0}px`,
                             "--batch-from-y": `${batchMotion?.y || 0}px`,
                             "--batch-from-rotate": `${6 + (batchMotion?.index || 0) * 4}deg`,
@@ -445,7 +397,6 @@ export const CanvasNode = React.memo(function CanvasNode({
                         batchOpening={batchOpening}
                         batchRecovering={batchRecovering}
                         renderNodeContent={renderNodeContent}
-                        drawingProjectId={drawingProjectId}
                         mentionReferences={mentionReferences}
                         onContentChange={onContentChange}
                         onStopEditing={() => setIsEditingContent(false)}
@@ -455,9 +406,7 @@ export const CanvasNode = React.memo(function CanvasNode({
                         onCancelTask={onCancelTask}
                         onToggleBatch={() => onToggleBatch?.(data.id)}
                         reduceMediaEffects={reduceMediaEffects}
-                        mediaActive={mediaActive}
                         scale={scale}
-                        onMediaPlayRequest={onMediaPlayRequest}
                     />
                     {imageCropActive && hasImageContent ? (
                         <CanvasImageCropEditor
@@ -482,17 +431,6 @@ export const CanvasNode = React.memo(function CanvasNode({
                             config={maskEditConfig}
                             onCancel={() => onCancelMaskEdit?.()}
                             onConfirm={(payload) => onConfirmMaskEdit?.(data, payload)}
-                        />
-                    ) : null}
-                    {videoCropActive && hasVideoContent ? (
-                        <CanvasVideoCropEditor
-                            videoUrl={data.metadata?.content || ""}
-                            videoDimensions={{
-                                width: Math.max(1, data.metadata?.naturalWidth || data.width),
-                                height: Math.max(1, data.metadata?.naturalHeight || data.height),
-                            }}
-                            onCancel={() => onCancelVideoCrop?.()}
-                            onConfirm={(crop, sourceDimensions) => onConfirmVideoCrop?.(data, crop, sourceDimensions)}
                         />
                     ) : null}
                 </div>
@@ -579,22 +517,15 @@ export const CanvasNode = React.memo(function CanvasNode({
                 </> : null}
             </div>
 
-            {!readOnly && data.type !== CanvasNodeType.Script && data.type !== CanvasNodeType.BatchTable ? <ConnectionSideRail side="left" scale={scale} theme={theme} visible={hovered || isSelected || forceInputVisible} onPointerDown={(event, anchorRatio) => onConnectStart(event, data.id, "target", undefined, anchorRatio)} /> : null}
-            {!readOnly && data.type !== CanvasNodeType.Script && data.type !== CanvasNodeType.Config && showOutputConnection ? <ConnectionSideRail side="right" scale={scale} theme={theme} visible={hovered || isSelected} onPointerDown={(event, anchorRatio) => onConnectStart(event, data.id, "source", undefined, anchorRatio)} /> : null}
+            {!readOnly ? <ConnectionSideRail side="left" scale={scale} theme={theme} visible={hovered || isSelected || forceInputVisible} onPointerDown={(event, anchorRatio) => onConnectStart(event, data.id, "target", undefined, anchorRatio)} /> : null}
+            {!readOnly && data.type !== CanvasNodeType.Config && showOutputConnection ? <ConnectionSideRail side="right" scale={scale} theme={theme} visible={hovered || isSelected} onPointerDown={(event, anchorRatio) => onConnectStart(event, data.id, "source", undefined, anchorRatio)} /> : null}
 
         </div>
     );
 }, areCanvasNodePropsEqual);
 
 function usesCustomNodeContentRenderer(node: CanvasNodeData) {
-    return (
-        node.type === CanvasNodeType.Config ||
-        node.type === CanvasNodeType.Script ||
-        node.type === CanvasNodeType.BatchTable ||
-        node.type === CanvasNodeType.Director ||
-        Boolean(node.metadata?.directorSceneId) ||
-        Boolean(node.metadata?.workflowKind)
-    );
+    return node.type === CanvasNodeType.Config;
 }
 
 function areCanvasNodePropsEqual(previous: CanvasNodeProps, next: CanvasNodeProps) {
@@ -604,7 +535,6 @@ function areCanvasNodePropsEqual(previous: CanvasNodeProps, next: CanvasNodeProp
         previous.dragOffset?.y === next.dragOffset?.y &&
         previous.scale === next.scale &&
         previous.isSelected === next.isSelected &&
-        previous.mediaActive === next.mediaActive &&
         previous.isRelated === next.isRelated &&
         previous.isFocusRelated === next.isFocusRelated &&
         previous.isConnectionTarget === next.isConnectionTarget &&
@@ -617,7 +547,6 @@ function areCanvasNodePropsEqual(previous: CanvasNodeProps, next: CanvasNodeProp
         previous.resourceLabel === next.resourceLabel &&
         previous.mentionReferences === next.mentionReferences &&
         (!usesCustomNodeContentRenderer(next.data) || previous.renderNodeContent === next.renderNodeContent) &&
-        previous.drawingProjectId === next.drawingProjectId &&
         previous.batchCount === next.batchCount &&
         previous.batchPreviewNodes === next.batchPreviewNodes &&
         previous.batchExpanded === next.batchExpanded &&
@@ -645,15 +574,12 @@ function areCanvasNodePropsEqual(previous: CanvasNodeProps, next: CanvasNodeProp
         previous.onViewImage === next.onViewImage &&
         previous.onReplaceMedia === next.onReplaceMedia &&
         previous.onOpenTextEditor === next.onOpenTextEditor &&
-        previous.onOpenDrawing === next.onOpenDrawing &&
         previous.imageCropActive === next.imageCropActive &&
         (!next.imageCropActive || (previous.onCancelImageCrop === next.onCancelImageCrop && previous.onConfirmImageCrop === next.onConfirmImageCrop)) &&
         previous.annotationActive === next.annotationActive &&
         (!next.annotationActive || (previous.onCancelAnnotation === next.onCancelAnnotation && previous.onConfirmAnnotation === next.onConfirmAnnotation)) &&
         previous.maskEditActive === next.maskEditActive &&
         (!next.maskEditActive || (previous.maskEditConfig === next.maskEditConfig && previous.onCancelMaskEdit === next.onCancelMaskEdit && previous.onConfirmMaskEdit === next.onConfirmMaskEdit)) &&
-        previous.videoCropActive === next.videoCropActive &&
-        (!next.videoCropActive || (previous.onCancelVideoCrop === next.onCancelVideoCrop && previous.onConfirmVideoCrop === next.onConfirmVideoCrop)) &&
         previous.onContextMenu === next.onContextMenu
     );
 }
@@ -729,10 +655,8 @@ function NodeExternalHeader({ node, scale, dimensionLabel, active, editable, edi
     // 标题保持屏幕尺寸只适用于近景；远景继续反向缩放会遮住节点和连线。
     if (scale < NODE_EXTERNAL_HEADER_MIN_SCALE && !editing && node.metadata?.fixture !== "libtv-readonly-dense") return null;
     const inverseScale = 1 / Math.max(scale, 0.05);
-    const isDirectorNode = node.type === CanvasNodeType.Director || Boolean(node.metadata?.directorSceneId);
-    const Icon = isDirectorNode ? Move3d : nodeTypeIcon(node.type);
+    const Icon = nodeTypeIcon(node.type);
     const maxHeaderWidth = Math.min(240, node.width * scale);
-    const directorCardWidth = Math.min(node.width, node.height);
 
     return (
         <div
@@ -740,7 +664,6 @@ function NodeExternalHeader({ node, scale, dimensionLabel, active, editable, edi
             style={{
                 width: dimensionLabel ? "calc(var(--canvas-node-width) * var(--canvas-live-scale, 1))" : undefined,
                 maxWidth: dimensionLabel ? undefined : maxHeaderWidth,
-                left: node.metadata?.directorSceneId ? Math.max(0, (node.width - directorCardWidth) / 2) : undefined,
                 "--canvas-node-width": `${node.width}px`,
                 borderRadius: "var(--r-sm)",
                 background: "transparent",
@@ -782,7 +705,7 @@ function NodeExternalHeader({ node, scale, dimensionLabel, active, editable, edi
                 >
                     {node.metadata?.locked ? <Lock className="size-3" /> : <GripVertical className="size-3" strokeWidth={1.8} />}
                 </button>
-                <Icon className="size-3 shrink-0" strokeWidth={1.8} data-node-header-icon={isDirectorNode ? "director" : undefined} />
+                <Icon className="size-3 shrink-0" strokeWidth={1.8} />
                 {editing ? (
                     <input
                         autoFocus
@@ -814,13 +737,7 @@ function NodeExternalHeader({ node, scale, dimensionLabel, active, editable, edi
 
 function nodeTypeIcon(type: CanvasNodeTypeId) {
     if (type === CanvasNodeType.Image) return ImageIcon;
-    if (type === CanvasNodeType.Video) return Video;
-    if (type === CanvasNodeType.Audio) return Music2;
-    if (type === CanvasNodeType.Drawing) return Pencil;
-    if (type === CanvasNodeType.Script) return Clapperboard;
     if (type === CanvasNodeType.Config) return Settings2;
-    if (type === CanvasNodeType.Skill) return BookOpenCheck;
-    if (type === ART_CRITIQUE_NODE_TYPE) return ScanSearch;
     return FileText;
 }
 

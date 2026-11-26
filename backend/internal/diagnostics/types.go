@@ -4,7 +4,7 @@ import "time"
 
 const (
 	SchemaVersion    = 1
-	RedactionVersion = 1
+	RedactionVersion = 2
 	maxWindow        = 24 * time.Hour
 	maxClientEvents  = 500
 	maxBundleBytes   = 10 << 20
@@ -49,12 +49,13 @@ type ExportRequest struct {
 }
 
 type Preview struct {
-	ClientEventLimit int   `json:"clientEventLimit"`
-	TaskCount        int   `json:"taskCount"`
-	TaskLogCount     int   `json:"taskLogCount"`
-	APICallCount     int   `json:"apiCallCount"`
-	EstimatedBytes   int64 `json:"estimatedBytes"`
-	WillTruncate     bool  `json:"willTruncate"`
+	UpdateLog        *updateLogSummary `json:"updateLog,omitempty"`
+	ClientEventLimit int               `json:"clientEventLimit"`
+	TaskCount        int               `json:"taskCount"`
+	TaskLogCount     int               `json:"taskLogCount"`
+	APICallCount     int               `json:"apiCallCount"`
+	EstimatedBytes   int64             `json:"estimatedBytes"`
+	WillTruncate     bool              `json:"willTruncate"`
 }
 
 type Bundle struct {
@@ -69,6 +70,7 @@ type timeWindow struct {
 }
 
 type collection struct {
+	UpdateLog    *updateLogSummary
 	Window       timeWindow
 	Description  string
 	TaskID       string
@@ -147,6 +149,7 @@ type taskRecord struct {
 	TraceID           string     `json:"traceId,omitempty"`
 	RequestID         string     `json:"requestId,omitempty"`
 	ProjectID         string     `json:"projectId,omitempty"`
+	Source            string     `json:"source,omitempty"`
 	Type              string     `json:"type,omitempty"`
 	Status            string     `json:"status,omitempty"`
 	Stage             string     `json:"stage,omitempty"`

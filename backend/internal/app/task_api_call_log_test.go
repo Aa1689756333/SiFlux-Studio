@@ -6,6 +6,7 @@ import (
 	"testing"
 	"time"
 
+	"infinite-canvas/backend/internal/database"
 	"infinite-canvas/backend/internal/model"
 	"infinite-canvas/backend/internal/repository"
 
@@ -13,26 +14,26 @@ import (
 	"gorm.io/gorm"
 )
 
-func TestVideoPollLogSchedulesNextCheckThirtySecondsLater(t *testing.T) {
+func TestImagePollLogSchedulesNextCheckFiveSecondsLater(t *testing.T) {
 	db, err := gorm.Open(sqlite.Open("file:provider-poll-schedule?mode=memory&cache=shared"), &gorm.Config{})
 	if err != nil {
 		t.Fatal(err)
 	}
-	if err := db.AutoMigrate(&model.Task{}, &model.ApiCallLog{}); err != nil {
+	if err := db.AutoMigrate(database.LocalModels()...); err != nil {
 		t.Fatal(err)
 	}
-	task := model.Task{ID: "task-1", UserID: "user-1", Type: "canvas_video", Status: model.TaskStatusRunning}
+	task := model.Task{ID: "task-1", UserID: "user-1", Type: "canvas_image", Status: model.TaskStatusRunning}
 	if err := db.Create(&task).Error; err != nil {
 		t.Fatal(err)
 	}
-	root := model.ApiCallLog{ID: "api-log-1", UserID: task.UserID, TaskID: task.ID, Capability: "video", RequestKind: "create", ProviderRequestID: "provider-task-1", CreatedAt: time.Now()}
+	root := model.ApiCallLog{ID: "api-log-1", UserID: task.UserID, TaskID: task.ID, Capability: "image", RequestKind: "create", ProviderRequestID: "provider-task-1", CreatedAt: time.Now()}
 	if err := db.Create(&root).Error; err != nil {
 		t.Fatal(err)
 	}
 	service := &Service{repo: repository.New(db)}
 	startedAt := time.Now()
 	if err := service.LogAPICall(model.ApiCallLog{
-		ID: "poll-log-1", UserID: task.UserID, TaskID: task.ID, Capability: "video", RequestKind: "poll",
+		ID: "poll-log-1", UserID: task.UserID, TaskID: task.ID, Capability: "image", RequestKind: "poll",
 		ProviderRequestID: "provider-task-1", Status: model.ApiCallStatusSucceeded, StatusCode: 200, CreatedAt: startedAt,
 	}); err != nil {
 		t.Fatal(err)
@@ -45,8 +46,8 @@ func TestVideoPollLogSchedulesNextCheckThirtySecondsLater(t *testing.T) {
 		t.Fatal("next poll time is nil")
 	}
 	delay := stored.NextPollAt.Sub(startedAt)
-	if delay < 30*time.Second || delay > 31*time.Second {
-		t.Fatalf("next poll delay = %s, want approximately 30s", delay)
+	if delay < 5*time.Second || delay > 6*time.Second {
+		t.Fatalf("next poll delay = %s, want approximately 5s", delay)
 	}
 }
 

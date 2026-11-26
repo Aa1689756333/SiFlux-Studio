@@ -22,9 +22,10 @@ func TestCreateTaskMediaTransportAdmission(t *testing.T) {
 	}
 	svc := NewLocal(repository.New(db), t.TempDir())
 	t.Cleanup(func() { _ = svc.Close() })
-	request := CreateTaskRequest{Type: "canvas_video", Prompt: "move", Input: map[string]any{
-		"mode": "video", "prompt": "move",
-		"config":          map[string]any{"interfaceType": "newapi-channel-2", "model": "custom-video", "baseUrl": "https://custom.example/v1", "apiKey": "synthetic-key", "videoGenerateAudio": false},
+	// dashscope-wanx-image 是需要公网素材链接的生图协议：本地素材键必须在入库前被拒。
+	request := CreateTaskRequest{Type: "canvas_image", Prompt: "move", Input: map[string]any{
+		"mode": "image", "prompt": "move",
+		"config":          map[string]any{"interfaceType": "dashscope-wanx-image", "model": "wanx-image", "baseUrl": "https://custom.example/v1", "apiKey": "synthetic-key"},
 		"referenceImages": []any{map[string]any{"storageKey": "resource:local-image"}},
 	}}
 	_, err = svc.CreateTask("user", request)
@@ -37,14 +38,6 @@ func TestCreateTaskMediaTransportAdmission(t *testing.T) {
 		t.Fatalf("rejected task persisted: %d %v", count, err)
 	}
 	request.Input["referenceImages"] = []any{map[string]any{"url": "https://cdn.example/image.png"}}
-	request.Input["mask"] = map[string]any{"storageKey": "resource:local-mask"}
-	if _, err := svc.CreateTask("user", request); !errors.As(err, &appErr) || appErr.Reason != "reference_media_requires_url" {
-		t.Fatalf("mask-only rejection missing: %v", err)
-	}
-	if err := db.Model(&model.Task{}).Count(&count).Error; err != nil || count != 0 {
-		t.Fatalf("mask rejection persisted: %d %v", count, err)
-	}
-	request.Input["mask"] = map[string]any{"url": "https://cdn.example/mask.png"}
 	task, err := svc.CreateTask("user", request)
 	if err != nil || task.Status != model.TaskStatusQueued {
 		t.Fatalf("HTTPS task not accepted: %v", err)

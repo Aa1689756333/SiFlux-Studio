@@ -4,19 +4,16 @@ import { createJSONStorage, persist } from "zustand/middleware";
 import { nanoid } from "nanoid";
 
 import { scopedLocalStorage } from "@/lib/user-scope";
-import { beefAPIVideoContract, isBeefAPIEndpoint } from "@/lib/beefapi-video-contracts";
-import { beefAPIImageContract } from "@/lib/beefapi-image-contracts";
-import { defaultProtocolForCapability, defaultProtocolForModel, modelProtocolCapability, normalizeModelProtocol, usesOpenAICompatibleProtocolDefault, type ModelProtocol } from "@/lib/model-protocols";
-import { normalizeVideoBoolean, normalizeVideoDuration, normalizeVideoResolution } from "@/lib/video-generation-options";
-import { defaultModelCapabilityConfig, workflowFieldRole, workflowFieldSafeToOverride, workflowVideoFieldsFromJson, type ModelCapabilityConfig } from "@/lib/model-capabilities";
+import { beefAPIImageContract, isBeefAPIEndpoint } from "@/lib/beefapi-image-contracts";
+import { defaultProtocolForCapability, defaultProtocolForModel, inferProtocolCapabilityFromModel, isSupportedProtocolCapability, isUnsupportedGenerationModel, isUnsupportedModelProtocol, modelProtocolCapability, normalizeModelProtocol, usesOpenAICompatibleProtocolDefault, type ModelProtocol } from "@/lib/model-protocols";
+import { defaultModelCapabilityConfig, workflowFieldRole, workflowFieldSafeToOverride, workflowFieldsFromJson, type ModelCapabilityConfig } from "@/lib/model-capabilities";
 import { useUserStore } from "@/stores/use-user-store";
 import type { CapabilitySpec } from "@/services/api/logical-models";
-import { seedancePortraitLabel, seedancePortraitModel, type VideoPriceQuote } from "@/lib/seedance-portrait";
 
 export type ApiCallFormat = "openai" | "gemini" | "claude";
 export type ChannelInterfaceType = ModelProtocol;
 export type ChannelHeader = { name: string; value: string };
-export type RunningHubCapability = "image" | "video" | "audio";
+export type RunningHubCapability = "image";
 export type RunningHubWorkflowKind = "workflow" | "app";
 
 export type WorkflowFieldMapping = {
@@ -49,7 +46,7 @@ export type WorkflowFieldMapping = {
 };
 
 export function normalizeRunningHubCapability(value: unknown, fallback: RunningHubCapability = "image"): RunningHubCapability {
-    return value === "image" || value === "video" || value === "audio" ? value : fallback;
+    return value === "image" ? value : fallback;
 }
 
 export function normalizeRunningHubWorkflowKind(value: unknown): RunningHubWorkflowKind {
@@ -66,49 +63,25 @@ function normalizeWorkflowFieldSourceName(value: unknown, capability?: RunningHu
         image: "referenceImage",
         referenceimage: "referenceImage",
         referenceimages: "referenceImage",
-        video: "referenceVideo",
-        referencevideo: "referenceVideo",
-        referencevideos: "referenceVideo",
-        audio: "referenceAudio",
-        referenceaudio: "referenceAudio",
-        referenceaudios: "referenceAudio",
         sizewidth: "width",
         imagewidth: "width",
-        videowidth: "width",
         sizeheight: "height",
         imageheight: "height",
-        videoheight: "height",
         ratio: "aspectRatio",
         aspectratio: "aspectRatio",
         imageaspectratio: "aspectRatio",
         imageratio: "aspectRatio",
-        videoaspectratio: "aspectRatio",
-        videoratio: "aspectRatio",
-        videoresolution: "vquality",
         batch: "count",
         batchsize: "count",
-        duration: "videoSeconds",
-        videoseconds: "videoSeconds",
-        videoquality: "vquality",
-        generateaudio: "videoGenerateAudio",
-        videogenerateaudio: "videoGenerateAudio",
-        watermark: "videoWatermark",
-        videowatermark: "videoWatermark",
-        voice: "audioVoice",
         systemprompt: "systemPrompt",
         transparentbackground: "transparentBackground",
-        audiovoice: "audioVoice",
-        audioformat: "audioFormat",
-        audiospeed: "audioSpeed",
-        audioinstructions: "audioInstructions",
     };
-    if (normalized === "resolution") return capability === "video" ? "vquality" : "size";
-    // 工作流的 quality 可能是连续数值（例如 0.1-3），不能按视频分辨率处理。
+    if (normalized === "resolution") return "size";
     if (normalized === "quality") return "quality";
     return aliases[normalized] || source;
 }
 
-const workflowDimensionPrefixes = ["", "image", "video", "size", "output", "target", "latent", "frame", "canvas", "source", "resolution", "final"];
+const workflowDimensionPrefixes = ["", "image", "size", "output", "target", "latent", "frame", "canvas", "source", "resolution", "final"];
 
 function workflowDimensionSource(key: string) {
     if (workflowDimensionPrefixes.some((prefix) => key === `${prefix}width`) || key === "pixelwidth" || key === "widthpixels") return "width";
@@ -123,38 +96,14 @@ function inferWorkflowFieldSource(fieldName: string, fieldType: string, capabili
     if (key.includes("mask")) return "mask";
     const dimensionSource = workflowDimensionSource(key);
     if (dimensionSource) return dimensionSource;
-    if (["ratio", "aspectratio", "imageaspectratio", "imageratio", "videoaspectratio", "videoratio"].includes(key)) return "aspectRatio";
-    if (["videoresolution", "videoquality", "vquality"].includes(key)) return "vquality";
+    if (["ratio", "aspectratio", "imageaspectratio", "imageratio"].includes(key)) return "aspectRatio";
     if (["size", "imagesize", "imageresolution"].includes(key)) return "size";
-    if (key === "resolution") return capability === "video" ? "vquality" : capability === "image" ? "size" : "";
+    if (key === "resolution") return "size";
     if (["batch", "batchsize", "count", "numimages", "numberofimages", "imagecount", "imagescount"].includes(key)) return "count";
     if (key === "quality") return "quality";
-    if (["duration", "seconds", "durationseconds", "videoseconds", "videoduration", "videodurationseconds", "videolength", "clipduration"].includes(key)) return "videoSeconds";
-    if (["generateaudio", "videogenerateaudio"].includes(key)) return "videoGenerateAudio";
-    if (["watermark", "videowatermark"].includes(key)) return "videoWatermark";
-    if (key === "audioformat" || (key === "format" && normalizedFieldType === "audio")) return "audioFormat";
-    if (["voice", "audiovoice"].includes(key)) return "audioVoice";
-    if ((key === "speed" && normalizedFieldType === "audio") || key === "audiospeed") return "audioSpeed";
-    if ((key === "pitch" && normalizedFieldType === "audio") || key === "audiopitch") return "audioPitch";
-    if ((key === "volume" && normalizedFieldType === "audio") || key === "audiovolume") return "audioVolume";
-    if ((key === "instructions" && normalizedFieldType === "audio") || key === "audioinstructions") return "audioInstructions";
     if (["transparentbackground", "transparent"].includes(key)) return "transparentBackground";
     if (normalizedFieldType === "image") return "referenceImage";
-    if (normalizedFieldType === "video") return "referenceVideo";
-    if (normalizedFieldType === "audio") return "referenceAudio";
     return "";
-}
-
-function shouldRepairLegacyWorkflowSource(fieldName: string, source: string, inferredSource: string, capability?: RunningHubCapability) {
-    if (!source || !inferredSource || source === inferredSource) return false;
-    const key = fieldName.toLowerCase().replace(/[\s_-]/g, "");
-    const wasMistakenForMedia = ["referenceImage", "referenceVideo", "referenceAudio"].includes(source);
-    if (wasMistakenForMedia && (workflowDimensionSource(key) || inferredSource === "aspectRatio" || inferredSource === "vquality")) return true;
-    // 旧版把通用 resolution 固定识别为图片尺寸；视频条目必须恢复为视频清晰度。
-    if (key === "resolution" && capability === "video" && source === "size") return true;
-    if (key === "resolution" && capability === "image" && source === "vquality") return true;
-    if (key === "quality" && source === "vquality") return true;
-    return false;
 }
 
 export function normalizeWorkflowFieldMappings(value: unknown, capability?: RunningHubCapability): WorkflowFieldMapping[] {
@@ -165,6 +114,7 @@ export function normalizeWorkflowFieldMappings(value: unknown, capability?: Runn
         const nodeId = String(raw.nodeId || raw.node || raw.node_id || "").trim();
         const fieldName = String(raw.fieldName || raw.input || raw.inputName || raw.input_name || "").trim();
         if (!nodeId || !fieldName) return [];
+        if (/video|audio|voice|duration/i.test(String(raw.source || "")) || /^(video|audio)$/i.test(String(raw.fieldType || raw.type || ""))) return [];
         // source 明确存在但为空，表示用户要求保留工作流默认值；只有旧数据完全缺少来源字段时才自动补绑定。
         const sourceKey = ["source", "bind", "from"].find((key) => Object.prototype.hasOwnProperty.call(raw, key));
         const sourceConfigured = Boolean(sourceKey);
@@ -183,12 +133,10 @@ export function normalizeWorkflowFieldMappings(value: unknown, capability?: Runn
                 source = "prompt";
                 sourceAutomatic = true;
             }
-        } else if (shouldRepairLegacyWorkflowSource(fieldName, source, inferredSource, capability)) {
-            source = inferredSource;
         }
         // 比例、清晰度、时长等标量必须按 nodeId + fieldName 独立配置。
         // 旧版自动来源会把两个同类字段折叠到同一个全局参数，重新归一化为直接字段值。
-        if (sourceAutomatic && !["prompt", "referenceImage", "referenceVideo", "referenceAudio", "mask"].includes(source)) {
+        if (sourceAutomatic && !["prompt", "referenceImage", "mask"].includes(source)) {
             source = "";
             sourceAutomatic = false;
         }
@@ -236,26 +184,12 @@ export function normalizeWorkflowFieldMappings(value: unknown, capability?: Runn
         return [{ ...candidate, role, safeToOverride, enabled: safeToOverride && configuredEnabled, ...(optionsSource ? { optionsSource } : {}) }];
     });
     let imageOrder = 0;
-    let videoOrder = 0;
-    let audioOrder = 0;
     return fields.map((field) => {
         if (field.source === "referenceImage") {
             const configuredOrder = Number(field.imageOrder);
             const nextOrder = Number.isInteger(configuredOrder) && configuredOrder > 0 ? configuredOrder : imageOrder + 1;
             imageOrder = Math.max(imageOrder, nextOrder);
             return { ...field, imageOrder: nextOrder, sourceIndex: nextOrder - 1, required: field.required ?? nextOrder === 1 };
-        }
-        if (field.source === "referenceVideo") {
-            const configuredIndex = Number(field.sourceIndex);
-            const nextIndex = Number.isInteger(configuredIndex) && configuredIndex >= 0 ? configuredIndex : videoOrder;
-            videoOrder = Math.max(videoOrder, nextIndex + 1);
-            return { ...field, sourceIndex: nextIndex, required: field.required ?? nextIndex === 0 };
-        }
-        if (field.source === "referenceAudio") {
-            const configuredIndex = Number(field.sourceIndex);
-            const nextIndex = Number.isInteger(configuredIndex) && configuredIndex >= 0 ? configuredIndex : audioOrder;
-            audioOrder = Math.max(audioOrder, nextIndex + 1);
-            return { ...field, sourceIndex: nextIndex, required: field.required ?? nextIndex === 0 };
         }
         if (field.source === "prompt") return { ...field, required: field.required ?? true };
         return field;
@@ -293,7 +227,7 @@ export function mergeWorkflowFieldMappings(current: unknown, incoming: unknown, 
 }
 
 function normalizeSavedWorkflowFields(workflow: { fields?: unknown; workflowJson?: Record<string, unknown> }, capability: RunningHubCapability) {
-    const schemaFields = workflowVideoFieldsFromJson(workflow.workflowJson);
+    const schemaFields = workflowFieldsFromJson(workflow.workflowJson);
     return schemaFields.length ? mergeWorkflowFieldMappings(workflow.fields, schemaFields, capability) : normalizeWorkflowFieldMappings(workflow.fields, capability);
 }
 
@@ -377,8 +311,6 @@ export type ModelChannel = {
         capability: ModelCapability;
         protocol?: ModelProtocol;
         capabilityConfig?: ModelCapabilityConfig;
-        videoCapabilitiesVersion?: string;
-        videoPricing?: VideoPriceQuote | null;
         logicalModelId?: string;
         logicalCapabilitySpec?: CapabilitySpec;
         logicalCapabilityProfiles?: CapabilitySpec[];
@@ -397,28 +329,28 @@ export type AiConfig = {
     taskWorkflowProvider?: "model" | "runninghub";
     model: string;
     imageModel: string;
-    videoModel: string;
+
     textModel: string;
-    audioModel: string;
+
     /** 画布助手模型；为空表示跟随 `textModel`。取值与其他默认模型一致，形如 `channelId::modelId`。 */
     assistantModel: string;
-    audioVoice: string;
-    audioFormat: string;
-    audioSpeed: string;
-    audioPitch: string;
-    audioVolume: string;
-    audioInstructions: string;
-    videoSeconds: string;
-    vquality: string;
-    videoGenerateAudio: string;
-    videoWatermark: string;
-    videoArkPrivateAssetUpload: string;
+
+
+
+
+
+
+
+
+
+
+
     systemPrompt: string;
     models: string[];
     imageModels: string[];
-    videoModels: string[];
+
     textModels: string[];
-    audioModels: string[];
+
     quality: string;
     size: string;
     transparentBackground: string;
@@ -427,11 +359,11 @@ export type AiConfig = {
 };
 
 export const CONFIG_STORE_KEY = "open_ai_canvas:ai_config_store";
-export type ModelCapability = "image" | "video" | "text" | "audio";
+export type ModelCapability = "image" | "text";
 const CHANNEL_MODEL_SEPARATOR = "::";
 const OPENAI_BASE_URL = "https://api.openai.com";
 const GEMINI_BASE_URL = "https://generativelanguage.googleapis.com";
-const LEGACY_DEFAULT_MODEL_NAMES = new Set(["gpt-image-2", "grok-imagine-video", "gpt-5.5", "gpt-4o-mini-tts"]);
+const LEGACY_DEFAULT_MODEL_NAMES = new Set(["gpt-image-2", "gpt-5.5"]);
 
 export const defaultConfig: AiConfig = {
     channelMode: "remote",
@@ -444,27 +376,12 @@ export const defaultConfig: AiConfig = {
     taskWorkflowProvider: "model",
     model: "",
     imageModel: "",
-    videoModel: "",
     textModel: "",
-    audioModel: "",
     assistantModel: "",
-    audioVoice: "alloy",
-    audioFormat: "mp3",
-    audioSpeed: "1",
-    audioPitch: "0",
-    audioVolume: "1",
-    audioInstructions: "",
-    videoSeconds: "6",
-    vquality: "720",
-    videoGenerateAudio: "true",
-    videoWatermark: "false",
-    videoArkPrivateAssetUpload: "true",
     systemPrompt: "",
     models: [],
     imageModels: [],
-    videoModels: [],
     textModels: [],
-    audioModels: [],
     quality: "auto",
     size: "1:1",
     transparentBackground: "false",
@@ -484,85 +401,18 @@ export type ConfigStoreSnapshot = {
     config?: Partial<AiConfig>;
 };
 
-function isVideoModelName(model: string) {
-    const value = modelOptionName(model).toLowerCase();
-    return (
-        value.includes("seedance") ||
-        value.includes("video") ||
-        value.includes("sora") ||
-        value.includes("veo") ||
-        value.includes("kling") ||
-        value.includes("wan") ||
-        value.includes("hailuo") ||
-        value.includes("pika") ||
-        value.includes("runway") ||
-        value.includes("gen-3") ||
-        value.includes("gen3") ||
-        value.includes("hunyuan-video") ||
-        value.includes("hunyuanvideo") ||
-        value.includes("cogvideo") ||
-        value.includes("mochi") ||
-        value.includes("latte") ||
-        value.includes("stable-video") ||
-        value.includes("svd") ||
-        value.includes("animatediff") ||
-        value.includes("ltx-video") ||
-        value.includes("ltxvideo") ||
-        value.includes("minimax-video") ||
-        value.includes("abab-video")
-    );
-}
-
 function isImageModelName(model: string) {
-    const value = modelOptionName(model).toLowerCase();
-    return (
-        !isVideoModelName(model) &&
-        !isAudioModelName(model) &&
-        (value.includes("seedream") ||
-            value.includes("gpt-image") ||
-            value.includes("image") ||
-            value.includes("dall-e") ||
-            value.includes("dalle") ||
-            value.includes("imagen") ||
-            value.includes("flux") ||
-            value.includes("sdxl") ||
-            value.includes("stable-diffusion") ||
-            value.includes("midjourney") ||
-            value.includes("nano-banana") ||
-            value.includes("nanobanana") ||
-            value.includes("ideogram") ||
-            value.includes("recraft") ||
-            value.includes("playground") ||
-            value.includes("leonardo"))
-    );
-}
-
-function isTranscriptionModelName(model: string) {
-    const parts = new Set(
-        modelOptionName(model)
-            .toLowerCase()
-            .split(/[^a-z0-9]+/u)
-            .filter(Boolean),
-    );
-    return ["asr", "stt", "whisper", "transcription", "transcriptions", "transcribe"].some((token) => parts.has(token));
-}
-
-function isAudioModelName(model: string) {
-    if (isTranscriptionModelName(model)) return false;
-    const value = modelOptionName(model).toLowerCase();
-    return value.includes("audio") || value.includes("tts") || value.includes("speech") || value.includes("voice") || value.includes("music") || value.includes("sound");
+    return !isUnsupportedGenerationModel(model) && inferProtocolCapabilityFromModel(modelOptionName(model)) === "image";
 }
 
 function isTextModelName(model: string) {
-    return !isImageModelName(model) && !isVideoModelName(model) && !isAudioModelName(model) && !isTranscriptionModelName(model);
+    return !isUnsupportedGenerationModel(model) && !isImageModelName(model);
 }
 
 export function modelMatchesCapability(model: string, capability?: ModelCapability) {
+    if (isUnsupportedGenerationModel(model)) return false;
     if (!capability) return true;
-    if (capability === "image") return isImageModelName(model);
-    if (capability === "video") return isVideoModelName(model);
-    if (capability === "audio") return isAudioModelName(model);
-    return isTextModelName(model);
+    return capability === "image" ? isImageModelName(model) : isTextModelName(model);
 }
 
 type ChannelModelProfile = NonNullable<ModelChannel["modelProfiles"]>[number];
@@ -598,15 +448,17 @@ export function channelModelProfile(channel: ModelChannel | undefined, model: st
 }
 
 export function filterModelsByCapability(models: string[], capability?: ModelCapability, channels?: ModelChannel[]) {
-    if (!capability) return models;
+    if (!capability) return models.filter((model) => !isUnsupportedGenerationModel(model));
     const lookup = channels ? channelLookup(channels) : undefined;
     return models.filter((model) => {
         const decoded = decodeChannelModel(model);
         const channel = decoded ? lookup?.byId.get(decoded.channelId) : undefined;
         const modelName = decoded?.model || modelOptionName(model);
         const costEntry = channelModelProfile(channel, modelName);
+        if (isUnsupportedGenerationModel(model) || isUnsupportedModelProtocol(costEntry?.protocol) || isUnsupportedModelProtocol(channel?.interfaceType)) return false;
+        if (costEntry?.capability && !isSupportedProtocolCapability(costEntry.capability)) return false;
         // 协议层优先级最高：协议决定 API 端点，明确属于其他能力时直接排除，
-        // 防止用户将 video/image/audio 协议的模型误标为 text 后混入文本下拉。
+        // 防止图片协议被误标为 text 后混入 Agent 模型下拉。
         const protocolCapability = modelProtocolCapability(costEntry?.protocol);
         if (protocolCapability) return protocolCapability === capability;
         // 渠道接口层：渠道级协议推断能力
@@ -728,7 +580,7 @@ export function normalizeConfigSnapshot(snapshot: ConfigStoreSnapshot | undefine
     const runningHubCapability = normalizeRunningHubCapability(persistedRunningHub?.capability, defaultConfig.runningHub.capability);
     const runningHubWorkflows = Array.isArray(persistedRunningHub?.workflows)
         ? persistedRunningHub.workflows
-              .filter((item): item is RunningHubWorkflow => Boolean(item && typeof item === "object" && String(item.workflowId || "").trim()))
+              .filter((item): item is RunningHubWorkflow => Boolean(item && typeof item === "object" && String(item.workflowId || "").trim() && (!item.capability || item.capability === "image")))
               .map((item) => {
                   const capability = normalizeRunningHubCapability(item.capability, runningHubCapability);
                   return {
@@ -744,7 +596,7 @@ export function normalizeConfigSnapshot(snapshot: ConfigStoreSnapshot | undefine
     const runningHubSelectedKind = persistedRunningHub?.selectedKind ? normalizeRunningHubWorkflowKind(persistedRunningHub.selectedKind) : normalizeRunningHubWorkflowKind(runningHubWorkflows.find((item) => item.workflowId === runningHubWorkflowID)?.kind);
     const config = {
         ...defaultConfig,
-        ...persistedConfig,
+        ...Object.fromEntries(Object.keys(defaultConfig).filter((key) => key in persistedConfig).map((key) => [key, persistedConfig[key as keyof AiConfig]])),
         taskWorkflowProvider: "model" as const,
         // Older desktop snapshots may contain explicitly stored `undefined`
         // values. Keep all fields consumed by `.trim()` callers as strings.
@@ -763,12 +615,10 @@ export function normalizeConfigSnapshot(snapshot: ConfigStoreSnapshot | undefine
     };
     const hasPersistedChannels = Array.isArray(persistedConfig.channels);
     if (!hasPersistedChannels) config.channels = [];
-    const channels = normalizeChannels(config, !hasPersistedChannels).map(enrichBeefApiMediaChannel).map(reconcileChannelModelProfiles);
+    const channels = normalizeChannels(config, !hasPersistedChannels).map(enrichBeefApiImageChannel).map(reconcileChannelModelProfiles);
     const models = modelOptionsFromChannels(channels);
     const imageModels = filterModelsByCapability(models, "image", channels);
-    const videoModels = filterModelsByCapability(models, "video", channels);
     const textModels = filterModelsByCapability(models, "text", channels);
-    const audioModels = filterModelsByCapability(models, "audio", channels);
     const model = normalizeSelectedModel(config.model || config.imageModel || config.textModel, channels, models);
     return {
         config: {
@@ -779,49 +629,18 @@ export function normalizeConfigSnapshot(snapshot: ConfigStoreSnapshot | undefine
             models,
             model,
             imageModel: normalizeSelectedModel(config.imageModel || model, channels, imageModels),
-            videoModel: normalizeSelectedModel(config.videoModel, channels, videoModels),
             textModel: normalizeSelectedModel(config.textModel || model, channels, textModels),
-            audioModel: normalizeSelectedModel(config.audioModel || defaultConfig.audioModel, channels, audioModels),
             // 助手模型允许为空（跟随默认文本模型），因此这里只保证类型，
             // 协议与渠道有效性由 `lib/assistant-model` 在读取时裁决。
             assistantModel: typeof config.assistantModel === "string" ? config.assistantModel.trim() : "",
-            audioVoice: config.audioVoice || defaultConfig.audioVoice,
-            audioFormat: config.audioFormat || defaultConfig.audioFormat,
-            audioSpeed: config.audioSpeed || defaultConfig.audioSpeed,
-            audioPitch: config.audioPitch || defaultConfig.audioPitch,
-            audioVolume: config.audioVolume || defaultConfig.audioVolume,
-            audioInstructions: config.audioInstructions || "",
             // 旧版全局 systemPrompt 会跨任务污染请求；提示词定制现已按 operation 由服务端编译。
             systemPrompt: "",
-            videoSeconds: normalizeVideoDuration(config.videoSeconds),
-            vquality: normalizeVideoResolution(config.vquality),
-            videoGenerateAudio: normalizeVideoBoolean(config.videoGenerateAudio) ?? "true",
-            videoWatermark: normalizeVideoBoolean(config.videoWatermark) ?? "false",
-            videoArkPrivateAssetUpload: normalizeVideoBoolean(config.videoArkPrivateAssetUpload) ?? "true",
             transparentBackground: config.transparentBackground === "true" ? "true" : "false",
             canvasImageCount: config.canvasImageCount || defaultConfig.canvasImageCount,
             imageModels,
-            videoModels,
             textModels,
-            audioModels,
         },
     };
-}
-
-function beefApiVideoProtocol(model: string, current?: ModelProtocol): ModelProtocol {
-    const contract = beefAPIVideoContract(model)?.protocol as ModelProtocol | undefined;
-    if (contract) return contract;
-    // A video profile must not keep a protocol that runs a different
-    // capability. BeefAPI often tags video models with a chat/text endpoint;
-    // that stale protocol would make the backend reject the task outright
-    // ("接口类型 chat-completion 不支持video生成"). Unknown/custom protocols
-    // stay untouched.
-    return current && protocolAllowsCapability(current, "video") ? current : defaultProtocolForCapability("video");
-}
-
-function protocolAllowsCapability(protocol: ModelProtocol | undefined, capability: ModelCapability): boolean {
-    const resolved = modelProtocolCapability(protocol);
-    return !resolved || resolved === capability;
 }
 
 // Enforce capability ↔ protocol consistency for every channel. BeefAPI media
@@ -840,54 +659,7 @@ function reconcileChannelModelProfiles(channel: ModelChannel): ModelChannel {
     return changed ? { ...channel, modelProfiles } : channel;
 }
 
-function beefApiVideoCapabilityConfig(model: string, protocol: ModelProtocol, current?: ModelCapabilityConfig, sourced = false): ModelCapabilityConfig | undefined {
-    const profile = beefApiSeedanceCapabilityConfig(model, current, sourced);
-    if (sourced) return profile;
-    const contract = beefAPIVideoContract(model);
-    const limits = contract?.maxReferences;
-    if (!limits) return profile;
-    const resolved = profile || defaultModelCapabilityConfig(protocol, model);
-    if (!resolved.video) return resolved;
-    return { ...resolved, video: { ...resolved.video,
-        resolutions: contract.resolutions || resolved.video.resolutions,
-        defaultResolution: contract.resolutions?.includes(resolved.video.defaultResolution) ? resolved.video.defaultResolution : contract.resolutions?.[0] || resolved.video.defaultResolution,
-        ratios: contract.ratios || resolved.video.ratios,
-        defaultRatio: contract.ratios?.includes(resolved.video.defaultRatio) ? resolved.video.defaultRatio : contract.ratios?.[0] || resolved.video.defaultRatio,
-        duration: contract.duration ? { ...resolved.video.duration, selection: "range", min: contract.duration.min, max: contract.duration.max, default: contract.duration.default } : resolved.video.duration,
-        generateAudio: contract.generateAudio ? { ...resolved.video.generateAudio, supported: true } : resolved.video.generateAudio,
-        references: { ...resolved.video.references, maxImages: Math.min(resolved.video.references.maxImages, limits.image ?? Infinity), maxVideos: Math.min(resolved.video.references.maxVideos, limits.video ?? Infinity), maxAudios: Math.min(resolved.video.references.maxAudios, limits.audio ?? Infinity) },
-        operations: contract.operations || resolved.video.operations,
-        defaultOperation: contract.operations?.includes(resolved.video.defaultOperation) ? resolved.video.defaultOperation : contract.operations?.[0] || resolved.video.defaultOperation,
-    } };
-}
-
-function beefApiSeedanceCapabilityConfig(model: string, current?: ModelCapabilityConfig, sourced = false): ModelCapabilityConfig | undefined {
-    if (sourced) return current;
-    if (!/^seedance-2\.(?:0|5)(?:-|$)/i.test(model)) return current;
-    const video = current?.video;
-    const refs = video?.references;
-    // Older built-in profiles disabled all video/audio references on every
-    // hydration. Match that complete signature, not a user's individual limit.
-    const legacy = video?.operations?.length === 2 && video.operations.includes("text_to_video") && video.operations.includes("image_to_video") &&
-        refs?.maxImages === 9 && refs.maxVideos === 0 && refs.maxAudios === 0 &&
-        refs.maxVideoBytes === 200 * 1024 * 1024 && refs.maxAudioBytes === 15 * 1024 * 1024 &&
-        refs.maxVideoDurationSeconds === 0 && refs.maxAudioDurationSeconds === 0;
-    const defaults = defaultModelCapabilityConfig("newapi", model);
-    if (!current || !video) return defaults;
-    // The built-in BeefAPI Seedance contract supports the audio switch even
-    // when an older saved profile advertised no control. Keep its default.
-    const generateAudio = { ...video!.generateAudio, supported: true };
-    if (!legacy) return { ...current, video: { ...video!, generateAudio } };
-    const next = defaults.video!;
-    return { ...current, video: { ...video!, generateAudio, operations: next.operations, references: { ...refs!,
-        maxImages: next.references.maxImages,
-        maxVideos: next.references.maxVideos, maxAudios: next.references.maxAudios,
-        maxVideoDurationSeconds: next.references.maxVideoDurationSeconds,
-        maxAudioDurationSeconds: next.references.maxAudioDurationSeconds,
-    } } };
-}
-
-function enrichBeefApiMediaChannel(channel: ModelChannel): ModelChannel {
+function enrichBeefApiImageChannel(channel: ModelChannel): ModelChannel {
     if (!isBeefAPIEndpoint(channel.baseUrl)) return channel;
     const models = channel.models;
     const existing = new Map((channel.modelProfiles || []).map((item) => [item.model, item]));
@@ -917,45 +689,13 @@ function enrichBeefApiMediaChannel(channel: ModelChannel): ModelChannel {
             protocol: current?.protocol || "chat-completion",
         });
     }
-    for (const model of models.filter(isAudioModelName)) {
-        const current = existing.get(model);
-        if (current?.capability && current.capability !== "audio" && current.capability !== "text") continue;
-        existing.set(model, {
-            ...(current || {}),
-            model,
-            capability: "audio",
-            protocol: current?.protocol && current.capability === "audio" ? current.protocol : "openai-audio",
-        });
-    }
-    for (const model of models.filter(isTranscriptionModelName)) {
-        const current = existing.get(model);
-        if (!current) continue;
-        if (current.capability === "image" || current.capability === "video") continue;
-        existing.delete(model);
-    }
-    for (const model of models.filter((model) => isVideoModelName(model) || Boolean(beefAPIVideoContract(model)))) {
-        const current = existing.get(model);
-        // Repair known routes using the shared contract; preserve catalog and
-        // custom protocols for models whose wire contract is not declared here.
-        const protocol = beefApiVideoProtocol(model, current?.protocol);
-        existing.set(model, {
-            ...(current || {}),
-            model,
-            capability: "video",
-            protocol,
-            capabilityConfig: beefApiVideoCapabilityConfig(model, protocol, current?.capabilityConfig, current?.videoCapabilitiesVersion !== undefined),
-        });
-    }
     return { ...channel, models, modelProfiles: Array.from(existing.values()) };
 }
 
 function normalizeSelectedModel(value: string, channels: ModelChannel[], options: string[]) {
     const model = normalizeModelOptionValue(value, channels);
     if (model && options.includes(model)) return model;
-    // Keep an explicit paid-tier choice visible when the catalog removes it.
-    // An ordinary/default choice must never select the paid tier implicitly.
-    if (seedancePortraitModel(value)) return value;
-    return options.find((option) => !seedancePortraitModel(option)) || "";
+    return options[0] || "";
 }
 
 export function useEffectiveConfig() {
@@ -985,7 +725,10 @@ export function createModelChannel(channel?: Partial<ModelChannel>): ModelChanne
         headers: Array.isArray(channel?.headers) ? channel.headers.map((header) => ({ name: String(header.name || ""), value: String(header.value || "") })) : [],
         apiFormat,
         interfaceType,
-        models: uniqueRawModels(channel?.models || []),
+        models: uniqueRawModels(channel?.models || []).filter((model) => {
+            const profile = channel?.modelProfiles?.find((item) => item.model === model);
+            return !isUnsupportedGenerationModel(model) && !isUnsupportedModelProtocol(channel?.interfaceType) && !isUnsupportedModelProtocol(profile?.protocol) && (!profile?.capability || isSupportedProtocolCapability(profile.capability));
+        }),
         scope: channel?.scope === "system" ? "system" : "user",
         enabled: channel?.enabled !== false,
         pinned: channel?.pinned === true,
@@ -993,7 +736,7 @@ export function createModelChannel(channel?: Partial<ModelChannel>): ModelChanne
         credentialRef: channel?.credentialRef,
         hasApiKey: channel?.hasApiKey,
         hasSecretKey: channel?.hasSecretKey,
-        modelProfiles: channel?.modelProfiles?.map((item) => ({ ...item, protocol: normalizeModelProtocol(item.protocol) })),
+        modelProfiles: channel?.modelProfiles?.filter((item) => isSupportedProtocolCapability(item.capability) && !isUnsupportedGenerationModel(item.model) && !isUnsupportedModelProtocol(item.protocol)).map(({ model, displayName, description, icon, capability, protocol, capabilityConfig, logicalModelId, logicalCapabilitySpec, logicalCapabilityProfiles, defaultOptions }) => ({ model, displayName, description, icon, capability, protocol: normalizeModelProtocol(protocol), capabilityConfig: capabilityConfig ? { version: capabilityConfig.version, text: capabilityConfig.text, image: capabilityConfig.image } : undefined, logicalModelId, logicalCapabilitySpec, logicalCapabilityProfiles, defaultOptions })),
     };
 }
 
@@ -1016,8 +759,6 @@ export function modelOptionName(value: string) {
 }
 
 export function modelDisplayName(config: AiConfig, value: string) {
-	const portrait = seedancePortraitLabel(value);
-	if (portrait) return portrait;
     const model = modelOptionName(value);
     const channel = resolveModelChannel(config, value);
     const displayName = channelModelProfile(channel, model)?.displayName?.trim();
@@ -1064,11 +805,11 @@ export function normalizeModelOptionValue(value: unknown, channels: ModelChannel
     if (decoded) {
         const channel = channels.find((item) => item.id === decoded.channelId);
         const resolved = channel?.modelAliases?.[decoded.model] || decoded.model;
-        return channel && seedancePortraitModel(decoded.model) === seedancePortraitModel(resolved) && channel.models.includes(resolved) ? encodeChannelModel(channel.id, resolved) : "";
+        return channel && channel.models.includes(resolved) ? encodeChannelModel(channel.id, resolved) : "";
     }
     const channel = channels.find((item) => item.models.includes(model) || Boolean(item.modelAliases?.[model])) || channels[0];
     const resolved = channel?.modelAliases?.[model] || model;
-    return channel && seedancePortraitModel(model) === seedancePortraitModel(resolved) && channel.models.includes(resolved) ? encodeChannelModel(channel.id, resolved) : "";
+    return channel && channel.models.includes(resolved) ? encodeChannelModel(channel.id, resolved) : "";
 }
 
 export function resolveModelChannel(config: AiConfig, value: string) {
@@ -1106,7 +847,7 @@ export function resolveModelRequestConfig(config: AiConfig, value: string) {
         apiKey: channel.credentialRef ? "" : channel.apiKey,
         secretKey: channel.credentialRef ? "" : channel.secretKey,
         headers: channel.headers,
-        apiFormat: interfaceType ? (interfaceType === "gemini-veo" || interfaceType === "gemini-image" || interfaceType === "gemini-generate-content" ? ("gemini" as const) : interfaceType === "claude-api" ? ("claude" as const) : ("openai" as const)) : channel.apiFormat,
+        apiFormat: interfaceType ? (interfaceType === "gemini-image" || interfaceType === "gemini-generate-content" ? ("gemini" as const) : interfaceType === "claude-api" ? ("claude" as const) : ("openai" as const)) : channel.apiFormat,
         interfaceType,
         channelId: channel.scope === "system" ? channel.id : "",
         credentialRef: channel.credentialRef || (isBuiltinBeefAPIChannel(channel) ? MANAGED_BEEFAPI_CREDENTIAL_REF : undefined),
@@ -1133,7 +874,7 @@ function normalizeChannels(config: AiConfig, ensureDefault = true) {
                 baseUrl: config.baseUrl || defaultConfig.baseUrl,
                 apiKey: config.apiKey || "",
                 apiFormat: config.apiFormat || defaultConfig.apiFormat,
-                models: uniqueRawModels([...(config.models || []), config.model, config.imageModel, config.videoModel, config.textModel, config.audioModel]),
+                models: uniqueRawModels([...(config.models || []), config.model, config.imageModel, config.textModel]),
             }),
         );
     }
@@ -1156,13 +897,11 @@ export function defaultBaseUrlForApiFormat(apiFormat: ApiCallFormat) {
 }
 
 export function defaultBaseUrlForChannelInterface(interfaceType?: ChannelInterfaceType) {
-    if (interfaceType === "gemini-veo" || interfaceType === "gemini-image") return GEMINI_BASE_URL;
-    if (interfaceType === "novita-video") return "https://api.novita.ai/v3";
-    if (interfaceType === "volcengine-ark-agent-plan-image" || interfaceType === "volcengine-ark-agent-plan-video") return "https://ark.cn-beijing.volces.com/api/plan/v3";
-    if (interfaceType === "volcengine-ark-image" || interfaceType === "volcengine-ark-video") return "https://ark.cn-beijing.volces.com/api/v3";
-    if (interfaceType === "volcengine-jimeng-image" || interfaceType === "volcengine-jimeng-video") return "https://visual.volcengineapi.com";
-    if (interfaceType === "minimax-video") return "https://api.minimaxi.com";
-    if (interfaceType === "grok-image" || interfaceType === "newapi" || interfaceType === "newapi-channel-1" || interfaceType === "newapi-channel-2" || interfaceType === "xai-video") return "";
+    if (interfaceType === "gemini-image" || interfaceType === "gemini-generate-content") return GEMINI_BASE_URL;
+    if (interfaceType === "volcengine-ark-agent-plan-image") return "https://ark.cn-beijing.volces.com/api/plan/v3";
+    if (interfaceType === "volcengine-ark-image") return "https://ark.cn-beijing.volces.com/api/v3";
+    if (interfaceType === "volcengine-jimeng-image") return "https://visual.volcengineapi.com";
+    if (interfaceType === "grok-image") return "";
     return OPENAI_BASE_URL;
 }
 

@@ -1,19 +1,15 @@
-import { useEffect, useRef, useState, type CSSProperties, type ReactNode } from "react";
+﻿import { useEffect, useRef, useState, type ReactNode } from "react";
 import { Link } from "react-router";
-import { Check, ChevronDown, ChevronUp, Clapperboard, CloudUpload, Columns2, CopyPlus, Focus, FolderKanban, Gauge, History, Home, LayoutGrid, MoreHorizontal, Pencil, Plus, Redo2, Save, Search, Sparkles, Trash2, Undo2, Upload, Workflow, X } from "lucide-react";
+import { Check, ChevronDown, ChevronUp, Columns2, CopyPlus, Focus, FolderKanban, Gauge, History, MoreHorizontal, Pencil, Plus, Search, Sparkles, Workflow, X } from "lucide-react";
 import { Button, Dropdown, Tooltip } from "antd";
 
 import { BrandLogoFrame } from "@/components/brand/brand-logo";
 import { canvasDockStyle } from "@/lib/canvas/canvas-aceternity-style";
-import type { CanvasContextSummary } from "@/lib/canvas/canvas-context-summary";
-import type { CanvasShortDramaProgress } from "@/lib/canvas/canvas-short-drama";
 import { canvasThemes } from "@/lib/canvas-theme";
 import { useCanvasThemeStore } from "@/stores/canvas/use-canvas-theme-store";
 import type { CanvasMediaPerformanceMode } from "@/types/canvas";
 
 type CanvasTopBarProps = {
-    workspaceView: "workflow" | "storyboard";
-    onWorkspaceViewChange: (view: "workflow" | "storyboard") => void;
     syncStatus?: ReactNode;
     versionsOpen: boolean;
     onToggleVersions: () => void;
@@ -40,16 +36,13 @@ type CanvasTopBarProps = {
     onSave: () => void | Promise<void>;
     onForceSave: () => void;
     onImportImage: () => void;
-    onImportLibTV: () => void;
-    onImportTapNow: () => void;
     onUndo: () => void;
     onRedo: () => void;
     mediaPerformanceMode: CanvasMediaPerformanceMode;
     onMediaPerformanceModeChange: (mode: CanvasMediaPerformanceMode) => void;
     onOpenSearch: () => void;
-    projectContext?: CanvasContextSummary & { projectId: string; projectName: string };
+    projectContext?: { nodeCount: number; selectedCount: number; projectId: string; projectName: string };
     onEnterFocusMode: () => void;
-    shortDramaGuide?: { progress: CanvasShortDramaProgress; collapsed: boolean; onToggle: () => void };
     localOnly?: boolean;
     libtvChrome?: boolean;
     readOnly?: boolean;
@@ -58,8 +51,6 @@ type CanvasTopBarProps = {
 };
 
 export function CanvasTopBar({
-    workspaceView,
-    onWorkspaceViewChange,
     syncStatus,
     versionsOpen,
     onToggleVersions,
@@ -93,7 +84,6 @@ export function CanvasTopBar({
     onOpenSearch,
     projectContext,
     onEnterFocusMode,
-    shortDramaGuide,
     localOnly = false,
     libtvChrome = false,
     readOnly = false,
@@ -109,10 +99,6 @@ export function CanvasTopBar({
     const [renameCanvas, setRenameCanvas] = useState<{ id: string; title: string } | null>(null);
     const [canvasMenuOpen, setCanvasMenuOpen] = useState(false);
     const [canvasActionMenuId, setCanvasActionMenuId] = useState<string | null>(null);
-
-    const handleShortDramaGuideToggle = () => {
-        shortDramaGuide?.onToggle();
-    };
 
     const commitCanvasRename = async () => {
         if (!renameCanvas) return;
@@ -175,7 +161,7 @@ export function CanvasTopBar({
                             menu={{
                                 items: [
                                     { key: "home", label: <Link to="/">回到主页</Link> },
-                                    { key: "projects", label: <Link to="/canvas">全部项目</Link> },
+                                    { key: "projects", label: <Link to="/canvas">全部画布</Link> },
                                     { type: "divider" },
                                     { key: "new", label: <Link to="/canvas?mode=new">创建新项目</Link> },
                                     { key: "delete", danger: true, label: "删除当前画布", onClick: onDeleteProject },
@@ -228,14 +214,13 @@ export function CanvasTopBar({
                         )}
                         {projectContext && !isTitleEditing ? (
                             <div className="canvas-topbar-project-context mt-0.5 flex w-full min-w-0 items-center gap-1.5 overflow-hidden text-[var(--fs-tiny)]" style={{ color: theme.node.muted }}>
-                                <Link to={`/projects/${projectContext.projectId}/overview`} className="inline-flex min-w-0 items-center gap-1 hover:underline" title={`返回项目：${projectContext.projectName}`}>
+                                <span className="inline-flex min-w-0 items-center gap-1" title={`所属项目：${projectContext.projectName}`}>
                                     <FolderKanban className="size-3 shrink-0" />
                                     <span className="max-w-[120px] truncate">{projectContext.projectName}</span>
-                                </Link>
+                                </span>
                                 <span aria-hidden>·</span>
-                                <button type="button" className="min-w-0 truncate hover:underline" onClick={onOpenSearch} title="搜索并定位章节或镜头">
-                                    {projectContext.chapterLabel || `${projectContext.nodeCount} 个节点`}
-                                    {projectContext.shotLabel ? ` · ${projectContext.shotLabel}` : ""}
+                                <button type="button" className="min-w-0 truncate hover:underline" onClick={onOpenSearch} title="搜索并定位画布节点">
+                                    {`${projectContext.nodeCount} 个节点`}
                                     {projectContext.selectedCount ? ` · 已选 ${projectContext.selectedCount}` : ""}
                                 </button>
                             </div>
@@ -390,21 +375,6 @@ export function CanvasTopBar({
                     <CanvasTopBarTooltip label="进入专注模式（Shift + Ctrl/Cmd + F）">
                         <Button type="text" className="canvas-topbar-action !h-10 !w-10 !min-w-10 !rounded-xl !p-0" style={{ color: theme.node.text }} icon={<Focus className="size-4" />} onClick={onEnterFocusMode} aria-label="进入专注模式" />
                     </CanvasTopBarTooltip>
-                    {shortDramaGuide ? (
-                        <CanvasTopBarTooltip label={shortDramaGuide.collapsed ? "展开短剧流程" : "收起短剧流程"}>
-                            <Button
-                                type="text"
-                                className="canvas-topbar-action !h-10 !rounded-xl !px-2.5 !font-medium"
-                                style={{ color: theme.node.text, background: shortDramaGuide.collapsed ? undefined : theme.toolbar.activeBg }}
-                                icon={<Clapperboard className="size-4" />}
-                                onClick={handleShortDramaGuideToggle}
-                                aria-label="短剧流程"
-                                aria-pressed={!shortDramaGuide.collapsed}
-                            >
-                                <span className="tabular-nums">{shortDramaGuide.progress.completedCount}/5</span>
-                            </Button>
-                        </CanvasTopBarTooltip>
-                    ) : null}
                     {onToggleAssistant ? (
                         <CanvasTopBarTooltip label="Agent（Ctrl/Cmd + J）">
                             <Button
@@ -447,15 +417,6 @@ function CanvasTopBarTooltip({ label, children }: { label: string; children: Rea
         <Tooltip title={label} placement="bottom">
             <span className="relative inline-flex shrink-0">{children}</span>
         </Tooltip>
-    );
-}
-
-function MenuLabel({ text, shortcut }: { text: string; shortcut: string }) {
-    return (
-        <span className="flex min-w-36 items-center justify-between gap-8">
-            <span>{text}</span>
-            <span className="text-xs opacity-45">{shortcut}</span>
-        </span>
     );
 }
 

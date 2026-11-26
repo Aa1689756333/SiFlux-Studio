@@ -17,8 +17,7 @@ describe("asset category contract", () => {
 
     test("未分类媒体默认归入素材", () => {
         expect(defaultAssetCategoryForKind("image")).toBe("material");
-        expect(defaultAssetCategoryForKind("video")).toBe("material");
-        expect(defaultAssetCategoryForKind("audio")).toBe("material");
+        expect(defaultAssetCategoryForKind("model")).toBe("material");
         expect(defaultAssetCategoryForKind("text")).toBe("other");
     });
 });

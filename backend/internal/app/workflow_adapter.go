@@ -9,11 +9,10 @@ import (
 	"strings"
 	"time"
 
-	"infinite-canvas/backend/internal/generation"
 	"infinite-canvas/backend/internal/provider/workflow"
 )
 
-func (s *Service) workflowClient(policy *videoPollPolicy) *workflow.Client {
+func (s *Service) workflowClient() *workflow.Client {
 	return &workflow.Client{
 		Requests: workflowRequestExecutor{},
 		Media:    workflowMediaLoader{},
@@ -21,7 +20,6 @@ func (s *Service) workflowClient(policy *videoPollPolicy) *workflow.Client {
 		Progress: workflowProgress{service: s},
 		Plugins:  workflowPlugins{service: s},
 		Time:     workflowTime{},
-		Poller:   workflowVideoPoller{policy: policy},
 	}
 }
 
@@ -90,17 +88,6 @@ func workflowMedia(media providerMedia) workflow.Media {
 		DataURL:  media.DataURL,
 		URL:      media.URL,
 		MimeType: media.MimeType,
-	}
-}
-
-func toWorkflowPollPolicy(policy videoPollPolicy) workflow.PollPolicy {
-	return workflow.PollPolicy{
-		InitialDelay:          policy.InitialDelay,
-		Interval:              policy.Interval,
-		MaxNotFoundMisses:     policy.MaxNotFoundMisses,
-		MaxMalformedResponses: policy.MaxMalformedResponses,
-		MaxDownloadTries:      policy.MaxDownloadTries,
-		RetryTransient:        policy.RetryTransient,
 	}
 }
 
@@ -215,60 +202,3 @@ func (workflowTime) PollDeadline(ctx context.Context) time.Time {
 }
 
 func (workflowTime) LegacyPollInterval() time.Duration { return 2500 * time.Millisecond }
-
-// workflowVideoPoller maps domain PollPolicy onto app videoPollPolicy.
-// Sleep/Notify/transient retry stay in provider_video_polling.go until the
-// provider worker owns that type.
-type workflowVideoPoller struct {
-	policy *videoPollPolicy
-}
-
-func (p workflowVideoPoller) appPolicy(policy workflow.PollPolicy) videoPollPolicy {
-	appPolicy := defaultVideoPollPolicy()
-	if p.policy != nil {
-		appPolicy = *p.policy
-	}
-	if policy.InitialDelay > 0 {
-		appPolicy.InitialDelay = policy.InitialDelay
-	}
-	if policy.Interval > 0 {
-		appPolicy.Interval = policy.Interval
-	}
-	if policy.MaxNotFoundMisses > 0 {
-		appPolicy.MaxNotFoundMisses = policy.MaxNotFoundMisses
-	}
-	if policy.MaxMalformedResponses > 0 {
-		appPolicy.MaxMalformedResponses = policy.MaxMalformedResponses
-	}
-	if policy.MaxDownloadTries > 0 {
-		appPolicy.MaxDownloadTries = policy.MaxDownloadTries
-	}
-	if policy.RetryTransient {
-		appPolicy.RetryTransient = true
-	}
-	return appPolicy
-}
-
-func (p workflowVideoPoller) Poll(ctx context.Context, taskID string, policy workflow.PollPolicy, query func(context.Context) (workflow.PollOutcome, error)) (map[string]interface{}, error) {
-	return runVideoPollLoop(ctx, taskID, p.appPolicy(policy), func(ctx context.Context) (videoPollOutcome, error) {
-		out, err := query(ctx)
-		return videoPollOutcome{Done: out.Done, Result: out.Result}, err
-	})
-}
-
-func (p workflowVideoPoller) Download(ctx context.Context, taskID string, policy workflow.PollPolicy, source workflow.BinarySource, renew func(context.Context) (workflow.BinarySource, error)) ([]byte, string, error) {
-	var resolve func(context.Context) (generation.VideoResultSource, error)
-	if renew != nil {
-		resolve = func(ctx context.Context) (generation.VideoResultSource, error) {
-			fresh, err := renew(ctx)
-			var pending workflow.StatusError
-			if errors.As(err, &pending) && pending.Err == nil {
-				err = providerHTTPError{StatusCode: pending.StatusCode, Body: pending.Body}
-			}
-			return generation.VideoResultSource{URL: fresh.URL, Read: fresh.Read, CredentialValues: fresh.CredentialValues}, err
-		}
-	}
-	download := generation.VideoResultDownloader(providerConfig{BaseURL: source.ProviderURL}, taskID, generation.VideoResultSource{URL: source.URL, Read: source.Read, CredentialValues: source.CredentialValues}, resolve)
-	data, mimeType, err := runVideoDownload(ctx, taskID, p.appPolicy(policy), download)
-	return data, generation.NormalizedMediaMIMEType(mimeType, data), err
-}

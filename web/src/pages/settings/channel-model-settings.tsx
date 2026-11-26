@@ -5,7 +5,6 @@ import { ChevronRight, FlaskConical, Settings2 } from "lucide-react";
 import { ModelEditorModal } from "@/components/model-editor-modal";
 import { ModelProtocolBrowser } from "@/components/model-protocol-browser";
 import { testChannelModelConnection } from "@/lib/model-connection-test";
-import { seedancePortraitLabel } from "@/lib/seedance-portrait";
 import { ModelCapabilityEditor } from "@/components/model-capability-editor";
 import { type ModelCapabilityChoice } from "@/components/model-protocol-picker";
 import { defaultModelCapabilityConfig } from "@/lib/model-capabilities";
@@ -92,7 +91,7 @@ export function ChannelModelSettings({ channel, onChange, draft = false }: { cha
                     const profile = channel.modelProfiles?.find((item) => item.model === model);
                     const protocol = profile?.protocol || defaultProtocolForModel(model, availableProtocols);
                     const capability = profile?.capability || modelProtocolCapability(protocol, availableProtocols) || inferProtocolCapabilityFromModel(model);
-                    const displayName = seedancePortraitLabel(model) || profile?.displayName?.trim() || model;
+                    const displayName = profile?.displayName?.trim() || model;
                     return (
                         <div key={model} className="flex min-w-0 items-center gap-3 rounded-md bg-surface-active px-3 py-2.5 transition-colors hover:bg-surface-hover">
                             <span className="grid size-8 shrink-0 place-items-center rounded-md bg-foreground/[.045] text-foreground/65">
@@ -153,14 +152,14 @@ export function ChannelModelSettings({ channel, onChange, draft = false }: { cha
                                 <div className="text-xs font-medium">模型能力</div>
                                 <Segmented<ModelCapabilityChoice>
                                     block
-                                    options={[{ label: "文本", value: "text" }, { label: "图片", value: "image" }, { label: "视频", value: "video" }, { label: "音频", value: "audio" }]}
+                                    options={[{ label: "文本", value: "text" }, { label: "图片", value: "image" }]}
                                     value={activeCapability}
                                     onChange={(nextCapability) => {
                                         const nextProtocol = availableProtocols.find((item) => item.value === activeProtocol && item.capability === nextCapability)?.value || availableProtocols.find((item) => item.capability === nextCapability && item.enabled !== false)?.value || defaultProtocolForCapability(nextCapability, availableProtocols);
                                         updateProfile(activeModel, {
                                             protocol: nextProtocol,
                                             capability: nextCapability,
-                                            capabilityConfig: nextCapability === "image" || nextCapability === "video" ? defaultModelCapabilityConfig(nextProtocol, activeModel) : undefined,
+                                            capabilityConfig: nextCapability === "image" ? defaultModelCapabilityConfig(nextProtocol, activeModel) : undefined,
                                         });
                                     }}
                                 />
@@ -175,7 +174,7 @@ export function ChannelModelSettings({ channel, onChange, draft = false }: { cha
                                     protocols={availableProtocols}
                                     onChange={(nextProtocol) => updateProfile(activeModel, {
                                         protocol: nextProtocol,
-                                        capabilityConfig: activeCapability === "image" || activeCapability === "video" ? defaultModelCapabilityConfig(nextProtocol, activeModel) : undefined,
+                                        capabilityConfig: activeCapability === "image" ? defaultModelCapabilityConfig(nextProtocol, activeModel) : undefined,
                                     })}
                                 />
                             </section>
@@ -185,7 +184,7 @@ export function ChannelModelSettings({ channel, onChange, draft = false }: { cha
                         key: "capabilities",
                         label: "能力与参数",
                         children: <div inert={Boolean(testingModel)}>
-                            {activeCapability === "image" || activeCapability === "video" ? (
+                            {activeCapability === "image" ? (
                                 <ModelCapabilityEditor
                                     capability={activeCapability}
                                     model={activeModel}
@@ -203,5 +202,5 @@ export function ChannelModelSettings({ channel, onChange, draft = false }: { cha
 }
 
 function capabilityLabel(value: ModelProfile["capability"]) {
-    return { text: "文本", image: "图片", video: "视频", audio: "音频", "": "待配置" }[value] || "待配置";
+    return { text: "文本", image: "图片", "": "待配置" }[value] || "待配置";
 }

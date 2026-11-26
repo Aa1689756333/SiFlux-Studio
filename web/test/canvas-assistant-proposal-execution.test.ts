@@ -210,19 +210,18 @@ test("F02: changed defaults or node model stop before the paid execution boundar
 test("F02: reference-driven compatibility fallback is rejected after re-resolution", () => {
     const models = ["channel::cinema-text", "channel::cinema-image"];
     const config: AiConfig = {
-        ...defaultConfig, model: models[0], videoModel: models[0], videoModels: models, models,
+        ...defaultConfig, model: models[0], imageModel: models[0], imageModels: models, models,
         channels: [{ id: "channel", name: "Test", baseUrl: "https://example.invalid", apiKey: "", apiFormat: "openai", models: ["cinema-text", "cinema-image"], modelProfiles: ["cinema-text", "cinema-image"].map((model, index) => {
             const capabilityConfig = defaultModelCapabilityConfig(undefined, model);
-            capabilityConfig.video!.operations = [index ? "image_to_video" : "text_to_video"];
-            capabilityConfig.video!.references.maxImages = index;
-            return { model, displayName: "Cinema", capability: "video", billingMode: "per_second", unitPriceMicrocredits: 1, capabilityConfig };
+            capabilityConfig.image!.references.maxImages = index;
+            return { model, displayName: "Cinema", capability: "image" as const, billingMode: "fixed_request" as const, unitPriceMicrocredits: 1, capabilityConfig };
         }) }],
     };
-    const videoNode = { ...node, type: CanvasNodeType.Video };
-    const requirements = { capability: "video" as const, input: { textCount: 1, imageCount: 1, videoCount: 0, audioCount: 0, characterCount: 0 } };
-    expect(buildGenerationConfig(config, videoNode, "video", requirements).model).toBe(models[1]);
-    expect(() => buildConfirmedGenerationConfig(config, videoNode, "video", requirements, models[0])).toThrow("请让助手重新提出生成方案");
-    expect(buildConfirmedGenerationConfig(config, videoNode, "video", requirements).model).toBe(models[1]);
+    const imageNode = { ...node, type: CanvasNodeType.Image };
+    const requirements = { capability: "image" as const, input: { textCount: 1, imageCount: 1, characterCount: 0 } };
+    expect(buildGenerationConfig(config, imageNode, "image", requirements).model).toBe(models[1]);
+    expect(() => buildConfirmedGenerationConfig(config, imageNode, "image", requirements, models[0])).toThrow("请让助手重新提出生成方案");
+    expect(buildConfirmedGenerationConfig(config, imageNode, "image", requirements).model).toBe(models[1]);
 });
 
 test("F02: workflow substitution and blank confirmation keys fail closed", () => {

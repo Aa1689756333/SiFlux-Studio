@@ -4,11 +4,9 @@ import (
 	"context"
 	"io"
 	"net/http"
-	"net/url"
 	"time"
 
 	"infinite-canvas/backend/internal/generation"
-	"infinite-canvas/backend/internal/model"
 	"infinite-canvas/backend/internal/protocol"
 )
 
@@ -253,172 +251,12 @@ type streamingAgentParser = generation.StreamingAgentParser
 type providerTextResult = generation.ProviderTextResult
 type streamingTextDeltaParser = generation.StreamingTextDeltaParser
 
-func restoreBeefAPISeedanceAudioControl(ctx context.Context, config providerConfig, video *VideoCapabilityConfig) {
-	generation.RestoreBeefAPISeedanceAudioControl(ctx, config, video)
-}
-
-func runVideoTask(ctx context.Context, input canvasGenerationInput) (map[string]interface{}, error) {
-	return generation.RunVideoTask(ctx, input)
-}
-
-func runVideoTaskWithPolicy(ctx context.Context, input canvasGenerationInput, pollPolicy videoPollPolicy) (map[string]interface{}, error) {
-	return generation.RunVideoTaskWithPolicy(ctx, input, pollPolicy)
-}
-
-func newAPIVideoResultURL(state map[string]interface{}) string {
-	return generation.NewAPIVideoResultURL(state)
-}
-
-func nestedNewAPIVideoResultURL(payload map[string]interface{}, allowResultURL bool, depth int) string {
-	return generation.NestedNewAPIVideoResultURL(payload, allowResultURL, depth)
-}
-
-func grokVideoBody(input canvasGenerationInput) (map[string]interface{}, error) {
-	return generation.GrokVideoBody(input)
-}
-
-func runSeedanceVideosTask(ctx context.Context, input canvasGenerationInput, pollPolicy videoPollPolicy) (map[string]interface{}, error) {
-	return generation.RunSeedanceVideosTask(ctx, input, pollPolicy)
-}
-
-func seedancePollStatusAndURL(state map[string]interface{}) (string, string) {
-	return generation.SeedancePollStatusAndURL(state)
-}
-
-func beefAPIVideoRequestBody(input canvasGenerationInput) (map[string]interface{}, error) {
-	return generation.BeefAPIVideoRequestBody(input)
-}
-
-func runSeedanceAgentPlanVideoTask(ctx context.Context, input canvasGenerationInput, pollPolicy videoPollPolicy) (map[string]interface{}, error) {
-	return generation.RunSeedanceAgentPlanVideoTask(ctx, input, pollPolicy)
-}
-
-func seedanceContent(input canvasGenerationInput) ([]map[string]interface{}, error) {
-	return generation.SeedanceContent(input)
-}
-
-func shouldSendNewAPIVideoImages(input canvasGenerationInput) bool {
-	return generation.ShouldSendNewAPIVideoImages(input)
-}
-
-func videoCapabilitySupportsAudio(input canvasGenerationInput) bool {
-	return generation.VideoCapabilitySupportsAudio(input)
-}
-
-func videoCapabilitySupportsWatermark(input canvasGenerationInput) bool {
-	return generation.VideoCapabilitySupportsWatermark(input)
-}
-
-func newAPIVideoPromptText(input canvasGenerationInput) string {
-	return generation.NewAPIVideoPromptText(input)
-}
-
-func seedanceVideosRequestBody(input canvasGenerationInput) (seedanceVideosRequest, error) {
-	return generation.SeedanceVideosRequestBody(input)
-}
-
-func seedanceVideosBody(input canvasGenerationInput) (map[string]interface{}, error) {
-	return generation.SeedanceVideosBody(input)
-}
-
-func seedancePromptText(input canvasGenerationInput) string {
-	return generation.SeedancePromptText(input)
-}
-
-func seedanceVideosPromptText(input canvasGenerationInput) string {
-	return generation.SeedanceVideosPromptText(input)
-}
-
-func videoImageRole(input canvasGenerationInput, image providerMedia) string {
-	return generation.VideoImageRole(input, image)
-}
-
-func seedanceTaskImageRole(input canvasGenerationInput, image providerMedia) string {
-	return generation.SeedanceTaskImageRole(input, image)
-}
-
-func seedanceTaskOptions(input canvasGenerationInput) protocol.GenerationRequest {
-	return generation.SeedanceTaskOptions(input)
-}
-
-func videoImageRoleOrDefault(input canvasGenerationInput, image providerMedia, fallback string) string {
-	return generation.VideoImageRoleOrDefault(input, image, fallback)
-}
-
-func videoFrameImageURLs(input canvasGenerationInput, imageURLs []string) ([]string, error) {
-	return generation.VideoFrameImageURLs(input, imageURLs)
-}
-
-func mediaReferenceURL(media providerMedia) (string, error) {
-	return generation.MediaReferenceURL(media)
-}
-
-func seedanceVideosMediaURL(media providerMedia) (string, error) {
-	return generation.SeedanceVideosMediaURL(media)
-}
-
-func beefAPIAudioURL(media providerMedia) (string, error) {
-	return generation.BeefAPIAudioURL(media)
-}
-
-func seedanceErrorMessage(state map[string]interface{}) string {
-	return generation.SeedanceErrorMessage(state)
-}
-
-func runAudioTask(ctx context.Context, input canvasGenerationInput) (map[string]interface{}, error) {
-	return generation.RunAudioTask(ctx, input)
-}
-
-func runAsyncAudioTask(ctx context.Context, input canvasGenerationInput, body map[string]interface{}, format string) (map[string]interface{}, error) {
-	return generation.RunAsyncAudioTask(ctx, input, body, format)
-}
-
-func asyncAudioPayload(payload map[string]interface{}) map[string]interface{} {
-	return generation.AsyncAudioPayload(payload)
-}
-
-func asyncAudioSucceeded(state map[string]interface{}) bool {
-	return generation.AsyncAudioSucceeded(state)
-}
-
-func asyncAudioResult(ctx context.Context, config providerConfig, id string, state map[string]interface{}, format string) (map[string]interface{}, error) {
-	return generation.AsyncAudioResult(ctx, config, id, state, format)
-}
-
-func asyncAudioResultURL(state map[string]interface{}) string {
-	return generation.AsyncAudioResultURL(state)
-}
-
-func asyncAudioErrorMessage(state map[string]interface{}) string {
-	return generation.AsyncAudioErrorMessage(state)
-}
-
 func decodeProviderDataURL(value string) (string, []byte, error) {
 	return generation.DecodeProviderDataURL(value)
 }
 
 func providerGeneratedFileLimit(ctx context.Context) (int64, error) {
 	return generation.GeneratedFileLimit(ctx)
-}
-
-func validateGeneratedAudio(declared string, data []byte, format string) (string, error) {
-	return generation.ValidateGeneratedAudio(declared, data, format)
-}
-
-func audioSignatureMatches(mimeType string, data []byte) bool {
-	return generation.AudioSignatureMatches(mimeType, data)
-}
-
-func resolvedAudioSpeechVoice(model, voice string) string {
-	return generation.ResolvedAudioSpeechVoice(model, voice)
-}
-
-func isOpenAISpeechVoice(voice string) bool {
-	return generation.IsOpenAISpeechVoice(voice)
-}
-
-func audioFormatMimeType(format string) string {
-	return generation.AudioFormatMimeType(format)
 }
 
 func runDeclarativeProtocolTask(ctx context.Context, input canvasGenerationInput) (map[string]interface{}, error) {
@@ -429,20 +267,8 @@ func runProtocolAdapterTask(ctx context.Context, input canvasGenerationInput, ad
 	return generation.RunProtocolAdapterTask(ctx, input, adapter)
 }
 
-func declarativeProtocolPollPolicy(mode string) videoPollPolicy {
-	return generation.DeclarativeProtocolPollPolicy(mode)
-}
-
-func runProtocolAdapterTaskWithPolicy(ctx context.Context, input canvasGenerationInput, adapter protocol.Adapter, policy videoPollPolicy) (map[string]interface{}, error) {
-	return generation.RunProtocolAdapterTaskWithPolicy(ctx, input, adapter, policy)
-}
-
 func extractProviderTaskID(body []byte) (string, error) {
 	return generation.ExtractProviderTaskID(body)
-}
-
-func queryProtocolAdapterVideoTask(ctx context.Context, input canvasGenerationInput, adapter protocol.Adapter, taskID string) (map[string]interface{}, string, error) {
-	return generation.QueryProtocolAdapterVideoTask(ctx, input, adapter, taskID)
 }
 
 func protocolRequestFromInput(input canvasGenerationInput) protocol.GenerationRequest {
@@ -455,14 +281,6 @@ func protocolImageAspectRatio(input canvasGenerationInput) string {
 
 func protocolImageReferences(input canvasGenerationInput) []protocol.MediaReference {
 	return generation.ProtocolImageReferences(input)
-}
-
-func protocolVideoImageReferences(input canvasGenerationInput) []protocol.MediaReference {
-	return generation.ProtocolVideoImageReferences(input)
-}
-
-func protocolMediaReferences(values []providerMedia, kind string) []protocol.MediaReference {
-	return generation.ProtocolMediaReferences(values, kind)
 }
 
 func protocolMediaReference(value providerMedia, kind string, order int) protocol.MediaReference {
@@ -535,14 +353,6 @@ func protocolRequestURL(baseURL string, spec protocol.RequestSpec) (string, erro
 
 func appendProtocolQuery(rawURL string, values map[string][]string) (string, error) {
 	return generation.AppendProtocolQuery(rawURL, values)
-}
-
-func finishProtocolResult(ctx context.Context, config providerConfig, mode string, taskID string, result *protocol.Result, pollPolicy videoPollPolicy) (map[string]interface{}, error) {
-	return generation.FinishProtocolResult(ctx, config, mode, taskID, result, pollPolicy)
-}
-
-func finishProtocolAdapterResult(ctx context.Context, input canvasGenerationInput, adapter protocol.Adapter, request protocol.GenerationRequest, taskID string, result *protocol.Result, pollPolicy videoPollPolicy) (map[string]interface{}, error) {
-	return generation.FinishProtocolAdapterResult(ctx, input, adapter, request, taskID, result, pollPolicy)
 }
 
 func protocolResultHasOutput(mode string, result *protocol.Result) bool {
@@ -655,32 +465,8 @@ func canonicalAgentText(content interface{}) string {
 	return generation.CanonicalAgentText(content)
 }
 
-func defaultVideoPollPolicy() videoPollPolicy {
-	return generation.DefaultVideoPollPolicy()
-}
-
-func runVideoPollLoop(ctx context.Context, taskID string, policy videoPollPolicy, query func(context.Context) (videoPollOutcome, error)) (map[string]interface{}, error) {
-	return generation.RunVideoPollLoop(ctx, taskID, policy, query)
-}
-
-func normalizeVideoPollPolicy(policy videoPollPolicy) videoPollPolicy {
-	return generation.NormalizeVideoPollPolicy(policy)
-}
-
-func runVideoDownload(ctx context.Context, taskID string, policy videoPollPolicy, download func(context.Context) ([]byte, string, error)) ([]byte, string, error) {
-	return generation.RunVideoDownload(ctx, taskID, policy, download)
-}
-
-func retryableVideoPollError(ctx context.Context, err error) (retry bool, notFound bool) {
-	return generation.RetryableVideoPollError(ctx, err)
-}
-
 func isTransientResponseDecodeError(err error) bool {
 	return generation.IsTransientResponseDecodeError(err)
-}
-
-func notifyTaskVideoPollEvent(ctx context.Context, taskID string, event videoPollEvent, eventErr error) {
-	generation.NotifyPollEvent(ctx, taskID, event, eventErr)
 }
 
 func isProviderTaskNotReadyError(httpErr providerHTTPError) bool {
@@ -691,33 +477,8 @@ func providerRetryAfter(err error) time.Duration {
 	return generation.ProviderRetryAfter(err)
 }
 
-type videoPollPolicy = generation.VideoPollPolicy
-type videoPollEvent = generation.VideoPollEvent
-type videoPollOutcome = generation.VideoPollOutcome
-type videoDownloadError = generation.VideoDownloadError
-
 func isPublicMediaURL(value string) bool {
 	return generation.IsPublicMediaURL(value)
-}
-
-func isSeedanceVideoConfig(config providerConfig) bool {
-	return generation.IsSeedanceVideoConfig(config)
-}
-
-func isBeefAPIVideoConfig(ctx context.Context, config providerConfig) bool {
-	return generation.IsBeefAPIVideoConfig(ctx, config)
-}
-
-func isBeefAPISeedancePreuploadConfig(ctx context.Context, config providerConfig) bool {
-	return generation.IsBeefAPISeedancePreuploadConfig(ctx, config)
-}
-
-func isGrokVideoConfig(config providerConfig) bool {
-	return generation.IsGrokVideoConfig(config)
-}
-
-func isArkPlanVideoConfig(config providerConfig) bool {
-	return generation.IsArkPlanVideoConfig(config)
 }
 
 func normalizeImageQuality(value string) string {
@@ -752,34 +513,6 @@ func normalizePixelSize(value string) string {
 	return generation.NormalizePixelSize(value)
 }
 
-func normalizeVideoSize(value string) string {
-	return generation.NormalizeVideoSize(value)
-}
-
-func normalizeVideoResolution(value string) string {
-	return generation.NormalizeVideoResolution(value)
-}
-
-func normalizeSeedanceDuration(value string) int {
-	return generation.NormalizeSeedanceDuration(value)
-}
-
-func normalizeSeedanceVideosDuration(value string) int {
-	return generation.NormalizeSeedanceVideosDuration(value)
-}
-
-func normalizeSeedanceRatio(value string) string {
-	return generation.NormalizeSeedanceRatio(value)
-}
-
-func normalizeSeedanceVideosRatio(value string) string {
-	return generation.NormalizeSeedanceVideosRatio(value)
-}
-
-func normalizeSeedanceResolution(value string, interfaceType string) string {
-	return generation.NormalizeSeedanceResolution(value, interfaceType)
-}
-
 func parseBool(value string, fallback bool) bool {
 	return generation.ParseBool(value, fallback)
 }
@@ -791,91 +524,6 @@ func parseFloat(value string, fallback float64) float64 {
 func sleepContext(ctx context.Context, duration time.Duration) error {
 	return generation.SleepContext(ctx, duration)
 }
-
-func prepareBeefAPISeedanceReferences(ctx context.Context, config providerConfig, input *canvasGenerationInput, read beefAPISeedanceMediaReader) error {
-	return generation.PrepareBeefAPISeedanceReferences(ctx, config, input, read)
-}
-
-func beefAPISeedanceMediaGroups(input *canvasGenerationInput) []beefAPISeedanceMediaGroup {
-	return generation.BeefAPISeedanceMediaGroups(input)
-}
-
-func skipBeefAPISeedanceMedia(media providerMedia) bool {
-	return generation.SkipBeefAPISeedanceMedia(media)
-}
-
-func readBeefAPISeedanceInlineMedia(kind string, media providerMedia) ([]byte, string, bool, error) {
-	return generation.ReadBeefAPISeedanceInlineMedia(kind, media)
-}
-
-func fallbackBeefAPISeedanceInline(ctx context.Context, input *canvasGenerationInput, read beefAPISeedanceMediaReader) error {
-	return generation.FallbackBeefAPISeedanceInline(ctx, input, read)
-}
-
-func createBeefAPISeedanceUpload(ctx context.Context, config providerConfig, request beefAPISeedanceUploadRequest) (beefAPISeedanceUploadSession, error) {
-	return generation.CreateBeefAPISeedanceUpload(ctx, config, request)
-}
-
-func completeBeefAPISeedanceUpload(ctx context.Context, config providerConfig, session beefAPISeedanceUploadSession, data []byte) (beefAPISeedanceUploadComplete, error) {
-	return generation.CompleteBeefAPISeedanceUpload(ctx, config, session, data)
-}
-
-func beefAPISeedancePutTimeout(ctx context.Context) time.Duration {
-	return generation.BeefAPISeedancePutTimeout(ctx)
-}
-
-func putBeefAPISeedanceBytes(ctx context.Context, session beefAPISeedanceUploadSession, data []byte) error {
-	return generation.PutBeefAPISeedanceBytes(ctx, session, data)
-}
-
-func validateBeefAPISeedanceSession(ctx context.Context, session beefAPISeedanceUploadSession) error {
-	return generation.ValidateBeefAPISeedanceSession(ctx, session)
-}
-
-func validateBeefAPISeedanceSecureURL(ctx context.Context, raw string) error {
-	return generation.ValidateBeefAPISeedanceSecureURL(ctx, raw)
-}
-
-func beefAPISeedanceAllowInsecureTestURL(ctx context.Context, parsed *url.URL) bool {
-	return generation.BeefAPISeedanceAllowInsecureTestURL(ctx, parsed)
-}
-
-func skipBeefAPISeedancePutHeader(name string) bool {
-	return generation.SkipBeefAPISeedancePutHeader(name)
-}
-
-func beefAPISeedancePreuploadUnavailable(err error) bool {
-	return generation.BeefAPISeedancePreuploadUnavailable(err)
-}
-
-func mapBeefAPISeedanceUploadError(err error, completing bool) error {
-	return generation.MapBeefAPISeedanceUploadError(err, completing)
-}
-
-func beefAPISeedanceUserErrorMessage(body string) string {
-	return generation.BeefAPISeedanceUserErrorMessage(body)
-}
-
-func beefAPISeedanceKindMaxBytes(kind string) int64 {
-	return generation.BeefAPISeedanceKindMaxBytes(kind)
-}
-
-func validateBeefAPISeedanceMediaSize(kind string, size int64) error {
-	return generation.ValidateBeefAPISeedanceMediaSize(kind, size)
-}
-
-func canonicalBeefAPISeedanceMime(kind string, declared string, data []byte) (string, error) {
-	return generation.CanonicalBeefAPISeedanceMime(kind, declared, data)
-}
-
-func canonicalBeefAPISeedanceDeclaredMime(kind, raw string) (string, bool) {
-	return generation.CanonicalBeefAPISeedanceDeclaredMime(kind, raw)
-}
-
-type beefAPISeedanceMediaReader = generation.BeefAPISeedanceMediaReader
-type beefAPISeedanceUploadSession = generation.BeefAPISeedanceUploadSession
-type beefAPISeedanceUploadComplete = generation.BeefAPISeedanceUploadComplete
-type beefAPISeedanceUploadRequest = generation.BeefAPISeedanceUploadRequest
 
 func withTaskExecutionID(ctx context.Context, taskID string) context.Context {
 	return generation.WithTaskExecutionID(ctx, taskID)
@@ -889,48 +537,6 @@ func withoutProviderAnalytics(ctx context.Context) context.Context {
 	ctx = context.WithValue(ctx, providerAnalyticsKey{}, providerAnalyticsContext{})
 	return generation.WithoutCallAccounting(ctx)
 }
-
-func isArkPrivateAssetVideoConfig(config providerConfig) bool {
-	return generation.IsArkPrivateAssetVideoConfig(config)
-}
-
-func arkPrivateAssetAutomaticSyncEnabled(setting arkPrivateAssetSettingValue) (bool, error) {
-	return generation.ArkPrivateAssetAutomaticSyncEnabled(setting)
-}
-
-func arkPrivateAssetResourceID(reference providerMedia) string {
-	return generation.ArkPrivateAssetResourceID(reference)
-}
-
-func shouldRetryArkPrivateAssetBinding(binding *model.ArkPrivateAssetBinding) bool {
-	return generation.ShouldRetryArkPrivateAssetBinding(binding)
-}
-
-func shouldResumeArkPrivateAssetPolling(binding *model.ArkPrivateAssetBinding) bool {
-	return generation.ShouldResumeArkPrivateAssetPolling(binding)
-}
-
-func callArkPrivateAssetAPI(ctx context.Context, setting arkPrivateAssetSettingValue, action string, payload map[string]interface{}) (map[string]interface{}, error) {
-	return generation.CallArkPrivateAssetAPI(ctx, setting, action, payload)
-}
-
-func arkPrivateAssetUpstreamDetail(response map[string]interface{}) string {
-	return generation.ArkPrivateAssetUpstreamDetail(response)
-}
-
-func arkPrivateAssetControlPlaneURL(ctx context.Context, region string) (string, error) {
-	return generation.ArkPrivateAssetControlPlaneURL(ctx, region)
-}
-
-func arkPrivateAssetResponseField(response map[string]interface{}, keys ...string) string {
-	return generation.ArkPrivateAssetResponseField(response, keys...)
-}
-
-func arkPrivateAssetResponseMaps(response map[string]interface{}) []map[string]interface{} {
-	return generation.ArkPrivateAssetResponseMaps(response)
-}
-
-type ArkPrivateAssetSyncResult = generation.ArkPrivateAssetSyncResult
 
 func requestAsMap(value interface{}) (map[string]interface{}, error) {
 	return generation.RequestAsMap(value)

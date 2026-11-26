@@ -1,4 +1,3 @@
-import referenceVideoErrors from "./fixtures/reference-video-errors.json";
 import { describe, expect, test } from "bun:test";
 import { ApiError } from "../src/services/api/request";
 
@@ -42,7 +41,6 @@ test("local API quota keeps the actual capacity error instead of channel permiss
     expect(result.message).not.toMatch(/权限|供应商|账单/);
     expect(result.blockAutomaticRetry).toBe(true);
 });
-import audioErrorContract from "../../fixtures/reference-audio-errors.json";
 
 test("local database failures never blame model parameters", () => {
     for (const message of ["table tasks has no column named failure_diagnostics", "no such column: failure_diagnostics", "no such table: tasks", "database is locked", "attempt to write a readonly database", "disk I/O error", "UNIQUE constraint failed: tasks.id", "NOT NULL constraint failed: tasks.type", "CHECK constraint failed: task_status", "FOREIGN KEY constraint failed"]) {
@@ -91,9 +89,8 @@ test("image receipt states never invite automatic paid regeneration", () => {
 });
 
 test("whole request limits retain actionable copy after persistence", () => {
-    for (const body of ["", "<html>413 Request Entity Too Large</html>"]) expect(explainGenerationError({ status: 413, data: body }).reason).toContain("整次请求");
-    for (const raw of ["video request body is too large", "video request body exceeds the 64 MiB request limit; use public media URLs instead of inline base64", { error: { code: "video_request_body_too_large", message: "" } }]) {
-        const failure = explainGenerationError(raw);
+    for (const body of ["", "<html>413 Request Entity Too Large</html>"]) {
+        const failure = explainGenerationError({ status: 413, data: body });
         for (const got of [failure, explainGenerationError(`${failure.reason}。${failure.action}。`)]) {
             expect(got.category).toBe("input_too_large");
             expect(got.reason).toContain("整次请求");
@@ -101,73 +98,6 @@ test("whole request limits retain actionable copy after persistence", () => {
             expect(got.retryable).toBe(false);
         }
     }
-});
-
-test("actual persisted task output contract renders identically in the frontend", () => {
-    for (const fixture of audioErrorContract) {
-        // Backend app test writes the corresponding upstream failure through the
-        // real terminal coordinator and DB, then asserts this exact list payload.
-        const error = `${fixture.display}。排查编号：请求 req_reference_audio_123。`;
-        const result = explainGenerationError(error);
-        expect(result.message).toBe(error);
-        expect(result.category).toBe("invalid_params");
-        expect(result.requestId).toBe("req_reference_audio_123");
-        expect(result.blockAutomaticRetry).toBe(true);
-    }
-});
-
-describe("measured reference audio API errors", () => {
-    const requestId = "202609270829245377912978268d9d6USz1NP3R";
-    const cases = [
-        ["reference audio 2 is 0.900 seconds; use audio between 2 and 15 seconds", ["第 2 段", "0.900 秒", "2–15 秒", "裁剪"]],
-        ["reference audio 1 is 31.250 seconds; use audio between 2 and 30 seconds", ["第 1 段", "31.250 秒", "2–30 秒", "更换"]],
-        ["reference audio is 35.500 seconds in total; this model accepts at most 30 seconds of reference audio", ["总时长", "35.500 秒", "30 秒", "减少"]],
-        ["reference audio 3: could not download reference audio within the allowed time and URL policy", ["第 3 段", "无法下载", "重新上传", "公开访问"]],
-        ["reference audio 2: reference audio duration could not be measured: invalid WAV audio", ["第 2 段", "格式或时长无法读取", "MP3", "WAV", "M4A"]],
-        ["reference audio 1: reference audio duration could not be measured: the media contains no readable audio track", ["第 1 段", "音轨", "重新导出"]],
-        ["reference audio 1 exceeds the model's 15728640 byte limit", ["第 1 段", "文件过大", "压缩"]],
-        ["reference audio 1 requires a public HTTPS URL", ["第 1 段", "无法下载", "公开访问"]],
-        ["reference audio 2: reference audio download returned HTTP 403", ["第 2 段", "无法下载", "重新上传"]],
-        ["reference audio 2: reference audio could not be downloaded completely within the allowed time", ["第 2 段", "无法下载", "重新上传"]],
-        ["reference audio 2: reference audio must be at most 15 MiB", ["第 2 段", "文件过大", "压缩"]],
-        ["reference audio 2: reference audio URL is not allowed", ["第 2 段", "无法下载", "公开访问"]],
-    ] as const;
-    for (const [message, fragments] of cases) {
-        test(`HTTP, gateway wrapper and persisted details: ${message}`, () => {
-            const body = { error: { code: "invalid_reference_audio", type: "invalid_request_error", message }, request_id: requestId };
-            for (const input of [{ response: { status: 400, data: body } }, `接口请求失败：${JSON.stringify(body)} (request id: ${requestId})`]) {
-                const first = explainGenerationError(input);
-                const metadata = generationFailureMetadata(input, "test prompt");
-                const persisted = explainGenerationError(metadata.errorDetails);
-                for (const failure of [first, persisted]) {
-                    expect(failure.category).toBe("invalid_params");
-                    expect(failure.retryable).toBe(false);
-                    expect(failure.blockAutomaticRetry).toBe(true);
-                    expect(failure.requestId).toBe(requestId);
-                    for (const fragment of fragments) expect(failure.message).toContain(fragment);
-                }
-            }
-        });
-    }
-    test("unknown validation detail is actionable without reflecting secrets", () => {
-        const failure = explainGenerationError({ status: 400, data: { error: { code: "invalid_reference_audio", message: "private detail https://secret.test/audio?token=abc prompt=private_words" }, request_id: requestId } });
-        expect(failure.message).toContain("检查参考音频");
-        expect(failure.message).not.toMatch(/secret|private|token/);
-        expect(failure.requestId).toBe(requestId);
-        expect(failure.blockAutomaticRetry).toBe(true);
-    });
-    test("local total limit and combined diagnostic IDs survive persistence", () => {
-        const raw = "参考音频总时长为 16.00 秒，当前模型最多支持 15 秒；请裁剪或减少参考音频后再提交";
-        const first = explainGenerationError(raw, { taskId: "task_existing_123", providerRequestId: requestId });
-        const second = explainGenerationError(first.message);
-        expect(second.message).toBe(first.message);
-        expect(second.requestId).toBe(requestId);
-        expect(second.taskId).toBe("task_existing_123");
-        expect(second.message).toContain("16.00 秒");
-        expect(second.message).toContain("15 秒");
-        expect(second.category).toBe("invalid_params");
-        expect(second.blockAutomaticRetry).toBe(true);
-    });
 });
 
 test("height, aspect, pixel and request-size errors stay human and never leak JSON", () => {
@@ -188,15 +118,14 @@ test("height, aspect, pixel and request-size errors stay human and never leak JS
     expect(persisted.category).toBe("invalid_params");
 });
 
-test("gateway JSON suffix retains reference duration advice and request id", () => {
-    const raw = '{"error":{"code":"400","message":"素材转换失败: Duration must be between 1.8s and 30.2s.","type":"api_error"}} (request id: 202609270829245377912978268d9d6USz1NP3R)';
+test("gateway JSON suffix retains reference range advice and request id", () => {
+    const raw = '{"error":{"code":"400","message":"素材转换失败: Height must be between 300px and 6000px.","type":"api_error"}} (request id: 202609270829245377912978268d9d6USz1NP3R)';
     const failure = explainGenerationError(raw);
     expect(failure.category).toBe("invalid_params");
-    expect(failure.reason).toBe("参考素材时长不符合模型要求");
-    expect(failure.action).toContain("1.8–30.2 秒");
+    expect(failure.action).toContain("300–6000 像素");
     expect(failure.requestId).toBe("202609270829245377912978268d9d6USz1NP3R");
     expect(failure.blockAutomaticRetry).toBe(true);
-    expect(explainGenerationError({ code: "video_submission_unknown", task_id: "task-known-123" }).uncertain).toBe(true);
+    expect(explainGenerationError({ code: "image_result_unknown", task_id: "task-known-123" }).uncertain).toBe(true);
 });
 
 import {
@@ -214,8 +143,13 @@ import gatewayCodes from "../../fixtures/generation-error-codes.json";
 
 describe("generation error classification", () => {
     test("all declared gateway error codes match the shared backend contract", () => {
+        // The shared contract keeps the historical video-only body limit code; the
+        // video submission path no longer exists in this build, so only the codes the
+        // image pipeline can still surface are asserted here.
+        const codes = Object.entries(gatewayCodes).filter(([code]) => code !== "video_request_body_too_large");
         expect(Object.keys(gatewayCodes)).toHaveLength(51);
-        for (const [code, category] of Object.entries(gatewayCodes)) {
+        expect(codes).toHaveLength(50);
+        for (const [code, category] of codes) {
             expect(explainGenerationError({ code, message: "opaque provider message" }).category).toBe(category);
             expect(explainGenerationError({ status: 400, data: { error: { code } } }).category).toBe(category);
         }
@@ -265,9 +199,10 @@ describe("generation error classification", () => {
     });
 
     test("only proven parameter limits are quoted", () => {
-        expect(explainGenerationError({ code: "invalid_parameter", message: "duration must be between 2 and 10 seconds" }).action).toContain("2–10 秒");
+        expect(explainGenerationError({ code: "invalid_parameter", message: "aspect ratio must be between 0.4 and 2.5" }).action).toContain("0.4–2.5");
+        expect(explainGenerationError({ code: "invalid_parameter", message: "pixel count must be between 409600 and 8295044" }).reason).toContain("像素总量");
         expect(explainGenerationError({ code: "invalid_parameter", message: "duration invalid" }).action).not.toContain("秒");
-        expect(explainGenerationError({ code: "invalid_parameter", message: "prompt=duration must be between 2 and 10 seconds" }).action).not.toContain("2–10");
+        expect(explainGenerationError({ code: "invalid_parameter", message: "prompt=aspect ratio must be between 0.4 and 2.5" }).action).not.toContain("0.4–2.5");
     });
 
     test("same reference identity with replaced content unlocks moderation retry", () => {
@@ -280,6 +215,9 @@ describe("generation error classification", () => {
             expect(shouldBlockAutomaticRetry({ code })).toBe(true);
         }
         expect(shouldBlockAutomaticRetry({ code: "throttled" })).toBe(false);
+        expect(shouldBlockAutomaticRetry({ code: "request_not_sent" })).toBe(false);
+        expect(shouldBlockAutomaticRetry("生成失败", "request_not_sent")).toBe(false);
+        expect(explainGenerationError(new Error("连接失败"), { stage: "request_not_sent" }).category).toBe("request_not_sent");
     });
     test("openai json keeps structured invalid params", () => {
         const explained = explainGenerationError({
@@ -479,18 +417,9 @@ describe("image transport errors go through the classifier", () => {
 test("pixel failure explains actual input and upstream range", () => {
     const raw = explainGenerationError({ error: { code: "400", message: "素材转换失败: Pixel count must be between 407696 and 8295044." } });
     expect(raw.action).toContain("407696–8295044");
-    const measured = explainGenerationError("第 1 个参考视频像素总量为 331776（432×768），需要 407696–8295044 像素；请调整尺寸");
+    const measured = explainGenerationError("第 1 张参考图像素总量为 331776（432×768），需要 407696–8295044 像素；请调整尺寸");
     expect(measured.reason).toContain("432×768");
     expect(measured.action).toContain("407696–8295044");
-});
-
-test("gateway video preflight failures preserve actionable details", () => {
-    for (const item of referenceVideoErrors) {
-        const failure = explainGenerationError({ error: { code: "invalid_reference_video", message: item.message }, status: 400 });
-        expect(failure.reason).toContain(item.reason);
-        expect(failure.action).toContain(item.action);
-        expect(explainGenerationError(`${failure.reason}。${failure.action}`).action).toContain(item.action);
-    }
 });
 
 test("reference pixel diagnostic ID is not duplicated", () => {

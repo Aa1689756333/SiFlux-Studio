@@ -99,7 +99,7 @@ func TestCreateTaskReplaysSameClientOperationAndRejectsDifferentContent(t *testi
 	}
 }
 
-func TestCreateTaskRejectsCrossTypeRetryFromDepthCapture(t *testing.T) {
+func TestCreateTaskRejectsCrossTypeRetryFromLegacyTaskType(t *testing.T) {
 	db, err := gorm.Open(sqlite.Open("file:"+newID()+"?mode=memory&cache=shared"), &gorm.Config{})
 	if err != nil {
 		t.Fatal(err)
@@ -107,13 +107,14 @@ func TestCreateTaskRejectsCrossTypeRetryFromDepthCapture(t *testing.T) {
 	if err := db.AutoMigrate(&model.Task{}); err != nil {
 		t.Fatal(err)
 	}
+	// 历史深度采集行仍保留在库里；重试必须沿用原任务类型，不能被当成生图任务。
 	parent := model.Task{ID: "depth-task", UserID: "user", Type: model.TaskTypeDepthCapture, Status: model.TaskStatusFailed}
 	if err := db.Create(&parent).Error; err != nil {
 		t.Fatal(err)
 	}
 	svc := &Service{repo: repository.New(db)}
 	_, err = svc.CreateTask("user", CreateTaskRequest{
-		Type: "canvas_video", Prompt: "生成深度动作参考",
+		Type: "canvas_image", Prompt: "生成深度动作参考",
 		Input: map[string]any{"metadata": map[string]any{"retryOf": parent.ID}},
 	})
 	if err == nil || !strings.Contains(err.Error(), "任务类型不一致") {

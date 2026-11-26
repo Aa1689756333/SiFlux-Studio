@@ -1,7 +1,7 @@
 import { Button, Dropdown } from "antd";
 import type { MenuProps } from "antd";
 import { AppModal } from "@/components/ui/product/app-modal";
-import { Check, ChevronDown, FileText, FolderOpen, HardDrive, Image as ImageIcon, LoaderCircle, Music2, Puzzle, Search, Upload, UserRound, Video } from "lucide-react";
+import { Check, ChevronDown, FileText, FolderOpen, HardDrive, Image as ImageIcon, LoaderCircle, Puzzle, Search, Upload, UserRound } from "lucide-react";
 import { useEffect, useMemo, useRef, useState, type ReactNode } from "react";
 import { useQuery, useQueryClient } from "@tanstack/react-query";
 import { useUserStore } from "@/stores/use-user-store";
@@ -24,11 +24,11 @@ import type { Asset } from "@/stores/use-asset-store";
 import { loadAssetLibraryPage } from "@/services/local-workspace-sync";
 import { isUnsavedWorkspaceAsset, usesWorkspaceAssetLibraryApi, workspaceAssetTraversalTotal } from "@/services/workspace-asset-read";
 
-export type AssetPickerMediaKind = "image" | "video" | "audio" | "text";
+export type AssetPickerMediaKind = "image" | "text";
 
-export const ASSET_PICKER_MEDIA_KIND_LABELS: Record<AssetPickerMediaKind, string> = { image: "图片", video: "视频", audio: "音频", text: "文本" };
+export const ASSET_PICKER_MEDIA_KIND_LABELS: Record<AssetPickerMediaKind, string> = { image: "图片", text: "文本" };
 
-const DEFAULT_MEDIA_KINDS: AssetPickerMediaKind[] = ["image", "video", "audio"];
+const DEFAULT_MEDIA_KINDS: AssetPickerMediaKind[] = ["image", "text"];
 
 export type AssetLibraryPickerItem = {
     id: string;
@@ -174,7 +174,7 @@ function AssetLibraryPickerModalSession({
             category: asset.category || "other",
             archived: asset.status === "archived",
             asset,
-            kindLabel: asset.kind === "image" ? "图片" : asset.kind === "video" ? "视频" : asset.kind === "audio" ? "音频" : "文本",
+            kindLabel: asset.kind === "image" ? "图片" : "文本",
             mediaKind: pickerAssetMediaKind(asset),
             searchText: (asset.tags ?? []).join(" "),
             disabledReason: workspaceAssetPickerDisabledReason(asset, items, mediaKinds, remoteKind),
@@ -540,11 +540,11 @@ function AssetLibraryPickerModalSession({
 export function pickerItemMediaKind(item: AssetLibraryPickerItem): AssetPickerMediaKind | undefined {
     if (item.mediaKind) return item.mediaKind;
     const kind = item.external?.item.kind || item.asset?.kind;
-    return kind === "image" || kind === "video" || kind === "audio" || kind === "text" ? kind : undefined;
+    return kind === "image" || kind === "text" ? kind : undefined;
 }
 
 function pickerAssetMediaKind(asset: Asset): AssetPickerMediaKind | undefined {
-    return asset.kind === "image" || asset.kind === "video" || asset.kind === "audio" || asset.kind === "text" ? asset.kind : undefined;
+    return asset.kind === "image" || asset.kind === "text" ? asset.kind : undefined;
 }
 
 /** Empty parent items must not disable a SQLite asset that matches the picker media constraint. */
@@ -633,8 +633,6 @@ function renderPickerFolders(folders: AssetLibraryPickerFolder[], items: AssetLi
 
 function kindIcon(label: string): ReactNode {
     if (label.includes("角色")) return <UserRound />;
-    if (label.includes("视频")) return <Video />;
-    if (label.includes("音频")) return <Music2 />;
     if (label.includes("文本")) return <FileText />;
     return <ImageIcon />;
 }

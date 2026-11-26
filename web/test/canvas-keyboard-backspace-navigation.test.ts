@@ -28,7 +28,6 @@ class FakeSelect extends FakeElement {}
 
 let saved: Record<string, unknown> = {};
 let keydownListeners: Listener[] = [];
-let directorMounted = false;
 let cleanup: (() => void) | undefined;
 let deleted: Array<Set<string>> = [];
 
@@ -104,13 +103,12 @@ function press(key: string, target: unknown) {
 beforeEach(() => {
     saved = Object.fromEntries(globalNames.map((name) => [name, g[name]]));
     keydownListeners = [];
-    directorMounted = false;
     deleted = [];
     g.Element = FakeElement;
     g.HTMLInputElement = FakeInput;
     g.HTMLTextAreaElement = FakeTextArea;
     g.HTMLSelectElement = FakeSelect;
-    g.document = { querySelector: (selector: string) => (directorMounted && selector.includes("data-director-workbench") ? {} : null) };
+    g.document = { querySelector: () => null };
     g.window = {
         addEventListener: (type: string, listener: Listener) => { if (type === "keydown") keydownListeners.push(listener); },
         removeEventListener: (type: string, listener: Listener) => { if (type === "keydown") keydownListeners = keydownListeners.filter((entry) => entry !== listener); },
@@ -140,12 +138,6 @@ describe("canvas Backspace never falls through to webview history back", () => {
 
     test("Backspace inside a [data-canvas-no-zoom] control is default-prevented but still propagates", () => {
         expect(press("Backspace", new FakeElement("BUTTON", ["[data-canvas-no-zoom]"]))).toEqual({ defaultPrevented: true, propagationStopped: false });
-        expect(deleted).toHaveLength(0);
-    });
-
-    test("Backspace while the director workbench is mounted is default-prevented and left to the director", () => {
-        directorMounted = true;
-        expect(press("Backspace", new FakeElement("BUTTON"))).toEqual({ defaultPrevented: true, propagationStopped: false });
         expect(deleted).toHaveLength(0);
     });
 

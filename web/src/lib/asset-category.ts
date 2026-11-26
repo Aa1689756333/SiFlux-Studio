@@ -40,7 +40,7 @@ export function parseAssetCategory(value: unknown): AssetCategory {
 
 export function defaultAssetCategoryForKind(kind: string): AssetCategory {
     if (kind === "entity") return "character";
-    if (kind === "image" || kind === "video" || kind === "audio" || kind === "model") return "material";
+    if (kind === "image" || kind === "model") return "material";
     return "other";
 }
 

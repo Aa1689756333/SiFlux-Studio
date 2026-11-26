@@ -1,7 +1,6 @@
 import { expect, test } from "bun:test";
-import { BeefAPIConnectionActions, mergeManagedBeefAPICatalog, modelConfigChannelPresentation, modelConfigChannelStatusLabel, shouldRefreshBeefAPICatalog } from "../src/pages/settings/channel-settings-pane";
+import { mergeManagedBeefAPICatalog, modelConfigChannelPresentation, modelConfigChannelStatusLabel, shouldRefreshBeefAPICatalog } from "../src/pages/settings/channel-settings-pane";
 import { withChannels } from "../src/lib/channel-config";
-import { renderToStaticMarkup } from "react-dom/server";
 import { createModelChannel, defaultConfig } from "../src/stores/use-config-store";
 
 test("removing a channel clears its legacy and assistant selections", () => {
@@ -11,18 +10,6 @@ test("removing a channel clears its legacy and assistant selections", () => {
     expect(next.model).toBe("kept::other");
     expect(next.textModel).toBe("kept::other");
     expect(next.assistantModel).toBe("");
-});
-
-test("connection actions render immediate progress and a retry after network failure", () => {
-    const noop = () => {};
-    const props = { busy: false, onConnect: noop, onCancel: noop, onRetry: noop, onDisconnect: noop, onWallet: noop };
-    const connecting = renderToStaticMarkup(<BeefAPIConnectionActions {...props} connection={{ state: "connecting", hasCredential: false }} />);
-    expect(connecting).toContain("正在连接");
-    expect(connecting).toContain("disabled");
-    expect(connecting).not.toContain("重新连接");
-    const failed = renderToStaticMarkup(<BeefAPIConnectionActions {...props} connection={{ state: "connection_error", hasCredential: false }} />);
-    expect(failed).toContain("重新连接");
-    expect(failed).not.toContain("disabled");
 });
 
 test("pinned BeefAPI is visible and cannot be deleted before models are fetched", () => {
@@ -39,11 +26,12 @@ test("pinned BeefAPI is visible and cannot be deleted before models are fetched"
     expect(modelConfigChannelStatusLabel(channel, { status: "idle", revision: 0, dirty: false, error: "" })).toBe("未连接");
 });
 
-test("BeefAPI status copy reflects enterprise connection state", () => {
+test("retired hosted BeefAPI channel reports it is disabled instead of a connection state", () => {
     const channel = createModelChannel({ id: "beefapi", apiKey: "", pinned: true, presetVersion: 1 });
-    expect(modelConfigChannelStatusLabel(channel, { status: "idle", revision: 1, dirty: false, error: "" }, { state: "pending", userCode: "ABCD-EFGH", hasCredential: false })).toBe("请在浏览器中确认 ABCD-EFGH");
-    expect(modelConfigChannelStatusLabel(channel, { status: "idle", revision: 2, dirty: false, error: "" }, { state: "connected", account: { id: "acct-1", display_name: "Ender" }, hasCredential: true })).toBe("已连接 Ender");
-    expect(modelConfigChannelStatusLabel(channel, { status: "idle", revision: 2, dirty: false, error: "" }, { state: "revoked", hasCredential: true })).toBe("连接已失效，请重新连接");
+    expect(modelConfigChannelStatusLabel(channel, { status: "idle", revision: 1, dirty: false, error: "" }, { state: "pending", userCode: "ABCD-EFGH", hasCredential: false })).toBe("已停用");
+    expect(modelConfigChannelStatusLabel(channel, { status: "idle", revision: 2, dirty: false, error: "" }, { state: "connected", account: { id: "acct-1", display_name: "Ender" }, hasCredential: true })).toBe("已停用");
+    expect(modelConfigChannelStatusLabel(channel, { status: "idle", revision: 2, dirty: false, error: "" }, { state: "revoked", hasCredential: true })).toBe("已停用");
+    expect(modelConfigChannelStatusLabel(channel, { status: "idle", revision: 0, dirty: false, error: "" })).toBe("未连接");
 });
 
 test("BeefAPI connected transition refreshes the managed catalog", () => {

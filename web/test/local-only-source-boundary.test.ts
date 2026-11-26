@@ -41,7 +41,6 @@ describe("local-only source boundary", () => {
         const files = [
             "src/services/workspace-mode.ts",
             "src/stores/use-user-store.ts",
-            "src/services/api/creation-runs.ts",
             "src/services/api/task-center.ts",
         ];
         for (const file of files) {
@@ -56,7 +55,6 @@ describe("local-only source boundary", () => {
 			"src/services/api/logical-models.ts",
 			"src/components/model-picker.tsx",
 			"src/components/image-settings-panel.tsx",
-			"src/components/video-settings-panel.tsx",
 		]) {
 			const source = readFileSync(resolve(root, file), "utf8");
 			expect(source).not.toMatch(/billing|microcredits|priceTier|pricePolicy|quoteLogical|showSelectedPrice|showOptionPrices|bypassPriceGuard/i);
@@ -64,7 +62,7 @@ describe("local-only source boundary", () => {
 	});
 
 	test("production API clients expose no hosted admin endpoints", () => {
-		for (const file of ["src/services/api/appearance.ts", "src/pages/plugins/index.tsx"]) {
+		for (const file of ["src/services/api/appearance.ts"]) {
 			const source = readFileSync(resolve(root, file), "utf8");
 			expect(source).not.toMatch(/\/admin\//);
 		}

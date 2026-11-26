@@ -1,4 +1,4 @@
-import { Command, Home, Search, X } from "lucide-react";
+﻿import { Command, Settings, Search, X } from "lucide-react";
 import { useEffect, useMemo, useRef, useState, type ComponentType } from "react";
 import { useNavigate } from "react-router";
 
@@ -14,7 +14,7 @@ type PaletteEntry = {
     run?: () => void;
 };
 
-/** 顶栏搜索 / ⌘K 命令面板：按功能开关过滤当前可用页面入口。 */
+/** ⌘K 命令面板只提供工作区和 Agent 配置入口。 */
 export function WorkspaceCommandPalette({ open, onClose }: { open: boolean; onClose: () => void }) {
     const navigate = useNavigate();
     const [query, setQuery] = useState("");
@@ -24,14 +24,15 @@ export function WorkspaceCommandPalette({ open, onClose }: { open: boolean; onCl
     const entries = useMemo<PaletteEntry[]>(() => {
         const toolEntry = (slug: string, to?: string): PaletteEntry => {
             const tool = navigationTools.find((item) => item.slug === slug);
-            return { id: slug, title: tool?.label ?? slug, icon: tool?.icon ?? Home, to };
+            return { id: slug, title: tool?.label ?? slug, icon: tool?.icon ?? Settings, to };
         };
         return [
-            { id: "home", title: "首页", icon: Home, to: "/" },
-            toolEntry("projects", "/project"),
+            toolEntry("image", "/generate/image"),
+            toolEntry("agent", "/agent"),
             toolEntry("canvas", "/canvas"),
             toolEntry("assets", "/assets"),
             toolEntry("skills", "/skills"),
+    
             toolEntry("settings", "/settings"),
         ];
     }, []);

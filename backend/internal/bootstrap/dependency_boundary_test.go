@@ -28,15 +28,11 @@ func TestTextReplayDomainDoesNotDependOnApplicationService(t *testing.T) {
 	assertDomainDoesNotImportApp(t, "./internal/textreplay")
 }
 
-func TestEditingDomainDoesNotDependOnApplicationService(t *testing.T) {
-	assertDomainDoesNotImportApp(t, "./internal/editing")
-}
-
 func TestRefactoredDomainsDoNotDependOnApplicationService(t *testing.T) {
 	for _, name := range []string{
 		"generation", "plugins", "modelcatalog", "operations", "asset", "canvas",
-		"creation", "taskruntime", "taskdelivery", "taskbinding", "agentops",
-		"assistantruntime", "assistantturns", "playback", "depthcapture", "transcription",
+		"taskruntime", "taskdelivery", "taskbinding", "agentops",
+		"assistantruntime", "assistantturns",
 		"workspace", "provider/workflow",
 	} {
 		t.Run(name, func(t *testing.T) {
@@ -70,20 +66,6 @@ func TestProjectDomainDoesNotDependOnApplicationService(t *testing.T) {
 	for _, dependency := range strings.Fields(string(output)) {
 		if dependency == "infinite-canvas/backend/internal/app" {
 			t.Fatal("project domain still depends on the application service kernel")
-		}
-	}
-}
-
-func TestConversationDomainDoesNotDependOnApplicationService(t *testing.T) {
-	command := exec.Command("go", "list", "-deps", "./internal/conversation")
-	command.Dir = "../.."
-	output, err := command.Output()
-	if err != nil {
-		t.Fatalf("list conversation dependencies: %v", err)
-	}
-	for _, dependency := range strings.Fields(string(output)) {
-		if dependency == "infinite-canvas/backend/internal/app" {
-			t.Fatal("conversation domain still depends on the application service kernel")
 		}
 	}
 }

@@ -10,14 +10,12 @@ import { assertUserScope, type CapturedUserScope } from "../../src/lib/user-scop
 import { http } from "../../src/services/api/request";
 import { useUserStore } from "../../src/stores/use-user-store";
 import AssetsPage from "../../src/pages/assets/index";
-import { saveLocalMedia } from "@/services/local-media-repository";
 
 type HarnessWindow = Window & {
     __assetViewHarness?: {
         writes: string[];
         toasts: string[];
         switchABA: () => Promise<void>;
-        seedLocalVideo: () => Promise<string>;
     };
 };
 
@@ -68,9 +66,7 @@ async function switchABA() {
     setActiveUserScope("owner-a");
 }
 
-harnessWindow.__assetViewHarness = { writes: [], toasts: [], switchABA,
-    seedLocalVideo: () => saveLocalMedia("video:owner-a:local-fixture", new Blob(["persisted-local-video"], { type: "video/mp4" })),
-};
+harnessWindow.__assetViewHarness = { writes: [], toasts: [], switchABA };
 
 function Harness() {
     const { message } = App.useApp();
@@ -86,7 +82,7 @@ function Harness() {
                 open={pickerOpen}
                 remoteLibrary
                 items={[]}
-                mediaKinds={["image", "video", "audio", "text"]}
+                mediaKinds={["image", "text"]}
                 categoryLabels={{ all: "全部素材", image: "图片" }}
                 eyebrow="账号世代夹具"
                 title="素材选择"

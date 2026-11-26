@@ -7,7 +7,6 @@
 .generation-history-page .assets-library-hero .app-page-header { height: 64px !important; min-height: 64px !important; gap: 0; padding-bottom: 0 !important; }
 .generation-history-content { width: 100%; padding: 28px 0 32px; overflow: auto; }
 .generation-history-badge { position: absolute; top: 6px; left: 6px; padding: 1px 5px; border: 1px solid rgba(255,255,255,.32); border-radius: 4px; background: rgba(30,30,30,.55); color: rgba(255,255,255,.78); font-size: 10px; line-height: 16px; }
-.generation-history-duration { position: absolute; bottom: 6px; left: 6px; padding: 1px 5px; border-radius: 4px; background: rgba(30,30,30,.72); color: #fff; font-size: 10px; line-height: 16px; }
 .assets-empty-workspace .assets-empty-copy { position: relative; top: -19px; width: auto; margin: 0; flex-direction: column; gap: 10px; }
 .assets-empty-workspace .assets-empty-icon { width: 32px; height: 32px; border: 0; border-radius: 0; background: transparent; }
 .assets-empty-workspace .assets-empty-icon svg { width: 26px; height: 26px; stroke-width: 1.5; }

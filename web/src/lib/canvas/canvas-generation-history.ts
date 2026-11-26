@@ -2,7 +2,7 @@ import { generationTaskMode } from "@/lib/canvas/canvas-generation-task-sync";
 import { userScopeEpochMatches, type UserScopeEpoch } from "@/lib/user-scope";
 import type { GenerationTask } from "@/services/api/task-center";
 
-const INSERTABLE_HISTORY_MODES = new Set(["image", "video", "audio"]);
+const INSERTABLE_HISTORY_MODES = new Set(["image"]);
 
 export type CanvasGenerationHistorySelectGate = {
     open: boolean;
@@ -92,16 +92,11 @@ function historyDetailHasInsertableMedia(task: GenerationTask) {
     try {
         const result = JSON.parse(task.resultJson) as {
             images?: Array<{ dataUrl?: string; url?: string; storageKey?: string }>;
-            video?: { dataUrl?: string; url?: string; storageKey?: string };
-            audio?: { dataUrl?: string; url?: string; storageKey?: string };
         };
         if (!result || typeof result !== "object") return false;
-        const mode = generationTaskMode(task);
+        if (generationTaskMode(task) !== "image") return false;
         const image = result.images?.[0];
-        if (mode === "image") return Boolean(image?.dataUrl || image?.url || image?.storageKey);
-        if (mode === "video") return Boolean(result.video?.dataUrl || result.video?.url || result.video?.storageKey);
-        if (mode === "audio") return Boolean(result.audio?.dataUrl || result.audio?.url || result.audio?.storageKey);
-        return false;
+        return Boolean(image?.dataUrl || image?.url || image?.storageKey);
     } catch {
         return false;
     }

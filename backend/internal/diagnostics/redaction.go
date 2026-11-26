@@ -1,6 +1,7 @@
 package diagnostics
 
 import (
+	"encoding/json"
 	"net/url"
 	"strings"
 
@@ -21,7 +22,7 @@ func sanitizeClientEvent(event ClientEvent) clientEventRecord {
 func sanitizeTask(task model.Task) taskRecord {
 	return taskRecord{
 		ID: task.ID, TraceID: sanitizeIdentifier(task.TraceID), RequestID: sanitizeIdentifier(task.RequestID), ProjectID: sanitizeIdentifier(task.ProjectID),
-		Type: redactText(task.Type, 80), Status: redactText(string(task.Status), 32), Stage: redactText(task.Stage, 160), Progress: boundedInt(task.Progress, 0, 100),
+		Source: taskSource(task.InputJSON), Type: redactText(task.Type, 80), Status: redactText(string(task.Status), 32), Stage: redactText(task.Stage, 160), Progress: boundedInt(task.Progress, 0, 100),
 		Operation: redactText(task.Operation, 120), Provider: redactText(task.Provider, 120), Model: redactText(task.Model, 160), LogicalModelID: sanitizeIdentifier(task.LogicalModelID),
 		ProviderRequestID: sanitizeIdentifier(task.ProviderRequestID), Error: redactText(task.Error, maxEventText), Attempts: boundedInt(task.Attempts, 0, 100),
 		StartedAt: task.StartedAt, CompletedAt: task.CompletedAt, CreatedAt: task.CreatedAt, UpdatedAt: task.UpdatedAt,
@@ -40,6 +41,18 @@ func sanitizeAPICall(log model.ApiCallLog) apiCallRecord {
 		DurationMs: boundedInt64(log.DurationMs, 0, 86_400_000), PollCount: boundedInt(log.PollCount, 0, 10000), ProviderStatus: redactText(log.ProviderStatus, 80),
 		ProviderRequestID: sanitizeIdentifier(log.ProviderRequestID), ErrorCode: redactText(log.ErrorCode, 120), Error: redactText(log.Error, maxEventText), StartedAt: log.StartedAt, CreatedAt: log.CreatedAt,
 	}
+}
+
+func taskSource(inputJSON string) string {
+	var input struct {
+		Metadata struct {
+			Source string `json:"source"`
+		} `json:"metadata"`
+	}
+	if strings.TrimSpace(inputJSON) == "" || json.Unmarshal([]byte(inputJSON), &input) != nil {
+		return ""
+	}
+	return sanitizeIdentifier(strings.TrimSpace(input.Metadata.Source))
 }
 
 func sanitizeIdentifier(value string) string {
@@ -127,13 +140,10 @@ func redactURLs(value string) string {
 		}
 		raw := value[start:end]
 		parsed, err := url.Parse(raw)
-		if err != nil {
-			searchFrom = end
-			continue
+		safe := "[REDACTED-URL]"
+		if err == nil && parsed.Host != "" && (parsed.Scheme == "http" || parsed.Scheme == "https") {
+			safe = parsed.Scheme + "://" + parsed.Host
 		}
-		parsed.RawQuery = ""
-		parsed.Fragment = ""
-		safe := parsed.String()
 		value = value[:start] + safe + value[end:]
 		searchFrom = start + len(safe)
 	}

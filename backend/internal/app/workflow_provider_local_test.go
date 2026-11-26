@@ -205,7 +205,7 @@ func TestWorkflowAcceptedNotRecordedMapsToUnknownBlocksRetryAndKeepsID(t *testin
 
 	s, task := workflowPaidTaskFixture(t)
 	ctx := withProviderAnalytics(context.Background(), s, task)
-	client := s.workflowClient(nil)
+	client := s.workflowClient()
 	client.Receipt = failRecordReceipt{ready: client.Receipt, err: errors.New("disk full")}
 	converted := s.workflowInputFromCanvas(ctx, workflowCreateInput(server.URL))
 	_, runErr := client.Run(ctx, converted)
@@ -388,11 +388,11 @@ func workflowPaidTaskFixture(t *testing.T) (*Service, model.Task) {
 	task := model.Task{
 		ID:             "workflow-task",
 		UserID:         "user",
-		Type:           "canvas_video",
+		Type:           "canvas_image",
 		Status:         model.TaskStatusRunning,
 		LeaseOwner:     "owner",
 		LeaseExpiresAt: &expires,
-		InputJSON:      `{"mode":"video"}`,
+		InputJSON:      `{"mode":"image"}`,
 	}
 	if err := db.Create(&task).Error; err != nil {
 		t.Fatal(err)

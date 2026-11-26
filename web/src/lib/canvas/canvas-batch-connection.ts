@@ -133,7 +133,6 @@ export function planBatchConnections({ sourceNodeIds, targetNodeId, targetHandle
 
 export function batchSourceRestriction(node: CanvasNodeData) {
     if (node.type === CanvasNodeType.Frame) return "背板不能作为连接源";
-    if (node.type === CanvasNodeType.Script) return "分镜脚本需要按行连接";
     if (node.type === CanvasNodeType.Config) return "生成配置不能作为聚合连接源";
     return "";
 }

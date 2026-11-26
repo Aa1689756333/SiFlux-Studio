@@ -16,28 +16,21 @@ type CanvasProjectContextMenuProps = {
     onClose: () => void;
     onAddNode: (type: CanvasNodeTypeId, position: Position) => void;
     onAddFolder: (position: Position) => void;
-    onChooseStyle: () => void;
-    onOpenDirector: (position?: Position) => void;
     onUpload: (nodeId: string | undefined, position: Position) => void;
     onOpenAssets: (position: Position) => void;
-    onOpenProjectCharacters: (position: Position) => void;
     onOpenGenerationHistory: (position: Position) => void;
     onUndo: () => void;
     onRedo: () => void;
     onPaste: (position: Position) => void;
     onCopyNode: (nodeId: string) => void;
-    onCreateGenerationCopy: (nodeId: string) => void;
     onDuplicate: (nodeId: string) => void;
     onDeleteNode: (nodeId: string) => void;
     onDeleteConnection: (connectionId: string) => void;
     onSaveAsset: (node: CanvasNodeData) => void;
     onViewMedia: (node: CanvasNodeData) => void;
     onEditText: (node: CanvasNodeData) => void;
-    onOpenDrawing: (node: CanvasNodeData) => void;
     onGenerateImage: (node: CanvasNodeData) => void;
     onCopyContent: (node: CanvasNodeData | null) => void;
-    onCopyMediaUrl: (node: CanvasNodeData | null) => void;
-    onUploadToArkPrivateAsset: (node: CanvasNodeData) => void;
     onSetAssetCategory: (nodeId: string, category: CanvasAssetCategory) => void;
     onToggleFrame: (node: CanvasNodeData) => void;
     onSpreadSelection: () => void;
@@ -65,20 +58,14 @@ export function CanvasProjectContextMenu({ menu, node, screenToCanvas, ...props 
             onAddFolder={() => {
                 if (menu.type === "canvas") props.onAddFolder(menu.position);
             }}
-            onChooseStyle={props.onChooseStyle}
-            onOpenDirector={props.onOpenDirector}
             onUpload={() => props.onUpload(menu.type === "node" ? menu.nodeId : undefined, menuPosition())}
             onOpenAssets={() => props.onOpenAssets(menuPosition())}
-            onOpenProjectCharacters={() => props.onOpenProjectCharacters(menuPosition())}
             onOpenGenerationHistory={() => props.onOpenGenerationHistory(menuPosition())}
             onUndo={props.onUndo}
             onRedo={props.onRedo}
             onPaste={() => props.onPaste(menuPosition())}
             onCopyNode={() => {
                 if (menu.type === "node") props.onCopyNode(menu.nodeId);
-            }}
-            onCreateGenerationCopy={() => {
-                if (menu.type === "node") props.onCreateGenerationCopy(menu.nodeId);
             }}
             onDuplicate={() => {
                 if (menu.type === "node") props.onDuplicate(menu.nodeId);
@@ -96,17 +83,10 @@ export function CanvasProjectContextMenu({ menu, node, screenToCanvas, ...props 
             onEditText={() => {
                 if (node) props.onEditText(node);
             }}
-            onOpenDrawing={() => {
-                if (node) props.onOpenDrawing(node);
-            }}
             onGenerateImage={() => {
                 if (node) props.onGenerateImage(node);
             }}
             onCopyContent={() => props.onCopyContent(node)}
-            onCopyMediaUrl={() => props.onCopyMediaUrl(node)}
-            onUploadToArkPrivateAsset={() => {
-                if (node?.type === CanvasNodeType.Image) props.onUploadToArkPrivateAsset(node);
-            }}
             onSetAssetCategory={(category) => {
                 if (menu.type === "node") props.onSetAssetCategory(menu.nodeId, category);
             }}

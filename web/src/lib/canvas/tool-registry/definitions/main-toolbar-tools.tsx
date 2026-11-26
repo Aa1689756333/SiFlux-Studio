@@ -1,4 +1,4 @@
-import { Cable, Clock3, Eraser, Hand, Keyboard, MousePointer2, Palette, Plus, Redo2, ScanFace, Trash2, Undo2, Waypoints } from "lucide-react";
+import { Cable, Clock3, Copy, Eraser, Hand, Keyboard, MousePointer2, Palette, Plus, Redo2, Sparkles, Trash2, Undo2, Upload, Waypoints } from "lucide-react";
 
 import { registerToolbarTools, type ToolDefinition } from "@/lib/canvas/tool-registry";
 import type { CanvasToolMode } from "@/types/canvas";
@@ -75,27 +75,32 @@ export const mainToolbarTools: ToolDefinition[] = [
         id: "tool-assets",
         toolbar: "main",
         category: "resource",
-        // LibTV 将这个入口称为“资产管理”，它承担素材浏览、上传和归档三类动作。
-        // 保留原有 tool-assets id，避免用户已经保存的工具栏偏好失效。
-        label: "资产管理",
-        // 原版底部 Dock 使用连接/关系类图标；动作仍然保留为资产管理。
+        label: "图片素材库",
         icon: <Cable />,
         defaultVisible: true,
         defaultOrder: 30,
-        applicable: (ctx) => !ctx.isProjectLinked,
         run: (ctx) => ctx.handlers.onOpenMyAssets(),
     },
     {
-        id: "tool-portrait-studio",
+        id: "tool-upload",
         toolbar: "main",
         category: "resource",
-        label: "人像造型室",
-        icon: <ScanFace />,
-        // Keep the primary dock at the LibTV reference width; the studio
-        // remains available from the project/asset surfaces and toolbar settings.
-        defaultVisible: false,
-        defaultOrder: 45,
-        run: (ctx) => ctx.handlers.onOpenProjectCharacters(),
+        label: "上传图片",
+        icon: <Upload />,
+        defaultVisible: true,
+        defaultOrder: 35,
+        run: (ctx) => ctx.handlers.onUpload(),
+    },
+    {
+        id: "tool-ask-assistant",
+        toolbar: "main",
+        category: "navigation",
+        label: "Agent",
+        icon: <Sparkles />,
+        defaultVisible: true,
+        defaultOrder: 40,
+        applicable: (ctx) => Boolean(ctx.handlers.onAskAssistant),
+        run: (ctx) => ctx.handlers.onAskAssistant?.(),
     },
     {
         id: "tool-settings",
@@ -128,6 +133,17 @@ export const mainToolbarTools: ToolDefinition[] = [
         defaultVisible: true,
         defaultOrder: 75,
         run: (ctx) => ctx.handlers.onOpenShortcuts(),
+    },
+    {
+        id: "tool-duplicate",
+        toolbar: "main",
+        category: "selection",
+        label: "创建选区副本",
+        icon: <Copy />,
+        defaultVisible: true,
+        defaultOrder: 78,
+        applicable: (ctx) => ctx.selectedCount > 0,
+        run: (ctx) => ctx.handlers.onDuplicateSelected(),
     },
     {
         id: "tool-delete",

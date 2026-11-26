@@ -23,3 +23,11 @@ test("native diagnostic ZIP bytes reach the chosen-file binding and cancellation
     expect(calls[0][0]).toBe("beeftv-diagnostics.zip");
     expect(new Uint8Array(Buffer.from(calls[0][1], "base64"))).toEqual(data);
 });
+
+test("standalone generation pages keep a diagnostic export on failure", () => {
+    const source = readFileSync(new URL("../src/pages/generate-image/index.tsx", import.meta.url), "utf8");
+    expect(source).toContain("enableDiagnosticsExport");
+    expect(source).toContain("taskId={activeJob.taskIds[0]}");
+    const channels = readFileSync(new URL("../src/pages/settings/channel-settings-pane.tsx", import.meta.url), "utf8");
+    expect(channels).toContain("问题诊断");
+});

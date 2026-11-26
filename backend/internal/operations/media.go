@@ -6,23 +6,16 @@ import (
 	"encoding/base64"
 	"encoding/hex"
 	"encoding/json"
-	"fmt"
 	"io"
-	"os"
-	"os/exec"
-	"path/filepath"
 	"regexp"
 	"sort"
-	"strconv"
 	"strings"
-	"time"
 
 	"infinite-canvas/backend/internal/assistantturns"
-	"infinite-canvas/backend/internal/editing"
 )
 
 // MediaSourceOpener is optional: domain implementations must open only owned,
-// ready resource bytes. No path or URL received from a model reaches ffmpeg.
+// ready resource bytes. No path or URL received from a model reaches a decoder.
 type MediaSourceOpener interface {
 	OpenMediaResource(context.Context, string, string) (io.ReadCloser, error)
 }
@@ -47,28 +40,12 @@ type MediaPart struct {
 }
 
 type MediaResult struct {
-	Source           MediaSource            `json:"source"`
-	DurationMs       int64                  `json:"durationMs"`
-	HasVideo         bool                   `json:"hasVideo"`
-	HasAudio         bool                   `json:"hasAudio"`
-	Content          []MediaPart            `json:"content"`
-	BlackIntervals   []MediaInterval        `json:"blackIntervals,omitempty"`
-	SilenceIntervals []MediaInterval        `json:"silenceIntervals,omitempty"`
-	SilenceDetection *MediaSilenceDetection `json:"silenceDetection,omitempty"`
-	MeanDB           *float64               `json:"meanDb,omitempty"`
-	PeakDB           *float64               `json:"peakDb,omitempty"`
-	Note             string                 `json:"note,omitempty"`
-}
-
-type MediaSilenceDetection struct {
-	NoiseDB           float64 `json:"noiseDb"`
-	MinimumDurationMs int64   `json:"minimumDurationMs"`
-	TimestampKind     string  `json:"timestampKind"`
-}
-
-type MediaInterval struct {
-	StartMs int64 `json:"startMs"`
-	EndMs   int64 `json:"endMs"`
+	Source     MediaSource `json:"source"`
+	DurationMs int64       `json:"durationMs"`
+	HasVideo   bool        `json:"hasVideo"`
+	HasAudio   bool        `json:"hasAudio"`
+	Content    []MediaPart `json:"content"`
+	Note       string      `json:"note,omitempty"`
 }
 
 type mediaArgs struct {
@@ -100,14 +77,13 @@ func ValidateMediaReference(domain Domain, userID, canvasID, nodeID, assetID, re
 
 func registerMediaOps(r *Registry) {
 	summaries := map[string]string{
-		"media.overview": "获取已关联媒体的版本、时长与静态预览；用于选择检查区间，不能替代连续视频或声音内容审查。",
-		"media.inspect":  "实际读取指定区间，每次最多 15 秒：frames 看静态截图，video 看连续原生视频，audio 听原生音频；按问题选择，不把抽帧当作完整影音审查。",
-		"media.check":    "客观测量指定区间的黑屏、音量与静音停顿（固定 -35 dB、最少 120 ms，返回原素材坐标）；音量与停顿不能判断声音内容。停顿仅是候选切点，随后用 media.inspect audio 裁剪并实际听取确认，不能当作词时间戳或语义切点，不能替代实际查看和听取。",
+		"media.overview": "读取已关联图片的版本与静态画面；用于确认图片内容和版本，不返回连续画面或音轨。",
+		"media.inspect":  "读取已关联图片的静态画面；交付图片给支持视觉的模型前先读取一次，确认实际内容。",
 	}
-	for _, id := range []string{"media.overview", "media.inspect", "media.check"} {
+	for _, id := range []string{"media.overview", "media.inspect"} {
 		operation := id
 		r.Register(Op{AssistantCanvas: true, ID: operation, Summary: summaries[operation], ReadOnly: true, Scope: ScopeCanvas,
-			Params:  json.RawMessage(`{"type":"object","properties":{"canvasId":{"type":"string"},"nodeId":{"type":"string"},"assetId":{"type":"string"},"resourceId":{"type":"string"},"expectedVersion":{"type":"string"},"startMs":{"type":"integer","minimum":0},"endMs":{"type":"integer","minimum":0},"mode":{"type":"string","description":"frames：离散静态截图，用于构图与画面内容，不能判断连续运动或声音；video：连续原生视频片段，用于运镜、动作、转场与音画关系，保留可用音轨；audio：原生音频片段，用于说话、对白、音乐和声音内容。按检查目标选择；inspect 每次最多 15 秒。","enum":["frames","video","audio"]}},"required":["canvasId"]}`),
+			Params:  json.RawMessage(`{"type":"object","properties":{"canvasId":{"type":"string"},"nodeId":{"type":"string"},"assetId":{"type":"string"},"resourceId":{"type":"string"},"expectedVersion":{"type":"string"},"startMs":{"type":"integer","minimum":0},"endMs":{"type":"integer","minimum":0},"mode":{"type":"string","description":"图片只支持 frames：读取静态画面。","enum":["frames"]}},"required":["canvasId"]}`),
 			Handler: func(ctx *Context, raw json.RawMessage) (any, error) { return runMedia(ctx, operation, raw) }})
 	}
 }
@@ -256,20 +232,33 @@ func runMedia(opCtx *Context, operation string, raw json.RawMessage) (any, error
 		return nil, mapDomainError(err)
 	}
 	if resource == nil || resource.Size > maxMediaSourceBytes {
-		return nil, PreconditionFailed("media_too_large", "当前媒体检查支持 256 MiB 以内的素材", nil)
+		return nil, PreconditionFailed("media_too_large", "当前图片检查支持 256 MiB 以内的素材", nil)
+	}
+	if !strings.HasPrefix(resource.MimeType, "image/") {
+		return nil, Unsupported("media_format_unsupported", "当前仅支持检查图片素材")
+	}
+	mimeType, ok := imageMediaMime(resource.MimeType)
+	if !ok {
+		return nil, Unsupported("media_format_unsupported", "当前检查支持 JPEG、PNG、GIF 和 WebP 图片")
+	}
+	if args.StartMs != 0 || args.EndMs != 0 {
+		return nil, InvalidArg("invalid_media_interval", "图片不支持片段区间")
+	}
+	if args.Mode != "" && args.Mode != "frames" {
+		return nil, InvalidArg("invalid_media_mode", "图片只支持 frames 静态画面检查")
 	}
 	opener, ok := opCtx.Domain.(MediaSourceOpener)
 	if !ok {
-		return nil, Unsupported("media_unavailable", "当前工作区不支持媒体检查")
+		return nil, Unsupported("media_unavailable", "当前工作区不支持图片检查")
 	}
-	ctx, cancel := context.WithTimeout(opCtx.Context, 90*time.Second)
+	ctx, cancel := context.WithCancel(opCtx.Context)
 	defer cancel()
 	body, err := opener.OpenMediaResource(ctx, opCtx.UserID, resourceID)
 	if err != nil {
 		return nil, mapDomainError(err)
 	}
 	if body == nil {
-		return nil, PreconditionFailed("media_unavailable", "媒体暂时无法读取", nil)
+		return nil, PreconditionFailed("media_unavailable", "图片暂时无法读取", nil)
 	}
 	defer body.Close()
 	readDone := make(chan struct{})
@@ -281,290 +270,56 @@ func runMedia(opCtx *Context, operation string, raw json.RawMessage) (any, error
 		case <-readDone:
 		}
 	}()
-	dir, err := os.MkdirTemp("", "beeftv-media-*")
+	data, err := io.ReadAll(io.LimitReader(contextReader{ctx, body}, maxMediaPartBytes+1))
 	if err != nil {
-		return nil, PreconditionFailed("media_storage_unavailable", "媒体检查临时空间不可用", nil)
+		return nil, PreconditionFailed("media_read_failed", "图片读取失败", nil)
 	}
-	defer os.RemoveAll(dir)
-	input := filepath.Join(dir, "source")
-	file, err := os.OpenFile(input, os.O_CREATE|os.O_WRONLY, 0600)
-	if err != nil {
-		return nil, PreconditionFailed("media_storage_unavailable", "媒体检查临时空间不可用", nil)
+	if int64(len(data)) > maxMediaPartBytes {
+		return nil, PreconditionFailed("media_part_too_large", "图片超过 8 MiB，无法直接检查", nil)
 	}
-	hash := sha256.New()
-	n, copyErr := io.Copy(io.MultiWriter(file, hash), io.LimitReader(contextReader{ctx, body}, maxMediaSourceBytes+1))
-	closeErr := file.Close()
-	if copyErr != nil || closeErr != nil {
-		return nil, PreconditionFailed("media_read_failed", "媒体读取失败", nil)
-	}
-	if n > maxMediaSourceBytes {
-		return nil, PreconditionFailed("media_too_large", "当前媒体检查支持 256 MiB 以内的素材", nil)
-	}
-	// Uploaded playlists may point at unrelated local files or network URLs.
-	// Accept self-contained binary containers only before invoking any decoder.
-	if !selfContainedMedia(input) {
-		return nil, Unsupported("media_format_unsupported", "当前检查支持常见图片、MP4、WebM、WAV、MP3、OGG 和 FLAC 文件")
-	}
-	version := hex.EncodeToString(hash.Sum(nil))
+	sum := sha256.Sum256(data)
+	version := hex.EncodeToString(sum[:])
 	if operation != "media.overview" && args.ExpectedVersion == "" {
 		return nil, InvalidArg("media_version_required", "先读取 overview，再提供 expectedVersion")
 	}
 	if args.ExpectedVersion != "" && args.ExpectedVersion != version {
 		return nil, Conflict("stale_media_version", "素材内容已变化，请重新读取 overview", map[string]any{"currentVersion": version})
 	}
-	facts, err := editing.Probe(ctx, input)
-	if err != nil {
-		return nil, PreconditionFailed("media_probe_failed", "无法检查媒体，请确认 ffprobe 已安装且素材可读取", nil)
+	if !imageMediaMagic(mimeType, data) {
+		return nil, Unsupported("media_format_unsupported", "图片内容与声明格式不一致")
 	}
-	image := strings.HasPrefix(resource.MimeType, "image/")
-	if operation == "media.overview" {
-		args.StartMs = 0
-		args.EndMs = facts.DurationMs
-	}
-	if operation == "media.check" && args.StartMs == 0 && args.EndMs == 0 {
-		args.EndMs = facts.DurationMs
-	}
-	if !image && (args.StartMs < 0 || args.EndMs <= args.StartMs || args.EndMs > facts.DurationMs) {
-		return nil, InvalidArg("invalid_media_interval", "片段区间必须位于素材时长内")
-	}
-	if image && (args.StartMs != 0 || args.EndMs != 0 || args.Mode == "video" || args.Mode == "audio" || operation == "media.check") {
-		return nil, InvalidArg("invalid_media_interval", "图片仅支持 overview 或零区间的 frames 检查")
-	}
-	if operation == "media.inspect" && args.EndMs-args.StartMs > 15000 {
-		return nil, InvalidArg("media_interval_too_long", "每次查看或听取最多 15 秒")
-	}
-	if operation == "media.check" && args.EndMs-args.StartMs > 300000 {
-		return nil, InvalidArg("media_interval_too_long", "每次客观检测最多 5 分钟")
-	}
-	result := MediaResult{Source: MediaSource{CanvasID: args.CanvasID, NodeID: args.NodeID, AssetID: args.AssetID, ResourceID: resourceID, Version: version, StartMs: args.StartMs, EndMs: args.EndMs}, DurationMs: facts.DurationMs, HasVideo: facts.HasVideo, HasAudio: facts.HasAudio, Content: []MediaPart{}}
-	bin, err := editing.ResolveFFmpegBinary()
-	if err != nil {
-		return nil, PreconditionFailed("media_ffmpeg_unavailable", "媒体检查需要 ffmpeg", nil)
-	}
-	if operation == "media.check" {
-		command := []string{"-nostdin", "-hide_banner", "-ss", mediaSeconds(args.StartMs), "-i", input, "-t", mediaSeconds(args.EndMs - args.StartMs)}
-		if facts.HasVideo {
-			command = append(command, "-vf", "blackdetect=d=0.15:pix_th=0.1")
-		}
-		if facts.HasAudio {
-			command = append(command, "-af", "volumedetect,silencedetect=noise=-35dB:d=0.12")
-		}
-		output, err := mediaCommand(ctx, bin, append(command, "-f", "null", "-")...)
-		if err != nil {
-			return nil, err
-		}
-		result.BlackIntervals, result.MeanDB, result.PeakDB = parseMediaChecks(string(output), args.StartMs)
-		if facts.HasAudio {
-			result.SilenceIntervals = parseMediaSilence(string(output), args.StartMs, args.EndMs)
-			result.SilenceDetection = &MediaSilenceDetection{NoiseDB: -35, MinimumDurationMs: 120, TimestampKind: "source_time"}
-		}
-		result.Note = "客观测量：黑屏可能是有意设计；存在音轨不代表有声音；音量不能判断声音内容。静音区间限定在本次请求内，以原素材时间表示，仅供寻找候选停顿，不是词时间戳；裁剪后用 media.inspect audio 实际听取再确认切点。"
-		return result, nil
-	}
-	mode := args.Mode
-	if mode == "" || operation == "media.overview" {
-		mode = "frames"
-	}
-	if operation == "media.overview" && !facts.HasVideo {
-		return result, nil
-	}
-	if mode == "frames" {
-		if !facts.HasVideo {
-			return nil, InvalidArg("media_no_video", "这个素材没有画面")
-		}
-		count := 4
-		if operation == "media.overview" {
-			count = 3
-		}
-		if image {
-			count = 1
-		}
-		for i := 0; i < count; i++ {
-			at := args.StartMs + (args.EndMs-args.StartMs)*int64(2*i+1)/int64(2*count)
-			output := filepath.Join(dir, fmt.Sprintf("frame-%d.jpg", i))
-			command := []string{"-nostdin", "-v", "error", "-i", input}
-			if !image {
-				command = append(command, "-ss", mediaSeconds(at))
-			}
-			command = append(command, "-frames:v", "1", "-vf", "scale=640:640:force_original_aspect_ratio=decrease", "-y", output)
-			if _, err := mediaCommand(ctx, bin, command...); err != nil {
-				return nil, err
-			}
-			part, err := mediaFilePart(output, "image", "image/jpeg", result.Source)
-			if err != nil {
-				return nil, err
-			}
-			part.Source.StartMs = at
-			part.Source.EndMs = at
-			part.Source.TimestampKind = "requested_seek"
-			result.Content = append(result.Content, part)
-			var total int
-			for _, item := range result.Content {
-				total += base64.StdEncoding.DecodedLen(len(item.Data))
-			}
-			if int64(total) > maxMediaPartBytes {
-				return nil, PreconditionFailed("media_part_too_large", "媒体预览过大，请缩小检查区间", nil)
-			}
-		}
-		return result, nil
-	}
-	if mode != "video" && mode != "audio" {
-		return nil, InvalidArg("invalid_media_mode", "mode 必须是 frames、video 或 audio")
-	}
-	if mode == "audio" && !facts.HasAudio {
-		return nil, InvalidArg("media_no_audio", "这个素材没有音轨")
-	}
-	if mode == "video" && !facts.HasVideo {
-		return nil, InvalidArg("media_no_video", "这个素材没有画面")
-	}
-	mime, output := "video/mp4", filepath.Join(dir, "clip.mp4")
-	command := []string{"-nostdin", "-v", "error", "-i", input, "-ss", mediaSeconds(args.StartMs), "-t", mediaSeconds(args.EndMs - args.StartMs)}
-	if mode == "audio" {
-		mime, output = "audio/wav", filepath.Join(dir, "clip.wav")
-		command = append(command, "-vn", "-ac", "1", "-ar", "24000", "-c:a", "pcm_s16le")
-	} else {
-		command = append(command, "-vf", "scale=640:-2", "-c:v", "libx264", "-preset", "fast", "-crf", "27", "-c:a", "aac", "-b:a", "96k", "-movflags", "+faststart")
-	}
-	if _, err := mediaCommand(ctx, bin, append(command, "-fs", strconv.FormatInt(maxMediaPartBytes+1, 10), "-y", output)...); err != nil {
-		return nil, err
-	}
-	part, err := mediaFilePart(output, "media", mime, result.Source)
-	if err != nil {
-		return nil, err
-	}
-	result.Content = append(result.Content, part)
-	return result, nil
+	source := MediaSource{CanvasID: args.CanvasID, NodeID: args.NodeID, AssetID: args.AssetID, ResourceID: resourceID, Version: version, TimestampKind: "source"}
+	return MediaResult{
+		Source:  source,
+		Content: []MediaPart{{Type: "image", MimeType: mimeType, Data: base64.StdEncoding.EncodeToString(data), SHA256: version, Source: source}},
+		Note:    "图片检查返回原图内容；图片没有连续画面或音轨。",
+	}, nil
 }
 
-func mediaSeconds(ms int64) string { return fmt.Sprintf("%.3f", float64(ms)/1000) }
-
-type limitedMediaLog struct{ data []byte }
-
-func (b *limitedMediaLog) Write(p []byte) (int, error) {
-	n := len(p)
-	if len(b.data)+n > 1<<20 {
-		return 0, fmt.Errorf("media output limit")
+func imageMediaMime(mimeType string) (string, bool) {
+	switch strings.ToLower(strings.TrimSpace(strings.Split(mimeType, ";")[0])) {
+	case "image/jpeg", "image/jpg":
+		return "image/jpeg", true
+	case "image/png":
+		return "image/png", true
+	case "image/gif":
+		return "image/gif", true
+	case "image/webp":
+		return "image/webp", true
 	}
-	b.data = append(b.data, p...)
-	return n, nil
+	return "", false
 }
 
-func mediaCommand(ctx context.Context, bin string, args ...string) ([]byte, error) {
-	cmd := exec.CommandContext(ctx, bin, args...)
-	var log limitedMediaLog
-	cmd.Stdout = &log
-	cmd.Stderr = &log
-	if err := cmd.Run(); err != nil {
-		return nil, PreconditionFailed("media_processing_failed", "媒体处理失败或超时，请缩小检查区间后重试", nil)
+func imageMediaMagic(mimeType string, data []byte) bool {
+	switch mimeType {
+	case "image/jpeg":
+		return len(data) >= 3 && data[0] == 0xff && data[1] == 0xd8 && data[2] == 0xff
+	case "image/png":
+		return len(data) >= 8 && string(data[:8]) == "\x89PNG\r\n\x1a\n"
+	case "image/gif":
+		return len(data) >= 6 && (string(data[:6]) == "GIF87a" || string(data[:6]) == "GIF89a")
+	case "image/webp":
+		return len(data) >= 12 && string(data[:4]) == "RIFF" && string(data[8:12]) == "WEBP"
 	}
-	return log.data, nil
-}
-
-func mediaFilePart(file, kind, mime string, source MediaSource) (MediaPart, error) {
-	stat, err := os.Stat(file)
-	if err != nil || stat.Size() == 0 {
-		return MediaPart{}, PreconditionFailed("media_processing_failed", "媒体处理未产生有效内容", nil)
-	}
-	if stat.Size() > maxMediaPartBytes {
-		return MediaPart{}, PreconditionFailed("media_part_too_large", "片段过大，请缩小检查区间", nil)
-	}
-	data, err := os.ReadFile(file)
-	if err != nil {
-		return MediaPart{}, PreconditionFailed("media_processing_failed", "媒体处理结果无法读取", nil)
-	}
-	hash := sha256.Sum256(data)
-	return MediaPart{Type: kind, MimeType: mime, Data: base64.StdEncoding.EncodeToString(data), SHA256: hex.EncodeToString(hash[:]), Source: source}, nil
-}
-
-func selfContainedMedia(path string) bool {
-	file, err := os.Open(path)
-	if err != nil {
-		return false
-	}
-	defer file.Close()
-	buf := make([]byte, 12)
-	n, _ := file.Read(buf)
-	buf = buf[:n]
-	for _, magic := range [][]byte{{0xff, 0xd8, 0xff}, {0x89, 'P', 'N', 'G'}, []byte("GIF8"), {0x1a, 0x45, 0xdf, 0xa3}, []byte("OggS"), []byte("fLaC"), []byte("ID3")} {
-		if len(buf) >= len(magic) && string(buf[:len(magic)]) == string(magic) {
-			return true
-		}
-	}
-	return (len(buf) >= 12 && ((string(buf[4:8]) == "ftyp") || (string(buf[:4]) == "RIFF" && (string(buf[8:12]) == "WAVE" || string(buf[8:12]) == "WEBP")))) || (len(buf) >= 2 && buf[0] == 0xff && buf[1]&0xe0 == 0xe0)
-}
-
-var mediaBlackPattern = regexp.MustCompile(`black_start:([\d.]+) black_end:([\d.]+) black_duration:([\d.]+)`)
-var mediaVolumePattern = regexp.MustCompile(`(mean|max)_volume: ([-\d.]+) dB`)
-var mediaSilencePattern = regexp.MustCompile(`silence_(start|end):\s*([-+]?(?:\d+(?:\.\d*)?|\.\d+)(?:[eE][-+]?\d+)?)`)
-
-func parseMediaSilence(log string, startMs, endMs int64) []MediaInterval {
-	intervals := []MediaInterval{}
-	start := int64(-1)
-	appendInterval := func(from, to int64) {
-		if from < startMs {
-			from = startMs
-		}
-		if to > endMs {
-			to = endMs
-		}
-		if to > from {
-			intervals = append(intervals, MediaInterval{from, to})
-		}
-	}
-	for _, match := range mediaSilencePattern.FindAllStringSubmatch(log, -1) {
-		seconds, err := strconv.ParseFloat(match[2], 64)
-		if err != nil {
-			continue
-		}
-		if seconds < 0 {
-			seconds = 0
-		}
-		if maximum := float64(endMs-startMs) / 1000; seconds > maximum {
-			seconds = maximum
-		}
-		// FFmpeg processes a seeked interval with local timestamps. Clamp any
-		// decoder padding to the authorized requested source interval.
-		at := startMs + int64(seconds*1000)
-		if at < startMs {
-			at = startMs
-		}
-		if match[1] == "start" {
-			if start < 0 {
-				start = at
-			}
-		} else {
-			if start < 0 {
-				start = startMs
-			}
-			appendInterval(start, at)
-			start = -1
-		}
-	}
-	// Some decoders omit the final end event; a reported silence_start has
-	// already met FFmpeg's minimum duration, so close it at the request end.
-	if start >= 0 {
-		appendInterval(start, endMs)
-	}
-	return intervals
-}
-
-func parseMediaChecks(log string, startMs int64) ([]MediaInterval, *float64, *float64) {
-	intervals := []MediaInterval{}
-	for _, match := range mediaBlackPattern.FindAllStringSubmatch(log, -1) {
-		start, _ := strconv.ParseFloat(match[1], 64)
-		end, _ := strconv.ParseFloat(match[2], 64)
-		intervals = append(intervals, MediaInterval{startMs + int64(start*1000), startMs + int64(end*1000)})
-	}
-	var mean, peak *float64
-	for _, match := range mediaVolumePattern.FindAllStringSubmatch(log, -1) {
-		value, err := strconv.ParseFloat(match[2], 64)
-		if err == nil {
-			if match[1] == "mean" {
-				mean = &value
-			} else {
-				peak = &value
-			}
-		}
-	}
-	return intervals, mean, peak
+	return false
 }

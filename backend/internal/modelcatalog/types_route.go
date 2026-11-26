@@ -217,12 +217,14 @@ type AdminChannelModelFetchResult struct {
 }
 
 type FailureInfo struct {
-	StatusCode    int
-	RetryAfter    time.Duration
-	SlotCode      string
-	ImageThrottle bool
-	ImageRecovery bool
-	Canceled      bool
+	StatusCode        int
+	RetryAfter        time.Duration
+	SlotCode          string
+	ImageThrottle     bool
+	ImageRecovery     bool
+	Canceled          bool
+	PreparationFailed bool
+	ExplicitRejection bool
 }
 
 type DispatchUncertainError struct{ Message string }

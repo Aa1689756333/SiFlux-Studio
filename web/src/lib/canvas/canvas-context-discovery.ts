@@ -1,8 +1,6 @@
 import { hashCanvasSnapshot, type CanvasOperation, type CanvasSnapshot } from "./canvas-operation-contract";
 import { CanvasNodeType, type CanvasNodeData } from "@/types/canvas";
 import { getNodeDefinition } from "./node-registry";
-import { isPluginEffectivelyEnabled } from "@/stores/use-plugin-store";
-import { inspectStoryboardReadiness } from "./canvas-storyboard-context";
 
 export type CanvasResourceInsight = {
     nodeId: string;
@@ -17,7 +15,6 @@ export type CanvasResourceInsight = {
     bytes?: number;
     width?: number;
     height?: number;
-    durationMs?: number;
     ready: boolean;
 };
 
@@ -47,7 +44,6 @@ export function buildCanvasContext(snapshot: CanvasSnapshot, options: { stateHas
         nodes: nodes.map(compactNode),
         connections: snapshot.connections.map((connection) => ({ id: connection.id, fromNodeId: connection.fromNodeId, fromTitle: nodeById.get(connection.fromNodeId)?.title || "未知节点", toNodeId: connection.toNodeId, toTitle: nodeById.get(connection.toNodeId)?.title || "未知节点", fromHandleId: connection.fromHandleId, toHandleId: connection.toHandleId })),
         resources,
-        storyboardReadiness: inspectStoryboardReadiness(snapshot.nodes),
         warnings: [
             ...(nodes.some((node) => node.metadata?.status === "error") ? ["画布中存在生成失败节点；重试前先检查错误信息。"] : []),
             ...(resources.some((resource) => !resource.ready) ? ["存在未就绪或缺少持久化引用的媒体节点，不要把占位节点当作可用参考素材。"] : []),
@@ -68,7 +64,7 @@ export function findCanvasNodes(snapshot: CanvasSnapshot, input: { query?: strin
         if (statuses && !statuses.has(String(metadata.status || "idle"))) return false;
         if (input.resourceOnly && !resourceFromNode(node)) return false;
         if (!query) return true;
-        return [node.id, node.title, metadata.content, metadata.prompt, metadata.composerContent, metadata.assetId, Array.isArray(metadata.assetTags) ? metadata.assetTags.join(" ") : "", metadata.workflowKind, metadata.workflowTitle, metadata.characterName]
+        return [node.id, node.title, metadata.content, metadata.prompt, metadata.composerContent, metadata.assetId, Array.isArray(metadata.assetTags) ? metadata.assetTags.join(" ") : "", metadata.workflowKind, metadata.workflowTitle]
             .some((value) => String(value || "").toLocaleLowerCase().includes(query));
     });
     return { query: input.query || "", total: nodes.length, truncated: nodes.length > limit, nodes: nodes.slice(0, limit).map(compactNode) };
@@ -155,7 +151,7 @@ export function validateCanvasOperations(snapshot: CanvasSnapshot, ops: CanvasOp
     ops.forEach((op, index) => {
         if (op.type === "add_node") {
             const definition = getNodeDefinition(op.nodeType || CanvasNodeType.Text);
-            if (!definition || (definition.plugin && !isPluginEffectivelyEnabled(definition.plugin.pluginId))) issues.push({ index, severity: "error", message: "节点未注册或插件不可用，请重新发现能力" });
+            if (!definition) issues.push({ index, severity: "error", message: "节点未注册，请重新发现能力" });
             validateNodeNumbers(issues, index, op as unknown as Record<string, unknown>);
             if (op.id && liveNodeIds.has(op.id)) issues.push({ index, severity: "error", message: `新增节点 id「${op.id}」重复` });
             if (op.id) liveNodeIds.add(op.id);
@@ -171,7 +167,7 @@ export function validateCanvasOperations(snapshot: CanvasSnapshot, ops: CanvasOp
         } else if (op.type === "run_generation") {
             requireNode(index, op.nodeId, "生成目标");
             const node = snapshot.nodes.find((item) => item.id === op.nodeId);
-            if (node && op.mode && op.mode !== node.type && !(op.mode === "text" && node.type === CanvasNodeType.Script)) issues.push({ index, severity: "error", message: `生成模式「${op.mode}」与节点类型「${node.type}」不匹配` });
+            if (node && op.mode && op.mode !== node.type) issues.push({ index, severity: "error", message: `生成模式「${op.mode}」与节点类型「${node.type}」不匹配` });
         } else if (op.type === "delete_node") {
             const ids = op.ids || (op.id ? [op.id] : op.nodeType ? snapshot.nodes.filter((node) => node.type === op.nodeType).map((node) => node.id) : []);
             if (!ids.length) issues.push({ index, severity: "error", message: "删除节点必须提供 id、ids 或 nodeType" });
@@ -233,7 +229,7 @@ function connectionSummary(connection: { id: string; fromNodeId: string; toNodeI
 }
 
 function isMediaNodeType(type: CanvasNodeData["type"] | undefined) {
-    return type === CanvasNodeType.Image || type === CanvasNodeType.Video || type === CanvasNodeType.Audio;
+    return type === CanvasNodeType.Image;
 }
 
 function compactNode(node: CanvasNodeData) {
@@ -251,8 +247,8 @@ function compactNode(node: CanvasNodeData) {
         prompt: preview(metadata.prompt || metadata.composerContent, 300),
         generation: metadata.generationMode || metadata.workflowKind || metadata.taskId ? { mode: metadata.generationMode, model: metadata.model, workflowKind: metadata.workflowKind, workflowTitle: metadata.workflowTitle, taskId: metadata.taskId, status: metadata.taskStatus || metadata.status, progress: numberValue(metadata.taskProgress ?? metadata.progress), stage: metadata.taskStage, provider: metadata.taskProvider, errorCode: metadata.taskErrorCode || metadata.generationErrorCode } : undefined,
         error: metadata.status === "error" ? preview(metadata.errorDetails || metadata.generationErrorCode, 360) : undefined,
-        asset: metadata.assetId || metadata.characterAssetId ? { assetId: metadata.assetId || metadata.characterAssetId, versionId: metadata.characterVersionId, category: metadata.assetCategory, tags: metadata.assetTags, characterName: metadata.characterName } : undefined,
-        resource: resource ? { resourceId: resource.resourceId, storageKey: resource.storageKey, mimeType: resource.mimeType, bytes: resource.bytes, width: resource.width, height: resource.height, durationMs: resource.durationMs, ready: resource.ready } : undefined,
+        asset: metadata.assetId ? { assetId: metadata.assetId, category: metadata.assetCategory, tags: metadata.assetTags } : undefined,
+        resource: resource ? { resourceId: resource.resourceId, storageKey: resource.storageKey, mimeType: resource.mimeType, bytes: resource.bytes, width: resource.width, height: resource.height, ready: resource.ready } : undefined,
     };
 }
 
@@ -260,10 +256,10 @@ function resourceFromNode(node: CanvasNodeData): CanvasResourceInsight | null {
     const metadata = (node.metadata || {}) as Record<string, unknown>;
     const storageKey = typeof metadata.storageKey === "string" && metadata.storageKey.trim() ? metadata.storageKey.trim() : undefined;
     const resourceId = storageKey?.startsWith("resource:") ? storageKey.slice("resource:".length) : stringValue(metadata.resourceId);
-    const hasSignal = Boolean(storageKey || resourceId || metadata.assetId || metadata.primaryImageId || metadata.mimeType || ["image", "video", "audio"].includes(node.type));
+    const hasSignal = Boolean(storageKey || resourceId || metadata.assetId || metadata.primaryImageId || metadata.mimeType || node.type === CanvasNodeType.Image);
     if (!hasSignal) return null;
     const status = String(metadata.status || "idle");
-    return { nodeId: node.id, nodeTitle: node.title || "未命名节点", nodeType: node.type, status, resourceId, storageKey, assetId: stringValue(metadata.assetId || metadata.characterAssetId), assetCategory: stringValue(metadata.assetCategory), mimeType: stringValue(metadata.mimeType), bytes: numberValue(metadata.bytes), width: numberValue(metadata.naturalWidth), height: numberValue(metadata.naturalHeight), durationMs: numberValue(metadata.durationMs), ready: status === "success" && Boolean(storageKey || resourceId || metadata.primaryImageId) };
+    return { nodeId: node.id, nodeTitle: node.title || "未命名节点", nodeType: node.type, status, resourceId, storageKey, assetId: stringValue(metadata.assetId), assetCategory: stringValue(metadata.assetCategory), mimeType: stringValue(metadata.mimeType), bytes: numberValue(metadata.bytes), width: numberValue(metadata.naturalWidth), height: numberValue(metadata.naturalHeight), ready: status === "success" && Boolean(storageKey || resourceId || metadata.primaryImageId) };
 }
 
 function preview(value: unknown, limit: number) {

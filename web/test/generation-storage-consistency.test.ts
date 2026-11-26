@@ -1,6 +1,6 @@
 import { expect, test } from "bun:test";
 
-type Scenario = "image-cleanup" | "scope-cleanup-switch" | "scope-cleanup-late-canvas-reference" | "video-commit-race" | "audio-commit-race" | "copied-video-save";
+type Scenario = "image-cleanup" | "scope-cleanup-switch" | "scope-cleanup-late-canvas-reference" | "copied-image-save";
 type ScenarioResponse<T> = { ok: true; result: T } | { ok: false; error: string };
 
 function runScenario<T>(scenario: Scenario): Promise<T> {
@@ -22,11 +22,11 @@ function runScenario<T>(scenario: Scenario): Promise<T> {
     });
 }
 
-test("a copied successful video survives ordinary persistence and a subsequent generation commit", async () => {
-    const result = await runScenario<{ copiedIds: string[]; completedIds: string[]; content: string; sourceKeys: string[]; copyKeys: string[] }>("copied-video-save");
+test("a copied successful image survives ordinary persistence and a subsequent generation commit", async () => {
+    const result = await runScenario<{ copiedIds: string[]; completedIds: string[]; content: string; sourceKeys: string[]; copyKeys: string[] }>("copied-image-save");
     expect(result.copiedIds).toEqual(["source", "copy"]);
     expect(result.completedIds).toEqual(["source", "copy"]);
-    expect(result.content).toBe("video-720p");
+    expect(result.content).toBe("resource:new-image");
     expect(result.sourceKeys).toEqual(["attach-node:old-task:source:0"]);
     expect(result.copyKeys).toEqual(["attach-node:new-task:copy:0"]);
 });
@@ -48,14 +48,4 @@ test("delayed cleanup preserves a same-scope Canvas-only reference added after c
     const result = await runScenario<{ referencedPresent: boolean; unusedPresent: boolean }>("scope-cleanup-late-canvas-reference");
     expect(result.referencedPresent).toBe(true);
     expect(result.unusedPresent).toBe(false);
-});
-
-test("generation video and audio materialization cannot race cleanup into a catalog row whose blob is missing", async () => {
-    for (const mediaType of ["video", "audio"] as const) {
-        const result = await runScenario<{ kind?: string; storageKey?: string; blobPresent: boolean; generationAssetCount: number }>(`${mediaType}-commit-race`);
-        expect(result.kind).toBe(mediaType);
-        expect(result.storageKey).toMatch(new RegExp(`^generation-${mediaType}:generation-media-commit-race-${mediaType}:`));
-        expect(result.blobPresent).toBe(true);
-        expect(result.generationAssetCount).toBe(1);
-    }
 });

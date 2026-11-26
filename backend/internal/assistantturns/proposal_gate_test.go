@@ -14,9 +14,11 @@ func TestProposalRunRejectedAfterUndo(t *testing.T) {
 		t.Fatal(err)
 	}
 	doc := fx.readCanvas(t)
-	doc["timeline"] = map[string]any{"version": 2, "durationMs": 2000}
+	nodes, _ := doc["nodes"].([]any)
+	node, _ := nodes[0].(map[string]any)
+	node["title"] = "助手改写"
 	revision := fx.writeCanvas(t, doc)
-	fx.receipt(t, turnID, "timeline-edit", "canvas.timeline.update", map[string]any{"canvasId": fx.canvasID, "revision": revision, "timelineUpdated": true})
+	fx.receipt(t, turnID, "node-edit", "canvas.node.update", map[string]any{"canvasId": fx.canvasID, "revision": revision, "nodeId": "n1"})
 	if err := fx.turns.Finalize(turnID); err != nil {
 		t.Fatal(err)
 	}

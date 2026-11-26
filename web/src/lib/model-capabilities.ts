@@ -1,4 +1,4 @@
-import { isVolcengineArkVideoProtocol, type ModelProtocol, type ModelProtocolWorkflow } from "@/lib/model-protocols";
+import { type ModelProtocol, type ModelProtocolWorkflow } from "@/lib/model-protocols";
 import { beefAPIImageContract } from "@/lib/beefapi-image-contracts";
 import type { ImageResolutionOption, ImageResolutionTier } from "@/lib/image-resolution-tiers";
 
@@ -6,7 +6,6 @@ export type ModelCapabilityConfig = {
     version: number;
     text?: TextCapabilityConfig;
     image?: ImageCapabilityConfig;
-    video?: VideoCapabilityConfig;
 };
 
 export type TextCapabilityConfig = {
@@ -18,21 +17,10 @@ export type TextCapabilityConfig = {
         promptMaxChars: number;
         maxImages: number;
         maxImageBytes: number;
-        maxVideos: number;
-        maxVideoBytes: number;
     };
 };
 
 export type ImageSizeParameter = "none" | "size" | "aspect_ratio";
-
-/**
- * 普通视频模型提示词字符数的默认上限。
- *
- * 视频提示词由「输入框文本 + 连线内容 + 技能上下文」合成，远长于用户手输内容，
- * 因此不能沿用偏小的默认值把画布工作流拦在本地。必须与后端
- * `DefaultVideoPromptMaxChars` 保持一致，否则前端放行后端拒绝（或反之）。
- */
-export const DEFAULT_VIDEO_PROMPT_MAX_CHARS = 8000;
 
 export type ImageCapabilityConfig = {
     references: {
@@ -59,60 +47,6 @@ export type ImageCapabilityConfig = {
     maxOutputs: number;
 };
 
-export type VideoCapabilityConfig = {
-    references: {
-        promptMaxChars: number;
-        minImages: number;
-        maxImages: number;
-        maxImageBytes: number;
-        minImageWidth?: number;
-        maxImageWidth?: number;
-        minImageHeight?: number;
-        maxImageHeight?: number;
-        minImageAspect?: number;
-        maxImageAspect?: number;
-        minImagePixels?: number;
-        maxImagePixels?: number;
-        maxVideos: number;
-        maxVideoBytes: number;
-        maxVideoDurationSeconds: number;
-        minVideoDurationSeconds?: number;
-        maxVideoTotalDurationSeconds?: number;
-        minVideoWidth?: number;
-        maxVideoWidth?: number;
-        minVideoHeight?: number;
-        maxVideoHeight?: number;
-        minVideoAspect?: number;
-        maxVideoAspect?: number;
-        minVideoPixels?: number;
-        maxVideoPixels?: number;
-        maxAudios: number;
-        maxAudioBytes: number;
-        maxAudioDurationSeconds: number;
-        minAudioDurationSeconds?: number;
-        maxAudioTotalDurationSeconds?: number;
-    };
-    duration: {
-		continuous?: boolean;
-		fractionalMin?: number;
-        selection: "range" | "enum";
-        min?: number;
-        max?: number;
-        step?: number;
-        values?: number[];
-        default: number;
-    };
-    durationSupported?: boolean;
-    ratios: string[];
-    defaultRatio: string;
-    resolutions: string[];
-    defaultResolution: string;
-    generateAudio: { supported: boolean; default: boolean };
-    watermark: { supported: boolean; default: boolean };
-    operations: string[];
-    defaultOperation: string;
-};
-
 // 旧版本的“允许自定义”可能只保存了 `*`，前台需要用这组标准值恢复可选项。
 export const STANDARD_IMAGE_SIZE_VALUES = ["1:1", "3:2", "2:3", "4:3", "3:4", "16:9", "21:9", "9:16", "1024x1024", "1536x1024", "1024x1536"] as const;
 
@@ -130,8 +64,12 @@ function normalizeCapabilityStrings(values: unknown[]) {
 
 export function normalizeModelCapabilityConfig(config: ModelCapabilityConfig): ModelCapabilityConfig {
     return {
-        ...config,
-        text: config.text ? { ...config.text, streaming: config.text.streaming !== false } : config.text,
+        version: config.version,
+        text: config.text ? {
+            streaming: config.text.streaming !== false,
+            thinking: config.text.thinking,
+            references: { promptMaxChars: config.text.references.promptMaxChars, maxImages: config.text.references.maxImages, maxImageBytes: config.text.references.maxImageBytes },
+        } : undefined,
         image: config.image
             ? {
                   ...config.image,
@@ -147,190 +85,7 @@ export function normalizeModelCapabilityConfig(config: ModelCapabilityConfig): M
                   },
               }
             : undefined,
-        video: config.video
-            ? {
-                  ...config.video,
-                  ratios: normalizeCapabilityStrings(config.video.ratios),
-                  defaultRatio: normalizeCapabilityString(config.video.defaultRatio),
-                  resolutions: normalizeCapabilityStrings(config.video.resolutions),
-                  defaultResolution: normalizeCapabilityString(config.video.defaultResolution),
-                  operations: normalizeCapabilityStrings(config.video.operations),
-                  defaultOperation: normalizeCapabilityString(config.video.defaultOperation),
-              }
-            : undefined,
     };
-}
-
-const catalogIntBounds: Record<string, [number, number]> = {
-    promptMaxChars: [1, 1_000_000],
-    minImages: [0, 100],
-    maxImages: [0, 100],
-    maxVideos: [0, 100],
-    maxAudios: [0, 100],
-    maxVideoDurationSeconds: [0, Number.MAX_SAFE_INTEGER],
-    minVideoDurationSeconds: [0, Number.MAX_SAFE_INTEGER],
-    maxAudioDurationSeconds: [0, Number.MAX_SAFE_INTEGER],
-    maxAudioTotalDurationSeconds: [0, Number.MAX_SAFE_INTEGER],
-    maxVideoTotalDurationSeconds: [0, Number.MAX_SAFE_INTEGER],
-    minImageWidth: [0, Number.MAX_SAFE_INTEGER],
-    maxImageWidth: [0, Number.MAX_SAFE_INTEGER],
-    minImageHeight: [0, Number.MAX_SAFE_INTEGER],
-    maxImageHeight: [0, Number.MAX_SAFE_INTEGER],
-    minVideoWidth: [0, Number.MAX_SAFE_INTEGER],
-    maxVideoWidth: [0, Number.MAX_SAFE_INTEGER],
-    minVideoHeight: [0, Number.MAX_SAFE_INTEGER],
-    maxVideoHeight: [0, Number.MAX_SAFE_INTEGER],
-};
-const catalogInt64Fields = ["maxImageBytes", "maxVideoBytes", "maxAudioBytes", "minImagePixels", "maxImagePixels", "minVideoPixels", "maxVideoPixels"] as const;
-const catalogFloatFields = ["minImageAspect", "maxImageAspect", "minVideoAspect", "maxVideoAspect", "minAudioDurationSeconds"] as const;
-
-function catalogObject(value: unknown): Record<string, unknown> | null {
-    return value && typeof value === "object" && !Array.isArray(value) ? (value as Record<string, unknown>) : null;
-}
-
-function catalogFiniteNumber(value: unknown): number | null {
-    return typeof value === "number" && Number.isFinite(value) ? value : null;
-}
-
-function catalogWholeNumber(value: unknown): number | null {
-    const number = catalogFiniteNumber(value);
-    return number !== null && Number.isInteger(number) ? number : null;
-}
-
-function catalogStringValue(value: unknown): string | null {
-    return typeof value === "string" ? value.trim() : null;
-}
-
-function catalogStringList(value: unknown, allowEmpty: boolean): string[] | null {
-    if (!Array.isArray(value)) return null;
-    const result: string[] = [];
-    const seen = new Set<string>();
-    for (const item of value) {
-        const text = catalogStringValue(item);
-        if (text === null) return null;
-        if (!text || seen.has(text)) continue;
-        seen.add(text);
-        result.push(text);
-    }
-    if (!allowEmpty && !result.length) return null;
-    return result;
-}
-
-function catalogBooleanConfig(value: unknown): { supported: boolean; default: boolean } | null {
-    const child = catalogObject(value);
-    if (!child || typeof child.supported !== "boolean" || typeof child.default !== "boolean") return null;
-    return { supported: child.supported, default: child.default };
-}
-
-function catalogNumbersFinite(value: unknown): boolean {
-    if (typeof value === "number") return Number.isFinite(value);
-    if (Array.isArray(value)) return value.every(catalogNumbersFinite);
-    if (value && typeof value === "object") return Object.values(value).every(catalogNumbersFinite);
-    return true;
-}
-
-function catalogPresentNumber(object: Record<string, number>, key: string): number | undefined {
-    return object[key];
-}
-
-function sanitizeCatalogReferences(input: Record<string, unknown>): VideoCapabilityConfig["references"] | null {
-    const refs: Record<string, number> = {};
-    for (const [key, bounds] of Object.entries(catalogIntBounds)) {
-        if (!(key in input)) continue;
-        const value = catalogWholeNumber(input[key]);
-        if (value === null || value < bounds[0] || value > bounds[1]) return null;
-        refs[key] = value;
-    }
-    for (const key of catalogInt64Fields) {
-        if (!(key in input)) continue;
-        const value = catalogWholeNumber(input[key]);
-        if (value === null || value < 0) return null;
-        refs[key] = value;
-    }
-    for (const key of catalogFloatFields) {
-        if (!(key in input)) continue;
-        const value = catalogFiniteNumber(input[key]);
-        if (value === null || value < 0) return null;
-        refs[key] = value;
-    }
-    const minImages = catalogPresentNumber(refs, "minImages");
-    const maxImages = catalogPresentNumber(refs, "maxImages");
-    if (minImages !== undefined && maxImages !== undefined && minImages > maxImages) return null;
-    const minVideo = catalogPresentNumber(refs, "minVideoDurationSeconds");
-    const maxVideo = catalogPresentNumber(refs, "maxVideoDurationSeconds");
-    if (minVideo !== undefined && maxVideo !== undefined && maxVideo > 0 && minVideo > maxVideo) return null;
-    const minAudio = catalogPresentNumber(refs, "minAudioDurationSeconds");
-    const maxAudio = catalogPresentNumber(refs, "maxAudioDurationSeconds");
-    if (minAudio !== undefined && maxAudio !== undefined && maxAudio > 0 && minAudio > maxAudio) return null;
-    return refs as VideoCapabilityConfig["references"];
-}
-
-function sanitizeCatalogDuration(input: Record<string, unknown>): VideoCapabilityConfig["duration"] | null {
-    const selection = catalogStringValue(input.selection);
-    const defaultValue = catalogWholeNumber(input.default);
-    if ((selection !== "range" && selection !== "enum") || defaultValue === null) return null;
-    if (selection === "range") {
-        if (input.continuous===true) {
-            const min=Number(input.min),max=Number(input.max),step=Number(input.step),fractionalMin=Number(input.fractionalMin ?? input.min);
-            if (![min,max,step,fractionalMin].every(Number.isFinite) || fractionalMin<.92 || fractionalMin>min || max<min || max>3600 || step<=0 || defaultValue<min || defaultValue>max) return null;
-            return {selection,min,max,step,fractionalMin,default:defaultValue,continuous:true};
-        }
-        const min = catalogWholeNumber(input.min);
-        const max = catalogWholeNumber(input.max);
-        const step = catalogWholeNumber(input.step);
-        if (min === null || max === null || step === null) return null;
-        if (min < 1 || max < min || max > 3600 || step < 1 || defaultValue < min || defaultValue > max || (defaultValue - min) % step !== 0) return null;
-        return { selection, min, max, step, default: defaultValue };
-    }
-    if (!Array.isArray(input.values) || !input.values.length || input.values.length > 100) return null;
-    const values: number[] = [];
-    const seen = new Set<number>();
-    for (const raw of input.values) {
-        const value = catalogWholeNumber(raw);
-        if (value === null || (value < 1 && value !== -1) || value > 3600 || seen.has(value)) return null;
-        seen.add(value);
-        values.push(value);
-    }
-    if (!seen.has(defaultValue)) return null;
-    return { selection, values, default: defaultValue };
-}
-
-export function sanitizeServerVideoCapability(value: unknown): VideoCapabilityConfig | null {
-    const object = catalogObject(value);
-    if (!object || !catalogNumbersFinite(object)) return null;
-    const references = catalogObject(object.references);
-    const duration = catalogObject(object.duration);
-    const generateAudio = catalogBooleanConfig(object.generateAudio);
-    const watermark = catalogBooleanConfig(object.watermark);
-    const ratios = catalogStringList(object.ratios, true);
-    const resolutions = catalogStringList(object.resolutions, true);
-    const operations = catalogStringList(object.operations, false);
-    const defaultRatio = catalogStringValue(object.defaultRatio);
-    const defaultResolution = catalogStringValue(object.defaultResolution);
-    const defaultOperation = catalogStringValue(object.defaultOperation);
-    if (!references || !duration || !generateAudio || !watermark || !ratios || !resolutions || !operations || defaultRatio === null || defaultResolution === null || !defaultOperation || !operations.includes(defaultOperation)) return null;
-    if (ratios.length ? !defaultRatio || !ratios.includes(defaultRatio) : defaultRatio !== "") return null;
-    if (resolutions.length ? !defaultResolution || !resolutions.includes(defaultResolution) : defaultResolution !== "") return null;
-    const normalizedDuration = sanitizeCatalogDuration(duration);
-    const normalizedRefs = sanitizeCatalogReferences(references);
-    if (!normalizedDuration || !normalizedRefs) return null;
-    const video: VideoCapabilityConfig = {
-        references: normalizedRefs,
-        duration: normalizedDuration,
-        ratios,
-        defaultRatio,
-        resolutions,
-        defaultResolution,
-        generateAudio,
-        watermark,
-        operations,
-        defaultOperation,
-    };
-    if ("durationSupported" in object) {
-        if (typeof object.durationSupported !== "boolean") return null;
-        video.durationSupported = object.durationSupported;
-    }
-    return video;
 }
 
 // Keep explicit pixel presets for each resolution tier so the settings panel can
@@ -486,154 +241,21 @@ export function defaultImageCapabilityConfig(protocol?: ModelProtocol, model = "
 }
 
 export function defaultModelCapabilityConfig(protocol?: ModelProtocol, model = ""): ModelCapabilityConfig {
-    const text: TextCapabilityConfig = {
-        streaming: true,
-        // 文本模型的视觉能力必须由管理员明确开启，不能根据模型名猜测。
-        references: { promptMaxChars: 32000, maxImages: 0, maxImageBytes: 0, maxVideos: 0, maxVideoBytes: 0 },
+    return {
+        version: 1,
+        text: { streaming: true, references: { promptMaxChars: 32000, maxImages: 0, maxImageBytes: 0 } },
+        image: defaultImageCapabilityConfig(protocol, model),
     };
-    const video: VideoCapabilityConfig = {
-        references: {
-            promptMaxChars: DEFAULT_VIDEO_PROMPT_MAX_CHARS,
-            minImages: 0,
-            maxImages: 9,
-            maxImageBytes: 30 * 1024 * 1024,
-            maxVideos: 0,
-            maxVideoBytes: 0,
-            maxVideoDurationSeconds: 0,
-            maxAudios: 0,
-            maxAudioBytes: 0,
-            maxAudioDurationSeconds: 0,
-        },
-        duration: { selection: "range", min: 1, max: 15, step: 1, default: 6 },
-        ratios: ["16:9", "9:16", "1:1", "4:3", "3:4", "21:9"],
-        defaultRatio: "16:9",
-        resolutions: ["480p", "720p", "1080p", "1440p", "2160p"],
-        defaultResolution: "720p",
-        generateAudio: { supported: false, default: false },
-        watermark: { supported: false, default: false },
-        operations: ["text_to_video", "image_to_video"],
-        defaultOperation: "text_to_video",
-    };
-    if (protocol === "full-video") {
-        const is25 = model.endsWith("2.5");
-        video.references.promptMaxChars = 4000;
-        video.references.maxImages = is25 ? 30 : 9;
-        video.references.maxVideos = is25 ? 10 : 3;
-        video.references.maxAudios = is25 ? 10 : 3;
-        video.references.maxVideoBytes = 100_000_000;
-        video.references.maxAudioBytes = 100_000_000;
-        video.references.minVideoDurationSeconds = 2;
-        video.references.minAudioDurationSeconds = 2;
-        video.references.maxVideoDurationSeconds = is25 ? 30 : 15;
-        video.references.maxAudioDurationSeconds = is25 ? 30 : 15;
-        video.duration = { selection: "range", min: 4, max: is25 ? 30 : 15, step: 1, default: 5 };
-        video.resolutions = is25 ? ["480p", "720p"] : ["480p", "720p", "1080p"];
-        video.defaultResolution = "480p";
-        video.operations = ["text_to_video", "image_to_video", "reference_to_video"];
-    }
-    if (protocol === "volcengine-jimeng-video") {
-        video.duration = { selection: "enum", values: [5, 10], default: 5 };
-        video.resolutions = ["720p"];
-    }
-    if (protocol === "gemini-veo") {
-        video.duration = { selection: "enum", values: [4, 6, 8], default: 6 };
-        video.resolutions = ["720p", "1080p"];
-    }
-    if (protocol === "volcengine-ark-video" || protocol === "volcengine-ark-agent-plan-video" || protocol === "newapi-channel-1" || protocol === "newapi-channel-2") {
-        video.references.maxVideos = 3;
-        video.references.maxAudios = 3;
-        video.references.maxVideoBytes = 200 * 1024 * 1024;
-        video.references.maxAudioBytes = 15 * 1024 * 1024;
-        video.references.maxVideoDurationSeconds = 15;
-        video.references.maxAudioDurationSeconds = 15;
-        video.generateAudio = { supported: true, default: true };
-    }
-    if (protocol === "volcengine-ark-video" || protocol === "volcengine-ark-agent-plan-video") {
-        video.references.minVideoDurationSeconds = 2;
-        video.references.minAudioDurationSeconds = 2;
-    }
-    if (protocol === "volcengine-ark-video" || protocol === "volcengine-ark-agent-plan-video" || protocol === "newapi-channel-1") video.resolutions = ["480p", "720p", "1080p"];
-    if (protocol === "volcengine-ark-video" || protocol === "volcengine-ark-agent-plan-video") {
-        video.watermark = { supported: true, default: false };
-        video.operations.push("reference_to_video");
-    }
-    if (protocol === "newapi-channel-2") {
-        // APIMart 的 Seedance 2.0 Video Generations 协议支持参考视频/音频，
-        // 但不是火山方舟 Agent Plan，因此单独声明全模态参考能力。
-        video.operations.push("reference_to_video");
-    }
-    if (protocol === "novita-video") {
-        video.references.maxImages = 1;
-        video.references.maxImageBytes = 10 * 1024 * 1024;
-        video.duration = { selection: "enum", values: [5, 10], default: 5 };
-        video.ratios = ["16:9", "9:16", "1:1"];
-        video.resolutions = ["1080p"];
-        video.defaultResolution = "1080p";
-    }
-    if (protocol === "minimax-video") {
-        video.references.maxImages = 9;
-        video.references.maxImageBytes = 30 * 1024 * 1024;
-        video.references.maxVideos = 3;
-        video.references.maxVideoBytes = 50 * 1024 * 1024;
-        video.references.maxVideoDurationSeconds = 15;
-        video.references.maxAudios = 3;
-        video.references.maxAudioBytes = 15 * 1024 * 1024;
-        video.references.maxAudioDurationSeconds = 15;
-        video.duration = { selection: "enum", values: [4, 5, 6, 7, 8, 9, 10, 11, 12, 13, 14, 15], default: 5 };
-        video.ratios = ["adaptive", "21:9", "16:9", "4:3", "1:1", "3:4", "9:16"];
-        video.resolutions = ["768P", "2K"];
-        video.defaultResolution = "768P";
-        video.watermark = { supported: true, default: false };
-        video.operations.push("reference_to_video");
-    }
-    if (
-        protocol === "agnes-video" &&
-        ["agnes-video-2.5", "agnes-video-2.5-flash"].includes(
-            String(model ?? "")
-                .trim()
-                .toLowerCase(),
-        )
-    ) {
-        const flash =
-            String(model ?? "")
-                .trim()
-                .toLowerCase() === "agnes-video-2.5-flash";
-        video.references.maxImages = flash ? 5 : 9;
-        video.references.maxVideos = flash ? 0 : 3;
-        video.references.maxAudios = 3;
-        video.duration = { selection: "range", min: 4, max: 12, step: 1, default: 5 };
-        video.ratios = ["21:9", "16:9", "4:3", "1:1", "3:4", "9:16"];
-        video.defaultRatio = "16:9";
-        video.resolutions = flash ? ["720P"] : ["720P", "960P", "2K"];
-        video.defaultResolution = "720P";
-        video.operations.push("reference_to_video", "audio_to_video");
-    }
-    if (isSeedance2Family(protocol, model)) {
-        if (protocol === "newapi") video.generateAudio = { supported: true, default: true };
-        video.references = overlayOfficialSeedance2References(video.references, isSeedance25Model(model));
-        if (protocol === "volcengine-ark-video" || protocol === "volcengine-ark-agent-plan-video") video.references.minAudioDurationSeconds = 2;
-        video.operations = Array.from(new Set([...video.operations, "reference_to_video", ...(isSeedance25Model(model) ? ["audio_to_video" as const] : [])]));
-        if (isSeedance25Model(model) && video.duration.selection === "range" && (video.duration.max || 0) < 30) {
-            video.duration = { ...video.duration, max: 30 };
-        }
-    }
-    return { version: 1, text, image: defaultImageCapabilityConfig(protocol, model), video };
 }
 
 export function pluginWorkflowCapabilityConfig(protocol: ModelProtocol, workflow: ModelProtocolWorkflow): ModelCapabilityConfig | undefined {
-    if (workflow.capability !== "image" && workflow.capability !== "video") return undefined;
+    if (workflow.capability !== "image") return undefined;
     const fallback = defaultModelCapabilityConfig(protocol, workflow.id);
-    const fields: WorkflowVideoFieldLike[] = workflow.parameters.map((parameter) => ({
-        fieldName: parameter.name,
-        source: parameter.mapping,
-        fieldType: parameter.type,
-        options: parameter.values,
-        defaultValue: workflow.defaults?.[parameter.name],
+    const fields: WorkflowFieldLike[] = workflow.parameters.map((parameter) => ({
+        fieldName: parameter.name, source: parameter.mapping, fieldType: parameter.type,
+        options: parameter.values, defaultValue: workflow.defaults?.[parameter.name],
     }));
-    if (workflow.capability === "image") {
-        return { ...fallback, image: workflowImageCapabilityConfig(fields, fallback.image!) };
-    }
-    return { ...fallback, video: workflowVideoCapabilityConfig(fields, fallback.video!) };
+    return { ...fallback, image: workflowImageCapabilityConfig(fields, fallback.image!) };
 }
 
 export function modelCapabilityConfigFor(
@@ -644,29 +266,12 @@ export function modelCapabilityConfigFor(
     const channelId = separator >= 0 ? model.slice(0, separator) : "";
     const modelName = separator >= 0 ? model.slice(separator + 2) : model;
     const channel = config.channels.find((item) => item.id === channelId) || config.channels.find((item) => item.models.includes(modelName));
-    // Older desktop config migrations can leave two entries for the same model:
-    // a legacy operation-only array followed by the real capability object. The
-    // first-match lookup silently selected the malformed legacy entry, so video
-    // reference requests were evaluated against stale limits. Prefer a complete
-    // capability object while retaining the legacy entry as a fallback.
     const profile = channel?.modelProfiles?.find((item) => item.model === modelName && item.capabilityConfig && !Array.isArray(item.capabilityConfig)) || channel?.modelProfiles?.find((item) => item.model === modelName);
     const protocol = profile?.protocol || channel?.interfaceType;
     const fallback = defaultModelCapabilityConfig(protocol, modelName);
-    const alignMaterialPixels = (video: VideoCapabilityConfig | undefined) => {
-        let host = "";
-        try { host = new URL(channel?.baseUrl || "").hostname.toLowerCase(); } catch { /* no public URL */ }
-        const materialHost = ["api.siflux.cn"].includes(host);
-        if (video && isSeedance2Family(protocol, modelName) && (isVolcengineArkVideoProtocol(protocol) || materialHost) && video.references.minVideoPixels === 409600 && video.references.maxVideoPixels === 8295044) video.references.minVideoPixels = 407696;
-    };
-
-    if (!profile?.capabilityConfig) {
-        alignMaterialPixels(fallback.video);
-        return fallback;
-    }
+    if (!profile?.capabilityConfig) return fallback;
     const capabilityConfig = normalizeModelCapabilityConfig(profile.capabilityConfig);
     const text = capabilityConfig.text ? { ...fallback.text!, ...capabilityConfig.text, references: { ...fallback.text!.references, ...capabilityConfig.text.references } } : fallback.text;
-    const video = (capabilityConfig.video ? { ...fallback.video!, ...capabilityConfig.video, references: { ...fallback.video!.references, ...capabilityConfig.video.references } } : fallback.video)!;
-    alignMaterialPixels(video);
     const configuredImage = capabilityConfig.image;
     const image = configuredImage
         ? (() => {
@@ -690,52 +295,10 @@ export function modelCapabilityConfigFor(
               };
           })()
         : fallback.image;
-    return { ...fallback, ...capabilityConfig, text, image, video };
+    return { version: capabilityConfig.version || fallback.version, text, image };
 }
 
-function isSeedance2Family(protocol: ModelProtocol | undefined, modelName: string) {
-    return Boolean(protocol && ["openai", "openai-videos", "newapi", "newapi-channel-2", "volcengine-ark-video", "volcengine-ark-agent-plan-video"].includes(protocol) && String(modelName).toLowerCase().includes("seedance-2"));
-}
-
-export function isSeedance25Model(modelName: string) {
-    const base = String(modelName).trim().toLowerCase().split("/").pop() || "";
-    return /^seedance-2\.5(?:-|$)/.test(base) || /^doubao-seedance-2[.-]5(?:-|$)/.test(base);
-}
-
-function overlayOfficialSeedance2References(base: VideoCapabilityConfig["references"], is25: boolean): VideoCapabilityConfig["references"] {
-    return {
-        ...base,
-        maxImages: is25 ? 30 : 9,
-        maxVideos: is25 ? 10 : 3,
-        maxVideoBytes: 200 * 1024 * 1024,
-        maxVideoDurationSeconds: is25 ? 30 : 15,
-        minVideoDurationSeconds: 2,
-        maxVideoTotalDurationSeconds: is25 ? 30 : 15,
-        maxAudios: is25 ? 10 : 3,
-        maxAudioBytes: 15 * 1024 * 1024,
-        maxAudioDurationSeconds: is25 ? 30 : 15,
-        minAudioDurationSeconds: 1.8,
-        maxAudioTotalDurationSeconds: is25 ? 30 : 15,
-        maxImageBytes: base.maxImageBytes || 30 * 1024 * 1024,
-        minImageWidth: 300,
-        maxImageWidth: 6000,
-        minImageHeight: 300,
-        maxImageHeight: 6000,
-        minImageAspect: 0.4,
-        maxImageAspect: 2.5,
-        minVideoWidth: 300,
-        maxVideoWidth: 6000,
-        minVideoHeight: 300,
-        maxVideoHeight: 6000,
-        minVideoAspect: 0.4,
-        maxVideoAspect: 2.5,
-        minVideoPixels: 409600,
-        maxVideoPixels: 8295044,
-    };
-}
-
-// 工作流字段是供应商参数的唯一事实来源；不能用普通视频模型的固定清晰度列表覆盖它。
-export type WorkflowVideoFieldLike = {
+export type WorkflowFieldLike = {
     nodeId?: string;
     classType?: string;
     fieldName?: string;
@@ -760,22 +323,22 @@ export type WorkflowVideoFieldLike = {
 
 export type WorkflowFieldNumberBounds = { min?: number; max?: number; step?: number };
 
-export function workflowFieldKey(field: WorkflowVideoFieldLike) {
+export function workflowFieldKey(field: WorkflowFieldLike) {
     return `field:${String(field.nodeId || "").trim()}:${String(field.fieldName || "").trim()}`;
 }
 
-export function workflowFieldRandomKey(field: WorkflowVideoFieldLike) {
+export function workflowFieldRandomKey(field: WorkflowFieldLike) {
     return `random:${String(field.nodeId || "").trim()}:${String(field.fieldName || "").trim()}`;
 }
 
-export function workflowFieldSource(field: WorkflowVideoFieldLike) {
+export function workflowFieldSource(field: WorkflowFieldLike) {
     return String(field.source || "")
         .trim()
         .replace(/[\s_-]/g, "")
         .toLowerCase();
 }
 
-export function workflowParameterFields(fields: readonly WorkflowVideoFieldLike[]) {
+export function workflowParameterFields(fields: readonly WorkflowFieldLike[]) {
     return fields.filter((field) => {
         const source = workflowFieldSource(field);
         const fieldType = String(field.fieldType || "")
@@ -788,7 +351,7 @@ export function workflowParameterFields(fields: readonly WorkflowVideoFieldLike[
     });
 }
 
-export function workflowFieldSafeToOverride(field: WorkflowVideoFieldLike) {
+export function workflowFieldSafeToOverride(field: WorkflowFieldLike) {
     if (field.safeToOverride === false) return false;
     const classType = String(field.classType || "")
         .trim()
@@ -800,7 +363,7 @@ export function workflowFieldSafeToOverride(field: WorkflowVideoFieldLike) {
     return classType !== "imageresize+" || !["width", "height", "multiple_of"].includes(fieldName);
 }
 
-export function workflowFieldRole(field: WorkflowVideoFieldLike) {
+export function workflowFieldRole(field: WorkflowFieldLike) {
     if (["prompt", "media", "business", "internal"].includes(String(field.role || ""))) return String(field.role);
     const source = workflowFieldSource(field);
     const fieldType = String(field.fieldType || "")
@@ -809,15 +372,11 @@ export function workflowFieldRole(field: WorkflowVideoFieldLike) {
     if (["prompt", "text", "positiveprompt", "positive"].includes(source)) return "prompt";
     if (["referenceimage", "image", "referencevideo", "video", "referenceaudio", "audio", "mask"].includes(source) || ["IMAGE", "VIDEO", "AUDIO"].includes(fieldType)) return "media";
     if (!workflowFieldSafeToOverride(field)) return "internal";
-    const key = normalizeWorkflowVideoFieldKey(String(field.fieldName || ""));
+    const key = normalizeWorkflowFieldKey(String(field.fieldName || ""));
     if (
         [
             "aspectratio",
             "ratio",
-            "duration",
-            "durationseconds",
-            "seconds",
-            "videoseconds",
             "quality",
             "resolution",
             "seed",
@@ -832,12 +391,9 @@ export function workflowFieldRole(field: WorkflowVideoFieldLike) {
             "sampler",
             "samplername",
             "scheduler",
-            "fps",
             "count",
             "batch",
             "batchsize",
-            "generateaudio",
-            "watermark",
             "negativeprompt",
             "systemprompt",
         ].includes(key)
@@ -847,7 +403,7 @@ export function workflowFieldRole(field: WorkflowVideoFieldLike) {
 }
 
 /** 读取工作流字段声明的连续数值范围；兼容 RunningHub 将范围包在 options/range 中的返回格式。 */
-export function workflowFieldNumberBounds(field: WorkflowVideoFieldLike | undefined): WorkflowFieldNumberBounds {
+export function workflowFieldNumberBounds(field: WorkflowFieldLike | undefined): WorkflowFieldNumberBounds {
     if (!field) return {};
     const sources: Record<string, unknown>[] = [field as unknown as Record<string, unknown>];
     const options = Array.isArray(field.options) ? field.options : [];
@@ -873,7 +429,7 @@ export function workflowFieldNumberBounds(field: WorkflowVideoFieldLike | undefi
 }
 
 /** 只有真正的枚举项才作为下拉选项；范围对象交给 InputNumber。 */
-export function workflowFieldChoiceValues(field: WorkflowVideoFieldLike | undefined) {
+export function workflowFieldChoiceValues(field: WorkflowFieldLike | undefined) {
     const bounds = workflowFieldNumberBounds(field);
     if (bounds.min !== undefined && bounds.max !== undefined && bounds.step !== undefined) return [];
     const protocolOptions = workflowFieldChoiceValuesFromProtocol(field);
@@ -883,7 +439,7 @@ export function workflowFieldChoiceValues(field: WorkflowVideoFieldLike | undefi
 }
 
 /** ComfyUI 的枚举按完整字符串校验；旧画布中的比例简写只能映射到唯一同前缀原值。 */
-export function workflowFieldSubmissionValue(field: WorkflowVideoFieldLike, value: unknown) {
+export function workflowFieldSubmissionValue(field: WorkflowFieldLike, value: unknown) {
     const choices = workflowFieldSubmissionChoices(field);
     const submitted = workflowFieldOptionValue(value);
     if (!choices.length || choices.some((choice) => workflowFieldOptionValue(choice) === submitted)) return value;
@@ -895,9 +451,9 @@ export function workflowFieldSubmissionValue(field: WorkflowVideoFieldLike, valu
 
 const resolutionSelectorAspectRatioOptions = ["1:1 (Square)", "2:3 (Portrait Photo)", "3:2 (Photo)", "3:4 (Portrait Standard)", "4:3 (Standard)", "9:16 (Portrait Widescreen)", "16:9 (Widescreen)", "21:9 (Ultrawide)"];
 
-function workflowFieldSubmissionChoices(field: WorkflowVideoFieldLike) {
-    const classType = normalizeWorkflowVideoFieldKey(String(field.classType || ""));
-    const fieldName = normalizeWorkflowVideoFieldKey(String(field.fieldName || ""));
+function workflowFieldSubmissionChoices(field: WorkflowFieldLike) {
+    const classType = normalizeWorkflowFieldKey(String(field.classType || ""));
+    const fieldName = normalizeWorkflowFieldKey(String(field.fieldName || ""));
     // RunningHub 的 API JSON 只有当前值，没有 ComfyUI object_info。该节点的真实枚举
     // 来自节点类型合同，不能使用通用比例模板冒充上游 options。
     if (classType === "resolutionselector" && fieldName === "aspectratio") return resolutionSelectorAspectRatioOptions;
@@ -919,26 +475,26 @@ const workflowKnownOptions: Record<string, string[]> = {
     scheduler: ["normal", "karras", "exponential", "sgm_uniform", "simple", "ddim_uniform", "beta"],
 };
 
-export function workflowFieldPresetOptions(field: WorkflowVideoFieldLike | undefined) {
+export function workflowFieldPresetOptions(field: WorkflowFieldLike | undefined) {
     if (!field) return [];
     const fieldType = String(field.fieldType || "")
         .trim()
         .toUpperCase();
     if (["NUMBER", "FLOAT", "INTEGER", "INT", "SLIDER", "BOOLEAN", "BOOL", "IMAGE", "VIDEO", "AUDIO"].includes(fieldType)) return [];
-    const classType = normalizeWorkflowVideoFieldKey(String(field.classType || ""));
-    const key = normalizeWorkflowVideoFieldKey(String(field.fieldName || ""));
+    const classType = normalizeWorkflowFieldKey(String(field.classType || ""));
+    const key = normalizeWorkflowFieldKey(String(field.fieldName || ""));
     if (classType === "resolutionselector" && key === "aspectratio") return resolutionSelectorAspectRatioOptions;
     return workflowKnownOptions[key] || [];
 }
 
-export function workflowFieldConfigurationError(field: WorkflowVideoFieldLike) {
+export function workflowFieldConfigurationError(field: WorkflowFieldLike) {
     const bounds = workflowFieldNumberBounds(field);
     if (bounds.min !== undefined && bounds.max !== undefined && bounds.min > bounds.max) return "最小值不能大于最大值";
     if (bounds.step !== undefined && bounds.step <= 0) return "步长必须大于 0";
     return "";
 }
 
-export function workflowFieldValueError(field: WorkflowVideoFieldLike, value: unknown) {
+export function workflowFieldValueError(field: WorkflowFieldLike, value: unknown) {
     const configurationError = workflowFieldConfigurationError(field);
     if (configurationError) return configurationError;
     const fieldType = String(field.fieldType || "")
@@ -961,10 +517,10 @@ export function workflowFieldValueError(field: WorkflowVideoFieldLike, value: un
     return "";
 }
 
-export function workflowImageCapabilityConfig(fields: readonly WorkflowVideoFieldLike[], fallback = defaultModelCapabilityConfig().image!): ImageCapabilityConfig {
-    const ratioField = fields.find((field) => workflowVideoFieldMatches(field, "aspectratio"));
-    const sizeField = fields.find((field) => workflowVideoFieldMatches(field, "size"));
-    const qualityField = fields.find((field) => workflowVideoFieldMatches(field, "quality"));
+export function workflowImageCapabilityConfig(fields: readonly WorkflowFieldLike[], fallback = defaultModelCapabilityConfig().image!): ImageCapabilityConfig {
+    const ratioField = fields.find((field) => workflowFieldMatches(field, "aspectratio"));
+    const sizeField = fields.find((field) => workflowFieldMatches(field, "size"));
+    const qualityField = fields.find((field) => workflowFieldMatches(field, "quality"));
     const ratioOptions = workflowFieldChoiceValues(ratioField).map(workflowFieldOptionValue).filter(Boolean);
     const ratioDefault = workflowFieldDefaultValue(ratioField);
     const sizeOptions = workflowFieldChoiceValues(sizeField).map(workflowFieldOptionValue).filter(Boolean);
@@ -983,92 +539,22 @@ export function workflowImageCapabilityConfig(fields: readonly WorkflowVideoFiel
     };
 }
 
-export function workflowVideoCapabilityConfig(fields: readonly WorkflowVideoFieldLike[], fallback = defaultModelCapabilityConfig().video!): VideoCapabilityConfig {
-    const profile: VideoCapabilityConfig = {
-        ...fallback,
-        references: { ...fallback.references },
-        duration: { ...fallback.duration, values: fallback.duration.values ? [...fallback.duration.values] : undefined },
-        ratios: [...fallback.ratios],
-        resolutions: [...fallback.resolutions],
-        generateAudio: { ...fallback.generateAudio },
-        watermark: { ...fallback.watermark },
-    };
-    // 工作流没有统一的分辨率/时长协议。清空普通模型的候选值，
-    // 后面只根据工作流字段自身声明的 options 或数值范围恢复控件。
-    profile.resolutions = [];
-    profile.defaultResolution = "";
-    profile.ratios = [];
-    profile.defaultRatio = "";
-    profile.duration = { selection: "enum", values: [], default: fallback.duration.default };
-    profile.generateAudio = { supported: false, default: false };
-    profile.watermark = { supported: false, default: false };
-    const resolutionField = fields.find((field) => workflowVideoFieldMatches(field, "vquality"));
-    const durationField = fields.find((field) => workflowVideoFieldMatches(field, "videoseconds"));
-    const ratioField = fields.find((field) => workflowVideoFieldMatches(field, "aspectratio"));
-
-    if (resolutionField) {
-        const options = workflowFieldChoiceValues(resolutionField).map(workflowFieldOptionValue).filter(Boolean);
-        const bounds = workflowFieldNumberBounds(resolutionField);
-        const generated = options.length ? options : bounds.min !== undefined && bounds.max !== undefined ? [] : workflowNumericFieldValues(resolutionField);
-        const defaultValue = workflowFieldDefaultValue(resolutionField);
-        if (bounds.min === undefined || bounds.max === undefined || bounds.max < bounds.min) {
-            if (generated.length) profile.resolutions = generated;
-        } else if (defaultValue !== "") profile.resolutions = [defaultValue];
-        if (profile.resolutions.length) profile.defaultResolution = matchWorkflowValue(defaultValue, profile.resolutions) || profile.resolutions[0];
-    }
-    if (durationField) {
-        const options = workflowFieldChoiceValues(durationField)
-            .map(workflowFieldOptionValue)
-            .map(workflowDurationNumber)
-            .filter((value): value is number => value !== undefined);
-        const bounds = workflowFieldNumberBounds(durationField);
-        const generated = options.length ? options : workflowNumericFieldValues(durationField).map(Number).filter(Number.isFinite);
-        const defaultValue = Number(workflowFieldDefaultValue(durationField));
-        if (generated.length) {
-            profile.duration = { selection: "enum", values: [...new Set(generated)], default: Number.isFinite(defaultValue) ? defaultValue : generated[0] };
-        } else {
-            const min = bounds.min;
-            const max = bounds.max;
-            const step = bounds.step;
-            if (min !== undefined && max !== undefined && max >= min) {
-                profile.duration = { selection: "range", min, max, ...(step !== undefined && step > 0 ? { step } : {}), default: Number.isFinite(defaultValue) ? defaultValue : min };
-            } else if (Number.isFinite(defaultValue)) {
-                // 只有默认值时不能臆造通用时长选项，只保留工作流当前值。
-                profile.duration = { selection: "enum", values: [defaultValue], default: defaultValue };
-            }
-        }
-    }
-    if (ratioField) {
-        const options = workflowFieldOptionValues(ratioField.options);
-        const defaultValue = workflowFieldDefaultValue(ratioField);
-        // 工作流声明了比例字段时，不能继续沿用普通模型的比例列表。
-        // 没有 options 时只保留该字段当前默认值（例如 `auto`）。
-        profile.ratios = options.length ? options : defaultValue ? [defaultValue] : [];
-        if (profile.ratios.length) profile.defaultRatio = matchWorkflowValue(defaultValue, profile.ratios) || profile.ratios[0];
-    }
-    const generateAudioField = fields.find((field) => workflowBooleanFieldMatches(field, "generateaudio"));
-    const watermarkField = fields.find((field) => workflowBooleanFieldMatches(field, "watermark"));
-    if (generateAudioField) profile.generateAudio = { supported: true, default: workflowBooleanDefault(generateAudioField) };
-    if (watermarkField) profile.watermark = { supported: true, default: workflowBooleanDefault(watermarkField) };
-    return profile;
-}
-
 /** 读取工作流当前选择的比例/尺寸；字段没有语义名时仅识别纯尺寸枚举。 */
-export function workflowOutputSizeValue(fields: readonly WorkflowVideoFieldLike[], values: Readonly<Record<string, unknown>>) {
+export function workflowOutputSizeValue(fields: readonly WorkflowFieldLike[], values: Readonly<Record<string, unknown>>) {
     const field =
-        fields.find((item) => workflowVideoFieldMatches(item, "aspectratio")) ||
-        fields.find((item) => workflowVideoFieldMatches(item, "size")) ||
+        fields.find((item) => workflowFieldMatches(item, "aspectratio")) ||
+        fields.find((item) => workflowFieldMatches(item, "size")) ||
         fields.find((item) => {
             const options = workflowFieldChoiceValues(item).map(workflowFieldOptionValue).filter(Boolean);
             return options.length > 1 && options.every(workflowOutputSizeLike);
         });
     const value = workflowFieldCurrentValue(field, values);
     const submitted = !field || value === undefined ? "" : workflowFieldOptionValue(workflowFieldSubmissionValue(field, value));
-    return submitted || workflowVideoDefaultSize(fields, values);
+    return submitted || workflowDefaultSize(fields, values);
 }
 
 /** 从工作流同一节点的 width/height 字段读取默认输出尺寸。 */
-export function workflowVideoDefaultSize(fields: readonly WorkflowVideoFieldLike[], values: Readonly<Record<string, unknown>> = {}) {
+export function workflowDefaultSize(fields: readonly WorkflowFieldLike[], values: Readonly<Record<string, unknown>> = {}) {
     const candidates = fields.filter((field) => workflowDimensionFieldMatches(field, "width") || workflowDimensionFieldMatches(field, "height"));
     const groups = Array.from(new Set(candidates.map((field) => String(field.nodeId || "").trim()).filter(Boolean)));
     const orderedGroups = groups.sort((left, right) => {
@@ -1099,9 +585,9 @@ export function workflowVideoDefaultSize(fields: readonly WorkflowVideoFieldLike
     return "";
 }
 
-export function workflowVideoFieldsFromJson(value: Record<string, unknown> | undefined) {
-    if (!value || typeof value !== "object") return [] as WorkflowVideoFieldLike[];
-    const fields: WorkflowVideoFieldLike[] = [];
+export function workflowFieldsFromJson(value: Record<string, unknown> | undefined) {
+    if (!value || typeof value !== "object") return [] as WorkflowFieldLike[];
+    const fields: WorkflowFieldLike[] = [];
     Object.entries(value).forEach(([nodeId, rawNode]) => {
         if (!rawNode || typeof rawNode !== "object" || Array.isArray(rawNode)) return;
         const node = rawNode as Record<string, unknown>;
@@ -1120,42 +606,23 @@ export function workflowVideoFieldsFromJson(value: Record<string, unknown> | und
     return fields;
 }
 
-function workflowVideoFieldMatches(field: WorkflowVideoFieldLike, source: string) {
-    const keys = [field.source, field.fieldName, field.label].map((value) => normalizeWorkflowVideoFieldKey(String(value || ""))).filter(Boolean);
-    if (source === "vquality") {
-        // quality 是工作流自己的质量参数（可能是 0.1-3 这类连续值），
-        // 只有显式 videoquality/videoresolution/vquality 才属于视频分辨率。
-        if (workflowFieldSource(field) === "quality" || keys.some((key) => ["quality", "imagequality"].includes(key))) return false;
-        return keys.some((key) => ["vquality", "videoresolution", "videoquality", "resolution"].includes(key) || key.includes("清晰度") || key.includes("分辨率"));
-    }
-    if (source === "videoseconds") {
-        return keys.some((key) => ["videoseconds", "duration", "seconds", "durationseconds", "videoduration", "videodurationseconds", "videolength", "clipduration"].includes(key) || key.includes("时长") || key.includes("秒数"));
-    }
+function workflowFieldMatches(field: WorkflowFieldLike, source: string) {
+    const keys = [field.source, field.fieldName, field.label].map((value) => normalizeWorkflowFieldKey(String(value || ""))).filter(Boolean);
     if (source === "size") {
         return keys.some((key) => ["size", "imagesize", "imageresolution", "resolution"].includes(key));
     }
     if (source === "quality") {
         return workflowFieldSource(field) === "quality" || keys.some((key) => ["quality", "imagequality"].includes(key) || key.includes("清晰度"));
     }
-    return keys.some((key) => ["aspectratio", "ratio", "imageaspectratio", "imageratio", "videoaspectratio", "videoratio"].includes(key));
+    return keys.some((key) => ["aspectratio", "ratio", "imageaspectratio", "imageratio"].includes(key));
 }
 
-function workflowDimensionFieldMatches(field: WorkflowVideoFieldLike, dimension: "width" | "height") {
-    const keys = [field.source, field.fieldName, field.label].map((value) => normalizeWorkflowVideoFieldKey(String(value || ""))).filter(Boolean);
+function workflowDimensionFieldMatches(field: WorkflowFieldLike, dimension: "width" | "height") {
+    const keys = [field.source, field.fieldName, field.label].map((value) => normalizeWorkflowFieldKey(String(value || ""))).filter(Boolean);
     return keys.some((key) => key === dimension || key.endsWith(dimension) || key.includes(`${dimension}pixels`));
 }
 
-function workflowBooleanFieldMatches(field: WorkflowVideoFieldLike, name: "generateaudio" | "watermark") {
-    const keys = [field.source, field.fieldName, field.label].map((value) => normalizeWorkflowVideoFieldKey(String(value || ""))).filter(Boolean);
-    return keys.some((key) => key === name || key.endsWith(name));
-}
-
-function workflowBooleanDefault(field: WorkflowVideoFieldLike) {
-    const value = workflowFieldDefaultValue(field).toLowerCase();
-    return value === "true" || value === "1" || value === "yes";
-}
-
-function normalizeWorkflowVideoFieldKey(value: string) {
+function normalizeWorkflowFieldKey(value: string) {
     return String(value)
         .toLowerCase()
         .replace(/[\s_-]/g, "");
@@ -1169,11 +636,11 @@ function workflowFieldOptionValues(options: unknown[] | undefined) {
         .filter(Boolean);
 }
 
-function workflowFieldChoiceValuesFromProtocol(field: WorkflowVideoFieldLike | undefined) {
+function workflowFieldChoiceValuesFromProtocol(field: WorkflowFieldLike | undefined) {
     const explicit = workflowFieldOptionValues(field?.options);
     if (explicit.length) return explicit;
-    const classType = normalizeWorkflowVideoFieldKey(String(field?.classType || ""));
-    const fieldName = normalizeWorkflowVideoFieldKey(String(field?.fieldName || ""));
+    const classType = normalizeWorkflowFieldKey(String(field?.classType || ""));
+    const fieldName = normalizeWorkflowFieldKey(String(field?.fieldName || ""));
     // RunningHub 对该节点有固定枚举，但 getJsonApiFormat 可能只返回默认值；
     // 只有节点类型和字段名同时匹配时才补齐，避免把所有工作流比例强制成同一套选项。
     if (classType === "resolutionselector" && fieldName === "aspectratio") return resolutionSelectorAspectRatioOptions;
@@ -1203,7 +670,7 @@ function workflowOutputSizeLike(value: string) {
     return /^\d+(?:\.\d+)?(?:x|:)\d+(?:\.\d+)?(?:-|$)/i.test(value.trim());
 }
 
-function workflowFieldDefaultValue(field: WorkflowVideoFieldLike | undefined) {
+function workflowFieldDefaultValue(field: WorkflowFieldLike | undefined) {
     if (!field) return "";
     return workflowFieldOptionValue(field.fieldValue ?? field.defaultValue ?? field.value ?? field.default);
 }
@@ -1212,7 +679,7 @@ function workflowFieldDefaultValue(field: WorkflowVideoFieldLike | undefined) {
  * 读取画布当前的工作流字段值。新版本按 nodeId + fieldName 保存；旧画布曾按
  * source 语义键保存，比例字段必须兼容读取，否则会静默回退到工作流默认的 1:1。
  */
-export function workflowFieldCurrentValue(field: WorkflowVideoFieldLike | undefined, values: Readonly<Record<string, unknown>>) {
+export function workflowFieldCurrentValue(field: WorkflowFieldLike | undefined, values: Readonly<Record<string, unknown>>) {
     if (!field) return undefined;
     for (const key of [workflowFieldKey(field), ...workflowFieldLegacyKeys(field)]) {
         if (Object.prototype.hasOwnProperty.call(values, key)) return values[key];
@@ -1232,7 +699,7 @@ export function workflowFieldCurrentValue(field: WorkflowVideoFieldLike | undefi
     return field.fieldValue ?? field.defaultValue ?? field.value ?? field.default;
 }
 
-export function workflowFieldHasStoredValue(field: WorkflowVideoFieldLike | undefined, values: Readonly<Record<string, unknown>>) {
+export function workflowFieldHasStoredValue(field: WorkflowFieldLike | undefined, values: Readonly<Record<string, unknown>>) {
     if (!field) return false;
     if ([workflowFieldKey(field), ...workflowFieldLegacyKeys(field)].some((key) => Object.prototype.hasOwnProperty.call(values, key))) return true;
     const nodeKey = normalizeWorkflowParameterPart(field.nodeId);
@@ -1251,48 +718,21 @@ function normalizeWorkflowParameterPart(value: unknown) {
         .replace(/[\s_-]/g, "");
 }
 
-function workflowFieldLegacyKeys(field: WorkflowVideoFieldLike) {
-    const keys = [field.source, field.fieldName, field.label].map((value) => normalizeWorkflowVideoFieldKey(String(value || ""))).filter(Boolean);
-    if (keys.some((key) => ["aspectratio", "ratio", "imageaspectratio", "imageratio", "videoaspectratio", "videoratio"].includes(key))) {
+function workflowFieldLegacyKeys(field: WorkflowFieldLike) {
+    const keys = [field.source, field.fieldName, field.label].map((value) => normalizeWorkflowFieldKey(String(value || ""))).filter(Boolean);
+    if (keys.some((key) => ["aspectratio", "ratio", "imageaspectratio", "imageratio"].includes(key))) {
         return ["source:aspectRatio", "source:aspect_ratio", "source:ratio"];
     }
     if (keys.some((key) => ["size", "imagesize", "imageresolution"].includes(key))) return ["source:size"];
     if (keys.some((key) => ["quality", "imagequality"].includes(key))) return ["source:quality"];
-    if (keys.some((key) => ["vquality", "videoresolution", "videoquality"].includes(key))) return ["source:vquality", "source:videoResolution"];
-    if (keys.some((key) => ["videoseconds", "duration", "durationseconds", "seconds"].includes(key))) return ["source:videoSeconds", "source:duration", "source:duration_seconds"];
     if (keys.some((key) => ["count", "batch", "batchsize"].includes(key))) return ["source:count", "source:batch"];
     return [] as string[];
-}
-
-function workflowNumericFieldValues(field: WorkflowVideoFieldLike) {
-    const bounds = workflowFieldNumberBounds(field);
-    const min = bounds.min;
-    const max = bounds.max;
-    const step = bounds.step;
-    if (min === undefined || max === undefined || max < min || step === undefined || step <= 0) return [] as string[];
-    const count = Math.floor((max - min) / step) + 1;
-    if (count <= 0 || count > 32) return [] as string[];
-    return Array.from({ length: count }, (_, index) => String(Number((min + index * step).toFixed(6))));
 }
 
 function workflowNumber(value: unknown) {
     if (value === undefined || value === null || String(value).trim() === "") return undefined;
     const parsed = Number(value);
     return Number.isFinite(parsed) ? parsed : undefined;
-}
-
-function workflowDurationNumber(value: string) {
-    const parsed = Number(
-        String(value)
-            .trim()
-            .replace(/(?:s|秒)$/i, ""),
-    );
-    return Number.isFinite(parsed) ? parsed : undefined;
-}
-
-function matchWorkflowValue(value: string, options: string[]) {
-    if (!value) return "";
-    return options.find((option) => option.toLowerCase() === value.toLowerCase()) || options.find((option) => option.replace(/p$/i, "").toLowerCase() === value.replace(/p$/i, "").toLowerCase()) || "";
 }
 
 export function normalizeImageValue(profile: ImageCapabilityConfig, value: { size?: string; quality?: string; count?: string; transparentBackground?: string }) {
@@ -1338,67 +778,3 @@ export function imageSizeRequest(profile: ImageCapabilityConfig, value?: string)
     return { parameter, value: normalized };
 }
 
-export function normalizeVideoValue(profile: VideoCapabilityConfig, value: { seconds?: string; ratio?: string; resolution?: string }) {
-    const duration = profile.duration.selection === "enum" ? ((profile.duration.values || []).includes(Number(value.seconds)) ? Number(value.seconds) : profile.duration.default) : normalizeRangeDuration(profile, Number(value.seconds));
-    const ratio = resolveVideoRatioValue(profile, value.ratio);
-    // 前端状态历史上保存过 `720`，而能力配置和供应商通常使用 `720p`；统一按能力中的原始值返回，避免被误判为不支持。
-    const resolution = resolveVideoResolutionValue(profile, value.resolution);
-    return { seconds: String(duration), ratio, resolution };
-}
-
-export function resolveVideoRatioValue(profile: VideoCapabilityConfig, value: string | undefined) {
-    return profile.ratios.includes(value || "") ? value! : profile.defaultRatio || profile.ratios[0] || "";
-}
-
-export function resolveVideoResolutionValue(profile: VideoCapabilityConfig, value: string | undefined) {
-    return videoResolutionRequest(profile, value) || profile.defaultResolution || profile.resolutions[0] || "";
-}
-
-export function videoResolutionRequest(profile: VideoCapabilityConfig, value: string | undefined) {
-    const requested = String(value || "")
-        .trim()
-        .toLowerCase();
-    if (!requested || requested === "auto" || requested === "default" || requested === "medium" || requested === "high") return undefined;
-    const candidates = [requested];
-    if (/^\d+$/.test(requested)) candidates.push(`${requested}p`);
-    if (requested === "low") candidates.push("480p");
-    if (requested === "2k") candidates.push("1440p");
-    if (requested === "1440" || requested === "1440p") candidates.push("2k");
-    if (requested === "4k") candidates.push("2160p");
-    if (requested === "2160" || requested === "2160p") candidates.push("4k");
-    const supported = new Map(profile.resolutions.map((resolution) => [resolution.trim().toLowerCase(), resolution.trim()]));
-    for (const candidate of candidates) {
-        const match = supported.get(candidate);
-        if (match) return match;
-    }
-    return undefined;
-}
-
-function normalizeRangeDuration(profile: VideoCapabilityConfig, value: number) {
-    const min = profile.duration.continuous ? profile.duration.fractionalMin || profile.duration.min || .92 : profile.duration.min || 1;
-    const max = profile.duration.max || min;
-    const step = profile.duration.step || 1;
-    const candidate = Number.isFinite(value) ? (profile.duration.continuous ? value : Math.floor(value)) : profile.duration.default;
-    const clamped = Math.min(max, Math.max(min, candidate));
-	if (profile.duration.continuous) return clamped;
-    const maxStep = Math.max(0, Math.floor((max - min) / step));
-    return min + Math.min(maxStep, Math.max(0, Math.round((clamped - min) / step))) * step;
-}
-
-export function videoDurationOptions(profile: VideoCapabilityConfig) {
-    if (profile.duration.selection === "enum") return profile.duration.values || [];
-	if (profile.duration.continuous) return [profile.duration.fractionalMin || profile.duration.min || .92,...Array.from({length:15},(_,i)=>i+1)];
-    const min = profile.duration.min || 1;
-    const max = profile.duration.max || min;
-    const step = profile.duration.step || 1;
-    return Array.from({ length: Math.floor((max - min) / step) + 1 }, (_, index) => min + index * step);
-}
-
-export function videoDurationAllowed(profile: VideoCapabilityConfig, value: number) {
-    if (value === -1) return (profile.duration.values || []).includes(-1);
-    if (profile.duration.selection === "enum") return (profile.duration.values || []).includes(value);
-    const min = profile.duration.continuous ? profile.duration.fractionalMin || profile.duration.min || .92 : profile.duration.min || 1;
-    const max = profile.duration.max || min;
-    const step = profile.duration.step || 1;
-    return Number.isFinite(value) && value >= min && value <= max && (profile.duration.continuous || Math.abs((value-min)/step-Math.round((value-min)/step))<1e-7);
-}

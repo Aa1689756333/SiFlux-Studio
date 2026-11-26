@@ -18,12 +18,12 @@ function node(id: string, type: CanvasNodeType, content: string): CanvasNodeData
 function targetNode(): CanvasNodeData {
     return {
         id: "target",
-        type: CanvasNodeType.Video,
+        type: CanvasNodeType.Config,
         title: "target",
         position: { x: 0, y: 0 },
-        width: 100,
-        height: 100,
-        metadata: { composerContent: "让 @图片1 进入画面" },
+        width: 320,
+        height: 180,
+        metadata: {},
     };
 }
 
@@ -74,14 +74,14 @@ describe("canvas node generation position mentions", () => {
     test("按类型位置选择资源，提示词出现顺序不会改变槽位含义", () => {
         const target = targetNode();
         const imageA = node("image-a", CanvasNodeType.Image, "data:image/png;base64,a");
-        const audioA = node("audio-a", CanvasNodeType.Audio, "data:audio/mpeg;base64,a");
+        const note = node("note", CanvasNodeType.Text, "补充说明");
         const imageB = node("image-b", CanvasNodeType.Image, "data:image/png;base64,b");
-        const connections = [connection(imageA.id), connection(audioA.id), connection(imageB.id)];
-        const context = buildNodeGenerationContext(target.id, [imageA, audioA, imageB, target], connections, "让 @图片2 配合 @音频1", []);
+        const connections = [connection(imageA.id), connection(note.id), connection(imageB.id)];
+        const context = buildNodeGenerationContext(target.id, [imageA, note, imageB, target], connections, "让 @图片2 配合 @文本1", []);
 
         expect(context.referenceImages.map((image) => image.id)).toEqual(["image-b"]);
-        expect(context.referenceAudios.map((audio) => audio.id)).toEqual(["audio-a"]);
-        expect(context.prompt).toBe("让 @图片1 配合 @音频1");
+        expect(context.textCount).toBe(1);
+        expect(context.prompt).toBe("让 @图片1 配合 【文本1】\n\n【文本1】\n补充说明");
     });
 
     test("旧节点 token 只做读取迁移，不再进入生成提示词", () => {
@@ -95,7 +95,7 @@ describe("canvas node generation position mentions", () => {
     });
 
     test("取消引用后的提示词不再因为悬挂 @图片1 阻断生成", () => {
-        const target = targetNode();
+        const target = { ...targetNode(), metadata: { composerContent: "让 @图片1 进入画面" } };
         const image = node("image-a", CanvasNodeType.Image, "data:image/png;base64,a");
         const { applyCanvasConnectionPromptSync } = require("../src/lib/canvas/canvas-resource-references") as typeof import("../src/lib/canvas/canvas-resource-references");
         const [nextTarget] = applyCanvasConnectionPromptSync([image, target], [connection(image.id)], [image, target], []).filter((item: typeof target) => item.id === target.id);
@@ -107,8 +107,8 @@ describe("canvas node generation position mentions", () => {
     });
 });
 
-describe("canvas node generation video text references", () => {
-    test("视频 promptOnly 下显式 @文本 引用仍内联真实内容，图片保持结构化引用", () => {
+describe("canvas node generation text references", () => {
+    test("promptOnly 下显式 @文本 引用仍内联真实内容，图片保持结构化引用", () => {
         const target = targetNode();
         const image = node("image-a", CanvasNodeType.Image, "data:image/png;base64,a");
         const note = node("note", CanvasNodeType.Text, "角色设定：禾禾\n光影氛围：暗调");
@@ -120,7 +120,7 @@ describe("canvas node generation video text references", () => {
         expect(context.imageCount).toBe(1);
     });
 
-    test("视频 promptOnly 下未显式引用的连线文本不会自动拼进提示词", () => {
+    test("promptOnly 下未显式引用的连线文本不会自动拼进提示词", () => {
         const target = targetNode();
         const image = node("image-a", CanvasNodeType.Image, "data:image/png;base64,a");
         const note = node("note", CanvasNodeType.Text, "角色设定：禾禾");
@@ -131,7 +131,7 @@ describe("canvas node generation video text references", () => {
         expect(context.textCount).toBe(0);
     });
 
-    test("视频 promptOnly 非显式引用路径仍丢弃上游文本，关闭后恢复自动拼接", () => {
+    test("promptOnly 非显式引用路径仍丢弃上游文本，关闭后恢复自动拼接", () => {
         const target = targetNode();
         const note = node("note", CanvasNodeType.Text, "角色设定：禾禾");
         const nodes = [note, target];

@@ -36,7 +36,6 @@ type Catalog interface {
 	PrepareRetry(task *model.Task, input map[string]any) error
 	RequireCustomChannels(input map[string]any) error
 	ValidateCapability(input map[string]any) error
-	HasExecutableVideoConfig(input map[string]any) bool
 }
 
 type SelectRequest struct {
@@ -80,17 +79,6 @@ type Projects interface {
 	EnsureActive(userID, canvasOrProjectID string) error
 }
 
-// OwnedMedia loads an owner-scoped resource for local executor validation.
-// Task never imports asset/app to rebuild authorization itself.
-type OwnedMedia interface {
-	Resource(userID, id string) (*model.Resource, error)
-}
-
-// Features is the workspace capability gate used by local transcription.
-type Features interface {
-	Require(name string) error
-}
-
 // Policy supplies the live active-task cap. Quota bytes stay in Persistence.
 type Policy interface {
 	ActiveTaskLimit() (int, error)
@@ -119,12 +107,6 @@ type Failures interface {
 	UserMessage(message string) string
 }
 
-// TextReplay identifies frontend-owned text persistence and finalizes it on cancel.
-type TextReplay interface {
-	IsRequest(input map[string]any) bool
-	Finalize(taskID string, status model.TaskStatus) error
-}
-
 // ProviderControl sends an upstream cancel for an already accepted request.
 type ProviderControl interface {
 	RequestCancel(ctx context.Context, task *model.Task) error
@@ -147,24 +129,8 @@ type Activity interface {
 	Record(userID, kind string, n int)
 }
 
-// Dependencies are the explicit collaborators of the task domain.
-// NewService does not require every port so reads can omit provider-side
-// collaborators. Operations fail closed when a port needed on that path is
-// missing:
-//
-//	admit persist: Store, Catalog, Secrets, Media, Projects, Policy, Runtime, TextReplay, Persist, Present
-//	admit PrepareOnly: Catalog, Secrets, Media, Projects, Policy, Runtime, TextReplay
-//	admit specialized: Store, Projects, Policy, Runtime, Persist, Present
-//	  transcription also needs OwnedMedia and Features; depth also needs OwnedMedia
-//	retry: Store, Runtime, Images, Failures, Secrets, Catalog, Policy, Projects, Present
-//	cancel: Store, Runtime, Present; Provider and TextReplay are optional
-//	reads: Store, Present
-//
-// Logs and Activity are optional. Provider cancel is best-effort after the
-// local cancel has already been committed. Specialized local executors never
-// require Catalog, Secrets, Media, or TextReplay.
+// Dependencies are explicit image-task collaborators. Reads may omit execution ports.
 type Dependencies struct {
-	BindTranscriptionModel func(string) (string, error)
 	Catalog                Catalog
 	Secrets                Secrets
 	Media                  Media
@@ -174,13 +140,10 @@ type Dependencies struct {
 	Runtime                Runtime
 	Images                 Images
 	Failures               Failures
-	TextReplay             TextReplay
 	Provider               ProviderControl
 	Present                Presenter
 	Logs                   Logger
 	Activity               Activity
-	OwnedMedia             OwnedMedia
-	Features               Features
 	NewID                  func() string
 	Now                    func() time.Time
 }

@@ -8,50 +8,6 @@ import (
 	"infinite-canvas/backend/internal/agentops"
 )
 
-func TestOpsAcceptanceClientCannotBecomeUIOrManageClients(t *testing.T) {
-	t.Setenv("SIFLUX_UI_BOOTSTRAP", "")
-	h := newDesktopHarness(t)
-	registry := agentops.NewClientRegistry(h.dataDir)
-	for _, mode := range []agentops.ClientMode{agentops.ClientReadOnly, agentops.ClientReadWrite} {
-		t.Run(string(mode), func(t *testing.T) {
-			client, token, err := registry.Register("acceptance", mode)
-			if err != nil {
-				t.Fatal(err)
-			}
-			issued := h.desktopUI("POST", "/assistant/ui-session", "")
-			if issued.Code != http.StatusOK {
-				t.Fatalf("UI control failed: %d %s", issued.Code, issued.Body.String())
-			}
-			data, _ := decodeEnvelope(t, issued)
-			uiToken, ok := data["token"].(string)
-			if !ok || uiToken == "" {
-				t.Fatal("UI control issued no token")
-			}
-			before := len(registry.List())
-			for _, route := range []struct{ method, path string }{
-				{"GET", "/agent-clients"}, {"POST", "/agent-clients"}, {"DELETE", "/agent-clients/" + client.ID},
-				{"GET", "/ops/clients"}, {"POST", "/ops/clients"}, {"POST", "/assistant/ui-session"},
-			} {
-				t.Run(route.method+route.path, func(t *testing.T) {
-					// Exercise handler-level rejection after passing the desktop transport gate.
-					w := h.call(requestOptions{method: route.method, path: route.path, body: `{"kind":"codex","label":"forbidden","mode":"read-write"}`,
-						clientID: client.ID, clientToken: token, launchToken: h.rt.LaunchToken(), uiBootstrap: h.rt.UIBootstrapToken(), origin: "wails://wails",
-						extraHeaders: map[string]string{"x-siflux-Ui-Session": uiToken}})
-					if w.Code != http.StatusForbidden {
-						t.Fatalf("client elevated: %d %s", w.Code, w.Body.String())
-					}
-				})
-			}
-			if len(registry.List()) != before {
-				t.Fatal("denied management changed registrations")
-			}
-			if _, ok := registry.Lookup(client.ID, token); !ok {
-				t.Fatal("denied revoke invalidated client")
-			}
-		})
-	}
-}
-
 func TestOpsAcceptanceUIBootstrapCredentialIsolation(t *testing.T) {
 	t.Setenv("SIFLUX_UI_BOOTSTRAP", "")
 	h := newDesktopHarness(t)
@@ -65,16 +21,11 @@ func TestOpsAcceptanceUIBootstrapCredentialIsolation(t *testing.T) {
 		{"foreign-pair", foreign.rt.LaunchToken(), foreign.rt.UIBootstrapToken()},
 	} {
 		t.Run(tc.name, func(t *testing.T) {
-			for _, route := range []struct{ method, path string }{{"POST", "/assistant/ui-session"}, {"GET", "/agent-clients"}, {"POST", "/agent-clients"}} {
-				w := h.call(requestOptions{method: route.method, path: route.path, body: `{"kind":"codex","mode":"read-write"}`, origin: "wails://wails", launchToken: tc.launch, uiBootstrap: tc.bootstrap})
-				if w.Code != http.StatusForbidden {
-					t.Fatalf("%s %s: %d %s", route.method, route.path, w.Code, w.Body.String())
-				}
+			w := h.call(requestOptions{method: "POST", path: "/assistant/ui-session", body: `{}`, origin: "wails://wails", launchToken: tc.launch, uiBootstrap: tc.bootstrap})
+			if w.Code != http.StatusForbidden {
+				t.Fatalf("POST /assistant/ui-session: %d %s", w.Code, w.Body.String())
 			}
 		})
-	}
-	if len(agentops.NewClientRegistry(h.dataDir).List()) != 0 {
-		t.Fatal("invalid UI credentials created a client")
 	}
 	if w := h.desktopUI("POST", "/assistant/ui-session", ""); w.Code != http.StatusOK {
 		t.Fatalf("valid UI rejected: %d %s", w.Code, w.Body.String())
@@ -85,7 +36,7 @@ func TestOpsAcceptanceOriginAndLoopbackAtRouter(t *testing.T) {
 	t.Setenv("SIFLUX_ALLOWED_ORIGINS", "https://app.siflux.local")
 	t.Setenv("SIFLUX_UI_BOOTSTRAP", "")
 	h := newDesktopHarness(t)
-	client, token, err := agentops.NewClientRegistry(h.dataDir).Register("acceptance", agentops.ClientReadOnly)
+	owner, err := agentops.EnsureOwnerToken(h.dataDir)
 	if err != nil {
 		t.Fatal(err)
 	}
@@ -116,12 +67,12 @@ func TestOpsAcceptanceOriginAndLoopbackAtRouter(t *testing.T) {
 				// Forwarded headers must not override the transport peer or target host.
 				r.Header.Set("X-Forwarded-For", "127.0.0.1")
 				r.Header.Set("X-Forwarded-Host", "127.0.0.1:54321")
+				// 桌面形态的整张 API 由启动令牌把关；identity 由 owner 通道决定。
+				r.Header.Set("X-Desktop-Token", h.rt.LaunchToken())
 				if ui {
-					r.Header.Set("X-Desktop-Token", h.rt.LaunchToken())
 					r.Header.Set("x-siflux-UI-Bootstrap", h.rt.UIBootstrapToken())
 				} else {
-					r.Header.Set("x-siflux-Client", client.ID)
-					r.Header.Set("Authorization", "Bearer "+token)
+					r.Header.Set("x-siflux-Owner", owner)
 				}
 				w := httptest.NewRecorder()
 				h.rt.Handler().ServeHTTP(w, r)

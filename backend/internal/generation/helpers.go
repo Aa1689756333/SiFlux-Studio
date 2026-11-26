@@ -1,7 +1,6 @@
 package generation
 
 import (
-	"context"
 	"errors"
 	"fmt"
 	"mime"
@@ -193,28 +192,8 @@ func applySeedanceDocumentedVideoPixelFloor(config Config, refs *VideoReferenceC
 	}, refs)
 }
 
-func videoResolutionNameRequest(profile *VideoCapabilityConfig, value string) string {
-	return modelcatalog.VideoResolutionNameRequest(profile, value)
-}
-
-func isAutomaticVideoResolution(value string) bool {
-	return modelcatalog.IsAutomaticVideoResolution(value)
-}
-
-func videoCapabilityAllowsAudioOnly(profile *VideoCapabilityConfig) bool {
-	return modelcatalog.VideoCapabilityAllowsAudioOnly(profile)
-}
-
 func BadAuthRequest(message string) error {
 	return kernel.BadAuthRequest(message)
-}
-
-func applySeedance2VideoProbe(ctx context.Context, config Config, index int, media *Media, data []byte) error {
-	runtime, ok := RuntimeFromContext(ctx)
-	if !ok || runtime.Probe == nil {
-		return errors.New("参考视频无法校验，请重新导入")
-	}
-	return runtime.Probe.ProbeSeedance2Video(config, index, media, data)
 }
 
 func ensureChatCompletionStreamUsage(payload map[string]any) error {

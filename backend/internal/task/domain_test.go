@@ -232,25 +232,6 @@ func (f failClass) UserMessage(string) string {
 	return "任务失败"
 }
 
-type flagReplay struct{}
-
-func (flagReplay) IsRequest(input map[string]any) bool {
-	value, ok := input["replay"]
-	if !ok {
-		return false
-	}
-	switch v := value.(type) {
-	case bool:
-		return v
-	case string:
-		return strings.EqualFold(strings.TrimSpace(v), "true")
-	default:
-		return false
-	}
-}
-
-func (flagReplay) Finalize(string, model.TaskStatus) error { return nil }
-
 type allowMedia struct{}
 
 type blockedTransportMedia struct{ allowMedia }
@@ -352,7 +333,6 @@ func domainService(store *memStore, extra func(*Dependencies)) *Service {
 		Runtime:    runtime,
 		Images:     imageGuard{},
 		Failures:   failClass{},
-		TextReplay: flagReplay{},
 		Present:    identityPresent{},
 		NewID: func() string {
 			return kernel.NewID()
@@ -370,14 +350,6 @@ func imageReq(prompt, op string) CreateRequest {
 		Type: "canvas_image", Prompt: prompt, ProjectID: "canvas-1",
 		Input: map[string]any{"metadata": map[string]any{"clientOperationId": op}},
 	}
-}
-
-func textReplayReq(prompt, op string) CreateRequest {
-	input := map[string]any{"replay": true, "mode": "text", "prompt": prompt}
-	if op != "" {
-		input["metadata"] = map[string]any{"clientOperationId": op}
-	}
-	return CreateRequest{Type: "canvas_text", Prompt: prompt, ProjectID: "canvas-1", Input: input}
 }
 
 func TestCreateRequestOmitsTrustedAdmissionFields(t *testing.T) {
@@ -530,15 +502,6 @@ func TestRetiredOperationsAreRejectedAndHistoryKept(t *testing.T) {
 	if stored.Status != model.TaskStatusFailed || stored.Error != "上一版失败原因" {
 		t.Fatalf("historical row mutated: %+v", stored)
 	}
-	trusted, err := svc.CreateTask("user", CreateRequest{
-		Type: "canvas_text", Operation: "cloud_agent", Prompt: "internal", AdmissionID: "trusted-id",
-	})
-	if err != nil {
-		t.Fatalf("trusted admission should bypass public retired gate: %v", err)
-	}
-	if trusted.ID != "trusted-id" {
-		t.Fatalf("admission id = %s", trusted.ID)
-	}
 }
 
 func TestDrainRejectsCreateAndRetry(t *testing.T) {
@@ -653,145 +616,6 @@ func TestPrepareOnlyDoesNotPersist(t *testing.T) {
 	}
 }
 
-func TestTextReplayReplaysSameClientOperation(t *testing.T) {
-	store := newMemStore()
-	svc := domainService(store, nil)
-	req := textReplayReq("hello", "proposal:text:node-1")
-	first, err := svc.CreateTask("user", req)
-	if err != nil {
-		t.Fatal(err)
-	}
-	if first.Status != model.TaskStatusTextReplay {
-		t.Fatalf("status = %s", first.Status)
-	}
-	if first.ClientOperationID == nil || *first.ClientOperationID != "proposal:text:node-1" || first.ClientOperationHash == "" {
-		t.Fatalf("client operation not stored: %+v", first)
-	}
-	replay, err := svc.CreateTask("user", req)
-	if err != nil {
-		t.Fatal(err)
-	}
-	if replay.ID != first.ID {
-		t.Fatalf("replay id = %s want %s", replay.ID, first.ID)
-	}
-	_, err = svc.CreateTask("user", textReplayReq("other", "proposal:text:node-1"))
-	if err == nil || !strings.Contains(err.Error(), "不同内容") {
-		t.Fatalf("conflict error = %v", err)
-	}
-	listed, _ := store.List("user", 10, "", false)
-	if len(listed) != 1 || listed[0].ID != first.ID {
-		t.Fatalf("stored tasks = %+v", listed)
-	}
-}
-
-func TestConcurrentTextReplayAdmissionReplaysSameTask(t *testing.T) {
-	store := newMemStore()
-	started := make(chan struct{})
-	var entered atomic.Int32
-	svc := domainService(store, func(deps *Dependencies) {
-		deps.Persist = delayedPersist{inner: store, started: started, entered: &entered}
-	})
-	req := textReplayReq("hello", "proposal:text:node-concurrent")
-	var first, second *model.Task
-	var err1, err2 error
-	var wg sync.WaitGroup
-	wg.Add(2)
-	go func() { defer wg.Done(); first, err1 = svc.CreateTask("user", req) }()
-	go func() { defer wg.Done(); second, err2 = svc.CreateTask("user", req) }()
-	<-started
-	<-started
-	close(started)
-	wg.Wait()
-	if err1 != nil || err2 != nil {
-		t.Fatalf("create errors: %v %v", err1, err2)
-	}
-	if first.ID == "" || first.ID != second.ID {
-		t.Fatalf("concurrent admit ids = %q %q", first.ID, second.ID)
-	}
-	listed, err := store.List("user", 10, "", false)
-	if err != nil || len(listed) != 1 {
-		t.Fatalf("stored tasks = %d err=%v", len(listed), err)
-	}
-	if listed[0].Status != model.TaskStatusTextReplay || listed[0].ClientOperationHash == "" {
-		t.Fatalf("stored replay = %+v", listed[0])
-	}
-}
-
-func TestTextReplayRejectsForeignDeletedArchivedScope(t *testing.T) {
-	cases := []struct {
-		name string
-		err  error
-	}{
-		{"foreign", kernel.Forbidden("无权使用该项目")},
-		{"deleted", kernel.NotFound("项目不存在")},
-		{"archived", kernel.BadAuthRequest("项目已归档，无法创建生成任务")},
-	}
-	for _, tc := range cases {
-		t.Run(tc.name, func(t *testing.T) {
-			store := newMemStore()
-			svc := domainService(store, func(deps *Dependencies) {
-				deps.Projects = scopeProjects{err: tc.err}
-			})
-			_, err := svc.CreateTask("user", textReplayReq("hello", "proposal:text:"+tc.name))
-			if err == nil || err.Error() != tc.err.Error() {
-				t.Fatalf("error = %v want %v", err, tc.err)
-			}
-			if listed, _ := store.List("user", 10, "", false); len(listed) != 0 {
-				t.Fatalf("persisted after %s: %+v", tc.name, listed)
-			}
-		})
-	}
-}
-
-func TestTextReplayPrepareOnlyDoesNotPersist(t *testing.T) {
-	store := newMemStore()
-	svc := domainService(store, nil)
-	task, err := svc.CreateTask("user", CreateRequest{
-		Type: "canvas_text", Prompt: "quote", PrepareOnly: true, ProjectID: "canvas-1",
-		Input: map[string]any{"replay": true, "metadata": map[string]any{"clientOperationId": "proposal:text:prepare"}},
-	})
-	if err != nil {
-		t.Fatal(err)
-	}
-	if task.Status != model.TaskStatusTextReplay || task.ClientOperationID == nil || task.ClientOperationHash == "" {
-		t.Fatalf("prepared replay = %+v", task)
-	}
-	if listed, _ := store.List("user", 10, "", false); len(listed) != 0 {
-		t.Fatalf("prepare-only persisted: %+v", listed)
-	}
-}
-
-func TestTextReplayRejectsUnserializableInput(t *testing.T) {
-	store := newMemStore()
-	svc := domainService(store, func(deps *Dependencies) { deps.Catalog = poisonCatalog{} })
-	_, err := svc.CreateTask("user", textReplayReq("hello", "proposal:text:poison"))
-	if err == nil || !strings.Contains(err.Error(), "序列化任务输入失败") {
-		t.Fatalf("marshal error = %v", err)
-	}
-	if listed, _ := store.List("user", 10, "", false); len(listed) != 0 {
-		t.Fatalf("persisted unserializable input: %+v", listed)
-	}
-}
-
-func TestLegacyCanvasTextWithoutReplayStaysQueued(t *testing.T) {
-	store := newMemStore()
-	svc := domainService(store, nil)
-	task, err := svc.CreateTask("user", CreateRequest{
-		Type: "canvas_text", Prompt: "hello", ProjectID: "canvas-1",
-		Input: map[string]any{"mode": "text", "textOptions": map[string]any{"stream": true}},
-	})
-	if err != nil {
-		t.Fatal(err)
-	}
-	if task.Status != model.TaskStatusQueued {
-		t.Fatalf("legacy text status = %s", task.Status)
-	}
-	stored, err := store.TaskForUser("user", task.ID)
-	if err != nil || stored.Status != model.TaskStatusQueued {
-		t.Fatalf("stored = %+v err=%v", stored, err)
-	}
-}
-
 func TestAdmitFailsClosedWhenSecurityCollaboratorsMissing(t *testing.T) {
 	ports := []struct {
 		name  string
@@ -803,7 +627,6 @@ func TestAdmitFailsClosedWhenSecurityCollaboratorsMissing(t *testing.T) {
 		{"projects", func(d *Dependencies) { d.Projects = nil }},
 		{"policy", func(d *Dependencies) { d.Policy = nil }},
 		{"runtime", func(d *Dependencies) { d.Runtime = nil }},
-		{"textReplay", func(d *Dependencies) { d.TextReplay = nil }},
 	}
 	for _, tc := range ports {
 		t.Run(tc.name, func(t *testing.T) {
@@ -900,18 +723,6 @@ func TestRetryFailsClosedWhenCollaboratorsMissing(t *testing.T) {
 				t.Fatalf("%s missing mutated retry: %+v", tc.name, stored)
 			}
 		})
-	}
-}
-
-func TestTextReplayInlineMediaRejected(t *testing.T) {
-	store := newMemStore()
-	svc := domainService(store, func(deps *Dependencies) { deps.Media = rejectMedia{} })
-	_, err := svc.CreateTask("user", textReplayReq("hello", "proposal:text:media"))
-	if err == nil || !strings.Contains(err.Error(), "内嵌媒体") {
-		t.Fatalf("media error = %v", err)
-	}
-	if listed, _ := store.List("user", 10, "", false); len(listed) != 0 {
-		t.Fatalf("inline media persisted: %+v", listed)
 	}
 }
 

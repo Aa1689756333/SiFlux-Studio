@@ -15,15 +15,13 @@ describe("canvas node drag overlays", () => {
         const flatSource = flat(projectSource);
         const overlayStart = flatSource.indexOf("{dialogNode &&");
         const overlayCondition = flatSource.slice(overlayStart, flatSource.indexOf("<CanvasNodePanelOverlay", overlayStart));
-        expect(overlayCondition).toContain("dialogNode.type !== CanvasNodeType.Drawing");
         expect(overlayCondition).toContain("!selectionBox");
         expect(overlayCondition).toContain("!isCanvasNodeMoving");
         expect(projectSource).toContain("angleNode?.metadata?.content ? (");
         expect(projectSource).toContain("dragOffset={dragPreview?.nodeIds.has(angleNode.id)");
-        expect(projectSource).toContain("emotionNode?.metadata?.content && !isCanvasNodeMoving");
         expect(projectSource).toContain("selectedNodeBounds && !selectionBox && !isCanvasNodeMoving");
         expect(projectSource).toContain(
-            "node={isCanvasNodeMoving || nodeImageSettingsOpen || annotationNodeId || maskEditNodeId || emotionNodeId || angleNodeId || (dialogNode && !isCanvasMediaResultNode(dialogNode)) || textEditorNodeId ? null : toolbarNode}",
+            "node={isCanvasNodeMoving || nodeImageSettingsOpen || annotationNodeId || maskEditNodeId || angleNodeId || (dialogNode && !isCanvasMediaResultNode(dialogNode)) || textEditorNodeId ? null : toolbarNode}",
         );
         expect(projectSource).toContain("onNodeDragEnd: handleNodeDragEnd");
         expect(projectSource).toContain("setDialogNodeId(node.id);");

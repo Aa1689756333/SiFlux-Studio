@@ -1,11 +1,8 @@
-import type { CanvasColorGrade } from "@/lib/canvas/canvas-color-grade";
-import type { MediaConversionNodeState } from "@/lib/media-conversion/contracts";
+﻿import type { CanvasColorGrade } from "@/lib/canvas/canvas-color-grade";
 import type { AssetCategory } from "@/lib/asset-category";
 import type { PortraitTextureSettings } from "@/lib/canvas/canvas-portrait-texture";
 import type { StyleExecutionPlan } from "@/lib/canvas/style-profile";
-import type { ArtCritiqueNodeState } from "@/lib/art-critique/contracts";
 import type { CameraControlOptions } from "@/lib/canvas/camera-prompt-library";
-import type { SrtEntry, SubtitleHighlight, SubtitleStyle } from "@/types/timeline";
 
 export type Position = {
     x: number;
@@ -21,23 +18,8 @@ export type ViewportTransform = {
 export enum CanvasNodeType {
     Image = "image",
     Text = "text",
-    Drawing = "drawing",
-    Script = "script",
-    Skill = "skill",
     Config = "config",
-    Video = "video",
-    Audio = "audio",
     Frame = "frame",
-    Markdown = "markdown",
-    Svg = "svg",
-    Html = "html",
-    Panorama = "panorama",
-    Compare = "compare",
-    Chart = "chart",
-    ColorGrade = "colorgrade",
-    MediaConversion = "media-conversion",
-    BatchTable = "batch-table",
-    Director = "director",
 }
 
 /** Runtime IDs contributed by plugins share the persisted node type field. */
@@ -59,7 +41,7 @@ export type CanvasFolderTheme = "aurora" | "obsidian" | "ember" | "pearl";
 export type StoryboardShotDuration = "auto" | "5" | "10" | "15" | "30";
 export type StoryboardShotCount = "auto" | "1" | "2" | "3" | "4" | "5" | "6" | "7" | "8" | "9" | "10";
 export type StoryboardVideoInputMode = "direct" | "keyframe";
-export type CanvasGenerationMode = "text" | "image" | "video" | "audio";
+export type CanvasGenerationMode = "text" | "image";
 export type CanvasGenerationBatchMode = "storyboard_image" | "storyboard_video" | "action_board" | "batch_image";
 export type CanvasGenerationBatchStatus = "queued" | "running" | "partial_failed" | "completed" | "cancelled";
 export type CanvasGenerationBatchItemStatus = "waiting" | "submitting" | "queued" | "running" | "succeeded" | "failed" | "cancelled";
@@ -378,7 +360,6 @@ export type CanvasNodeMetadata = {
     videoEndFrameNodeId?: string;
     videoMiddleFrameNodeId?: string;
     videoMiddleFrameTime?: number;
-    videoH3Options?: import("@/lib/h3-video").H3VideoOptions;
     videoReferenceOrder?: string[];
     videoFrameSourceNodeId?: string;
     videoFrameTimeMs?: number;
@@ -431,10 +412,6 @@ export type CanvasNodeMetadata = {
     directorDepthNodeId?: string;
     directorNormalNodeId?: string;
     directorClayVideoNodeId?: string;
-    subtitleEntries?: SrtEntry[];
-    subtitleHighlights?: SubtitleHighlight[];
-    subtitleStyle?: SubtitleStyle;
-    subtitleUpdatedAt?: string;
     skillId?: string;
     skillVersion?: number;
     skillSnapshot?: CanvasSkillSnapshot;
@@ -442,7 +419,6 @@ export type CanvasNodeMetadata = {
     chartKind?: "bar" | "line";
     /** 调色节点的参数；缺省视为未调色。 */
     colorGrade?: CanvasColorGrade;
-    mediaConversion?: MediaConversionNodeState;
     /** 用户手动拉伸过尺寸；图片按真实比例自动适配时避让它。 */
     manualSize?: boolean;
     storyboard?: StoryboardData;
@@ -508,7 +484,6 @@ export type CanvasNodeMetadata = {
     };
     portraitTexture?: PortraitTextureSettings;
     /** AI 审美批改节点只保存当前报告和输入指纹，不保存图片二进制。 */
-    artCritique?: ArtCritiqueNodeState;
     /** 摄像机控制选项，启用后生成时自动追加摄影机/镜头/焦距/光圈提示词。 */
     cameraControl?: CameraControlOptions;
     /** 全景节点配置：投影方式、生成方式和比例兜底开关。 */

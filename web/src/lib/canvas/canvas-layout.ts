@@ -2,13 +2,13 @@ import { CanvasNodeType, type CanvasConnection, type CanvasNodeData, type Positi
 
 export type CanvasLayoutMode = "row" | "column" | "grid";
 export type CanvasAlignmentMode = "left" | "centerX" | "right" | "top" | "centerY" | "bottom" | "distributeX" | "distributeY";
-export type CanvasLayoutLane = "text" | "image" | "video" | "audio";
+export type CanvasLayoutLane = "text" | "image";
 
 const FLOW_COLUMN_GAP = 120;
 const LANE_GAP = 96;
 const LANE_NODE_GAP = 36;
 const GRID_NODE_GAP = 32;
-const LANE_ORDER: CanvasLayoutLane[] = ["text", "image", "video", "audio"];
+const LANE_ORDER: CanvasLayoutLane[] = ["text", "image"];
 
 export function layoutCanvasNodes(nodes: CanvasNodeData[], mode: CanvasLayoutMode) {
     const sorted = [...nodes].sort((a, b) => a.position.y - b.position.y || a.position.x - b.position.x);
@@ -202,9 +202,7 @@ export function spreadCanvasNodes(nodes: CanvasNodeData[], options?: { scale?: n
 }
 
 export function canvasLayoutLane(node: CanvasNodeData): CanvasLayoutLane {
-    if (node.type === CanvasNodeType.Video) return "video";
-    if (node.type === CanvasNodeType.Audio) return "audio";
-    if (node.type === CanvasNodeType.Image || node.type === CanvasNodeType.Drawing || node.type === CanvasNodeType.Panorama || node.type === CanvasNodeType.Compare || node.type === CanvasNodeType.ColorGrade) return "image";
+    if (node.type === CanvasNodeType.Image) return "image";
     return "text";
 }
 

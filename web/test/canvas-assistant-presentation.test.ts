@@ -60,7 +60,6 @@ describe("工具调用翻译成做了什么", () => {
     test("已知操作说人话", () => {
         expect(assistantActionLabel("canvas.nodes.create")).toBe("新建节点");
         expect(assistantActionLabel("canvas.node.update")).toBe("修改节点");
-        expect(assistantActionLabel("canvas.timeline.update")).toBe("修改时间线");
         expect(assistantActionLabel("canvas.edge.create")).toBe("连线");
         expect(assistantActionLabel("canvas.get")).toBe("读取画布");
         expect(assistantActionLabel("canvas.search")).toBe("读取画布");
@@ -94,7 +93,6 @@ describe("按轮改动摘要", () => {
     test("只报告真实落地的对象", () => {
         expect(assistantChangeSummary(change({ createdNodeIds: ["a", "b", "c"], createdEdgeIds: ["e1", "e2"] }))).toBe("新建 3 个节点，连了 2 条线");
         expect(assistantChangeSummary(change({ updatedNodeIds: ["a", "b"] }))).toBe("修改 2 个节点");
-        expect(assistantChangeSummary(change({ timelineUpdated: true }))).toBe("修改时间线");
         expect(assistantChangeSummary(change({ timelineUpdated: false }))).toBeNull();
     });
 
@@ -107,9 +105,9 @@ describe("按轮改动摘要", () => {
     test("跨画布摘要按全部真实回执计数，定位仍只使用主画布未删除的节点", () => {
         const receipt = change({ createdNodeIds: ["main"], deletedNodeIds: ["gone"], canvasChanges: [
             { ...change({ createdNodeIds: ["main"], deletedNodeIds: ["gone"], deletedEdgeIds: ["edge"] }), canvasId: "c1", operationIds: ["op1"] },
-            { ...change({ createdNodeIds: ["other"], updatedNodeIds: ["existing"], timelineUpdated: true }), canvasId: "c2", operationIds: ["op2"] },
+            { ...change({ createdNodeIds: ["other"], updatedNodeIds: ["existing"] }), canvasId: "c2", operationIds: ["op2"] },
         ] });
-        expect(assistantChangeSummary(receipt)).toBe("修改了 2 个画布，新建 2 个节点，修改 1 个节点，删除 1 个节点，删除 1 条线，修改时间线");
+        expect(assistantChangeSummary(receipt)).toBe("修改了 2 个画布，新建 2 个节点，修改 1 个节点，删除 1 个节点，删除 1 条线");
         expect(assistantChangedNodeIds(receipt)).toEqual(["main"]);
         expect(assistantChangedNodeIds(change({ updatedNodeIds: ["gone", "kept"], deletedNodeIds: ["gone"] }))).toEqual(["kept"]);
         expect(assistantChangeSummary(change({ revisionAfter: 0, canvasChanges: [
@@ -143,18 +141,10 @@ describe("付费生成确认", () => {
         expect(text).not.toContain("ch::");
     });
 
-    test("视频提议说的是视频", () => {
-        const text = assistantProposalText({ proposalId: "p2", kind: "video", nodeIds: ["a"], model: "seedance-1", modelKey: "ch::seedance-1" });
-        expect(text).toContain("生成 1 段视频");
-    });
-
-    test("旧真人模型提议显示统一名称与当前渠道报价", () => {
-        const text = assistantProposalText({ proposalId: "portrait", kind: "video", nodeIds: ["a"], model: "seedance-2.0-portrait", modelKey: "byok::seedance-2.0-portrait" }, ["720p：无视频输入 ¥69，含视频输入 ¥42 / 百万视频 Token"]);
-        expect(text).toContain("Seedance 2.0");
-        expect(text).not.toContain("Seedance 2.0-真人");
-        expect(text).toContain("¥69");
-        expect(text).toContain("¥42");
-        expect(text).not.toContain("byok::");
+    test("单张图片提议报告的是图片数量", () => {
+        const text = assistantProposalText({ proposalId: "p2", kind: "image", nodeIds: ["a"], model: "gpt-image-2", modelKey: "ch::gpt-image-2" });
+        expect(text).toContain("生成 1 张参考图片");
+        expect(text).not.toContain("ch::");
     });
 });
 
@@ -318,14 +308,14 @@ describe("assistantUnresolvedFailures", () => {
         expect(calls[0]).toEqual(failed);
         expect(assistantUnresolvedFailures(calls.map(call => ({ ...call, tool: call.tool.replace(".", "_") })))).toEqual(["有素材的画面查看未完成"]);
     });
-    test("失败媒体按实际模式提示，并保留其它素材、区间及版本的失败", async () => {
+    test("失败媒体按同一类合并提示，并保留其它素材、区间及版本的失败", async () => {
         const { assistantUnresolvedFailures } = await import("@/pages/canvas/canvas-assistant-copy");
         const failed = { tool: "media.inspect", args: { assetId: "video", mode: "video", startMs: 0, endMs: 3000, expectedVersion: "v1" }, isError: true };
         for (const args of [{ ...failed.args, assetId: "other" }, { ...failed.args, endMs: 6000 }, { ...failed.args, expectedVersion: "v2" }]) {
-            expect(assistantUnresolvedFailures([failed, { ...failed, args, isError: false }])).toEqual(["有视频片段查看未完成"]);
+            expect(assistantUnresolvedFailures([failed, { ...failed, args, isError: false }])).toEqual(["有素材的画面查看未完成"]);
         }
         expect(assistantUnresolvedFailures([failed, { ...failed, isError: false }])).toEqual([]);
-        expect(assistantUnresolvedFailures([{ tool: "media_inspect", args: { mode: "audio" }, isError: true }])).toEqual(["有音频片段听取未完成"]);
+        expect(assistantUnresolvedFailures([{ tool: "media_inspect", args: { mode: "audio" }, isError: true }])).toEqual(["有素材的画面查看未完成"]);
     });
     test("重试成功的步骤不提示，仍失败的同类合并计数", async () => {
         const { assistantUnresolvedFailures } = await import("@/pages/canvas/canvas-assistant-copy");

@@ -1,6 +1,6 @@
 import { explainGenerationError, generationErrorMessage } from "@/lib/generation-error";
 import { createStandaloneGenerationStore } from "@/lib/standalone-generation-store";
-import { referenceImagesFromStandalone, type StandaloneMediaReference } from "@/lib/standalone-generation-reference";
+import { referenceImagesFromStandalone, type StandaloneImageReference } from "@/lib/standalone-generation-reference";
 import { captureUserScope, userScopeMatches } from "@/lib/user-scope-guard";
 import { isGenerationTaskCancelled } from "@/services/api/generation-task";
 import type { AiConfig } from "@/stores/use-config-store";
@@ -44,7 +44,7 @@ export async function runStandaloneImageJob(options: {
     ratio: string;
     quality: string;
     count: number;
-    references: StandaloneMediaReference[];
+    references: StandaloneImageReference[];
 }) {
     const prompt = options.prompt.trim();
     if (!prompt) throw new Error("请先填写提示词");

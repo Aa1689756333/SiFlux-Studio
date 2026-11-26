@@ -440,28 +440,7 @@ Invoke-NativeExecutable -FilePath "bun" -ArgumentList @((Join-Path $repoRoot "sc
 # Keep media inside the sidecar tree accepted by already released updaters.
 & (Join-Path $repoRoot "scripts\package-media-runtime-windows.ps1") -Destination (Join-Path $binDir "agent-host\media-runtime")
 
-# The siflux CLI ships with the app. External agents (Codex, Claude Code,
-# Cursor) connect through it with their own client credential, so the installed
-# app must carry it; it is not expected on the user PATH.
-#
-# It goes in a cli subdirectory, not directly next to SiFlux.exe: Windows file
-# names are case-insensitive, so siflux.exe beside SiFlux.exe is the same name.
-$cliDir = Join-Path $binDir "cli"
-New-Item -ItemType Directory -Force -Path $cliDir | Out-Null
-$cliPath = Join-Path $cliDir "siflux.exe"
-Push-Location (Join-Path $repoRoot "backend")
-try {
-    [void](Invoke-NativeExecutable -FilePath "go" -ArgumentList @("build", "-trimpath", "-ldflags", $ldflags, "-o", $cliPath, "./cmd/siflux") -FailureMessage "siflux CLI build failed")
-}
-finally {
-    Pop-Location
-}
-if (-not (Test-Path -LiteralPath $cliPath -PathType Leaf)) {
-    throw "siflux CLI was not built next to $exePath"
-}
-
 Write-Host "Release executable: $exePath"
-Write-Host "Bundled agent CLI: $cliPath"
 Write-Host "Official plugins: $pluginResourceDir ($($copied.Count) packages)"
 Write-Host "Launch data directory (unless CANVAS_DESKTOP_DATA_DIR is set): %AppData%\SiFlux"
 Write-Host "Official plugins are loaded from the executable directory, not from the process working directory."

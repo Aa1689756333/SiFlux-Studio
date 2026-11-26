@@ -10,7 +10,6 @@ import (
 	"fmt"
 	"infinite-canvas/backend/internal/generation"
 	"infinite-canvas/backend/internal/kernel"
-	"strconv"
 	"strings"
 
 	"infinite-canvas/backend/internal/model"
@@ -46,7 +45,6 @@ func withProviderAnalytics(ctx context.Context, service *Service, task model.Tas
 	if json.Unmarshal([]byte(task.InputJSON), &input) == nil {
 		metadata.ChannelID = firstNonEmpty(input.Config.ChannelID, systemChannelIDFromBaseURL(input.Config.BaseURL))
 		metadata.Model = firstNonEmpty(input.Config.ChannelModelKey, input.Config.Model, metadata.Model)
-		metadata.VideoSeconds, _ = strconv.Atoi(input.Config.VideoSeconds)
 		if normalized := normalizeCapability(input.Mode); normalized != "" {
 			metadata.Capability = normalized
 		}
@@ -119,14 +117,7 @@ func (s *Service) processCanvasGenerationTask(ctx context.Context, userID string
 	if strings.TrimSpace(input.Prompt) == "" {
 		input.Prompt = fallbackPrompt
 	}
-	if input.Mode == "" && strings.HasPrefix(taskType, "video_") {
-		input.Mode = "video"
-	}
-	if input.Mode == "text" && strings.HasPrefix(taskType, "canvas_text") && input.AgentRequests == nil {
-		textPublisher := newTaskTextStreamPublisher(s, userID, taskExecutionID(ctx))
-		input.OnTextDelta = textPublisher.Publish
-		defer textPublisher.Close()
-	}
+	if input.Mode == "" { input.Mode = "image" }
 	return generation.Execute(ctx, input)
 }
 
@@ -365,29 +356,6 @@ func metadataStringValues(value any) map[string]string {
 	return values
 }
 
-// Read owned resource metadata before preflight, without downloading media.
-// Character/workflow references may carry only a resource storage key.
-func (s *Service) hydrateVideoReferenceMetadata(ctx context.Context, userID string, input *canvasGenerationInput) error {
-	ctx = s.enrichGenerationRuntime(ctx, generation.CallMeta{UserID: userID})
-	return generation.HydrateVideoReferenceMetadata(ctx, userID, input)
-}
-
-func applySeedance2VideoProbe(config providerConfig, index int, media *providerMedia, data []byte) error {
-	w, h, durationMs := probeGeneratedVideoMedia(data)
-	if w <= 0 || h <= 0 {
-		return BadAuthRequest(fmt.Sprintf("第 %d 个参考视频尺寸无法读取，请重新导出 MP4/MOV 后导入", index+1))
-	}
-	media.Width, media.Height = w, h
-	_, fps := referenceVideoEncoding(data)
-	if err := referenceVideoFrameRateError(config, index, fps); err != nil {
-		return err
-	}
-	if durationMs > 0 {
-		media.DurationMs = durationMs
-	}
-	return nil
-}
-
 func (s *Service) hydrateGenerationMedia(userID string, input *canvasGenerationInput, policy providerMediaHydrationPolicy) error {
 	return s.hydrateGenerationMediaWithContext(context.Background(), userID, input, policy)
 }
@@ -523,7 +491,7 @@ func (s *Service) resolveProviderConfig(config providerConfig) (providerConfig, 
 // 同一系统渠道可以挂载不同协议的模型，因此渠道级 APIFormat 只能作为协议缺失时的兼容值。
 func channelAPIFormatForProtocol(channelDefault string, protocol model.ChannelInterfaceType) string {
 	switch protocol {
-	case model.ChannelInterfaceGeminiVeo, model.ChannelInterfaceGeminiImage:
+	case model.ChannelInterfaceGeminiImage:
 		return "gemini"
 	case model.ChannelInterfaceClaudeAPI:
 		return "claude"
@@ -580,10 +548,6 @@ func systemChannelIDFromBaseURL(baseURL string) string {
 
 func openAIImageInputURL(media providerMedia) (string, error) {
 	return generation.OpenAIImageInputURL(media)
-}
-
-func openAIVideoInputURL(media providerMedia) (string, error) {
-	return generation.OpenAIVideoInputURL(media)
 }
 
 func firstNonEmptyString(values ...string) string {

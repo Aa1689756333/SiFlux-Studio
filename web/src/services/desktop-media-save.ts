@@ -1,4 +1,4 @@
-import { saveAs } from "file-saver";
+﻿import { saveAs } from "file-saver";
 import { nanoid } from "nanoid";
 
 import { sanitizeDownloadFileName } from "@/lib/canvas/canvas-media-download";
@@ -44,20 +44,6 @@ export async function saveOwnedOrBrowserBlob(fileName: string, blob: Blob): Prom
     return "saved";
 }
 
-/** Video exports use the resource upload path so large files never cross Wails as base64. */
-export async function saveOwnedOrBrowserVideoBlob(fileName: string, blob: Blob, expectedScope: CapturedUserScope): Promise<OwnedMediaSaveResult> {
-    assertUserScope(expectedScope);
-    if (!isWailsNativeShell()) return saveOwnedOrBrowserBlob(fileName, blob);
-    if (!window.go?.main?.DesktopApp?.SaveOwnedMedia) throw new Error("当前应用还不能把文件存到所选位置");
-    const name = sanitizeDownloadFileName(fileName, "未命名导出.mp4");
-    const resource = await uploadResourceFile(blob, "video", {
-        fileName: name,
-        expectedScope,
-        idempotencyKey: `video-export:${nanoid()}`,
-    });
-    assertUserScope(expectedScope);
-    return downloadOwnedOrBrowserMedia({ fileName: name, resourceId: resource.id });
-}
 
 function bytesToBase64(bytes: Uint8Array) {
     const toBase64 = (bytes as Uint8Array & { toBase64?: () => string }).toBase64;

@@ -1,7 +1,6 @@
 import { describe, expect, test } from "bun:test";
 import { buildNodeGenerationContext } from "../src/components/canvas/canvas-node-generation";
 import { canvasGenerationFailureMetadata, canvasGenerationRetryBlocked, canvasTaskFailureMetadata } from "../src/pages/canvas/canvas-generation-failure";
-import { taskAttentionReason, taskRetryBlocked } from "../src/pages/tasks/task-shared";
 import { resolveMetadataReferences, generationTaskMetadata, resetGenerationTaskMetadata } from "../src/lib/canvas/canvas-project-generation";
 import { ApiError } from "../src/services/api/request";
 import { explainGenerationError, formatGenerationDiagnostics } from "../src/lib/generation-error";
@@ -70,10 +69,8 @@ describe("canvas generation failure consumers", () => {
         for (const fixture of moderationFixtures) {
             const error = `${fixture.reason}。${fixture.action}。排查编号：请求 req_moderation_123。`;
             const failedTask = { ...task, error, errorCode: fixture.category };
-            expect(taskAttentionReason(failedTask)).toContain(fixture.reason);
-            expect(taskAttentionReason(failedTask)).toContain(fixture.action);
             expect(canvasTaskFailureMetadata(failedTask).errorDetails).toBe(error);
-            expect(taskRetryBlocked(failedTask)).toBe(true);
+            expect(canvasGenerationRetryBlocked(canvasTaskFailureMetadata(failedTask))).toBe(true);
         }
     });
     test("actual connected reference, rather than the source image itself, controls moderation retry", () => {
@@ -139,19 +136,19 @@ describe("canvas generation failure consumers", () => {
         expect(restored.failedInputFingerprint).toBe(failure.failedInputFingerprint);
     });
 
-    test("task cards never expose raw nested JSON in the visible reason or tooltip", () => {
-        const raw = { ...task, error: '{"error":{"code":"400","message":"Height must be between 300px and 6000px"}}', errorCode: "invalid_params" };
-        const reason = taskAttentionReason(raw);
-        expect(reason).not.toContain("{");
-        expect(reason).toContain("高度");
-        expect(reason).toContain("300–6000");
+    test("visible failure copy never exposes raw nested JSON in the reason or tooltip", () => {
+        const raw = '{"error":{"code":"400","message":"Height must be between 300px and 6000px"}}';
+        const failure = explainGenerationError(raw);
+        for (const text of [failure.message, failure.reason, failure.action]) expect(text).not.toContain("{");
+        expect(failure.reason).toContain("高度");
+        expect(failure.action).toContain("300–6000");
     });
 
-    test("task cards preserve a machine-readable failure code alongside an opaque message", () => {
-        expect(taskAttentionReason({ ...task, errorCode: "moderation_reference" })).toContain("参考素材");
-        expect(taskRetryBlocked({ ...task, errorCode: "download_failed" })).toBe(true);
-        expect(taskRetryBlocked({ ...task, errorCode: "invalid_params" })).toBe(true);
-        expect(taskRetryBlocked({ ...task, errorCode: "throttled" })).toBe(false);
-        expect(taskRetryBlocked({ ...task, errorCode: "throttled", stage: "submission_unknown" })).toBe(true);
+    test("failure metadata keeps a machine-readable code alongside an opaque message", () => {
+        expect(canvasTaskFailureMetadata({ ...task, errorCode: "moderation_reference" }).errorDetails).toContain("参考素材");
+        expect(canvasGenerationRetryBlocked(canvasTaskFailureMetadata({ ...task, errorCode: "download_failed" }))).toBe(true);
+        expect(canvasGenerationRetryBlocked(canvasTaskFailureMetadata({ ...task, errorCode: "invalid_params" }))).toBe(true);
+        expect(canvasGenerationRetryBlocked(canvasTaskFailureMetadata({ ...task, errorCode: "throttled" }))).toBe(false);
+        expect(canvasGenerationRetryBlocked({ ...canvasTaskFailureMetadata({ ...task, errorCode: "throttled" }), taskStage: "submission_unknown" })).toBe(true);
     });
 });

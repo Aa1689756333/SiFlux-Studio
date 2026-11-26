@@ -35,20 +35,20 @@ describe("canvas asset picker", () => {
             { id: image.id, title: image.title, category: "environment", kindLabel: "图片", asset: image },
             { id: text.id, title: text.title, category: "other", kindLabel: "文本", asset: text },
             {
-                id: "external-video",
-                title: "外部视频",
+                id: "external-image",
+                title: "外部图片",
                 category: "external:eagle",
-                kindLabel: "视频",
+                kindLabel: "图片",
                 external: {
                     sourceId: "eagle",
                     sourceName: "Eagle",
-                    item: { id: "video-1", title: "外部视频", kind: "video", fileUrl: "http://127.0.0.1/video.mp4", width: 1920, height: 1080, bytes: 2048, mimeType: "video/mp4" },
+                    item: { id: "image-9", title: "外部图片", kind: "image", fileUrl: "http://127.0.0.1/scene.png", width: 1920, height: 1080, bytes: 2048, mimeType: "image/png" },
                 },
             },
         ];
 
-        expect(assetPickerItemsToInsertPayloads(["external-video", image.id, text.id], items)).toEqual([
-            { kind: "video", url: "http://127.0.0.1/video.mp4", title: "外部视频", width: 1920, height: 1080, bytes: 2048, mimeType: "video/mp4", assetId: "external:eagle:video-1" },
+        expect(assetPickerItemsToInsertPayloads(["external-image", image.id, text.id], items)).toEqual([
+            { kind: "image", dataUrl: "http://127.0.0.1/scene.png", url: "http://127.0.0.1/scene.png", title: "外部图片", width: 1920, height: 1080, bytes: 2048, mimeType: "image/png", assetId: "external:eagle:image-9" },
             { kind: "image", dataUrl: "data:image/png;base64,AAAA", storageKey: "resource:image-1", title: "场景图", width: 1280, height: 720, bytes: 1024, mimeType: "image/png", assetId: "image-1" },
             { kind: "text", content: "夜色渐深。", title: "旁白", assetId: "text-1" },
         ]);
@@ -73,26 +73,26 @@ describe("asset picker media kind", () => {
     };
 
     test("prefers the declared media kind over the underlying record", () => {
-        expect(pickerItemMediaKind({ ...base, mediaKind: "video", asset: image })).toBe("video");
+        expect(pickerItemMediaKind({ ...base, mediaKind: "text", asset: image })).toBe("text");
         expect(pickerItemMediaKind({ ...base, asset: image })).toBe("image");
     });
 
     test("resolves external plugin items and skips records without a media kind", () => {
         const external: AssetLibraryPickerItem = {
             ...base,
-            external: { sourceId: "eagle", sourceName: "Eagle", item: { id: "audio-1", title: "外部音频", kind: "audio" } },
+            external: { sourceId: "eagle", sourceName: "Eagle", item: { id: "image-9", title: "外部图片", kind: "image" } },
         };
 
-        expect(pickerItemMediaKind(external)).toBe("audio");
+        expect(pickerItemMediaKind(external)).toBe("image");
         // 角色卡、3D 模型这类条目没有媒体类型，媒体筛选生效时不应被当成图片留在列表里。
         expect(pickerItemMediaKind(base)).toBeUndefined();
     });
 
     test("empty parent items do not disable a matching SQLite media asset", () => {
-        expect(workspaceAssetPickerDisabledReason(image, [], ["image", "video", "audio"])).toBeUndefined();
-        expect(workspaceAssetPickerDisabledReason(image, [], ["image", "video", "audio"], "image")).toBeUndefined();
-        expect(workspaceAssetPickerDisabledReason(image, [], ["image", "video", "audio"], "video")).toBe("此素材不适用于当前操作");
-        expect(workspaceAssetPickerDisabledReason(image, [], ["video", "audio"])).toBe("此素材不适用于当前操作");
+        expect(workspaceAssetPickerDisabledReason(image, [], ["image", "text"])).toBeUndefined();
+        expect(workspaceAssetPickerDisabledReason(image, [], ["image", "text"], "image")).toBeUndefined();
+        expect(workspaceAssetPickerDisabledReason(image, [], ["image", "text"], "text")).toBe("此素材不适用于当前操作");
+        expect(workspaceAssetPickerDisabledReason(image, [], ["text"])).toBe("此素材不适用于当前操作");
     });
 
     test("parent disabledReason still wins when the asset is already in the caller list", () => {
@@ -110,15 +110,7 @@ describe("asset picker canonical read gate", () => {
         expect(source).toContain("workspaceAssetPickerDisabledReason");
     });
 
-    test("canvas project asset modal uses the workspace library API for free-canvas fallback", () => {
-        const source = readFileSync(resolve(import.meta.dir, "../src/components/canvas/canvas-project-asset-modal.tsx"), "utf8");
-        expect(source).toContain("usesWorkspaceAssetLibraryApi()");
-        expect(source).toContain("remoteLibrary={!detail && usesWorkspaceAssetLibraryApi()}");
-        expect(source).toContain("getWorkspaceAsset(item.project.id, undefined, { expectedScope })");
-        expect(source).not.toContain("isLocalWorkspaceMode");
-        expect(source).not.toContain("preferLocalUnsynced");
     });
-});
 
 describe("canvas context menu motion", () => {
     test("keeps hover feedback stationary while retaining spotlight surfaces", () => {

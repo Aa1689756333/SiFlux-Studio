@@ -1,4 +1,4 @@
-import { AudioLines, Check, Film, Flame, Image, MessageSquareText, Network, Settings2, Sparkles } from "lucide-react";
+import { Check, Flame, Image, MessageSquareText, Network, Settings2, Sparkles } from "lucide-react";
 import { Button, Modal } from "antd";
 import { useEffect, useState, type ReactNode } from "react";
 
@@ -17,8 +17,6 @@ const capabilityChoices: Array<{
 }> = [
     { value: "text", label: "文本", description: "对话与推理", icon: <MessageSquareText className="size-4" />, brands: ["openai", "deepseek", "glm"] },
     { value: "image", label: "图片", description: "生成与编辑", icon: <Image className="size-4" />, brands: ["openai", "gemini"] },
-    { value: "video", label: "视频", description: "生成与续写", icon: <Film className="size-4" />, brands: ["grok", "gemini"] },
-    { value: "audio", label: "音频", description: "语音与音效", icon: <AudioLines className="size-4" />, brands: ["openai"] },
 ];
 
 type PickerDensity = "comfortable" | "compact";
@@ -224,5 +222,5 @@ function modelBrandLabel(model: string) {
 }
 
 function capabilityLabel(value: ModelCapabilityChoice) {
-    return { text: "文本", image: "图片", video: "视频", audio: "音频" }[value];
+    return { text: "文本", image: "图片" }[value];
 }

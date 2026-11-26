@@ -1,8 +1,7 @@
 import { motion } from "motion/react";
-import { CheckCircle2, CloudUpload, LoaderCircle, TriangleAlert } from "lucide-react";
+import { CheckCircle2, CloudUpload, TriangleAlert } from "lucide-react";
 
 import type { GenerationTask } from "@/services/api/task-center";
-import type { MergeVideoProgress } from "@/lib/canvas/canvas-video-merge";
 import { canvasThemes } from "@/lib/canvas-theme";
 import { aceternityMotion } from "@/lib/aceternity-motion";
 
@@ -76,37 +75,6 @@ export function TaskDetailItem({ label, value }: { label: string; value: string 
             <div className="text-[var(--fs-tiny)] opacity-50">{label}</div>
             <div className="mt-1 truncate text-xs font-medium" title={value}>
                 {value}
-            </div>
-        </div>
-    );
-}
-
-export function CanvasMergeStatusToast({ progress, theme }: { progress: MergeVideoProgress; theme: CanvasTheme }) {
-    const detail = progress.phase === "loading" ? "加载视频工具" : progress.phase === "reading" ? "读取选中视频" : "正在编码合并成片";
-    const percent = Math.max(0, Math.min(100, Math.round(progress.progress)));
-    return (
-        <div
-            data-canvas-no-zoom
-            aria-live="polite"
-            className="pointer-events-none absolute right-4 top-[164px] z-[var(--z-panel-floating)] w-[292px] overflow-hidden rounded-2xl border px-3 py-3 shadow-lg backdrop-blur-xl"
-            style={{ background: theme.toolbar.panel, borderColor: theme.toolbar.border, color: theme.node.text }}
-        >
-            <div className="flex items-start gap-2.5">
-                <span className="mt-0.5 grid size-7 shrink-0 place-items-center rounded-xl" style={{ background: theme.toolbar.itemHover, color: theme.node.activeStroke }}>
-                    <LoaderCircle className="size-4 animate-spin" />
-                </span>
-                <span className="min-w-0 flex-1">
-                    <span className="block truncate text-xs font-semibold">合并成片</span>
-                    <span className="mt-0.5 block truncate text-[var(--fs-label)]" style={{ color: theme.node.muted }}>
-                        {detail}
-                    </span>
-                </span>
-                <span className="shrink-0 text-[var(--fs-tiny)] tabular-nums" style={{ color: theme.node.faint }}>
-                    {percent}%
-                </span>
-            </div>
-            <div className="mt-2 h-1 overflow-hidden rounded-full" style={{ background: theme.toolbar.itemHover }}>
-                <div className="h-full rounded-full transition-all duration-300" style={{ width: `${percent}%`, background: theme.node.activeStroke }} />
             </div>
         </div>
     );

@@ -24,9 +24,8 @@ export function AppWorkspaceShell({ children }: { children: ReactNode }) {
     const localMode = isLocalWorkspaceMode() || storageMode === "local" || user?.username === "local";
     useDesktopUpdateBootstrap();
 
-    const hideChrome = pathname.startsWith("/admin") || /^\/canvas\/[^/]+/.test(pathname);
+    const hideChrome = /^\/canvas\/[^/]+/.test(pathname);
     const spatialWorkbench = isSpatialWorkbenchPath(pathname);
-    const creationWorkspace = pathname === "/create";
 
     const isMobileViewport = () => window.innerWidth < 1024;
 
@@ -63,7 +62,7 @@ export function AppWorkspaceShell({ children }: { children: ReactNode }) {
 
     return (
         <>
-            <div className={cn("app-workspace-shell flex h-dvh min-h-0 w-full flex-col overflow-hidden", spatialWorkbench && "is-spatial", creationWorkspace && "is-creation-workspace")}>
+            <div className={cn("app-workspace-shell flex h-dvh min-h-0 w-full flex-col overflow-hidden", spatialWorkbench && "is-spatial")}>
                 {!hideChrome && mobileSidebarExpanded ? <button type="button" className="app-workspace-sidebar-scrim lg:hidden" aria-label="收起侧栏" onClick={() => setMobileSidebarExpanded(false)} /> : null}
 
                 <div className="app-workspace-main-row flex min-h-0 min-w-0 flex-1 overflow-hidden">

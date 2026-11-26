@@ -70,33 +70,4 @@ describe("generation history preview after desktop restart", () => {
         expect(generationHistoryPreviewStorageKey(imageTask)).toBe("");
         expect(generationHistoryPreviewImageSrc(imageTask)).toBe(liveBlob);
     });
-
-    test("audio stays icon-only and video files are not used as image sources", () => {
-        const audioUrl = "http://127.0.0.1:3184/api/resources/audio-owned/file";
-        const audioTask = task({
-            id: "task-audio",
-            type: "canvas_audio",
-            previewUrl: audioUrl,
-            resultJson: JSON.stringify({ mode: "audio", audio: { dataUrl: audioUrl, storageKey: "resource:audio-owned" } }),
-        });
-        const videoTask = task({
-            id: "task-video",
-            type: "canvas_video",
-            previewUrl: "http://127.0.0.1:3184/api/resources/video-owned/file",
-            resultJson: JSON.stringify({ mode: "video", video: { dataUrl: "http://127.0.0.1:3184/api/resources/video-owned/file" } }),
-        });
-        const posterTask = task({
-            id: "task-video-poster",
-            type: "canvas_video",
-            previewPosterUrl: "data:image/png;base64,poster",
-            resultJson: JSON.stringify({ mode: "video", video: { dataUrl: "http://127.0.0.1:3184/api/resources/video-owned/file", previewUrl: "data:image/png;base64,poster" } }),
-        });
-
-        expect(generationHistoryPreviewImageSrc(audioTask)).toBe("");
-        expect(generationHistoryPreviewStorageKey(audioTask)).toBe("");
-        expect(generationHistoryPreviewImageSrc(videoTask)).toBe("");
-        expect(generationHistoryPreviewStorageKey(videoTask)).toBe("");
-        expect(generationHistoryPreviewImageSrc(posterTask)).toBe("data:image/png;base64,poster");
-        expect(generationHistoryPreviewStorageKey(posterTask)).toBe("");
-    });
 });

@@ -29,12 +29,10 @@ func TestProviderProgressFromResponse(t *testing.T) {
 }
 
 func TestTaskUsesUpstreamReportedProgress(t *testing.T) {
-	for _, taskType := range []string{"canvas_image", "canvas_video", "video_shot"} {
-		if !taskUsesUpstreamReportedProgress(taskType) {
-			t.Fatalf("task type %q should use upstream progress", taskType)
-		}
+	if !taskUsesUpstreamReportedProgress("canvas_image") {
+		t.Fatal("canvas_image should use upstream progress")
 	}
-	for _, taskType := range []string{"canvas_text", "canvas_audio", "text_generation"} {
+	for _, taskType := range []string{"canvas_text", "canvas_audio", "text_generation", "canvas_video", "video_shot"} {
 		if taskUsesUpstreamReportedProgress(taskType) {
 			t.Fatalf("task type %q should keep internal progress", taskType)
 		}

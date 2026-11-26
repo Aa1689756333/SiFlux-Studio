@@ -229,12 +229,10 @@ describe("统一图片分辨率与宽高比", () => {
         expect(buttons.every(([button]) => button.includes('disabled=""'))).toBe(true);
     });
 
-    test("图片协议尺寸独占整行且先于辅助参数，视频布局不受影响", () => {
+    test("图片协议尺寸独占整行且先于辅助参数", () => {
         const image = renderToStaticMarkup(<ModelCapabilityEditor capability="image" section="protocol" />);
         expect(image).toContain("admin-image-protocol-grid");
         expect(image).toContain("admin-image-size-card");
         expect(image.indexOf("尺寸参数")).toBeLessThan(image.indexOf("输出数量"));
-        const video = renderToStaticMarkup(<ModelCapabilityEditor capability="video" section="protocol" />);
-        expect(video).not.toContain("admin-image-protocol-grid");
     });
 });

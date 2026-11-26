@@ -41,7 +41,7 @@ function clampTrayHeight(height: number) {
     return Math.min(Math.max(height, minHeight), maxHeight);
 }
 
-type TrayAsset = Extract<Asset, { kind: "image" | "video" | "audio" | "text" }>;
+type TrayAsset = Extract<Asset, { kind: "image" | "text" }>;
 
 type CanvasAssetTrayProps = {
     libraryAssets: TrayAsset[];
@@ -297,7 +297,7 @@ function AssetTrayRow({ title, imageUrl, storageKey, asset, insertable = false, 
             onDragStartCapture={onDragStart}
         >
             <span className="grid size-9 shrink-0 place-items-center overflow-hidden rounded-[var(--dock-item-radius)]" style={{ background: theme.node.fill }}>
-                {asset ? <AssetMediaPreview asset={asset} alt={title} className="size-full object-cover" hoverPlayDelayMs={100} fallback={<ImageIcon className="size-3.5 opacity-55" />} /> : imageUrl || storageKey ? <CachedResourceImage storageKey={storageKey} src={imageUrl} alt="" width={36} height={36} className="size-full object-cover" draggable={false} fallback={<ImageIcon className="size-3.5 opacity-55" />} /> : <ImageIcon className="size-3.5 opacity-55" />}
+                {asset ? <AssetMediaPreview asset={asset} alt={title} className="size-full object-cover" fallback={<ImageIcon className="size-3.5 opacity-55" />} /> : imageUrl || storageKey ? <CachedResourceImage storageKey={storageKey} src={imageUrl} alt="" width={36} height={36} className="size-full object-cover" draggable={false} fallback={<ImageIcon className="size-3.5 opacity-55" />} /> : <ImageIcon className="size-3.5 opacity-55" />}
             </span>
             <span className="min-w-0">
                 <span className="block truncate text-[var(--fs-tiny)] font-semibold">{title}</span>

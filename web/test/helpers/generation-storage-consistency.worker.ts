@@ -5,7 +5,7 @@ import { getActiveUserScope, setActiveUserScope } from "../../src/lib/user-scope
 
 type InstanceHook = (storeName: string, key: string, value: unknown) => Promise<void> | void;
 
-type Scenario = "image-cleanup" | "scope-cleanup-switch" | "scope-cleanup-late-canvas-reference" | "video-commit-race" | "audio-commit-race" | "copied-video-save";
+type Scenario = "image-cleanup" | "scope-cleanup-switch" | "scope-cleanup-late-canvas-reference" | "copied-image-save";
 
 function installStorageHarness() {
     const originalCreateInstance = localforage.createInstance.bind(localforage);
@@ -310,101 +310,14 @@ async function runScopeCleanupAfterLateCanvasReference() {
     }
 }
 
-async function runMediaCommitRace(mediaType: "video" | "audio") {
-    const previousScope = getActiveUserScope();
-    const harness = installStorageHarness();
-    const scope = `generation-media-commit-race-${mediaType}`;
-    let releaseMediaWrite!: () => void;
-    const mediaWriteGate = new Promise<void>((resolve) => {
-        releaseMediaWrite = resolve;
-    });
-    let mediaWriteStartedResolve!: () => void;
-    const mediaWriteStarted = new Promise<void>((resolve) => {
-        mediaWriteStartedResolve = resolve;
-    });
-    let blocked = false;
-    harness.hooks.onSet = async (storeName, key) => {
-        if (!blocked && storeName === "media_files" && key.startsWith(`generation-${mediaType}:${scope}:`)) {
-            blocked = true;
-            mediaWriteStartedResolve();
-            await mediaWriteGate;
-        }
-    };
-
-    try {
-        setActiveUserScope(scope);
-        const { materializeGenerationTaskAssets } = await import("../../src/services/project-asset-sync.ts?generation-media-commit-race-worker");
-        const { useAssetStore } = await import("../../src/stores/use-asset-store");
-        await import("../../src/stores/canvas/use-canvas-store");
-        const fileStorage = await import("../../src/services/file-storage");
-        const task = {
-            id: `remote-generation-media-race-${mediaType}`,
-            provider: "remote-test-provider",
-            type: mediaType,
-            status: "succeeded",
-            prompt: "redacted",
-            attempts: 1,
-            resultState: "PENDING_MATERIALIZATION",
-            resultJson: JSON.stringify(
-                mediaType === "video"
-                    ? {
-                          mode: "video",
-                          video: {
-                              dataUrl: "data:video/mp4;base64,AAAA",
-                              width: 16,
-                              height: 9,
-                              mimeType: "video/mp4",
-                          },
-                      }
-                    : {
-                          mode: "audio",
-                          audio: {
-                              dataUrl: "data:audio/mpeg;base64,AAAA",
-                              mimeType: "audio/mpeg",
-                          },
-                      },
-            ),
-            createdAt: "2026-08-14T00:00:00.000Z",
-            updatedAt: "2026-08-14T00:00:00.000Z",
-        } as const;
-
-        const materializing = materializeGenerationTaskAssets(task as never);
-        await mediaWriteStarted;
-        useAssetStore.getState().cleanupImages({ assets: [] });
-        const cleanupRun = harness.scheduled.at(-1);
-        if (!cleanupRun) throw new Error("cleanup was not scheduled");
-        await Promise.race([
-            cleanupRun,
-            new Promise<void>((resolve) => {
-                harness.realSetTimeout(resolve, 20);
-            }),
-        ]);
-
-        releaseMediaWrite();
-        const materialized = await materializing;
-        await cleanupRun;
-
-        const assetId = materialized.outputs?.[0]?.materializedAssetId;
-        const asset = useAssetStore.getState().assets.find((candidate) => candidate.id === assetId);
-        const storageKey = asset?.kind === "video" || asset?.kind === "audio" ? asset.data.storageKey : undefined;
-        const blobPresent = storageKey ? (await fileStorage.getMediaBlob(storageKey)) instanceof Blob : false;
-        const generationAssetCount = useAssetStore.getState().assets.filter((candidate) => candidate.metadata?.generationEffectKey === `materialize:${task.id}:0`).length;
-        return { kind: asset?.kind, storageKey, blobPresent, generationAssetCount };
-    } finally {
-        releaseMediaWrite();
-        setActiveUserScope(previousScope);
-        harness.restore();
-    }
-}
-
-async function runCopiedVideoSave() {
+async function runCopiedImageSave() {
     const harness = installStorageHarness();
     const { http } = await import("../../src/services/api/request");
     const put = spyOn(http, "put").mockImplementation(async (_url, body) => {
         const { project } = body as { project: { id: string; title: string; createdAt: string; updatedAt: string } };
         return { project } as never;
     });
-    const scope = "copied-video-save";
+    const scope = "copied-image-save";
     setActiveUserScope(scope);
     try {
         const { useCanvasStore, CANVAS_STORE_KEY, recordCanvasStorageDocument, flushCanvasStorePersistence, withCanvasStorePersistenceSuppressed } = await import("../../src/stores/canvas/use-canvas-store");
@@ -414,7 +327,7 @@ async function runCopiedVideoSave() {
         const { persistCanvasDocument } = await import("../../src/services/local-workspace-repository");
         const { CanvasNodeType } = await import("../../src/types/canvas");
         await useCanvasStore.persist.rehydrate();
-        const source = { id: "source", type: CanvasNodeType.Video, title: "480P", position: { x: 0, y: 0 }, width: 340, height: 240, metadata: { content: "video-480p", taskId: "old-task", generationEffectKeys: ["attach-node:old-task:source:0"] } };
+        const source = { id: "source", type: CanvasNodeType.Image, title: "参考图", position: { x: 0, y: 0 }, width: 340, height: 240, metadata: { content: "resource:old-image", taskId: "old-task", generationEffectKeys: ["attach-node:old-task:source:0"] } };
         const project = { id: "copy-project", title: "copy", nodes: [source], connections: [], chatSessions: [], activeChatId: null, backgroundMode: "dots" as const, showImageInfo: false, viewport: { x: 0, y: 0, k: 1 }, directorScenes: [], createdAt: "2026-10-01", updatedAt: "2026-10-01" };
         const storage = localForageStorageForScope(scope);
         const document = parseCanvasStorageDocument(null, [project]);
@@ -428,7 +341,7 @@ async function runCopiedVideoSave() {
         const saved = parseCanvasStorageDocument(await storage.getItem(CANVAS_STORE_KEY));
         const copiedIds = saved.state.projects[0].nodes.map((node) => node.id);
         const effectKey = "attach-node:new-task:copy:0";
-        const completed = { ...copy, metadata: { ...copy.metadata, content: "video-720p", taskId: "new-task", generationEffectKeys: [effectKey] } };
+        const completed = { ...copy, metadata: { ...copy.metadata, content: "resource:new-image", taskId: "new-task", generationEffectKeys: [effectKey] } };
         // Only the backend transport is stubbed; storage and the ordinary canvas commit are real.
         await persistCanvasDocument(project.id, { nodes: [source, completed] });
         const persisted = useCanvasStore.getState().openProject(project.id)!;
@@ -442,15 +355,13 @@ async function runCopiedVideoSave() {
 self.onmessage = async (event: MessageEvent<Scenario>) => {
     try {
         const result =
-            event.data === "copied-video-save"
-                ? await runCopiedVideoSave()
+            event.data === "copied-image-save"
+                ? await runCopiedImageSave()
                 : event.data === "image-cleanup"
                 ? await runImageCleanup()
                 : event.data === "scope-cleanup-switch"
                   ? await runScopeCleanupAfterSwitch()
-                  : event.data === "scope-cleanup-late-canvas-reference"
-                    ? await runScopeCleanupAfterLateCanvasReference()
-                    : await runMediaCommitRace(event.data === "audio-commit-race" ? "audio" : "video");
+                  : await runScopeCleanupAfterLateCanvasReference();
         self.postMessage({ ok: true, result });
     } catch (error) {
         self.postMessage({ ok: false, error: error instanceof Error ? `${error.name}: ${error.message}` : String(error) });

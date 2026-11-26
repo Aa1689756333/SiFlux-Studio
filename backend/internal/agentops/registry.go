@@ -21,7 +21,6 @@ const (
 	ScopeWorkspaceRead = operations.ScopeWorkspaceRead
 	CallerManual       = operations.CallerManual
 	CallerAssistant    = operations.CallerAssistant
-	CallerExternal     = operations.CallerExternal
 )
 
 func NewRegistry(binder operations.DomainBinder, store *Store) *Registry {
@@ -35,5 +34,3 @@ func ManualCaller(readOnly bool) Caller { return operations.ManualCaller(readOnl
 func AssistantCaller(scope *AssistantScope, readOnly bool) Caller {
 	return operations.AssistantCaller(scope, readOnly)
 }
-
-func ExternalCaller(readOnly bool) Caller { return operations.ExternalCaller(readOnly) }

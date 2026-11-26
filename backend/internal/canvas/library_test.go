@@ -24,7 +24,7 @@ func TestCanvasLibraryFolderAndDrawingPersistAndCAS(t *testing.T) {
 	if err != nil || folder.Name != "剧集" || folder.ID != "folder-1" {
 		t.Fatalf("folder upsert: %+v %v", folder, err)
 	}
-	canvasRaw := json.RawMessage(`{"id":"canvas","revision":0,"title":"分镜","folderId":"folder-1","nodes":[{"id":"n-drawing","type":"drawing","metadata":{"drawingId":"sketch"}}]}`)
+	canvasRaw := json.RawMessage(`{"id":"canvas","revision":0,"title":"分镜","folderId":"folder-1","nodes":[{"id":"n-image","type":"image","metadata":{"content":""}}]}`)
 	created, err := svc.UpsertUserCanvasProject(userID, canvasRaw)
 	if err != nil {
 		t.Fatal(err)

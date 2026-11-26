@@ -300,41 +300,6 @@ func TestOfficialVideoProfilesPreserveExplicitMediaRoles(t *testing.T) {
 	}
 }
 
-func TestNewAPIChannel1AddsSeedanceContentAliasAndParsesDataURL(t *testing.T) {
-	adapter := officialPackageAdapter(t, "newapi-media-task-v1.siflux-plugin", "newapi-channel-1")
-	spec, err := adapter.BuildCreate(context.Background(), RequestContext{Request: GenerationRequest{
-		Capability: CapabilityVideo, Model: "seedance-2-0-fast", Prompt: "a red glass cube", Duration: 6,
-		AspectRatio: "9:16", Resolution: "480p",
-	}})
-	if err != nil {
-		t.Fatal(err)
-	}
-	body := manifestTestBody(t, spec)
-	content, ok := body["content"].([]any)
-	if !ok || len(content) != 1 {
-		t.Fatalf("top-level content = %#v", body["content"])
-	}
-	item, _ := content[0].(map[string]any)
-	if item["type"] != "text" || item["text"] != "a red glass cube" {
-		t.Fatalf("top-level content item = %#v", item)
-	}
-	input, _ := body["input"].(map[string]any)
-	if nested, ok := input["content"].([]any); !ok || len(nested) != 1 {
-		t.Fatalf("nested input.content = %#v", input["content"])
-	}
-	parameters, _ := body["parameters"].(map[string]any)
-	if parameters["ratio"] != "9:16" || parameters["resolution"] != "480p" || parameters["duration"] != float64(6) {
-		t.Fatalf("video parameters = %#v", parameters)
-	}
-	state, err := adapter.ParsePoll(context.Background(), PollContext{TaskID: "task-1"}, []byte(`{"id":"task-1","status":"completed","data":[{"url":"https://cdn.example/result.mp4"}]}`))
-	if err != nil {
-		t.Fatal(err)
-	}
-	if state.Status != StatusSucceeded || state.Result == nil || len(state.Result.Videos) != 1 || state.Result.Videos[0].URL != "https://cdn.example/result.mp4" {
-		t.Fatalf("data URL result = %#v", state)
-	}
-}
-
 func TestOfficialWanProfilesUseMutuallyExclusiveReferenceFields(t *testing.T) {
 	video := officialPackageAdapter(t, "dashscope-wan-video.siflux-plugin", "dashscope-wan-video")
 	videoSpec, err := video.BuildCreate(context.Background(), RequestContext{Request: GenerationRequest{
