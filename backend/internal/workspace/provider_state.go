@@ -262,7 +262,12 @@ func presetChannelMap(preset providerpreset.ChannelPreset, local map[string]any)
 		"presetVersion": preset.PresetVersion, "models": models, "modelProfiles": profiles,
 		"apiKey": "", "secretKey": "", "headers": []any{}, "enabled": true,
 	}
-	for _, key := range []string{"apiKey", "secretKey", "headers", "enabled"} {
+	// 内置渠道的连接状态由本地保存，读取时按白名单回填。
+	for _, key := range []string{
+		"apiKey", "secretKey", "headers", "enabled",
+		"relayAccessToken", "relayTokenType", "relayCookie",
+		"relayQuota", "relayUsedQuota", "relayQuotaPerUnit", "relayQuotaAt",
+	} {
 		if value, ok := local[key]; ok {
 			result[key] = value
 		}
