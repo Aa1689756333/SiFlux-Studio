@@ -73,6 +73,14 @@ type Self struct {
 	UsedQuota   int64  `json:"used_quota"`
 }
 
+// Balance 是账户余额，金额单位为中转站的计价单位（通常为美元）。
+type Balance struct {
+	Granted    float64 `json:"granted"`
+	Spent      float64 `json:"spent"`
+	Remaining  float64 `json:"remaining"`
+	UsageKnown bool    `json:"usageKnown"`
+}
+
 // Client 访问一个 NewAPI 站点。
 type Client struct {
 	baseURL string
@@ -225,6 +233,69 @@ func (c *Client) tokenKey(ctx context.Context, session string, id int) (string, 
 		return "", &Error{Status: http.StatusBadGateway, Message: "中转站没有返回令牌内容"}
 	}
 	return payload.Key, nil
+}
+
+// Balance 用访问令牌读取账户余额，返回剩余额度与已用额度（单位：quota_per_unit 分之一）。
+func (c *Client) Balance(ctx context.Context, apiKey string) (Balance, error) {
+	key := strings.TrimSpace(apiKey)
+	if key == "" {
+		return Balance{}, &Error{Status: http.StatusUnauthorized, Message: "尚未接入中转站"}
+	}
+	subscription, err := c.getWithKey(ctx, "/v1/dashboard/billing/subscription", key)
+	if err != nil {
+		return Balance{}, err
+	}
+	var grant struct {
+		HardLimitUSD float64 `json:"hard_limit_usd"`
+		SoftLimitUSD float64 `json:"soft_limit_usd"`
+	}
+	if err := json.Unmarshal(subscription, &grant); err != nil {
+		return Balance{}, &Error{Status: http.StatusBadGateway, Message: "中转站返回的额度信息无法解析"}
+	}
+	total := grant.HardLimitUSD
+	if total <= 0 {
+		total = grant.SoftLimitUSD
+	}
+	usage, err := c.getWithKey(ctx, "/v1/dashboard/billing/usage", key)
+	if err != nil {
+		// 用量读取失败时仍然给出总额度，界面按"未知用量"展示。
+		return Balance{Granted: total, Remaining: total, UsageKnown: false}, nil
+	}
+	var used struct {
+		TotalUsage float64 `json:"total_usage"`
+	}
+	if err := json.Unmarshal(usage, &used); err != nil {
+		return Balance{Granted: total, Remaining: total, UsageKnown: false}, nil
+	}
+	// 用量以美分计，额度以美元计。
+	spent := used.TotalUsage / 100
+	remaining := total - spent
+	if remaining < 0 {
+		remaining = 0
+	}
+	return Balance{Granted: total, Spent: spent, Remaining: remaining, UsageKnown: true}, nil
+}
+
+// getWithKey 用访问令牌请求一个 JSON 接口。
+func (c *Client) getWithKey(ctx context.Context, path, apiKey string) ([]byte, error) {
+	request, err := c.newRequest(ctx, http.MethodGet, path, nil, "")
+	if err != nil {
+		return nil, err
+	}
+	request.Header.Set("Authorization", "Bearer "+apiKey)
+	response, err := c.http.Do(request)
+	if err != nil {
+		return nil, fmt.Errorf("连接中转站失败: %w", err)
+	}
+	defer response.Body.Close()
+	raw, err := io.ReadAll(io.LimitReader(response.Body, maxResponseBytes))
+	if err != nil {
+		return nil, fmt.Errorf("读取中转站响应失败: %w", err)
+	}
+	if response.StatusCode != http.StatusOK {
+		return nil, &Error{Status: response.StatusCode, Message: failureMessage(raw, response.StatusCode)}
+	}
+	return raw, nil
 }
 
 // Self 读取当前账号额度。

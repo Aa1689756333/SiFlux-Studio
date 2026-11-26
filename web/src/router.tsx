@@ -16,6 +16,7 @@ const CanvasProjectPage = lazy(loadCanvasProjectPage);
 const GenerateImagePage = lazy(loadGenerateImagePage);
 const NotFound = lazy(() => import("@/pages/not-found"));
 const SettingsPage = lazy(() => import("@/pages/settings"));
+const HomePage = lazy(() => import("@/pages/home"));
 const UserLayout = lazy(() => import("@/layouts/user-layout"));
 
 function deferred(element: ReactNode) {
@@ -38,7 +39,7 @@ export const router = createWorkspaceRouter([
         element: <WorkspaceLayout />,
         errorElement: <RouteErrorPage />,
         children: [
-            { path: "/", element: <Navigate to="/generate/image" replace /> },
+            { path: "/", element: deferred(<HomePage />) },
             { path: "/generate/image", element: deferred(<GenerateImagePage />) },
             { path: "/agent", element: deferred(<AgentPage />) },
             { path: "/assets", element: deferred(<AssetsPage />) },

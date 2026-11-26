@@ -58,6 +58,19 @@ export function connectRelayAccount(payload: RelayConnectPayload, signal?: Abort
     return http.post<RelaySignInResult>("/relay/connect", payload, { signal });
 }
 
+/** 中转站账户余额，金额单位为结算货币（通常为美元）。 */
+export type RelayQuota = {
+    granted: number;
+    spent: number;
+    remaining: number;
+    usageKnown: boolean;
+};
+
+/** 查询已接入账户的当前余额。 */
+export function fetchRelayQuota(signal?: AbortSignal) {
+    return http.get<RelayQuota>("/relay/quota", { signal });
+}
+
 /** 把中转站额度换算成可展示的金额。 */
 export function relayQuotaAmount(quota: number, quotaPerUnit: number) {
     if (!Number.isFinite(quota) || !Number.isFinite(quotaPerUnit) || quotaPerUnit <= 0) return "";

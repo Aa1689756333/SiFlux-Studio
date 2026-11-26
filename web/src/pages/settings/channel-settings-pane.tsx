@@ -1,4 +1,4 @@
-import { Alert, App, Button, Form, Input, Popconfirm, Segmented, Select } from "antd";
+﻿import { Alert, App, Button, Form, Input, Popconfirm, Segmented, Select } from "antd";
 import { Bug, Pencil, Plus, RefreshCw, Trash2, Workflow } from "lucide-react";
 import { useEffect, useRef, useState, useSyncExternalStore, type ReactNode } from "react";
 
@@ -11,7 +11,6 @@ import { ensureModelProfilesWithUiDefaults } from "@/lib/model-protocols";
 import { fetchChannelModels, type ChannelModelFetchResult } from "@/services/api/image";
 import { channelHasGenerationCredential, channelHasManagedBeefAPICredential, createModelChannel, defaultBaseUrlForApiFormat, isBuiltinBeefAPIChannel, isBuiltinRelayChannel, normalizeConfigSnapshot, useConfigStore, type AiConfig, type ModelChannel } from "@/stores/use-config-store";
 import { ChannelModelSettings } from "./channel-model-settings";
-import { RelaySignupModal } from "./relay-signup-modal";
 import { refreshModelConfigFromServer } from "@/components/workspace/workspace-bootstrap-hydrator";
 import { ModelServiceEditor } from "./model-service-editor";
 import { currentModelConnectionReceipt, useModelConnectionTests } from "@/stores/use-model-connection-tests";
@@ -49,7 +48,6 @@ export function ChannelSettingsPane({ onOpenDiagnostics, onOpenModels, onOpenRun
     const requests = useRef(createChannelCatalogRequests());
     const deleting = useRef(new Set<string>());
     const [deleteFailures, setDeleteFailures] = useState<Record<string, string>>({});
-    const [relaySignupOpen, setRelaySignupOpen] = useState(false);
     useEffect(() => () => requests.current.cancelAll(), []);
     const cancelCatalog = (id: string) => {
         requests.current.cancel(id);
@@ -180,16 +178,6 @@ export function ChannelSettingsPane({ onOpenDiagnostics, onOpenModels, onOpenRun
         }
     };
 
-    // 中转站注册成功后，后端已把 API Key 写入本地渠道，这里同步回界面并补全模型能力。
-    const handleRelayConnected = async (channelId: string) => {
-        try {
-            await refreshModelConfigFromServer();
-            const current = useConfigStore.getState().config.channels.find((item) => item.id === channelId);
-            if (current) await refreshChannelModels(current);
-        } catch (error) {
-            message.warning(error instanceof Error ? error.message : "已写入凭据，但刷新模型列表失败，请稍后点击「拉取模型」");
-        }
-    };
 
     const refreshAllModels = async () => {
         const runnable = userChannels.filter((channel) => !channelConnectionError(channel, null));
@@ -317,16 +305,6 @@ export function ChannelSettingsPane({ onOpenDiagnostics, onOpenModels, onOpenRun
                                         {!builtinBeefAPI && <p className="mt-1 break-all text-xs text-foreground/50">模型目录地址：{modelCatalogRequestURL(channel)}</p>}
                                     </div>
                                     <div className="flex w-full flex-wrap justify-end gap-2 sm:w-auto sm:shrink-0">
-                                        {isBuiltinRelayChannel(channel) ? (
-                                            <Button
-                                                className="h-10 sm:h-8"
-                                                size="small"
-                                                type={channel.apiKey ? "default" : "primary"}
-                                                onClick={() => setRelaySignupOpen(true)}
-                                            >
-                                                {channel.apiKey ? "重新连接" : "注册 / 登录"}
-                                            </Button>
-                                        ) : null}
                                         <Button
                                             className="h-10 sm:h-8"
                                             size="small"
@@ -495,11 +473,6 @@ export function ChannelSettingsPane({ onOpenDiagnostics, onOpenModels, onOpenRun
                 />
             )}
             {serviceEditor !== undefined && <ModelServiceEditor initial={serviceEditor} onClose={() => setServiceEditor(undefined)} onSave={saveService} />}
-            <RelaySignupModal
-                open={relaySignupOpen}
-                onClose={() => setRelaySignupOpen(false)}
-                onConnected={(result) => void handleRelayConnected(result.channelId)}
-            />
         </Form>
     );
 }

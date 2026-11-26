@@ -159,6 +159,37 @@ func RegisterRelayRoutes(r gin.IRouter, svc *app.Service) {
 		completeRelaySignIn(c, svc, client, session, options)
 	})
 
+	// relayQuota 用已保存的 API Key 查询账户余额。
+	r.GET("/relay/quota", func(c *gin.Context) {
+		apiKey, err := storedRelayAPIKey(c, svc)
+		if err != nil {
+			failService(c, err)
+			return
+		}
+		if apiKey == "" {
+			fail(c, http.StatusBadRequest, errors.New("尚未接入中转站"))
+			return
+		}
+		client, err := relayClient()
+		if err != nil {
+			fail(c, http.StatusServiceUnavailable, err)
+			return
+		}
+		ctx, cancel := context.WithTimeout(c.Request.Context(), 15*time.Second)
+		defer cancel()
+		balance, err := client.Balance(ctx, apiKey)
+		if err != nil {
+			failRelay(c, err)
+			return
+		}
+		ok(c, gin.H{
+			"granted":    balance.Granted,
+			"spent":      balance.Spent,
+			"remaining":  balance.Remaining,
+			"usageKnown": balance.UsageKnown,
+		})
+	})
+
 	r.POST("/relay/connect", func(c *gin.Context) {
 		var request struct {
 			Username string `json:"username"`
@@ -237,6 +268,32 @@ func completeRelaySignIn(c *gin.Context, svc *app.Service, client *relayclient.C
 		data["modelsError"] = modelsErr.Error()
 	}
 	ok(c, data)
+}
+
+// storedRelayAPIKey 读取内置中转站渠道里已保存的 API Key。
+func storedRelayAPIKey(c *gin.Context, svc *app.Service) (string, error) {
+	providerConfig := requestProviderConfig(c, svc)
+	versioned, supportsVersioning := providerConfig.(VersionedProviderConfig)
+	if !supportsVersioning {
+		return "", nil
+	}
+	effective, _, err := versioned.LoadEffectiveModelConfig()
+	if err != nil {
+		return "", err
+	}
+	channels, _ := effective.Config["channels"].([]any)
+	for _, item := range channels {
+		channel, isMap := item.(map[string]any)
+		if !isMap {
+			continue
+		}
+		if id, _ := channel["id"].(string); id != builtinRelayChannelID {
+			continue
+		}
+		apiKey, _ := channel["apiKey"].(string)
+		return strings.TrimSpace(apiKey), nil
+	}
+	return "", nil
 }
 
 // saveRelayAPIKey 把令牌写入内置中转站渠道并启用它。

@@ -1,5 +1,6 @@
 ﻿const workspaceRouteLoaders = {
 
+    home: () => import("@/pages/home"),
     agent: () => import("@/pages/agent"),
     skills: () => import("@/pages/skills/local"),
     assets: () => import("@/pages/assets"),
@@ -9,6 +10,7 @@
 };
 
 
+export const loadHomePage = workspaceRouteLoaders.home;
 export const loadAgentPage = workspaceRouteLoaders.agent;
 export const loadSkillsPage = workspaceRouteLoaders.skills;
 export const loadAssetsPage = workspaceRouteLoaders.assets;

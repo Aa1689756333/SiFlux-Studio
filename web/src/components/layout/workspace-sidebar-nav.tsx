@@ -1,16 +1,23 @@
-﻿import { Bot, ChevronRight, Image as ImageIcon, Settings2, Sun, Moon } from "lucide-react";
+﻿import { Bot, ChevronRight, House, Image as ImageIcon, Settings2, Sun, Moon, UserRound } from "lucide-react";
+import { useQuery } from "@tanstack/react-query";
 import { LayoutGroup, motion, useReducedMotion } from "motion/react";
 import { useEffect, useMemo, useRef, useState, type ComponentType, type CSSProperties } from "react";
 import { Link, useLocation } from "react-router";
 
 import { WorkspaceSidebarUpdate } from "@/components/layout/workspace-sidebar-update";
-import { WorkspaceSidebarSocialLinks } from "@/components/layout/workspace-sidebar-social-links";
+
 import { Kbd } from "@/components/ui/base/kbd";
 import { navigationTools, type NavigationToolSlug } from "@/constant/navigation-tools";
 import { aceternityMotion } from "@/lib/aceternity-motion";
 import { cn } from "@/lib/utils";
 import { preloadWorkspaceRoute } from "@/lib/workspace-route-modules";
 import { useThemeStore } from "@/stores/use-theme-store";
+import { RelaySignupModal } from "@/pages/settings/relay-signup-modal";
+import { Button } from "antd";
+import { completeRelayConnection, relayChannelConnected } from "@/services/relay-connection";
+import { fetchRelayQuota } from "@/services/api/relay-auth";
+import { useConfigStore } from "@/stores/use-config-store";
+import { message } from "antd";
 import { AnimatedThemeToggler } from "@/components/ui/animated-theme-toggler";
 
 export type WorkspaceNavItem = {
@@ -21,7 +28,7 @@ export type WorkspaceNavItem = {
     shortcut?: string;
     badge?: string | number;
     disabled?: boolean;
-    action?: "search";
+    action?: "search" | "relay";
     children?: WorkspaceNavItem[];
 };
 
@@ -39,12 +46,14 @@ function buildNav(): { groups: WorkspaceNavGroup[]; footer: WorkspaceNavItem[] }
     return {
         groups: [
             { items: [
+                { id: "home", title: "主页", icon: House, to: "/" },
                 { id: "image", title: "生图", icon: ImageIcon, to: "/generate/image" },
                 { id: "agent", title: "Agent 生图", icon: Bot, to: "/agent" },
             ] },
             { heading: "工作区", items: [
                 toolItem("canvas", "/canvas"),
                 toolItem("assets", "/assets"),
+                { id: "relay", title: "中转站账号", icon: UserRound, action: "relay" },
                 { id: "settings", title: "设置", icon: Settings2, to: "/settings" },
             ] },
             { heading: "Agent 配置", items: [
@@ -60,6 +69,7 @@ function NavItem({
     activeId,
     onSelect,
     onOpenSearch,
+    onOpenRelay,
     level = 0,
     collapsed = false,
 }: {
@@ -67,6 +77,7 @@ function NavItem({
     activeId: string;
     onSelect: (id: string) => void;
     onOpenSearch: () => void;
+    onOpenRelay: () => void;
     level?: number;
     collapsed?: boolean;
 }) {
@@ -125,6 +136,10 @@ function NavItem({
             onOpenSearch();
             return;
         }
+        if (item.action === "relay") {
+            onOpenRelay();
+            return;
+        }
         if (hasChildren) {
             setIsOpen((open) => !open);
             return;
@@ -170,7 +185,7 @@ function NavItem({
                     <div className="relative flex min-h-0 flex-col gap-0.5 overflow-hidden pt-0.5">
                         <span className="app-workspace-nav-guide-line" style={{ left: `${(level + 1) * 12 + 12.5}px` }} />
                         {item.children!.map((child) => (
-                            <NavItem key={child.id} item={child} activeId={activeId} onSelect={onSelect} onOpenSearch={onOpenSearch} level={level + 1} collapsed={false} />
+                            <NavItem key={child.id} item={child} activeId={activeId} onSelect={onSelect} onOpenSearch={onOpenSearch} onOpenRelay={onOpenRelay} level={level + 1} collapsed={false} />
                         ))}
                     </div>
                 </div>
@@ -179,7 +194,7 @@ function NavItem({
     );
 }
 
-function NavGroup({ group, activeId, onNavigate, onOpenSearch, collapsed }: { group: WorkspaceNavGroup; activeId: string; onNavigate: () => void; onOpenSearch: () => void; collapsed: boolean }) {
+function NavGroup({ group, activeId, onNavigate, onOpenSearch, onOpenRelay, collapsed }: { group: WorkspaceNavGroup; activeId: string; onNavigate: () => void; onOpenSearch: () => void; onOpenRelay: () => void; collapsed: boolean }) {
     const [isOpen, setIsOpen] = useState(true);
     const hasActive = group.items.some((item) => item.id === activeId || (item.id === "settings" && activeId.startsWith("settings:")));
 
@@ -191,7 +206,7 @@ function NavGroup({ group, activeId, onNavigate, onOpenSearch, collapsed }: { gr
     const content = (
         <div className="flex flex-col gap-2">
             {group.items.map((item) => (
-                <NavItem key={item.id} item={item} activeId={activeId} onSelect={onNavigate} onOpenSearch={onOpenSearch} collapsed={collapsed} />
+                <NavItem key={item.id} item={item} activeId={activeId} onSelect={onNavigate} onOpenSearch={onOpenSearch} onOpenRelay={onOpenRelay} collapsed={collapsed} />
             ))}
         </div>
     );
@@ -214,14 +229,76 @@ function NavGroup({ group, activeId, onNavigate, onOpenSearch, collapsed }: { gr
     );
 }
 
+/**
+ * 侧栏底部的账号入口：未接入时是注册/登录按钮，接入后直接展示余额。
+ */
+function RelayAccountEntry({ connected, collapsed, onOpen }: { connected: boolean; collapsed: boolean; onOpen: () => void }) {
+    const quota = useQuery({
+        queryKey: ["relay-quota", connected],
+        queryFn: () => fetchRelayQuota(),
+        enabled: connected,
+        staleTime: 60_000,
+        retry: false,
+    });
+    if (!connected) {
+        return (
+            <Button
+                type="primary"
+                block
+                className="h-9"
+                icon={collapsed ? <UserRound className="size-4" /> : undefined}
+                onClick={onOpen}
+                aria-label="注册或登录中转站"
+            >
+                {collapsed ? null : "注册 / 登录"}
+            </Button>
+        );
+    }
+    const amount = quota.data ? `$${quota.data.remaining.toFixed(2)}` : quota.isLoading ? "…" : "余额未知";
+    return (
+        <button
+            type="button"
+            onClick={onOpen}
+            className="flex w-full items-center justify-between gap-2 rounded-[var(--r-md)] border border-border/60 bg-surface/40 px-3 py-2 text-left transition-colors hover:border-primary/40 hover:bg-surface/70"
+            title="查看中转站账户与余额"
+        >
+            {collapsed ? (
+                <UserRound className="mx-auto size-4 text-foreground/70" />
+            ) : (
+                <>
+                    <span className="flex min-w-0 flex-col">
+                        <span className="text-[var(--fs-micro)] text-foreground/50">中转站余额</span>
+                        <span className="truncate text-sm font-semibold">{amount}</span>
+                    </span>
+                    <ChevronRight className="size-3.5 shrink-0 text-foreground/40" />
+                </>
+            )}
+        </button>
+    );
+}
+
 export function WorkspaceSidebarNav({ onNavigate, onOpenSearch }: { onNavigate: () => void; onOpenSearch: () => void }) {
     const theme = useThemeStore((state) => state.theme);
     const setTheme = useThemeStore((state) => state.setTheme);
     const { pathname } = useLocation();
     const collapsed = false;
-    const { groups, footer } = useMemo(buildNav, []);
+    const relayConnected = useConfigStore((state) => relayChannelConnected(state.config.channels));
+    const [relayOpen, setRelayOpen] = useState(false);
+    const { groups, footer } = useMemo(() => {
+        const built = buildNav();
+        return {
+            footer: built.footer,
+            groups: built.groups.map((group) => ({
+                ...group,
+                items: group.items.map((item) =>
+                    item.id === "relay" && !relayConnected ? { ...item, badge: "未连接" } : item,
+                ),
+            })),
+        };
+    }, [relayConnected]);
+    const openRelay = () => setRelayOpen(true);
 
-    const rawSlug = pathname.split("/").filter(Boolean)[0] || "image";
+    const rawSlug = pathname === "/" ? "home" : pathname.split("/").filter(Boolean)[0] || "image";
     const activeId = pathname.startsWith("/generate/image") ? "image" : rawSlug === "project" || rawSlug === "projects" ? "canvas" : rawSlug;
 
     const scrollRef = useRef<HTMLDivElement>(null);
@@ -248,7 +325,7 @@ export function WorkspaceSidebarNav({ onNavigate, onOpenSearch }: { onNavigate: 
                 className={cn("app-workspace-sidebar-scroll-area flex min-h-0 flex-1 flex-col gap-5 overflow-y-auto px-3 pb-3 pt-7", collapsed && "is-collapsed", scrollState.hasTopFade && "has-top-fade", scrollState.hasBottomFade && "has-bottom-fade")}
             >
                 {groups.map((group, index) => (
-                    <NavGroup key={index} group={group} activeId={activeId} onNavigate={onNavigate} onOpenSearch={onOpenSearch} collapsed={collapsed} />
+                    <NavGroup key={index} group={group} activeId={activeId} onNavigate={onNavigate} onOpenSearch={onOpenSearch} onOpenRelay={openRelay} collapsed={collapsed} />
                 ))}
             </div>
             </LayoutGroup>
@@ -257,12 +334,12 @@ export function WorkspaceSidebarNav({ onNavigate, onOpenSearch }: { onNavigate: 
                 {footer.length ? (
                     <div className="flex flex-col gap-0.5">
                         {footer.map((item) => (
-                            <NavItem key={item.id} item={item} activeId={activeId} onSelect={onNavigate} onOpenSearch={onOpenSearch} collapsed={collapsed} />
+                            <NavItem key={item.id} item={item} activeId={activeId} onSelect={onNavigate} onOpenSearch={onOpenSearch} onOpenRelay={openRelay} collapsed={collapsed} />
                         ))}
                     </div>
                 ) : null}
                 <div className={cn("app-workspace-sidebar-contact-row", collapsed && "is-collapsed")}>
-                    <WorkspaceSidebarSocialLinks />
+                    <RelayAccountEntry connected={relayConnected} collapsed={collapsed} onOpen={openRelay} />
                 </div>
                 <div className={cn("app-workspace-sidebar-utility-row", collapsed && "is-collapsed")}>
                     <WorkspaceSidebarUpdate collapsed={collapsed} />
@@ -271,6 +348,15 @@ export function WorkspaceSidebarNav({ onNavigate, onOpenSearch }: { onNavigate: 
                     </AnimatedThemeToggler>
                 </div>
             </div>
+            <RelaySignupModal
+                open={relayOpen}
+                onClose={() => setRelayOpen(false)}
+                onConnected={(result) => {
+                    void completeRelayConnection(result.channelId).catch((error: unknown) => {
+                        message.warning(error instanceof Error ? error.message : "已接入账号，但刷新模型列表失败，请到设置里点「拉取模型」");
+                    });
+                }}
+            />
         </div>
     );
 }
