@@ -1,5 +1,5 @@
 import { useCallback, useEffect, useRef, useState } from "react";
-import { Alert, Button, Form, Input, Modal, Segmented, Space, message } from "antd";
+import { Alert, Button, Form, Input, Modal, Space, Tabs, message } from "antd";
 import { CheckCircle2, Loader2, Mail, UserRound } from "lucide-react";
 import {
     connectRelayAccount,
@@ -26,7 +26,7 @@ const CODE_COOLDOWN_SECONDS = 60;
  * 密码只在本次请求里使用，后端不会保存，也不会返回值里带出。
  */
 export function RelaySignupModal({ open, onClose, onConnected }: RelaySignupModalProps) {
-    const [mode, setMode] = useState<RelayMode>("register");
+    const [mode, setMode] = useState<RelayMode>("login");
     const [form] = Form.useForm<{ username: string; password: string; email: string; code: string }>();
     const [options, setOptions] = useState<RelaySignupOptions | null>(null);
     const [optionsError, setOptionsError] = useState("");
@@ -65,7 +65,7 @@ export function RelaySignupModal({ open, onClose, onConnected }: RelaySignupModa
         if (!open) return;
         setError("");
         setResult(null);
-        setMode("register");
+        setMode("login");
         setCooldown(0);
         stopCooldown();
         form.resetFields();
@@ -171,17 +171,16 @@ export function RelaySignupModal({ open, onClose, onConnected }: RelaySignupModa
         >
             <div className="pt-2">
                 {!result ? (
-                    <Segmented
-                        block
-                        className="mb-4"
-                        value={mode}
-                        onChange={(value) => {
-                            setMode(value as RelayMode);
+                    <Tabs
+                        className="relay-auth-tabs mb-3"
+                        activeKey={mode}
+                        onChange={(key) => {
+                            setMode(key as RelayMode);
                             setError("");
                         }}
-                        options={[
-                            { label: "注册新账号", value: "register" },
-                            { label: "已有账号", value: "login" },
+                        items={[
+                            { key: "login", label: "登录" },
+                            { key: "register", label: "注册" },
                         ]}
                     />
                 ) : null}
@@ -315,9 +314,6 @@ export function RelaySignupModal({ open, onClose, onConnected }: RelaySignupModa
                         >
                             {mode === "register" ? "注册并接入" : "登录并接入"}
                         </Button>
-                        <p className="m-0 pt-3 text-center text-xs leading-5 text-foreground/45">
-                            账号与充值在 SiFlux 服务完成，应用只保存自动生成的密钥。
-                        </p>
                     </Form>
                 )}
             </div>
