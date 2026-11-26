@@ -229,6 +229,7 @@ func (c *Client) Login(ctx context.Context, username, password string) (Session,
 }
 
 // CreateToken 以登录会话创建一枚访问令牌。
+// 服务端建令牌只返回 {success,message}，因此建完再查列表取回 Id 与明文。
 func (c *Client) CreateToken(ctx context.Context, session Session, name string) (Token, error) {
 	body := map[string]any{
 		"name":                 name,
@@ -239,22 +240,48 @@ func (c *Client) CreateToken(ctx context.Context, session Session, name string) 
 		"model_limits":         "",
 		"allow_ips":            "",
 	}
-	var token Token
-	if err := c.call(ctx, http.MethodPost, "/api/token/", body, session, &token); err != nil {
+	if err := c.call(ctx, http.MethodPost, "/api/token/", body, session, nil); err != nil {
 		return Token{}, err
 	}
-	if token.Key != "" {
-		return token, nil
-	}
-	if token.ID <= 0 {
-		return Token{}, &Error{Status: http.StatusBadGateway, Message: "服务没有返回密钥"}
-	}
-	key, err := c.tokenKey(ctx, session, token.ID)
+	created, err := c.newestToken(ctx, session, name)
 	if err != nil {
 		return Token{}, err
 	}
-	token.Key = key
-	return token, nil
+	key, err := c.tokenKey(ctx, session, created.ID)
+	if err != nil {
+		return Token{}, err
+	}
+	created.Key = key
+	return created, nil
+}
+
+// tokenSummary 是令牌列表里的一项。
+type tokenSummary struct {
+	ID   int    `json:"id"`
+	Name string `json:"name"`
+}
+
+// newestToken 在令牌列表里找到刚创建的那一枚。
+func (c *Client) newestToken(ctx context.Context, session Session, name string) (Token, error) {
+	var page struct {
+		Items []tokenSummary `json:"items"`
+	}
+	if err := c.call(ctx, http.MethodGet, "/api/token/?p=0&size=100", nil, session, &page); err != nil {
+		return Token{}, err
+	}
+	best := Token{}
+	for _, item := range page.Items {
+		if item.ID <= best.ID {
+			continue
+		}
+		if item.Name == name || best.ID == 0 {
+			best = Token{ID: item.ID}
+		}
+	}
+	if best.ID == 0 {
+		return Token{}, &Error{Status: http.StatusBadGateway, Path: "/api/token/", Message: "服务没有返回新建的密钥"}
+	}
+	return best, nil
 }
 
 // tokenKey 取回令牌明文。
@@ -267,12 +294,12 @@ func (c *Client) tokenKey(ctx context.Context, session Session, id int) (string,
 		return "", err
 	}
 	if strings.TrimSpace(payload.Key) == "" {
-		return "", &Error{Status: http.StatusBadGateway, Message: "服务没有返回密钥内容"}
+		return "", &Error{Status: http.StatusBadGateway, Path: path, Message: "服务没有返回密钥内容"}
 	}
 	return payload.Key, nil
 }
 
-// Balance 用访问令牌读取账户余额，返回剩余额度与已用额度（单位：quota_per_unit 分之一）。
+// Balance 用访问令牌读取账户余额，返回剩余额度与已用额度。
 func (c *Client) Balance(ctx context.Context, apiKey string) (Balance, error) {
 	key := strings.TrimSpace(apiKey)
 	if key == "" {
@@ -287,7 +314,7 @@ func (c *Client) Balance(ctx context.Context, apiKey string) (Balance, error) {
 		SoftLimitUSD float64 `json:"soft_limit_usd"`
 	}
 	if err := json.Unmarshal(subscription, &grant); err != nil {
-		return Balance{}, &Error{Status: http.StatusBadGateway, Message: "服务返回的余额信息无法解析"}
+		return Balance{}, &Error{Status: http.StatusBadGateway, Path: "/v1/dashboard/billing/subscription", Message: "服务返回的余额信息无法解析"}
 	}
 	total := grant.HardLimitUSD
 	if total <= 0 {
@@ -295,7 +322,6 @@ func (c *Client) Balance(ctx context.Context, apiKey string) (Balance, error) {
 	}
 	usage, err := c.getWithKey(ctx, "/v1/dashboard/billing/usage", key)
 	if err != nil {
-		// 用量读取失败时仍然给出总额度，界面按"未知用量"展示。
 		return Balance{Granted: total, Remaining: total, UsageKnown: false}, nil
 	}
 	var used struct {
@@ -304,7 +330,6 @@ func (c *Client) Balance(ctx context.Context, apiKey string) (Balance, error) {
 	if err := json.Unmarshal(usage, &used); err != nil {
 		return Balance{Granted: total, Remaining: total, UsageKnown: false}, nil
 	}
-	// 用量以美分计，额度以美元计。
 	spent := used.TotalUsage / 100
 	remaining := total - spent
 	if remaining < 0 {

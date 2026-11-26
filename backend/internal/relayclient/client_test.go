@@ -51,8 +51,15 @@ func newFakeRelay(t *testing.T) (*httptest.Server, *int) {
 			writeEnvelopeMessage(w, false, "Unauthorized, invalid access token", nil)
 			return
 		}
-		createdTokens++
-		writeEnvelope(w, map[string]any{"id": 7})
+		switch r.Method {
+		case http.MethodPost:
+			createdTokens++
+			writeEnvelope(w, nil)
+		case http.MethodGet:
+			writeEnvelope(w, map[string]any{"items": []map[string]any{{"id": 7, "name": relayTokenFixtureName}}})
+		default:
+			http.NotFound(w, r)
+		}
 	})
 	mux.HandleFunc("/api/token/7/key", func(w http.ResponseWriter, _ *http.Request) {
 		writeEnvelope(w, map[string]any{"key": "sk-generated"})
