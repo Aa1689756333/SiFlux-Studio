@@ -1,6 +1,15 @@
-# Changelog
+﻿# Changelog
 
 All notable public changes to BeefTV are documented in this file.
+
+## v1.2.0
+
+- 产品收敛为纯图片生成：直接生图与带 Agent 的生图两种用法。
+- 移除视频、音频、分镜、时间线、导演台、任务中心、用量统计与插件市场。
+- 画布只保留图片、提示词、生图配置与分组四种节点；旧画布中的其他节点不再载入。
+- 移除外部 MCP 客户端接入与随包 CLI。
+- 素材库不再支持视频、音频素材与播放预览。
+- 更新包加速下载改为 gh-proxy.org。
 
 ## v1.1.0
 
