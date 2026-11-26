@@ -1,4 +1,4 @@
-import { useEffect, useRef, useState, type ReactNode } from "react";
+﻿import { useEffect, useRef, useState, type ReactNode } from "react";
 import { Link } from "react-router";
 import { Check, ChevronDown, ChevronUp, Columns2, CopyPlus, Focus, FolderKanban, Gauge, History, MoreHorizontal, Pencil, Plus, Search, Sparkles, Workflow, X } from "lucide-react";
 import { Button, Dropdown, Tooltip } from "antd";
@@ -161,7 +161,7 @@ export function CanvasTopBar({
                             menu={{
                                 items: [
                                     { key: "home", label: <Link to="/">回到主页</Link> },
-                                    { key: "projects", label: <Link to="/canvas">全部项目</Link> },
+                                    { key: "projects", label: <Link to="/canvas">全部画布</Link> },
                                     { type: "divider" },
                                     { key: "new", label: <Link to="/canvas?mode=new">创建新项目</Link> },
                                     { key: "delete", danger: true, label: "删除当前画布", onClick: onDeleteProject },

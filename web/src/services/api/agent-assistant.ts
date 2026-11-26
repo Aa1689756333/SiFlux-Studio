@@ -53,7 +53,6 @@ export type AssistantTurnChange = {
     createdNodeIds: string[];
     updatedNodeIds: string[];
     createdEdgeIds: string[];
-    timelineUpdated?: boolean;
     deletedNodeIds?: string[];
     deletedEdgeIds?: string[];
     documentUpdated?: boolean;

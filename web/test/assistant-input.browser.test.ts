@@ -99,7 +99,7 @@ beforeAll(async () => {
             const mainChange = { revisionBefore: 1, revisionAfter: 2, createdNodeIds: ["main-new"], updatedNodeIds: [], deletedNodeIds: ["gone"], createdEdgeIds: [], deletedEdgeIds: ["old-edge"] };
             const change = body.message === "改两个画布" ? { ...mainChange, canvasChanges: [
                 { ...mainChange, canvasId: "input-canvas", operationIds: ["op1"] },
-                { revisionBefore: 4, revisionAfter: 5, createdNodeIds: ["other-new"], updatedNodeIds: [], createdEdgeIds: [], timelineUpdated: true, canvasId: "other-canvas", operationIds: ["op2"] },
+                { revisionBefore: 4, revisionAfter: 5, createdNodeIds: ["other-new"], updatedNodeIds: [], createdEdgeIds: [], canvasId: "other-canvas", operationIds: ["op2"] },
             ] } : null;
             const turn = { turnId: "t" + chats.length, userText: body.message, permissionMode: body.permissionMode, selectedNodeIds: [], reply: "已读取提供的参考素材。", attachments: body.attachments, skills: body.skills,
                 toolCalls: [], proposals: [], change, error: null, cancelled: false, createdAt: "2026-10-08" };
@@ -251,7 +251,7 @@ test("permission choices persist by workspace; trusted active mode locks the tur
     expect(await selectedText()).toBe("当前画布");
     await selector.click();
     await page.locator('.ant-select-dropdown:visible .ant-select-item-option-content').getByText("完全访问", { exact: true }).click();
-    await page.getByRole("textbox", { name: "给助手的消息" }).fill("查看全部项目");
+    await page.getByRole("textbox", { name: "给助手的消息" }).fill("查看全部画布");
     const sent = page.waitForResponse(response => response.url().endsWith("/assistant/chat"));
     await page.getByRole("button", { name: "发送", exact: true }).click(); await sent;
     expect(chats.at(-1)?.permissionMode).toBe("full-access");
@@ -301,7 +301,7 @@ test("cross-canvas receipts report every target and one atomic undo refreshes al
     await page.locator('.ant-select-dropdown:visible .ant-select-item-option-content').getByText("完全访问", { exact: true }).click();
     await page.getByRole("textbox", { name: "给助手的消息" }).fill("改两个画布");
     await page.getByRole("button", { name: "发送", exact: true }).click();
-    await page.getByText("修改了 2 个画布，新建 2 个节点，删除 1 个节点，删除 1 条线，修改时间线", { exact: true }).waitFor();
+    await page.getByText("修改了 2 个画布，新建 2 个节点，删除 1 个节点，删除 1 条线", { exact: true }).waitFor();
     await page.getByText("撤销会恢复这 2 个画布本轮的全部改动。", { exact: true }).waitFor();
     expect(await page.evaluate(() => (window as any).assistantInputFixture.changedCanvases())).toEqual(["input-canvas", "other-canvas"]);
     await page.getByRole("button", { name: "在画布上查看", exact: true }).click();
