@@ -2,7 +2,6 @@
 import { ArrowRight, Bot, Image as ImageIcon, LayoutGrid, Plus } from "lucide-react";
 import { Link } from "react-router";
 
-import { PageHeader } from "@/components/layout/workspace-page";
 import { useCanvasStore } from "@/stores/canvas/use-canvas-store";
 import { listCanvasWorkspaceProjectRoots } from "@/lib/canvas/canvas-workspace-project";
 
@@ -44,9 +43,7 @@ export default function HomePage() {
     );
 
     return (
-        <div className="flex flex-col gap-5 px-1 pb-10">
-            <PageHeader title="SiFlux Studio" description="纯图片生成工作台：直接生图，或用 Agent 生图。" />
-            <div className="mx-auto w-full max-w-5xl space-y-8">
+        <div className="mx-auto w-full max-w-5xl space-y-8 px-1 pb-10 pt-6">
                 <section className="grid gap-3 sm:grid-cols-3">
                     {entries.map((entry) => {
                         const Icon = entry.icon;
@@ -104,7 +101,6 @@ export default function HomePage() {
                         </Link>
                     )}
                 </section>
-            </div>
         </div>
     );
 }
