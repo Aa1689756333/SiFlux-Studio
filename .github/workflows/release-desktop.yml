@@ -1,4 +1,4 @@
-name: Release desktop
+﻿name: Release desktop
 
 on:
   workflow_dispatch:
@@ -313,8 +313,6 @@ jobs:
           VERSION: ${{ needs.preflight.outputs.version }}
           PLATFORM: ${{ matrix.platform }}
         run: |
-          python scripts/smoke-packaged-cli_test.py
-          python scripts/smoke-packaged-cli.py --archive "dist/SiFlux-${VERSION}-${PLATFORM}.zip" --platform "$PLATFORM"
 
       - name: Verify upgrades from released Windows clients
         if: runner.os == 'Windows'

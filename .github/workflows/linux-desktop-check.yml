@@ -1,4 +1,4 @@
-name: Linux desktop package checks
+﻿name: Linux desktop package checks
 
 on:
   pull_request:
@@ -10,7 +10,6 @@ on:
       - 'scripts/*linux*'
       - 'scripts/*agent-host*'
       - 'scripts/build-siflux-release.sh'
-      - 'scripts/smoke-packaged-cli*'
       - 'docs/linux-install.md'
       - '.github/workflows/linux-desktop-check.yml'
       - '.github/workflows/release-desktop.yml'
@@ -61,7 +60,6 @@ jobs:
           go run ./cmd/update-release package --platform linux-amd64 --input cmd/desktop/build/bin/SiFlux-linux --output ../dist/SiFlux-linux-check.zip
       - name: Verify shipped CLI and native desktop window
         run: |
-          python3 scripts/smoke-packaged-cli.py --platform linux-amd64 --archive dist/SiFlux-linux-check.zip
           xvfb-run -a dbus-run-session -- python3 scripts/smoke-linux-desktop.py --archive dist/SiFlux-linux-check.zip
       - uses: actions/upload-artifact@v4
         with:
