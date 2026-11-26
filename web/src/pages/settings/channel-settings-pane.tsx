@@ -317,6 +317,16 @@ export function ChannelSettingsPane({ onOpenDiagnostics, onOpenModels, onOpenRun
                                         {!builtinBeefAPI && <p className="mt-1 break-all text-xs text-foreground/50">模型目录地址：{modelCatalogRequestURL(channel)}</p>}
                                     </div>
                                     <div className="flex w-full flex-wrap justify-end gap-2 sm:w-auto sm:shrink-0">
+                                        {isBuiltinRelayChannel(channel) ? (
+                                            <Button
+                                                className="h-10 sm:h-8"
+                                                size="small"
+                                                type={channel.apiKey ? "default" : "primary"}
+                                                onClick={() => setRelaySignupOpen(true)}
+                                            >
+                                                {channel.apiKey ? "重新连接" : "注册 / 登录"}
+                                            </Button>
+                                        ) : null}
                                         <Button
                                             className="h-10 sm:h-8"
                                             size="small"
@@ -415,19 +425,6 @@ export function ChannelSettingsPane({ onOpenDiagnostics, onOpenModels, onOpenRun
                                                         <Form.Item label="账号连接" className="mb-0 sm:col-span-2">
                                                             <p className="m-0 text-sm leading-6 text-foreground/80">{"已停用"}</p>
                                                             {null}
-                                                        </Form.Item>
-                                                    ) : isBuiltinRelayChannel(channel) ? (
-                                                        <Form.Item label="账号连接" className="mb-0 sm:col-span-2">
-                                                            <div className="flex flex-wrap items-center justify-between gap-3 rounded-xl border border-border/60 p-3">
-                                                                <div className="min-w-0 flex-1 basis-56 text-sm leading-6 text-foreground/75">
-                                                                    {channel.apiKey
-                                                                        ? "已接入中转站账号，API Key 由应用自动生成并填入。需要时可重新连接。"
-                                                                        : "用中转站账号一键接入：注册或登录后自动生成 API Key、拉取模型并填入，无需手动复制。"}
-                                                                </div>
-                                                                <Button size="small" onClick={() => setRelaySignupOpen(true)}>
-                                                                    {channel.apiKey ? "重新连接" : "注册 / 登录"}
-                                                                </Button>
-                                                            </div>
                                                         </Form.Item>
                                                     ) : (
                                                         <>
