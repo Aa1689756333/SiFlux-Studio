@@ -155,18 +155,7 @@ export function RelaySignupModal({ open, onClose, onConnected }: RelaySignupModa
             width={480}
             centered
             destroyOnHidden
-            title={
-                <div className="flex flex-col gap-1 pr-6">
-                    <span className="text-base font-semibold">连接 SiFlux 服务</span>
-                    <span className="text-xs font-normal leading-5 text-foreground/50">
-                        {result
-                            ? "已连接，可以直接开始生图。"
-                            : mode === "register"
-                              ? "注册后自动生成密钥、拉取模型并填入。"
-                              : "用已有账号登录，自动生成一枚应用专用密钥。"}
-                    </span>
-                </div>
-            }
+            title={<span className="text-base font-semibold">连接 SiFlux 服务</span>}
             maskClosable={!submitting}
         >
             <div className="pt-2">
@@ -214,7 +203,6 @@ export function RelaySignupModal({ open, onClose, onConnected }: RelaySignupModa
                             <CheckCircle2 className="size-5 shrink-0 text-emerald-500" />
                             <div className="min-w-0">
                                 <div className="truncate text-sm font-medium">已连接{result.displayName || result.username}</div>
-                                <div className="text-xs text-foreground/55">密钥已自动填入，无需手动复制。</div>
                             </div>
                         </div>
 
@@ -232,10 +220,6 @@ export function RelaySignupModal({ open, onClose, onConnected }: RelaySignupModa
                         {result.modelsError ? (
                             <Alert type="warning" showIcon message="模型列表未能拉取" description={result.modelsError} />
                         ) : null}
-
-                        <p className="m-0 text-xs leading-5 text-foreground/50">
-                            已创建专用密钥「{result.tokenName}」，可随时在 SiFlux 服务网站停用。
-                        </p>
 
                         <Button type="primary" size="large" block onClick={handleClose}>
                             完成
