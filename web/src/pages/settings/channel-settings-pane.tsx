@@ -11,6 +11,8 @@ import { ensureModelProfilesWithUiDefaults } from "@/lib/model-protocols";
 import { fetchChannelModels, type ChannelModelFetchResult } from "@/services/api/image";
 import { channelHasGenerationCredential, channelHasManagedBeefAPICredential, createModelChannel, defaultBaseUrlForApiFormat, isBuiltinBeefAPIChannel, isBuiltinRelayChannel, normalizeConfigSnapshot, useConfigStore, type AiConfig, type ModelChannel } from "@/stores/use-config-store";
 import { ChannelModelSettings } from "./channel-model-settings";
+import { RelaySignupModal } from "./relay-signup-modal";
+import { refreshModelConfigFromServer } from "@/components/workspace/workspace-bootstrap-hydrator";
 import { ModelServiceEditor } from "./model-service-editor";
 import { currentModelConnectionReceipt, useModelConnectionTests } from "@/stores/use-model-connection-tests";
 import { ModelLogo } from "@/components/model-logo";
@@ -47,6 +49,7 @@ export function ChannelSettingsPane({ onOpenDiagnostics, onOpenModels, onOpenRun
     const requests = useRef(createChannelCatalogRequests());
     const deleting = useRef(new Set<string>());
     const [deleteFailures, setDeleteFailures] = useState<Record<string, string>>({});
+    const [relaySignupOpen, setRelaySignupOpen] = useState(false);
     useEffect(() => () => requests.current.cancelAll(), []);
     const cancelCatalog = (id: string) => {
         requests.current.cancel(id);
@@ -174,6 +177,17 @@ export function ChannelSettingsPane({ onOpenDiagnostics, onOpenModels, onOpenRun
         } finally {
             if (requests.current.current(channel.id, request)) setChannelLoading(channel.id, false);
             requests.current.finish(channel.id, request);
+        }
+    };
+
+    // 中转站注册成功后，后端已把 API Key 写入本地渠道，这里同步回界面并补全模型能力。
+    const handleRelayConnected = async (channelId: string) => {
+        try {
+            await refreshModelConfigFromServer();
+            const current = useConfigStore.getState().config.channels.find((item) => item.id === channelId);
+            if (current) await refreshChannelModels(current);
+        } catch (error) {
+            message.warning(error instanceof Error ? error.message : "已写入凭据，但刷新模型列表失败，请稍后点击「拉取模型」");
         }
     };
 
@@ -402,6 +416,19 @@ export function ChannelSettingsPane({ onOpenDiagnostics, onOpenModels, onOpenRun
                                                             <p className="m-0 text-sm leading-6 text-foreground/80">{"已停用"}</p>
                                                             {null}
                                                         </Form.Item>
+                                                    ) : isBuiltinRelayChannel(channel) ? (
+                                                        <Form.Item label="账号连接" className="mb-0 sm:col-span-2">
+                                                            <div className="flex flex-wrap items-center justify-between gap-3 rounded-xl border border-border/60 p-3">
+                                                                <div className="min-w-0 flex-1 basis-56 text-sm leading-6 text-foreground/75">
+                                                                    {channel.apiKey
+                                                                        ? "已接入中转站账号，API Key 由应用自动生成并填入。需要时可重新连接。"
+                                                                        : "用中转站账号一键接入：注册或登录后自动生成 API Key、拉取模型并填入，无需手动复制。"}
+                                                                </div>
+                                                                <Button size="small" onClick={() => setRelaySignupOpen(true)}>
+                                                                    {channel.apiKey ? "重新连接" : "注册 / 登录"}
+                                                                </Button>
+                                                            </div>
+                                                        </Form.Item>
                                                     ) : (
                                                         <>
                                                             <Form.Item label="API Key" htmlFor={`channel-${channel.id}-api-key`} className="mb-0 sm:col-span-1">
@@ -471,6 +498,11 @@ export function ChannelSettingsPane({ onOpenDiagnostics, onOpenModels, onOpenRun
                 />
             )}
             {serviceEditor !== undefined && <ModelServiceEditor initial={serviceEditor} onClose={() => setServiceEditor(undefined)} onSave={saveService} />}
+            <RelaySignupModal
+                open={relaySignupOpen}
+                onClose={() => setRelaySignupOpen(false)}
+                onConnected={(result) => void handleRelayConnected(result.channelId)}
+            />
         </Form>
     );
 }

@@ -109,6 +109,17 @@ async function hydrateLocalModelConfig() {
     if (shouldPersistHydratedModelConfig(result.health)) await commitModelConfig(normalizedConfig);
 }
 
+/**
+ * 重新从本地后端读取模型配置并覆盖内存快照。
+ * 中转站注册等由后端直接写入凭据的流程，需要用它把新 API Key 同步回界面。
+ */
+export async function refreshModelConfigFromServer() {
+    const result = await hydrateModelConfig();
+    const normalizedConfig = localWorkspaceConfig(normalizeConfigSnapshot({ config: result.config }).config);
+    useConfigStore.getState().replaceConfig(normalizedConfig);
+    return normalizedConfig;
+}
+
 export function shouldPersistHydratedModelConfig(health: string) {
     return health === "migrated" || health === "recovered";
 }
