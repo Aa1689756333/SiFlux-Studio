@@ -9,6 +9,7 @@ import (
 	"errors"
 	"fmt"
 	"io"
+	"log"
 	"net/http"
 	"net/url"
 	"strings"
@@ -335,6 +336,9 @@ func (c *Client) Balance(ctx context.Context, apiKey string) (Balance, error) {
 	if remaining < 0 {
 		remaining = 0
 	}
+	// 服务端在"令牌无限额度"时会返回固定哨兵值，这里同时记录原始数值便于核对。
+	log.Printf("relay 账单: hard_limit_usd=%.4f soft_limit_usd=%.4f total_usage=%.2f => granted=%.4f spent=%.4f remaining=%.4f",
+		grant.HardLimitUSD, grant.SoftLimitUSD, used.TotalUsage, total, spent, remaining)
 	return Balance{Granted: total, Spent: spent, Remaining: remaining, UsageKnown: true}, nil
 }
 
@@ -358,6 +362,48 @@ func (c *Client) getWithKey(ctx context.Context, path, apiKey string) ([]byte, e
 		return nil, &Error{Status: response.StatusCode, Path: path, Message: failureMessage(raw, response.StatusCode)}
 	}
 	return raw, nil
+}
+
+// Refresh 用刷新 Cookie 换一枚新的访问令牌。
+func (c *Client) Refresh(ctx context.Context, session Session) (Session, error) {
+	request, err := c.newRequest(ctx, http.MethodPost, "/api/user/auth/refresh", nil, session)
+	if err != nil {
+		return Session{}, err
+	}
+	response, err := c.http.Do(request)
+	if err != nil {
+		return Session{}, fmt.Errorf("连接 SiFlux 服务失败: %w", err)
+	}
+	defer response.Body.Close()
+	raw, err := io.ReadAll(io.LimitReader(response.Body, maxResponseBytes))
+	if err != nil {
+		return Session{}, fmt.Errorf("读取 SiFlux 服务响应失败: %w", err)
+	}
+	if err := decodeEnvelope(response.StatusCode, raw); err != nil {
+		return Session{}, withPath(err, "/api/user/auth/refresh")
+	}
+	var envelope struct {
+		Data struct {
+			AccessToken string `json:"access_token"`
+			TokenType   string `json:"token_type"`
+		} `json:"data"`
+	}
+	if err := json.Unmarshal(raw, &envelope); err != nil || strings.TrimSpace(envelope.Data.AccessToken) == "" {
+		return Session{}, &Error{Status: response.StatusCode, Path: "/api/user/auth/refresh", Message: "服务没有返回新的访问凭据"}
+	}
+	next := session
+	next.AccessToken = strings.TrimSpace(envelope.Data.AccessToken)
+	if tt := strings.TrimSpace(envelope.Data.TokenType); tt != "" {
+		next.TokenType = tt
+	}
+	if cookies := response.Cookies(); len(cookies) > 0 {
+		parts := make([]string, 0, len(cookies))
+		for _, cookie := range cookies {
+			parts = append(parts, cookie.Name+"="+cookie.Value)
+		}
+		next.Cookie = strings.Join(parts, "; ")
+	}
+	return next, nil
 }
 
 // Self 读取当前账号额度。

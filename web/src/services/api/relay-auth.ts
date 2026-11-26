@@ -64,6 +64,7 @@ export type RelayQuota = {
     spent: number;
     remaining: number;
     usageKnown: boolean;
+    stale?: boolean;
 };
 
 /** 查询已接入账户的当前余额。 */

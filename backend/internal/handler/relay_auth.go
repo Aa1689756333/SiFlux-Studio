@@ -167,14 +167,14 @@ func RegisterRelayRoutes(r gin.IRouter, svc *app.Service) {
 		completeRelaySignIn(c, svc, client, session, options)
 	})
 
-	// relayQuota 用已保存的 API Key 查询账户余额。
+	// relayQuota 读取账户总余额：优先用登录态查询，凭据过期时自动刷新一次。
 	r.GET("/relay/quota", func(c *gin.Context) {
-		apiKey, err := storedRelayAPIKey(c, svc)
+		state, err := storedRelayState(c, svc)
 		if err != nil {
 			failService(c, err)
 			return
 		}
-		if apiKey == "" {
+		if state.APIKey == "" {
 			fail(c, http.StatusBadRequest, errors.New("尚未连接 SiFlux 服务"))
 			return
 		}
@@ -183,21 +183,36 @@ func RegisterRelayRoutes(r gin.IRouter, svc *app.Service) {
 			fail(c, http.StatusServiceUnavailable, err)
 			return
 		}
-		ctx, cancel := context.WithTimeout(c.Request.Context(), 15*time.Second)
+		ctx, cancel := context.WithTimeout(c.Request.Context(), 20*time.Second)
 		defer cancel()
-		balance, err := client.Balance(ctx, apiKey)
-		if err != nil {
-			failRelay(c, err)
+
+		quota, perUnit, fresh := readRelayAccountQuota(ctx, client, &state)
+		if !fresh {
+			// 登录态失效时退回上次记录的账户余额，避免把令牌额度当成账户余额。
+			if state.QuotaPerUnit <= 0 {
+				state.QuotaPerUnit = 1
+			}
+			ok(c, gin.H{
+				"remaining":  float64(state.Quota) / state.QuotaPerUnit,
+				"granted":    float64(state.Quota+state.UsedQuota) / state.QuotaPerUnit,
+				"stale":      true,
+				"usageKnown": false,
+			})
 			return
 		}
+		state.Quota = quota
+		state.QuotaPerUnit = perUnit
+		if _, err := saveRelayAPIKey(c, svc, state); err == nil {
+			// 保存失败不影响这次展示。
+			_ = err
+		}
 		ok(c, gin.H{
-			"granted":    balance.Granted,
-			"spent":      balance.Spent,
-			"remaining":  balance.Remaining,
-			"usageKnown": balance.UsageKnown,
+			"remaining":  float64(quota) / perUnit,
+			"granted":    float64(quota+state.UsedQuota) / perUnit,
+			"stale":      false,
+			"usageKnown": true,
 		})
 	})
-
 	r.POST("/relay/connect", func(c *gin.Context) {
 		var request struct {
 			Username string `json:"username"`
@@ -253,7 +268,16 @@ func completeRelaySignIn(c *gin.Context, svc *app.Service, client *relayclient.C
 
 	models, modelsErr := client.Models(ctx, token.Key)
 
-	revision, err := saveRelayAPIKey(c, svc, token.Key, models)
+	revision, err := saveRelayAPIKey(c, svc, relayChannelState{
+		APIKey:       token.Key,
+		Models:       models,
+		AccessToken:  session.AccessToken,
+		TokenType:    session.TokenType,
+		Cookie:       session.Cookie,
+		Quota:        self.Quota,
+		UsedQuota:    self.UsedQuota,
+		QuotaPerUnit: options.QuotaPerUnit,
+	})
 	if err != nil {
 		failService(c, err)
 		return
@@ -278,16 +302,46 @@ func completeRelaySignIn(c *gin.Context, svc *app.Service, client *relayclient.C
 	ok(c, data)
 }
 
-// storedRelayAPIKey 读取内置中转站渠道里已保存的 API Key。
-func storedRelayAPIKey(c *gin.Context, svc *app.Service) (string, error) {
+// readRelayAccountQuota 用登录态读取账户剩余额度；凭据过期时刷新一次。
+func readRelayAccountQuota(ctx context.Context, client *relayclient.Client, state *relayChannelState) (int64, float64, bool) {
+	perUnit := state.QuotaPerUnit
+	if perUnit <= 0 {
+		if options, err := client.Status(ctx); err == nil && options.QuotaPerUnit > 0 {
+			perUnit = options.QuotaPerUnit
+		}
+	}
+	if perUnit <= 0 {
+		perUnit = 1
+	}
+	session := relayclient.Session{AccessToken: state.AccessToken, TokenType: state.TokenType, Cookie: state.Cookie}
+	if session.AccessToken != "" || session.Cookie != "" {
+		if self, err := client.Self(ctx, session); err == nil {
+			state.UsedQuota = self.UsedQuota
+			return self.Quota, perUnit, true
+		}
+		if next, err := client.Refresh(ctx, session); err == nil {
+			if self, err := client.Self(ctx, next); err == nil {
+				state.AccessToken = next.AccessToken
+				state.TokenType = next.TokenType
+				state.Cookie = next.Cookie
+				state.UsedQuota = self.UsedQuota
+				return self.Quota, perUnit, true
+			}
+		}
+	}
+	return 0, perUnit, false
+}
+
+// storedRelayState 读取内置渠道里已保存的连接状态。
+func storedRelayState(c *gin.Context, svc *app.Service) (relayChannelState, error) {
 	providerConfig := requestProviderConfig(c, svc)
 	versioned, supportsVersioning := providerConfig.(VersionedProviderConfig)
 	if !supportsVersioning {
-		return "", nil
+		return relayChannelState{}, nil
 	}
 	effective, _, err := versioned.LoadEffectiveModelConfig()
 	if err != nil {
-		return "", err
+		return relayChannelState{}, err
 	}
 	channels, _ := effective.Config["channels"].([]any)
 	for _, item := range channels {
@@ -298,14 +352,78 @@ func storedRelayAPIKey(c *gin.Context, svc *app.Service) (string, error) {
 		if id, _ := channel["id"].(string); id != builtinRelayChannelID {
 			continue
 		}
-		apiKey, _ := channel["apiKey"].(string)
-		return strings.TrimSpace(apiKey), nil
+		return relayChannelStateFromMap(channel), nil
 	}
-	return "", nil
+	return relayChannelState{}, nil
 }
 
-// saveRelayAPIKey 把令牌写入内置中转站渠道并启用它。
-func saveRelayAPIKey(c *gin.Context, svc *app.Service, apiKey string, models []string) (int64, error) {
+// relayChannelStateFromMap 从渠道对象还原连接状态。
+func relayChannelStateFromMap(channel map[string]any) relayChannelState {
+	state := relayChannelState{}
+	state.APIKey, _ = channel["apiKey"].(string)
+	state.AccessToken, _ = channel["relayAccessToken"].(string)
+	state.TokenType, _ = channel["relayTokenType"].(string)
+	state.Cookie, _ = channel["relayCookie"].(string)
+	state.Quota = anyToInt64(channel["relayQuota"])
+	state.UsedQuota = anyToInt64(channel["relayUsedQuota"])
+	state.QuotaPerUnit = anyToFloat64(channel["relayQuotaPerUnit"])
+	return state
+}
+
+func anyToInt64(value any) int64 {
+	switch typed := value.(type) {
+	case float64:
+		return int64(typed)
+	case int64:
+		return typed
+	case int:
+		return int64(typed)
+	}
+	return 0
+}
+
+func anyToFloat64(value any) float64 {
+	switch typed := value.(type) {
+	case float64:
+		return typed
+	case int64:
+		return float64(typed)
+	case int:
+		return float64(typed)
+	}
+	return 0
+}
+
+// relayChannelState 是写入内置渠道的连接状态。
+type relayChannelState struct {
+	APIKey       string
+	Models       []string
+	AccessToken  string
+	TokenType    string
+	Cookie       string
+	Quota        int64
+	UsedQuota    int64
+	QuotaPerUnit float64
+}
+
+// applyRelayChannelState 把连接状态写入渠道对象。
+func applyRelayChannelState(channel map[string]any, state relayChannelState) {
+	channel["apiKey"] = state.APIKey
+	channel["enabled"] = true
+	if len(state.Models) > 0 {
+		channel["models"] = stringListToAny(state.Models)
+	}
+	if state.AccessToken != "" {
+		channel["relayAccessToken"] = state.AccessToken
+		channel["relayTokenType"] = state.TokenType
+		channel["relayCookie"] = state.Cookie
+	}
+	channel["relayQuota"] = state.Quota
+	channel["relayUsedQuota"] = state.UsedQuota
+	channel["relayQuotaPerUnit"] = state.QuotaPerUnit
+	channel["relayQuotaAt"] = time.Now().Unix()
+}
+func saveRelayAPIKey(c *gin.Context, svc *app.Service, state relayChannelState) (int64, error) {
 	providerConfig := requestProviderConfig(c, svc)
 	versioned, supportsVersioning := providerConfig.(VersionedProviderConfig)
 	if !supportsVersioning {
@@ -329,11 +447,7 @@ func saveRelayAPIKey(c *gin.Context, svc *app.Service, apiKey string, models []s
 		if id, _ := channel["id"].(string); id != builtinRelayChannelID {
 			continue
 		}
-		channel["apiKey"] = apiKey
-		channel["enabled"] = true
-		if len(models) > 0 {
-			channel["models"] = stringListToAny(models)
-		}
+		applyRelayChannelState(channel, state)
 		updated = true
 		break
 	}
@@ -343,12 +457,9 @@ func saveRelayAPIKey(c *gin.Context, svc *app.Service, apiKey string, models []s
 			"name":      "SiFlux 服务",
 			"baseUrl":   "https://api.siflux.cn/v1",
 			"apiFormat": "openai",
-			"apiKey":    apiKey,
 			"enabled":   true,
 		}
-		if len(models) > 0 {
-			channel["models"] = stringListToAny(models)
-		}
+		applyRelayChannelState(channel, state)
 		channels = append(channels, channel)
 		config["channels"] = channels
 	}

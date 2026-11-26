@@ -1,8 +1,10 @@
 import { useCallback, useEffect, useRef, useState } from "react";
+import { useQuery } from "@tanstack/react-query";
 import { Alert, Button, Form, Input, Modal, Space, Tabs, message } from "antd";
 import { CheckCircle2, Loader2, Mail, UserRound } from "lucide-react";
 import {
     connectRelayAccount,
+    fetchRelayQuota,
     fetchRelaySignupOptions,
     relayQuotaAmount,
     sendRelayVerificationCode,
@@ -17,6 +19,8 @@ type RelaySignupModalProps = {
     open: boolean;
     onClose: () => void;
     onConnected: (result: RelaySignInResult) => void;
+    /** 已连接时先展示账户概览，而不是直接让用户重新登录。 */
+    connected?: boolean;
 };
 
 const CODE_COOLDOWN_SECONDS = 60;
@@ -25,7 +29,7 @@ const CODE_COOLDOWN_SECONDS = 60;
  * 内置服务的接入向导：注册时走邮箱验证码，登录直接复用既有账号。
  * 密码只在本次请求里使用，后端不会保存，也不会返回值里带出。
  */
-export function RelaySignupModal({ open, onClose, onConnected }: RelaySignupModalProps) {
+export function RelaySignupModal({ open, onClose, onConnected, connected = false }: RelaySignupModalProps) {
     const [mode, setMode] = useState<RelayMode>("login");
     const [form] = Form.useForm<{ username: string; password: string; email: string; code: string }>();
     const [options, setOptions] = useState<RelaySignupOptions | null>(null);
@@ -36,6 +40,14 @@ export function RelaySignupModal({ open, onClose, onConnected }: RelaySignupModa
     const [error, setError] = useState("");
     const [result, setResult] = useState<RelaySignInResult | null>(null);
     const [cooldown, setCooldown] = useState(0);
+    const [accountView, setAccountView] = useState(false);
+    const accountQuota = useQuery({
+        queryKey: ["relay-quota", "account", open],
+        queryFn: () => fetchRelayQuota(),
+        enabled: open && accountView,
+        retry: false,
+        staleTime: 30_000,
+    });
     const timerRef = useRef<ReturnType<typeof setInterval> | null>(null);
 
     const stopCooldown = useCallback(() => {
@@ -64,6 +76,7 @@ export function RelaySignupModal({ open, onClose, onConnected }: RelaySignupModa
     useEffect(() => {
         if (!open) return;
         setError("");
+        setAccountView(connected);
         setResult(null);
         setMode("login");
         setCooldown(0);
@@ -82,7 +95,7 @@ export function RelaySignupModal({ open, onClose, onConnected }: RelaySignupModa
             })
             .finally(() => setLoadingOptions(false));
         return () => controller.abort();
-    }, [open, form, stopCooldown]);
+    }, [open, form, stopCooldown, connected]);
 
     const requiresEmailCode = Boolean(options?.emailVerification);
     const registerBlocked = Boolean(options && (!options.registerEnabled || !options.passwordRegisterEnabled || options.turnstile));
@@ -197,6 +210,24 @@ export function RelaySignupModal({ open, onClose, onConnected }: RelaySignupModa
 
                 {error ? <Alert className="mb-3" type="error" showIcon message={error} /> : null}
 
+                {accountView && !result ? (
+                    <div className="space-y-4">
+                        <div className="rounded-xl border border-border/60 px-4 py-3">
+                            <div className="text-xs text-foreground/55">账户余额</div>
+                            <div className="mt-1 text-2xl font-semibold leading-tight">
+                                {accountQuota.data && !accountQuota.data.stale && accountQuota.data.granted > 0
+                                    ? `$${accountQuota.data.remaining.toFixed(2)}`
+                                    : accountQuota.isLoading ? "…" : "余额未知"}
+                            </div>
+                        </div>
+                        <div className="flex gap-2">
+                            <Button block onClick={() => setAccountView(false)}>切换账号</Button>
+                            <Button type="primary" block onClick={handleClose}>完成</Button>
+                        </div>
+                    </div>
+                ) : null}
+
+
                 {result ? (
                     <div className="space-y-4">
                         <div className="flex items-center gap-2.5 rounded-xl border border-emerald-500/25 bg-emerald-500/10 px-4 py-3">
@@ -225,7 +256,7 @@ export function RelaySignupModal({ open, onClose, onConnected }: RelaySignupModa
                             完成
                         </Button>
                     </div>
-                ) : (
+                ) : accountView ? null : (
                     <Form form={form} layout="vertical" requiredMark={false} disabled={submitting} size="middle">
                         <Form.Item
                             name="username"

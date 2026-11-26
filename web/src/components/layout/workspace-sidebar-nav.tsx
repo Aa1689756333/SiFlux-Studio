@@ -249,13 +249,14 @@ function RelayAccountEntry({ connected, collapsed, onOpen }: { connected: boolea
             </Button>
         );
     }
-    const amount = quota.data ? `$${quota.data.remaining.toFixed(2)}` : quota.isLoading ? "…" : "余额未知";
+    const known = Boolean(quota.data && !quota.data.stale && quota.data.granted > 0);
+    const amount = known && quota.data ? `$${quota.data.remaining.toFixed(2)}` : quota.isLoading ? "…" : "余额未知";
     return (
         <button
             type="button"
             onClick={onOpen}
             className="flex w-full items-center justify-between gap-2 rounded-[var(--r-md)] border border-border/60 bg-surface/40 px-3 py-2 text-left transition-colors hover:border-primary/40 hover:bg-surface/70"
-            title="查看 SiFlux 服务账户与余额"
+            title="查看账户与余额"
         >
             {collapsed ? (
                 <UserRound className="mx-auto size-4 text-foreground/70" />
@@ -335,6 +336,7 @@ export function WorkspaceSidebarNav({ onNavigate, onOpenSearch }: { onNavigate: 
             <RelaySignupModal
                 open={relayOpen}
                 onClose={() => setRelayOpen(false)}
+                connected={relayConnected}
                 onConnected={(result) => {
                     void completeRelayConnection(result.channelId).catch((error: unknown) => {
                         message.warning(error instanceof Error ? error.message : "已接入账号，但刷新模型列表失败，请到设置里点「拉取模型」");
