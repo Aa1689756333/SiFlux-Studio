@@ -1,7 +1,7 @@
-﻿import { afterAll, beforeAll, beforeEach, expect, test } from "bun:test";
+﻿import { afterAll, afterEach, beforeAll, beforeEach, expect, test } from "bun:test";
 import { existsSync, mkdtempSync, rmSync } from "node:fs";
 import { tmpdir } from "node:os";
-import { chromium, type Browser } from "playwright";
+import { chromium, type Browser, type Page } from "playwright";
 
 let browser: Browser, server: ReturnType<typeof Bun.serve>;
 let scratch: string;
@@ -119,9 +119,12 @@ beforeAll(async () => {
 }, 60000);
 afterAll(async () => { await browser?.close(); server?.stop(true); if (scratch) rmSync(scratch, { recursive: true, force: true }); });
 beforeEach(() => { registeredAssets.length = 0; assetScope = "guest"; });
+const openPages: Page[] = [];
+async function newPage(options?: Parameters<Browser["newPage"]>[0]) { const page = await newPage(options); openPages.push(page); return page; }
+afterEach(async () => { for (const page of openPages.splice(0)) await page.close().catch(() => undefined); });
 
 test("real Sidebar handles file, paste, drop, attachment-only, purpose, draft restore and busy supplement", async () => {
-    const page = await browser.newPage({ viewport: { width: 390, height: 900 } }); await page.goto(server.url.toString().replace("localhost", "127.0.0.1"));
+    const page = await newPage({ viewport: { width: 390, height: 900 } }); await page.goto(server.url.toString().replace("localhost", "127.0.0.1"));
     await page.waitForFunction(() => !document.querySelector<HTMLButtonElement>('button[aria-label="添加参考素材"]')?.disabled);
     await page.locator('input[type="file"]').setInputFiles({ name: "portrait.jpg", mimeType: "image/jpeg", buffer: jpeg });
     await page.getByRole("combobox", { name: "portrait.jpg 的用途" }).waitFor();
@@ -172,12 +175,12 @@ test("real Sidebar handles file, paste, drop, attachment-only, purpose, draft re
     await page.getByText("补充的图片已加入本次创作。", { exact: true }).waitFor({ timeout: 8000 });
     expect(await page.getByRole("button", { name: "停止", exact: true }).count()).toBe(0);
     expect(chats).toHaveLength(2);
-    expect(await page.evaluate(() => document.documentElement.scrollWidth <= innerWidth)).toBe(true);
+    expect(await page.evaluate(() => { const width = document.documentElement.clientWidth; return [...document.querySelectorAll<HTMLElement>("body *")].filter(node => node.getBoundingClientRect().right > width + 1).slice(0, 6).map(node => `${node.tagName.toLowerCase()}.${String(node.className)} right=${Math.round(node.getBoundingClientRect().right)} width=${width}`); })).toEqual([]);
     await page.screenshot({ path: "/tmp/beeftv-assistant-input-ui.png" }); await page.close();
 }, 30000);
 
 test("asset registration failure remains unsent and an explicit upload retry keeps its idempotency key", async () => {
-    const page = await browser.newPage({ viewport: { width: 390, height: 900 } });
+    const page = await newPage({ viewport: { width: 390, height: 900 } });
     await page.goto(server.url.toString().replace("localhost", "127.0.0.1"));
     await page.waitForFunction(() => !document.querySelector<HTMLButtonElement>('button[aria-label="添加参考素材"]')?.disabled);
     const before = chats.length, firstKey = uploadKeys.length;
@@ -197,7 +200,7 @@ test("asset registration failure remains unsent and an explicit upload retry kee
 }, 15000);
 
 test("native-local Sidebar publishes accepted uploads for immediate @ reuse, while removal and scope changes preserve ownership", async () => {
-    const page = await browser.newPage({ viewport: { width: 390, height: 900 } });
+    const page = await newPage({ viewport: { width: 390, height: 900 } });
     await page.goto(server.url.toString().replace("localhost", "127.0.0.1"));
     await page.waitForFunction(() => !document.querySelector<HTMLButtonElement>('button[aria-label="添加参考素材"]')?.disabled);
     expect(await page.evaluate(() => (window as any).assistantInputFixture.nativeLocal())).toBe(true);
@@ -240,7 +243,7 @@ test("native-local Sidebar publishes accepted uploads for immediate @ reuse, whi
 
 test("permission choices persist by workspace; trusted active mode locks the turn and supplements cannot elevate it", async () => {
     running = false; cancelled = false;
-    const page = await browser.newPage({ viewport: { width: 390, height: 900 } });
+    const page = await newPage({ viewport: { width: 390, height: 900 } });
     await page.goto(server.url.toString().replace("localhost", "127.0.0.1"));
     const selector = page.getByRole("combobox", { name: "助手权限" });
     await page.waitForFunction(() => !document.querySelector<HTMLInputElement>('input[aria-label="助手权限"]')?.disabled);
@@ -284,13 +287,13 @@ test("permission choices persist by workspace; trusted active mode locks the tur
     await page.evaluate(() => (window as any).assistantInputFixture.switchScope("guest"));
     await page.waitForFunction(() => !document.querySelector<HTMLInputElement>('input[aria-label="助手权限"]')?.disabled);
     expect(await selectedText()).toBe("完全访问");
-    expect(await page.evaluate(() => document.documentElement.scrollWidth <= innerWidth)).toBe(true);
+    expect(await page.evaluate(() => { const width = document.documentElement.clientWidth; return [...document.querySelectorAll<HTMLElement>("body *")].filter(node => node.getBoundingClientRect().right > width + 1).slice(0, 6).map(node => `${node.tagName.toLowerCase()}.${String(node.className)} right=${Math.round(node.getBoundingClientRect().right)} width=${width}`); })).toEqual([]);
     await page.screenshot({ path: "/tmp/beeftv-assistant-permissions-390.png" });
     await page.close();
 }, 20000);
 
 test("external Agent connection has no permission chooser and submits only the client kind", async () => {
-    const page = await browser.newPage({ viewport: { width: 1280, height: 900 } });
+    const page = await newPage({ viewport: { width: 1280, height: 900 } });
     await page.goto(server.url.toString().replace("localhost", "127.0.0.1"));
     await page.getByRole("button", { name: "连接外部 Agent", exact: true }).click();
     const panel = page.locator(".agent-connect-panel");
@@ -306,7 +309,7 @@ test("external Agent connection has no permission chooser and submits only the c
 
 test("cross-canvas receipts report every target and one atomic undo refreshes all canvases only after success", async () => {
     running = false;
-    const page = await browser.newPage({ viewport: { width: 1280, height: 900 } });
+    const page = await newPage({ viewport: { width: 1280, height: 900 } });
     await page.goto(server.url.toString().replace("localhost", "127.0.0.1"));
     await page.waitForFunction(() => !document.querySelector<HTMLInputElement>('input[aria-label="助手权限"]')?.disabled);
     await page.getByRole("combobox", { name: "助手权限" }).click();
@@ -336,7 +339,7 @@ test("cross-canvas receipts report every target and one atomic undo refreshes al
 for (const mode of ["markdown", "zip"] as const) {
     test(`assistant installs ${mode} privately and sends the installed version pin`, async () => {
         running = false; installedSkills = [];
-        const page = await browser.newPage();
+        const page = await newPage();
         await page.goto(server.url.toString().replace("localhost", "127.0.0.1"));
         await page.getByRole("button", { name: "选择技能", exact: true }).click();
         await page.getByText("还没有已安装的技能。", { exact: true }).waitFor();
@@ -361,7 +364,7 @@ for (const mode of ["markdown", "zip"] as const) {
 
 test("an installation completing after an account switch cannot select a skill in the replacement draft", async () => {
     running = false; installedSkills = []; holdSkillInstall = true;
-    const page = await browser.newPage();
+    const page = await newPage();
     try {
         await page.goto(server.url.toString().replace("localhost", "127.0.0.1"));
         await page.getByRole("button", { name: "选择技能", exact: true }).click();
