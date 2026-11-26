@@ -53,11 +53,13 @@ function buildNav(): { groups: WorkspaceNavGroup[]; footer: WorkspaceNavItem[] }
             { heading: "工作区", items: [
                 toolItem("canvas", "/canvas"),
                 toolItem("assets", "/assets"),
-                { id: "settings", title: "设置", icon: Settings2, to: "/settings" },
             ] },
             { heading: "Agent 配置", items: [
                 toolItem("skills", "/skills"),
                     ] },
+            { items: [
+                { id: "settings", title: "设置", icon: Settings2, to: "/settings" },
+            ] },
         ],
         footer: [],
     };

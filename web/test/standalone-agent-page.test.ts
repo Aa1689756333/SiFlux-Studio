@@ -1,4 +1,4 @@
-﻿import { describe, expect, test } from "bun:test";
+import { describe, expect, test } from "bun:test";
 import { readFileSync } from "node:fs";
 import { resolve } from "node:path";
 
@@ -19,7 +19,7 @@ describe("standalone agent page", () => {
     test("sidebar groups creative entries before the workspace and Agent configuration", () => {
         const sidebar = read("src/components/layout/workspace-sidebar-nav.tsx");
         let cursor = -1;
-        for (const token of ['id: "image"', 'id: "agent"', 'heading: "工作区"', 'toolItem("canvas", "/canvas")', 'toolItem("assets", "/assets")', 'id: "settings"', 'heading: "Agent 配置"', 'toolItem("skills", "/skills")']) {
+        for (const token of ['id: "image"', 'id: "agent"', 'heading: "工作区"', 'toolItem("canvas", "/canvas")', 'toolItem("assets", "/assets")', 'heading: "Agent 配置"', 'toolItem("skills", "/skills")', 'id: "settings"']) {
             const index = sidebar.indexOf(token);
             expect(index).toBeGreaterThan(cursor);
             cursor = index;
