@@ -4,6 +4,7 @@ import (
 	"context"
 	"encoding/json"
 	"errors"
+	"log"
 	"net/http"
 	"os"
 	"strings"
@@ -147,6 +148,13 @@ func RegisterRelayRoutes(r gin.IRouter, svc *app.Service) {
 			Email:    email,
 			Code:     code,
 		}); err != nil {
+			// 服务端可能已经建号、却在它自己的默认令牌阶段失败；此时直接登录继续，
+			// 免得用户白填一次验证码。
+			if session, loginErr := client.Login(ctx, username, request.Password); loginErr == nil {
+				log.Printf("relay 注册返回失败但账号可用，改为直接登录: %v", err)
+				completeRelaySignIn(c, svc, client, session, options)
+				return
+			}
 			failRelay(c, err)
 			return
 		}
@@ -228,7 +236,7 @@ func RegisterRelayRoutes(r gin.IRouter, svc *app.Service) {
 }
 
 // completeRelaySignIn 在登录成功后创建应用令牌并把凭据写入内置渠道。
-func completeRelaySignIn(c *gin.Context, svc *app.Service, client *relayclient.Client, session string, options relayclient.Options) {
+func completeRelaySignIn(c *gin.Context, svc *app.Service, client *relayclient.Client, session relayclient.Session, options relayclient.Options) {
 	ctx := c.Request.Context()
 
 	token, err := client.CreateToken(ctx, session, relayTokenName)
@@ -368,13 +376,16 @@ func relayClient() (*relayclient.Client, error) {
 	return relayclient.New(baseURL)
 }
 
-// failRelay 把中转站错误映射成对用户可读的失败响应。
+// failRelay 把中转站错误映射成对用户可读的失败响应，并把原始报错留在本机日志里。
 func failRelay(c *gin.Context, err error) {
 	relayErr, isRelay := relayclient.IsError(err)
 	if !isRelay {
+		log.Printf("relay 调用失败: %v", err)
 		fail(c, http.StatusBadGateway, errors.New("无法连接 SiFlux 服务，请检查网络后重试"))
 		return
 	}
+	// 只记录路径、状态与原始文案，不含任何凭据。
+	log.Printf("relay 返回失败: path=%s status=%d msg=%s", relayErr.Path, relayErr.Status, relayErr.Message)
 	status := http.StatusBadRequest
 	if relayErr.Status >= 500 {
 		status = http.StatusBadGateway

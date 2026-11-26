@@ -23,10 +23,23 @@ const maxResponseBytes = 1 << 20
 // Error 表示中转站返回的业务失败，Message 可直接展示给用户。
 type Error struct {
 	Status  int
+	Path    string
 	Message string
 }
 
 func (e *Error) Error() string { return e.Message }
+
+// withPath 给错误补上调用路径，便于服务端日志定位。
+func withPath(err error, path string) error {
+	var relayErr *Error
+	if errors.As(err, &relayErr) {
+		if relayErr.Path == "" {
+			relayErr.Path = path
+		}
+		return relayErr
+	}
+	return err
+}
 
 // IsError 判断 err 是否为目标中转站业务错误。
 func IsError(err error) (*Error, bool) {
@@ -61,6 +74,13 @@ type RegisterRequest struct {
 type Token struct {
 	ID  int    `json:"id"`
 	Key string `json:"key"`
+}
+
+// Session 是一次登录得到的凭据：新版走 access token，旧版走 Cookie。
+type Session struct {
+	AccessToken string
+	TokenType   string
+	Cookie      string
 }
 
 // Self 是当前账号的额度信息。
@@ -125,7 +145,7 @@ func (c *Client) Status(ctx context.Context) (Options, error) {
 		Turnstile              bool    `json:"turnstile_check"`
 		QuotaPerUnit           float64 `json:"quota_per_unit"`
 	}
-	if err := c.call(ctx, http.MethodGet, "/api/status", nil, "", &payload); err != nil {
+	if err := c.call(ctx, http.MethodGet, "/api/status", nil, Session{}, &payload); err != nil {
 		return Options{}, err
 	}
 	return Options{
@@ -143,7 +163,7 @@ func (c *Client) Status(ctx context.Context) (Options, error) {
 // SendVerificationCode 请求中转站向 email 发送注册验证码。
 func (c *Client) SendVerificationCode(ctx context.Context, email string) error {
 	target := "/api/verification?email=" + url.QueryEscape(strings.TrimSpace(email))
-	return c.call(ctx, http.MethodGet, target, nil, "", nil)
+	return c.call(ctx, http.MethodGet, target, nil, Session{}, nil)
 }
 
 // Register 创建账号。
@@ -154,45 +174,62 @@ func (c *Client) Register(ctx context.Context, request RegisterRequest) error {
 		"email":             strings.TrimSpace(request.Email),
 		"verification_code": strings.TrimSpace(request.Code),
 	}
-	return c.call(ctx, http.MethodPost, "/api/user/register", body, "", nil)
+	return c.call(ctx, http.MethodPost, "/api/user/register", body, Session{}, nil)
 }
 
-// Login 登录并返回可直接复用的 Cookie 头。
-func (c *Client) Login(ctx context.Context, username, password string) (string, error) {
+// Login 登录并返回后续调用所需的凭据。
+// NewAPI 新版返回 access token；旧版走 Cookie，因此两者都保留。
+func (c *Client) Login(ctx context.Context, username, password string) (Session, error) {
 	body := map[string]any{
 		"username": strings.TrimSpace(username),
 		"password": password,
 	}
 	payload := []byte(mustJSON(body))
-	request, err := c.newRequest(ctx, http.MethodPost, "/api/user/login", bytes.NewReader(payload), "")
+	request, err := c.newRequest(ctx, http.MethodPost, "/api/user/login", bytes.NewReader(payload), Session{})
 	if err != nil {
-		return "", err
+		return Session{}, err
 	}
 	response, err := c.http.Do(request)
 	if err != nil {
-		return "", fmt.Errorf("连接 SiFlux 服务失败: %w", err)
+		return Session{}, fmt.Errorf("连接 SiFlux 服务失败: %w", err)
 	}
 	defer response.Body.Close()
 	raw, err := io.ReadAll(io.LimitReader(response.Body, maxResponseBytes))
 	if err != nil {
-		return "", fmt.Errorf("读取 SiFlux 服务响应失败: %w", err)
+		return Session{}, fmt.Errorf("读取 SiFlux 服务响应失败: %w", err)
 	}
 	if err := decodeEnvelope(response.StatusCode, raw); err != nil {
-		return "", err
+		return Session{}, withPath(err, "/api/user/login")
 	}
-	cookies := response.Cookies()
-	if len(cookies) == 0 {
-		return "", &Error{Status: response.StatusCode, Message: "登录失败，服务没有返回会话"}
+	var envelope struct {
+		Data struct {
+			AccessToken string `json:"access_token"`
+			TokenType   string `json:"token_type"`
+		} `json:"data"`
 	}
-	parts := make([]string, 0, len(cookies))
-	for _, cookie := range cookies {
-		parts = append(parts, cookie.Name+"="+cookie.Value)
+	_ = json.Unmarshal(raw, &envelope)
+	session := Session{
+		AccessToken: strings.TrimSpace(envelope.Data.AccessToken),
+		TokenType:   strings.TrimSpace(envelope.Data.TokenType),
 	}
-	return strings.Join(parts, "; "), nil
+	if cookies := response.Cookies(); len(cookies) > 0 {
+		parts := make([]string, 0, len(cookies))
+		for _, cookie := range cookies {
+			parts = append(parts, cookie.Name+"="+cookie.Value)
+		}
+		session.Cookie = strings.Join(parts, "; ")
+	}
+	if session.AccessToken == "" && session.Cookie == "" {
+		return Session{}, &Error{Status: response.StatusCode, Path: "/api/user/login", Message: "登录失败，服务没有返回凭据"}
+	}
+	if session.TokenType == "" {
+		session.TokenType = "Bearer"
+	}
+	return session, nil
 }
 
 // CreateToken 以登录会话创建一枚访问令牌。
-func (c *Client) CreateToken(ctx context.Context, session, name string) (Token, error) {
+func (c *Client) CreateToken(ctx context.Context, session Session, name string) (Token, error) {
 	body := map[string]any{
 		"name":                 name,
 		"expired_time":         -1,
@@ -221,7 +258,7 @@ func (c *Client) CreateToken(ctx context.Context, session, name string) (Token, 
 }
 
 // tokenKey 取回令牌明文。
-func (c *Client) tokenKey(ctx context.Context, session string, id int) (string, error) {
+func (c *Client) tokenKey(ctx context.Context, session Session, id int) (string, error) {
 	var payload struct {
 		Key string `json:"key"`
 	}
@@ -278,7 +315,7 @@ func (c *Client) Balance(ctx context.Context, apiKey string) (Balance, error) {
 
 // getWithKey 用访问令牌请求一个 JSON 接口。
 func (c *Client) getWithKey(ctx context.Context, path, apiKey string) ([]byte, error) {
-	request, err := c.newRequest(ctx, http.MethodGet, path, nil, "")
+	request, err := c.newRequest(ctx, http.MethodGet, path, nil, Session{})
 	if err != nil {
 		return nil, err
 	}
@@ -293,13 +330,13 @@ func (c *Client) getWithKey(ctx context.Context, path, apiKey string) ([]byte, e
 		return nil, fmt.Errorf("读取 SiFlux 服务响应失败: %w", err)
 	}
 	if response.StatusCode != http.StatusOK {
-		return nil, &Error{Status: response.StatusCode, Message: failureMessage(raw, response.StatusCode)}
+		return nil, &Error{Status: response.StatusCode, Path: path, Message: failureMessage(raw, response.StatusCode)}
 	}
 	return raw, nil
 }
 
 // Self 读取当前账号额度。
-func (c *Client) Self(ctx context.Context, session string) (Self, error) {
+func (c *Client) Self(ctx context.Context, session Session) (Self, error) {
 	var self Self
 	if err := c.call(ctx, http.MethodGet, "/api/user/self", nil, session, &self); err != nil {
 		return Self{}, err
@@ -309,7 +346,7 @@ func (c *Client) Self(ctx context.Context, session string) (Self, error) {
 
 // Models 用访问令牌读取可用模型。
 func (c *Client) Models(ctx context.Context, apiKey string) ([]string, error) {
-	request, err := c.newRequest(ctx, http.MethodGet, "/v1/models", nil, "")
+	request, err := c.newRequest(ctx, http.MethodGet, "/v1/models", nil, Session{})
 	if err != nil {
 		return nil, err
 	}
@@ -324,7 +361,7 @@ func (c *Client) Models(ctx context.Context, apiKey string) ([]string, error) {
 		return nil, fmt.Errorf("读取 SiFlux 服务响应失败: %w", err)
 	}
 	if response.StatusCode != http.StatusOK {
-		return nil, &Error{Status: response.StatusCode, Message: failureMessage(raw, response.StatusCode)}
+		return nil, &Error{Status: response.StatusCode, Path: "/v1/models", Message: failureMessage(raw, response.StatusCode)}
 	}
 	var payload struct {
 		Data []struct {
@@ -344,7 +381,7 @@ func (c *Client) Models(ctx context.Context, apiKey string) ([]string, error) {
 }
 
 // call 发出请求并把 data 解码到 out。
-func (c *Client) call(ctx context.Context, method, path string, body any, session string, out any) error {
+func (c *Client) call(ctx context.Context, method, path string, body any, session Session, out any) error {
 	var reader io.Reader
 	if body != nil {
 		reader = bytes.NewReader([]byte(mustJSON(body)))
@@ -363,7 +400,7 @@ func (c *Client) call(ctx context.Context, method, path string, body any, sessio
 		return fmt.Errorf("读取 SiFlux 服务响应失败: %w", err)
 	}
 	if err := decodeEnvelope(response.StatusCode, raw); err != nil {
-		return err
+		return withPath(err, path)
 	}
 	if out == nil {
 		return nil
@@ -380,7 +417,7 @@ func (c *Client) call(ctx context.Context, method, path string, body any, sessio
 	return nil
 }
 
-func (c *Client) newRequest(ctx context.Context, method, path string, body io.Reader, session string) (*http.Request, error) {
+func (c *Client) newRequest(ctx context.Context, method, path string, body io.Reader, session Session) (*http.Request, error) {
 	request, err := http.NewRequestWithContext(ctx, method, c.baseURL+path, body)
 	if err != nil {
 		return nil, err
@@ -389,8 +426,15 @@ func (c *Client) newRequest(ctx context.Context, method, path string, body io.Re
 	if body != nil {
 		request.Header.Set("Content-Type", "application/json")
 	}
-	if session != "" {
-		request.Header.Set("Cookie", session)
+	if session.Cookie != "" {
+		request.Header.Set("Cookie", session.Cookie)
+	}
+	if session.AccessToken != "" {
+		tokenType := session.TokenType
+		if tokenType == "" {
+			tokenType = "Bearer"
+		}
+		request.Header.Set("Authorization", tokenType+" "+session.AccessToken)
 	}
 	return request, nil
 }

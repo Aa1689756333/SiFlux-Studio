@@ -43,12 +43,12 @@ func newFakeRelay(t *testing.T) (*httptest.Server, *int) {
 	})
 	mux.HandleFunc("/api/user/login", func(w http.ResponseWriter, _ *http.Request) {
 		http.SetCookie(w, &http.Cookie{Name: "session", Value: "session-token"})
-		writeEnvelope(w, nil)
+		writeEnvelope(w, map[string]any{"access_token": "access-token-fixture", "token_type": "Bearer"})
 	})
 	mux.HandleFunc("/api/token/", func(w http.ResponseWriter, r *http.Request) {
-		if !strings.Contains(r.Header.Get("Cookie"), "session=session-token") {
+		if r.Header.Get("Authorization") != "Bearer access-token-fixture" {
 			w.WriteHeader(http.StatusUnauthorized)
-			writeEnvelopeMessage(w, false, "session required", nil)
+			writeEnvelopeMessage(w, false, "Unauthorized, invalid access token", nil)
 			return
 		}
 		createdTokens++
@@ -136,8 +136,8 @@ func TestSignupFlowCreatesTokenAndReadsQuota(t *testing.T) {
 	if err != nil {
 		t.Fatal(err)
 	}
-	if !strings.Contains(session, "session=session-token") {
-		t.Fatalf("session cookie = %q", session)
+	if session.AccessToken != "access-token-fixture" {
+		t.Fatalf("access token = %q", session.AccessToken)
 	}
 
 	token, err := client.CreateToken(ctx, session, relayTokenFixtureName)
