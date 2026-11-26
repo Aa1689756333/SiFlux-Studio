@@ -40,7 +40,7 @@ function buildNav(): { groups: WorkspaceNavGroup[]; footer: WorkspaceNavItem[] }
         groups: [
             { items: [
                 { id: "image", title: "生图", icon: ImageIcon, to: "/generate/image" },
-                { id: "agent", title: "Agent", icon: Bot, to: "/agent" },
+                { id: "agent", title: "Agent 生图", icon: Bot, to: "/agent" },
             ] },
             { heading: "工作区", items: [
                 toolItem("canvas", "/canvas"),

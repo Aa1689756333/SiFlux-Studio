@@ -24,9 +24,9 @@ import "@/pages/canvas/canvas-assistant-sidebar.css";
 
 const AGENT_PAGE = {
     conversationId: WORKSPACE_AGENT_CONVERSATION_ID,
-    title: "Agent助手",
-    subtitle: "对话式创作助手，可使用工具和技能，不进入无限画布",
-    starters: ["帮我写一段分镜", "把这段提示词写得更具体", "规划一组镜头节奏"],
+    title: "Agent 生图",
+    subtitle: "用对话完成生图：引用素材、调用技能，不进入无限画布。",
+    starters: ["把这句话改写成生图提示词", "参考这张图再生成两个变体", "整理画布上这组图片"],
 };
 
 function AgentTurnView({ turn }: { turn: AssistantTurn }) {

@@ -10,7 +10,7 @@ describe("standalone agent page", () => {
         const sidebar = read("src/components/layout/workspace-sidebar-nav.tsx");
         const router = read("src/router.tsx");
         expect(sidebar).toContain('{ id: "image", title: "生图", icon: ImageIcon, to: "/generate/image" }');
-        expect(sidebar).toContain('{ id: "agent", title: "Agent", icon: Bot, to: "/agent" }');
+        expect(sidebar).toContain('{ id: "agent", title: "Agent 生图", icon: Bot, to: "/agent" }');
         expect(sidebar).not.toContain("/canvas?mode=new&start=agent");
         expect(router).toContain('path: "/agent"');
         expect(router).toContain("loadAgentPage");
