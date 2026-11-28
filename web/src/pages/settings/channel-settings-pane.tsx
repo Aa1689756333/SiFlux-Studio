@@ -43,6 +43,7 @@ export function ChannelSettingsPane({ onOpenDiagnostics, onOpenModels, onOpenRun
     const replaceConfig = useConfigStore((state) => state.replaceConfig);
     const localMode = workspaceCapabilities().local;
     const persistence = useSyncExternalStore(subscribeModelConfigPersistence, getModelConfigPersistenceState, getModelConfigPersistenceState);
+    const [syncNote, setSyncNote] = useState<Record<string, { tone: "ok" | "error"; text: string }>>({});
     const [loadingChannelIds, setLoadingChannelIds] = useState<string[]>([]);
     const [editingChannelId, setEditingChannelId] = useState<string | null>(null);
     const [serviceEditor, setServiceEditor] = useState<ModelChannel | undefined>(undefined);
@@ -152,6 +153,7 @@ export function ChannelSettingsPane({ onOpenDiagnostics, onOpenModels, onOpenRun
             return;
         }
         setChannelLoading(channel.id, true);
+        setSyncNote((notes) => ({ ...notes, [channel.id]: { tone: "ok", text: "正在拉取模型…" } }));
         const request = requests.current.start(channel.id);
         try {
             // 内置服务由后端凭已保存的密钥直连服务端，避免浏览器跨域影响。
@@ -178,9 +180,12 @@ export function ChannelSettingsPane({ onOpenDiagnostics, onOpenModels, onOpenRun
                     : item)),
                 latestConfig,
             );
+            setSyncNote((notes) => ({ ...notes, [channel.id]: { tone: "ok", text: `已更新，共 ${fetchedModels.length} 个模型` } }));
             message.success(`${latestChannel.name || "当前渠道"}模型列表已更新`);
         } catch (error) {
-            if (requests.current.current(channel.id, request)) message.error(channelModelFetchErrorMessage(error));
+            const reason = channelModelFetchErrorMessage(error);
+            setSyncNote((notes) => ({ ...notes, [channel.id]: { tone: "error", text: `拉取失败：${reason}` } }));
+            if (requests.current.current(channel.id, request)) message.error(reason);
         } finally {
             if (requests.current.current(channel.id, request)) setChannelLoading(channel.id, false);
             requests.current.finish(channel.id, request);
@@ -241,6 +246,9 @@ export function ChannelSettingsPane({ onOpenDiagnostics, onOpenModels, onOpenRun
                                                     <span className={cn("size-1.5 rounded-full", relayReady ? "bg-emerald-500" : "bg-foreground/30")} aria-hidden />
                                                     <span className={relayReady ? "text-emerald-600" : "text-foreground/50"}>{relayReady ? "已连接" : "未连接"}</span>
                                                 </div>
+                                                {syncNote[channel.id] ? (
+                                                    <div className={cn("mt-1 text-xs", syncNote[channel.id].tone === "error" ? "text-red-500" : "text-foreground/55")} role="status" aria-live="polite">{syncNote[channel.id].text}</div>
+                                                ) : null}
                                             </>
                                         ) : (
                                             <>
@@ -265,7 +273,7 @@ export function ChannelSettingsPane({ onOpenDiagnostics, onOpenModels, onOpenRun
                                     </div>
                                     <div className="flex w-full flex-wrap justify-end gap-2 sm:w-auto sm:shrink-0">
                                         {isBuiltinRelayChannel(channel) ? (
-                                            <Button className="h-10 sm:h-8" size="small" icon={<RefreshCw className="size-3.5" />} loading={loadingChannelIds.includes(channel.id)} disabled={loadingChannelIds.includes("all") || !relayReady} onClick={() => void refreshChannelModels(channel)}>拉取模型</Button>
+                                            <Button className="h-10 sm:h-8" size="small" icon={<RefreshCw className="size-3.5" />} loading={loadingChannelIds.includes(channel.id)} disabled={loadingChannelIds.includes("all") || !relayReady} onClick={() => void refreshChannelModels(channel)}>{loadingChannelIds.includes(channel.id) ? "正在拉取…" : "拉取模型"}</Button>
                                         ) : (
                                             <>
                                         <Button
