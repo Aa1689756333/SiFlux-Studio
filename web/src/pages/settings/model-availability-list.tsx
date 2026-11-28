@@ -30,8 +30,8 @@ const UNIT_LABELS: [string, string][] = [
 ];
 
 function formatUnit(value: number) {
-    if (value < 0.01) return `$${Number(value.toFixed(4))}`;
-    return `$${Number(value.toFixed(2))}`;
+    if (value < 0.01) return Number(value.toFixed(4)).toString();
+    return Number(value.toFixed(2)).toString();
 }
 
 function priceText(catalog: Catalog, key: string) {
