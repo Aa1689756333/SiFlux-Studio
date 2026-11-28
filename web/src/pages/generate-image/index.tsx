@@ -111,6 +111,17 @@ export default function GenerateImagePage() {
     const jobs = snapshot.jobs;
     const [activeId, setActiveId] = useState("");
     const [previewAsset, setPreviewAsset] = useState<ImageAsset | null>(null);
+    const previewPanelRef = useRef<HTMLDivElement>(null);
+    useEffect(() => {
+        const node = previewPanelRef.current;
+        if (!node) return;
+        const onWheel = (event: WheelEvent) => {
+            event.preventDefault();
+            setPreviewZoom((value) => Math.min(5, Math.max(0.4, value - event.deltaY * 0.0015)));
+        };
+        node.addEventListener("wheel", onWheel, { passive: false });
+        return () => node.removeEventListener("wheel", onWheel);
+    }, [previewAsset]);
     const [previewZoom, setPreviewZoom] = useState(1);
     const [hydrated, setHydrated] = useState(false);
     const [libraryOpen, setLibraryOpen] = useState(false);
@@ -398,8 +409,8 @@ export default function GenerateImagePage() {
             </div>
             {previewAsset ? (
                 <div className="siflux-image-preview" role="dialog" aria-modal="true" aria-label="图片预览" onClick={() => setPreviewAsset(null)}>
-                    <div className="siflux-image-preview-panel" onClick={(event) => event.stopPropagation()}>
-                        <img src={resolveResourceUrl(previewAsset.data.storageKey, previewAsset.data.dataUrl || previewAsset.coverUrl)} alt={previewAsset.title || "生成图片"} />
+                    <div className="siflux-image-preview-panel" ref={previewPanelRef} onClick={(event) => event.stopPropagation()} onDoubleClick={() => setPreviewZoom(1)}>
+                        <img src={resolveResourceUrl(previewAsset.data.storageKey, previewAsset.data.dataUrl || previewAsset.coverUrl)} alt={previewAsset.title || "生成图片"} style={{ transform: `scale(${previewZoom})` }} />
                         <div className="siflux-image-preview-actions">
                             <button type="button" onClick={() => void downloadImageAsset(previewAsset, (text) => toast.error(text), () => toast.success("已开始下载"))}>下载</button>
                             <button type="button" onClick={() => setPreviewAsset(null)}>关闭</button>

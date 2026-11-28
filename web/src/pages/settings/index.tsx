@@ -6,6 +6,7 @@ import { useNavigate, useSearchParams } from "react-router";
 import { useConfigStore, useEffectiveConfig } from "@/stores/use-config-store";
 import { useUserStore } from "@/stores/use-user-store";
 import { ChannelSettingsPane, channelValidationError, focusInvalidChannelField, isChannelReady } from "./channel-settings-pane";
+import { DownloadLocationSettings } from "./download-location-settings";
 import { ModelAvailabilityList } from "./model-availability-list";
 import { ModelDefaultGrid } from "./model-default-grid";
 import DiagnosticsPanel from "./diagnostics-panel";
@@ -85,6 +86,9 @@ export default function SettingsPage() {
                         </div>
                         <ModelAvailabilityList config={effectiveConfig} />
                     </div>
+                </div>
+                <div className="settings-section mt-5">
+                    <DownloadLocationSettings />
                 </div>
             </SettingsPane>
         ),

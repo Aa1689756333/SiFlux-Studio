@@ -369,6 +369,8 @@
 }
 .siflux-image-preview-panel {
     display: flex;
+    overflow: hidden;
+    overscroll-behavior: contain;
     max-width: min(92vw, 1100px);
     max-height: 92vh;
     flex-direction: column;
