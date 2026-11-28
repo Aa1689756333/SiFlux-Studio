@@ -61,8 +61,8 @@ function buildNav(): { groups: WorkspaceNavGroup[]; footer: WorkspaceNavItem[] }
                 toolItem("skills", "/skills"),
                     ] },
             { items: [
-                { id: "logs", title: "日志", icon: ScrollText, to: "/logs" },
-                { id: "settings", title: "设置", icon: Settings2, to: "/settings" },
+                { id: "logs", title: "运行日志", icon: ScrollText, to: "/logs" },
+                { id: "settings", title: "系统设置", icon: Settings2, to: "/settings" },
             ] },
         ],
         footer: [],
