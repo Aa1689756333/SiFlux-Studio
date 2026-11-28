@@ -209,7 +209,12 @@ func preserveBuiltinRelayConnection(incoming, existing map[string]any) {
 			continue
 		}
 		original, exists := stored[id]
-		for _, key := range []string{"baseUrl", "apiFormat", "name", "referenceAssetOrigin", "secretKey"} {
+		// 这些字段只由应用自己维护：界面保存配置时不能被前端快照覆盖或抹掉。
+		for _, key := range []string{
+			"baseUrl", "apiFormat", "name", "referenceAssetOrigin", "secretKey",
+			"relayAccessToken", "relayTokenType", "relayCookie",
+			"relayQuota", "relayUsedQuota", "relayQuotaPerUnit", "relayQuotaAt",
+		} {
 			if exists {
 				if value, ok := original[key]; ok {
 					channel[key] = value
