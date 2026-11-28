@@ -3,7 +3,8 @@ import { Button } from "antd";
 import { ArrowUpCircle } from "lucide-react";
 
 import { AppModal } from "@/components/ui/product/app-modal";
-import { APP_VERSION, AppChangelogButton } from "@/components/layout/app-changelog-modal";
+import { APP_VERSION } from "@/components/layout/app-changelog-modal";
+import { appChangelogZh } from "@/components/layout/app-changelog.zh";
 import { useDesktopUpdate } from "@/hooks/use-desktop-update";
 import {
     desktopUpdateDetailLabel,
@@ -115,13 +116,20 @@ export function AppUpdateEntry({ collapsed }: { collapsed: boolean }) {
                         <p className="m-0 text-foreground/65">已是最新版本，无需更新。</p>
                     )}
 
-                    <div className="flex items-center justify-between border-t border-border/60 pt-3">
-                        <AppChangelogButton
-                            showLabel
-                            showIcon={false}
-                            label="查看历史版本"
-                            className="text-xs text-foreground/55 underline-offset-4 transition-colors hover:text-primary hover:underline"
-                        />
+                    <div>
+                        <div className="mb-1.5 text-xs text-foreground/50">历史版本</div>
+                        <div className="max-h-52 space-y-3 overflow-y-auto rounded-xl border border-border/60 px-4 py-3">
+                            {appChangelogZh.slice(0, 8).map((entry) => (
+                                <div key={entry.version}>
+                                    <div className="text-xs font-semibold tabular-nums text-foreground/75">{entry.version}</div>
+                                    <ul className="mt-1 list-disc space-y-1 pl-4 text-xs leading-5 text-foreground/60">
+                                        {entry.changes.map((change) => (
+                                            <li key={change}>{change}</li>
+                                        ))}
+                                    </ul>
+                                </div>
+                            ))}
+                        </div>
                     </div>
                 </div>
             </AppModal>
