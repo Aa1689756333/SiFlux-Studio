@@ -78,6 +78,13 @@ export default function SettingsPage() {
                         </div>
                     </div>
                     <ModelDefaultGrid config={effectiveConfig} onChange={(key, model) => updateConfig(key, model)} />
+                    <div className="mt-5">
+                        <div className="mb-3">
+                            <h3 className="m-0 text-sm font-medium text-foreground">可用模型</h3>
+                            <p className="mt-1 mb-0 text-xs text-foreground/50">当前服务提供的全部模型，以及它们在应用里的用途。</p>
+                        </div>
+                        <ModelAvailabilityList config={effectiveConfig} />
+                    </div>
                 </div>
             </SettingsPane>
         ),
