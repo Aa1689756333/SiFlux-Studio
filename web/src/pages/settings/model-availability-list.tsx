@@ -76,7 +76,7 @@ export function ModelAvailabilityList({ config }: { config: AiConfig }) {
     }
 
     return (
-        <div className="space-y-4">
+        <div className="space-y-3">
             {groups.map((group) => (
                 <div key={group.key}>
                     <div className="mb-2 flex items-baseline gap-2">
@@ -85,16 +85,16 @@ export function ModelAvailabilityList({ config }: { config: AiConfig }) {
                     </div>
                     {group.rows.length ? (
                         <div className="overflow-hidden rounded-xl border border-border/60">
-                            <div className="grid grid-cols-[minmax(0,1fr)_auto] items-center gap-3 border-b border-border/60 bg-foreground/[.03] px-4 py-2 text-xs text-foreground/50">
+                            <div className="grid grid-cols-[minmax(0,1fr)_auto] items-center gap-3 border-b border-border/60 bg-foreground/[.03] px-3 py-1.5 text-xs text-foreground/50">
                                 <span>模型</span>
                                 <span className="text-right">用途</span>
                             </div>
                             <ul className="m-0 divide-y divide-border/50 p-0">
                                 {group.rows.map((row) => (
-                                    <li key={row.model} className="grid grid-cols-[minmax(0,1fr)_auto] items-center gap-3 px-4 py-2.5">
+                                    <li key={row.model} className="grid grid-cols-[minmax(0,1fr)_auto] items-center gap-3 px-3 py-1.5">
                                         <div className="min-w-0">
-                                            <div className="truncate text-sm text-foreground">{row.name}</div>
-                                            <div className="truncate text-xs text-foreground/45">{row.meta}</div>
+                                            <div className="truncate text-sm leading-5 text-foreground">{row.name}</div>
+                                            <div className="truncate text-[11px] leading-4 text-foreground/45">{row.meta}</div>
                                         </div>
                                         <span className="flex justify-end gap-1 text-xs">
                                             {row.labels.map((label) => (
