@@ -6,16 +6,18 @@ type Row = {
     model: string;
     name: string;
     meta: string;
+    price: string;
     labels: string[];
 };
 
 function priceText(catalog: AiConfig["channels"][number]["relayCatalog"], model: string) {
     const entry = catalog?.prices?.[model];
     if (!entry) return "";
-    if (entry.quotaType === 1 && entry.price > 0) return `按次 $${entry.price.toFixed(4)}`;
+    // fixed(...) 是固定的单次价格，最直观。
+    if (entry.fixedPrice && entry.fixedPrice > 0) return `$${entry.fixedPrice} / 次`;
+    if (entry.quotaType === 1 && entry.price > 0) return `$${entry.price} / 次`;
     if (!entry.ratio) return "";
-    // NewAPI 的倍率以 1 为基准，展示为相对倍率。
-    return `${Number(entry.ratio.toFixed(2))}x`;
+    return `${Number(entry.ratio.toFixed(2))}x 倍率`;
 }
 
 function groupText(catalog: AiConfig["channels"][number]["relayCatalog"], model: string) {
@@ -31,15 +33,20 @@ function buildRows(models: string[], config: AiConfig, extraLabel: (model: strin
             const channel = resolveModelChannel(config, model);
             const catalog = channel?.relayCatalog;
             const price = priceText(catalog, model);
+            const group = groupText(catalog, model);
             const meta = catalog?.metas?.[model];
-            const vendor = catalog?.prices?.[model]?.vendor?.trim() || "";
+            const priceEntry = catalog?.prices?.[model];
+            const vendor = priceEntry?.vendor?.trim() || "";
+            const ownTags = priceEntry?.tags?.trim() || "";
             // 站点公开接口没有模型描述时用厂商名占位，避免显示服务名。
-            const description = meta?.description?.trim() || vendor || [price, groupText(catalog, model)].filter(Boolean).join(" · ");
+            const description = meta?.description?.trim() || priceEntry?.description?.trim() || vendor || "";
+            const tagLabels = [...(ownTags ? [ownTags] : []), ...(meta?.tags || []), ...(group ? [group] : [])];
             return {
                 model,
                 name: modelDisplayName(config, model),
                 meta: description,
-                labels: [...(extra ? [extra] : []), ...(meta?.tags || [])],
+                price,
+                labels: [...(extra ? [extra] : []), ...tagLabels],
             };
         })
         .sort((a, b) => a.name.localeCompare(b.name, "zh-Hans-CN"));
@@ -96,7 +103,8 @@ export function ModelAvailabilityList({ config }: { config: AiConfig }) {
                                             <div className="truncate text-sm leading-5 text-foreground">{row.name}</div>
                                             <div className="truncate text-[11px] leading-4 text-foreground/45">{row.meta}</div>
                                         </div>
-                                        <span className="flex justify-end gap-1 text-xs">
+                                        <span className="flex flex-wrap justify-end gap-1 text-[11px]">
+                                            {row.price ? <span className="rounded-full bg-foreground/[.06] px-2 py-0.5 tabular-nums text-foreground/70">{row.price}</span> : null}
                                             {row.labels.map((label) => (
                                                 <span key={label} className="rounded-full bg-primary/12 px-2 py-0.5 text-primary">{label}</span>
                                             ))}

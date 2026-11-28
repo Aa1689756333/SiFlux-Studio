@@ -13,6 +13,7 @@ import (
 	"net/http"
 	"net/url"
 	"sort"
+	"strconv"
 	"strings"
 	"time"
 )
@@ -282,6 +283,24 @@ func (c *Client) tokenByName(ctx context.Context, session Session, name string) 
 	return 0, false
 }
 
+// fixedPriceFromExpr 从 tier("base", fixed(0.075)) 里取出固定单次价格。
+func fixedPriceFromExpr(expr string) float64 {
+	start := strings.Index(expr, "fixed(")
+	if start < 0 {
+		return 0
+	}
+	rest := expr[start+len("fixed("):]
+	end := strings.IndexAny(rest, ")")
+	if end < 0 {
+		return 0
+	}
+	value, err := strconv.ParseFloat(strings.TrimSpace(rest[:end]), 64)
+	if err != nil {
+		return 0
+	}
+	return value
+}
+
 // ModelMeta 是模型元数据（标签与描述），部分站点只对管理员开放。
 type ModelMeta struct {
 	Tags        []string `json:"tags"`
@@ -305,6 +324,7 @@ func (c *Client) ModelMetas(ctx context.Context, session Session) map[string]Mod
 	}
 	return out
 }
+
 // SyncGroupKeys 从站点已有的令牌里恢复分组密钥，前缀由 prefix 指定。
 func (c *Client) SyncGroupKeys(ctx context.Context, session Session, prefix string) (map[string]string, map[string]string) {
 	keys := map[string]string{}
@@ -335,6 +355,7 @@ func (c *Client) SyncGroupKeys(ctx context.Context, session Session, prefix stri
 	}
 	return keys, groups
 }
+
 // EnsureToken 复用同名令牌；不存在时才新建，避免每次登录都多出一把密钥。
 func (c *Client) EnsureToken(ctx context.Context, session Session, name string, group string) (Token, error) {
 	if id, found := c.tokenByName(ctx, session, name); found {
@@ -507,6 +528,11 @@ type PricingModel struct {
 	ModelPrice      float64  `json:"modelPrice"`
 	VendorID        int      `json:"vendorId"`
 	Vendor          string   `json:"vendor"`
+	Description     string   `json:"description"`
+	Tags            string   `json:"tags"`
+	BillingMode     string   `json:"billingMode"`
+	BillingExpr     string   `json:"billingExpr"`
+	FixedPrice      float64  `json:"fixedPrice"`
 }
 
 // Pricing 读取全部模型（含所有分组）。/v1/models 只返回当前分组的模型，
@@ -538,6 +564,10 @@ func (c *Client) Pricing(ctx context.Context, session Session) ([]PricingModel, 
 			CompletionRatio float64  `json:"completion_ratio"`
 			ModelPrice      float64  `json:"model_price"`
 			VendorID        int      `json:"vendor_id"`
+			Description     string   `json:"description"`
+			Tags            string   `json:"tags"`
+			BillingMode     string   `json:"billing_mode"`
+			BillingExpr     string   `json:"billing_expr"`
 		} `json:"data"`
 		Vendors []struct {
 			ID   int    `json:"id"`
@@ -570,6 +600,9 @@ func (c *Client) Pricing(ctx context.Context, session Session) ([]PricingModel, 
 			QuotaType: item.QuotaType, ModelRatio: item.ModelRatio,
 			CompletionRatio: item.CompletionRatio, ModelPrice: item.ModelPrice,
 			VendorID: item.VendorID, Vendor: vendorNames[item.VendorID],
+			Description: strings.TrimSpace(item.Description), Tags: strings.TrimSpace(item.Tags),
+			BillingMode: item.BillingMode, BillingExpr: item.BillingExpr,
+			FixedPrice: fixedPriceFromExpr(item.BillingExpr),
 		})
 	}
 	sort.Slice(models, func(i, j int) bool { return models[i].Model < models[j].Model })

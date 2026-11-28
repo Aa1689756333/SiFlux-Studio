@@ -65,12 +65,18 @@ export type RelayModelPrice = {
     ratio: number;
     completionRatio: number;
     price: number;
+    vendor?: string;
+    description?: string;
+    tags?: string;
+    billingMode?: string;
+    billingExpr?: string;
+    fixedPrice?: number;
 };
 
 export type RelayModelCatalog = {
     models: string[];
     groups?: Record<string, string[]>;
-    prices?: Record<string, RelayModelPrice & { vendor?: string }>;
+    prices?: Record<string, RelayModelPrice>;
     metas?: Record<string, { tags?: string[]; description?: string }>;
     source?: string;
 };
