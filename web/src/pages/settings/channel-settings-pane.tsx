@@ -155,16 +155,30 @@ export function ChannelSettingsPane({ onOpenDiagnostics, onOpenModels, onOpenRun
         setLoadingChannelIds((items) => (loading ? Array.from(new Set([...items, id])) : items.filter((item) => item !== id)));
     };
 
-    // 已拉取过模型但缺少价格/分组目录时，自动补一次，保证列表能显示倍率与厂商。
+    // 目录过期时静默补拉一次：不占用手动拉取的请求状态，也不会被页面卸载取消。
     useEffect(() => {
         if (catalogSyncedRef.current) return;
+        catalogSyncedRef.current = true;
         const relay = useConfigStore.getState().config.channels.find((item) => isBuiltinRelayChannel(item));
         if (!relay || !relay.modelsSynced) return;
-        // 目录版本低于当前版本（缺少单价等字段）时自动重拉一次。
         if (relay.relayCatalog?.version === 4) return;
         if (!channelHasGenerationCredential(relay) && !relay.apiKey?.trim()) return;
-        catalogSyncedRef.current = true;
-        void refreshChannelModels(relay);
+        void (async () => {
+            try {
+                const catalog = await fetchRelayModels();
+                const models = catalog.models.filter(Boolean);
+                if (!models.length) return;
+                const latest = useConfigStore.getState().config;
+                updateChannels(
+                    latest.channels.map((item) => (item.id === relay.id
+                        ? { ...item, models, modelsSynced: true, relayCatalog: { version: 4, groups: catalog.groups, prices: catalog.prices, metas: catalog.metas } }
+                        : item)),
+                    latest,
+                );
+            } catch {
+                // 自动同步失败保持静默，用户仍可手动点「拉取模型」。
+            }
+        })();
     }, []);
     const refreshChannelModels = async (channel: ModelChannel) => {
         const connectionError = channelConnectionError(channel, null);
@@ -204,8 +218,13 @@ export function ChannelSettingsPane({ onOpenDiagnostics, onOpenModels, onOpenRun
             setSyncNote((notes) => ({ ...notes, [channel.id]: { tone: "ok", text: `已更新，共 ${fetchedModels.length} 个模型` } }));
             message.success(`${latestChannel.name || "当前渠道"}模型列表已更新`);
         } catch (error) {
-            // 主动取消（离开页面、并发重拉）不是失败，不写错误状态。
+            // 主动取消不是失败：清掉提示，不写错误状态。
             if (isAbortError(error) || !requests.current.current(channel.id, request)) {
+                setSyncNote((notes) => {
+                    const next = { ...notes };
+                    delete next[channel.id];
+                    return next;
+                });
                 return;
             }
             const reason = channelModelFetchErrorMessage(error);
