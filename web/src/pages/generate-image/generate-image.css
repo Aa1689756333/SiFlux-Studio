@@ -341,3 +341,65 @@
     .siflux-image-gen-history { max-height: 220px; }
     .siflux-image-gen-composer { margin-inline: 16px; }
 }
+
+/* 结果卡片：点击图片进入预览 */
+.siflux-image-gen-open {
+    display: block;
+    width: 100%;
+    padding: 0;
+    border: 0;
+    background: transparent;
+    cursor: zoom-in;
+}
+.siflux-image-gen-open img {
+    display: block;
+    width: 100%;
+    height: auto;
+}
+
+.siflux-image-preview {
+    position: fixed;
+    inset: 0;
+    z-index: 1200;
+    display: grid;
+    place-items: center;
+    padding: 24px;
+    background: rgba(0, 0, 0, .72);
+    backdrop-filter: blur(4px);
+}
+.siflux-image-preview-panel {
+    display: flex;
+    max-width: min(92vw, 1100px);
+    max-height: 92vh;
+    flex-direction: column;
+    gap: 12px;
+}
+.siflux-image-preview-panel img {
+    max-height: 78vh;
+    width: auto;
+    max-width: 100%;
+    object-fit: contain;
+    border-radius: var(--r-md, 10px);
+    background: rgba(255, 255, 255, .04);
+}
+.siflux-image-preview-actions {
+    display: flex;
+    justify-content: center;
+    gap: 10px;
+}
+.siflux-image-preview-actions button {
+    display: inline-flex;
+    align-items: center;
+    gap: 6px;
+    height: 34px;
+    padding: 0 14px;
+    border: 1px solid rgba(255, 255, 255, .18);
+    border-radius: var(--r-md, 10px);
+    background: rgba(255, 255, 255, .1);
+    color: #fff;
+    font-size: 13px;
+    cursor: pointer;
+}
+.siflux-image-preview-actions button:hover {
+    background: rgba(255, 255, 255, .18);
+}

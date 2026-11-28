@@ -60,16 +60,37 @@ function attachmentToReferenceImage(attachment: GenerationAttachment): Reference
     };
 }
 
-function downloadImageAsset(asset: ImageAsset) {
-    const url = asset.data.dataUrl || asset.coverUrl;
-    if (!url) return;
-    const link = document.createElement("a");
-    link.href = url;
-    link.download = `${asset.title || "image"}.png`;
-    link.rel = "noopener";
-    document.body.append(link);
-    link.click();
-    link.remove();
+async function downloadImageAsset(asset: ImageAsset, onError?: (text: string) => void) {
+    const url = asset.data.dataUrl || resolveResourceUrl(asset.data.storageKey, asset.coverUrl || "");
+    if (!url) {
+        onError?.("这张图片没有可下载的地址");
+        return;
+    }
+    const name = `${asset.title || "image"}.png`;
+    try {
+        const response = await fetch(url);
+        if (!response.ok) throw new Error(`http_${response.status}`);
+        const blob = await response.blob();
+        const objectUrl = URL.createObjectURL(blob);
+        const link = document.createElement("a");
+        link.href = objectUrl;
+        link.download = name;
+        link.rel = "noopener";
+        document.body.append(link);
+        link.click();
+        link.remove();
+        window.setTimeout(() => URL.revokeObjectURL(objectUrl), 10000);
+    } catch {
+        // 跨域资源无法转存时退回直接打开，浏览器仍可另存。
+        const link = document.createElement("a");
+        link.href = url;
+        link.download = name;
+        link.target = "_blank";
+        link.rel = "noopener";
+        document.body.append(link);
+        link.click();
+        link.remove();
+    }
 }
 
 export default function GenerateImagePage() {
@@ -90,11 +111,17 @@ export default function GenerateImagePage() {
     const snapshot = useSyncExternalStore(subscribeStandaloneImage, getStandaloneImageSnapshot, getStandaloneImageSnapshot);
     const jobs = snapshot.jobs;
     const [activeId, setActiveId] = useState("");
+    const [previewAsset, setPreviewAsset] = useState<ImageAsset | null>(null);
     const [hydrated, setHydrated] = useState(false);
     const [libraryOpen, setLibraryOpen] = useState(false);
     const fileRef = useRef<HTMLInputElement>(null);
 
     const activeJob = jobs.find((job) => job.id === activeId) || jobs[0];
+    // 有新任务在跑时自动切到它，避免页面停留在上一次的记录上。
+    useEffect(() => {
+        const newestLiveId = snapshot.liveIds.find((id) => jobs.some((job) => job.id === id));
+        if (newestLiveId && newestLiveId !== activeId) setActiveId(newestLiveId);
+    }, [snapshot.liveIds, jobs, activeId]);
     const live = Boolean(activeJob && snapshot.liveIds.includes(activeJob.id));
     const deliveryTaskId = activeJob?.taskIds[0];
     const deliveryProgress = useGenerationDeliveryProgress((state) => (deliveryTaskId ? state.byTask[deliveryTaskId] : undefined));
@@ -244,8 +271,10 @@ export default function GenerateImagePage() {
                             <div className="siflux-image-gen-grid">
                                 {resultAssets.map((asset) => (
                                     <figure className="siflux-image-gen-card" key={asset.id}>
-                                        <CachedResourceImage storageKey={asset.data.storageKey} src={resolveResourceUrl(asset.data.storageKey, asset.data.dataUrl || asset.coverUrl)} alt={asset.title || "生成图片"} />
-                                        <button type="button" className="siflux-image-gen-download" onClick={() => downloadImageAsset(asset)}><Download size={14} />下载</button>
+                                        <button type="button" className="siflux-image-gen-open" aria-label={`预览 ${asset.title || "生成图片"}`} onClick={() => setPreviewAsset(asset)}>
+                                            <CachedResourceImage storageKey={asset.data.storageKey} src={resolveResourceUrl(asset.data.storageKey, asset.data.dataUrl || asset.coverUrl)} alt={asset.title || "生成图片"} />
+                                        </button>
+                                        <button type="button" className="siflux-image-gen-download" onClick={() => void downloadImageAsset(asset, (text) => toast.error(text))}><Download size={14} />下载</button>
                                     </figure>
                                 ))}
                                 {activeJob.status === "succeeded" && activeJob.assetIds.some((id) => !assets.some((asset) => asset.id === id)) ? (
