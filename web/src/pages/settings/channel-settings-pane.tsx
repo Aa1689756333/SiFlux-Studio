@@ -204,11 +204,16 @@ export function ChannelSettingsPane({ onOpenDiagnostics, onOpenModels, onOpenRun
             setSyncNote((notes) => ({ ...notes, [channel.id]: { tone: "ok", text: `已更新，共 ${fetchedModels.length} 个模型` } }));
             message.success(`${latestChannel.name || "当前渠道"}模型列表已更新`);
         } catch (error) {
+            // 主动取消（离开页面、并发重拉）不是失败，不写错误状态。
+            if (isAbortError(error) || !requests.current.current(channel.id, request)) {
+                return;
+            }
             const reason = channelModelFetchErrorMessage(error);
             setSyncNote((notes) => ({ ...notes, [channel.id]: { tone: "error", text: `拉取失败：${reason}` } }));
-            if (requests.current.current(channel.id, request)) message.error(reason);
+            message.error(reason);
         } finally {
-            if (requests.current.current(channel.id, request)) setChannelLoading(channel.id, false);
+            // 成功、失败、取消都要复位加载态，避免按钮卡在「正在拉取…」。
+            setChannelLoading(channel.id, false);
             requests.current.finish(channel.id, request);
         }
     };
