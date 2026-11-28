@@ -13,6 +13,9 @@ type Row = {
 
 type Catalog = AiConfig["channels"][number]["relayCatalog"];
 
+// 四列固定宽度，表头与每行共用同一套栅格，保证上下对齐。
+const ROW_GRID = "grid grid-cols-[minmax(0,1fr)_112px_232px_72px] items-center gap-3 px-3 py-1.5";
+
 // 价格变量到中文标签，顺序即展示顺序。
 const UNIT_LABELS: [string, string][] = [
     ["p", "输入"],
@@ -109,7 +112,7 @@ export function ModelAvailabilityList({ config }: { config: AiConfig }) {
                     </div>
                     {group.rows.length ? (
                         <div className="overflow-hidden rounded-xl border border-border/60">
-                            <div className="grid grid-cols-[minmax(0,1fr)_minmax(0,130px)_minmax(0,260px)_auto] items-center gap-3 border-b border-border/60 bg-foreground/[.03] px-3 py-1.5 text-xs text-foreground/50">
+                            <div className={ROW_GRID + " border-b border-border/60 bg-foreground/[.03] py-1.5 text-xs text-foreground/50"}>
                                 <span>模型</span>
                                 <span>标签</span>
                                 <span>价格</span>
@@ -117,7 +120,7 @@ export function ModelAvailabilityList({ config }: { config: AiConfig }) {
                             </div>
                             <ul className="m-0 divide-y divide-border/50 p-0">
                                 {group.rows.map((row) => (
-                                    <li key={row.model} className="grid grid-cols-[minmax(0,1fr)_minmax(0,130px)_minmax(0,260px)_auto] items-center gap-3 px-3 py-1.5">
+                                    <li key={row.model} className={ROW_GRID}>
                                         <div className="min-w-0">
                                             <div className="truncate text-sm leading-5 text-foreground">{row.name}</div>
                                             {row.description ? <div className="truncate text-[11px] leading-4 text-foreground/45">{row.description}</div> : null}
@@ -127,7 +130,7 @@ export function ModelAvailabilityList({ config }: { config: AiConfig }) {
                                                 <span key={tag} className="max-w-full truncate rounded-full bg-foreground/[.06] px-2 py-0.5 text-foreground/60">{tag}</span>
                                             ))}
                                         </div>
-                                        <span className="text-[11px] leading-4 tabular-nums text-foreground/70">{row.price || "—"}</span>
+                                        <span className="text-[11px] leading-4 tabular-nums text-foreground/65">{row.price || "—"}</span>
                                         <span className="flex justify-end gap-1 text-[11px]">
                                             {row.usage.map((label) => (
                                                 <span key={label} className="rounded-full bg-primary/12 px-2 py-0.5 text-primary">{label}</span>
