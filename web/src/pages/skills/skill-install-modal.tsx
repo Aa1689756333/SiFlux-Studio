@@ -5,7 +5,6 @@ import { SegmentedControl } from "@/components/ui/base/segmented-control";
 import { FileArchive, FileText, GitBranch, UploadCloud } from "lucide-react";
 import { useEffect, useState } from "react";
 
-import { fallbackSkillCategories } from "@/pages/skills/skill-catalog";
 import { isLocalRuntimeMode } from "@/lib/runtime-mode";
 import { installGitHubSkill, installSkillUpload, type Skill } from "@/services/api/skills";
 
@@ -14,7 +13,7 @@ type InstallMode = "markdown" | "zip" | "github";
 type InstallFormValues = {
     name?: string;
     description?: string;
-    tag: string;
+    tag?: string;
     is_public: boolean;
     url?: string;
     ref?: string;
@@ -41,7 +40,7 @@ export function SkillInstallModal({ open, onClose, onInstalled, onManualCreate }
         if (!open) return;
         setMode("markdown");
         setFileList([]);
-        form.setFieldsValue({ tag: "creative", is_public: !localRuntime, autoUpdate: true, name: "", description: "", url: "", ref: "", subdir: "" });
+        form.setFieldsValue({ is_public: !localRuntime, autoUpdate: true, name: "", description: "", url: "", ref: "", subdir: "" });
     }, [form, open, localRuntime]);
 
     const install = async () => {
@@ -58,7 +57,7 @@ export function SkillInstallModal({ open, onClose, onInstalled, onManualCreate }
                     url: values.url || "",
                     ref: values.ref || undefined,
                     subdir: values.subdir || undefined,
-                    tag: values.tag,
+                    tag: "creative",
                     isPrivate: localRuntime || !values.is_public,
                     autoUpdate: values.autoUpdate,
                 })
@@ -67,7 +66,7 @@ export function SkillInstallModal({ open, onClose, onInstalled, onManualCreate }
                     sourceType: mode,
                     name: values.name || undefined,
                     description: values.description || undefined,
-                    tag: values.tag,
+                    tag: "creative",
                     isPrivate: localRuntime || !values.is_public,
                 });
             message.success("技能已安装");
@@ -137,9 +136,6 @@ export function SkillInstallModal({ open, onClose, onInstalled, onManualCreate }
                 )}
 
                 <div className="grid gap-x-3 sm:grid-cols-2">
-                    <Form.Item name="tag" label="技能分类" rules={[{ required: true, message: "请选择技能分类" }]}>
-                        <Select options={fallbackSkillCategories} />
-                    </Form.Item>
                     <Form.Item hidden={localRuntime} name="is_public" label="公开状态" valuePropName="checked" extra="公开后其他用户可以加入使用。">
                         <Switch checkedChildren="公开" unCheckedChildren="私有" />
                     </Form.Item>
