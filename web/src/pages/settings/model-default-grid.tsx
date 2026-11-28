@@ -1,4 +1,4 @@
-import { Bot, Image, MessageSquareText } from "lucide-react";
+import { Bot, Image } from "lucide-react";
 import { Button, Select } from "antd";
 import { useEffect, useRef } from "react";
 
@@ -37,7 +37,6 @@ type AssistantRow = {
 
 const rows: Array<CapabilityRow | AssistantRow> = [
     { kind: "capability", id: "image", capability: "image", modelKey: "imageModel", title: "默认生图模型", icon: Image },
-    { kind: "capability", id: "text", capability: "text", modelKey: "textModel", title: "默认文本模型", icon: MessageSquareText },
     { kind: "assistant", id: "assistant", modelKey: "assistantModel", title: "助手模型", icon: Bot },
 ];
 
@@ -62,7 +61,7 @@ export function ModelDefaultGrid({ config, onChange, onOpenChannels }: { config:
                     const channel = isBuiltinBeefAPIChannel(modelChannel) ? "BeefTV" : modelChannel.name || "未命名渠道";
                     return { value: model, label, searchLabel: `${label} ${channel}`, channel };
                 }).sort((a, b) => compareModelNames(a.label, b.label));
-                if (isAssistant) options.unshift({ value: "", label: "跟随默认文本模型", searchLabel: "跟随默认文本模型", channel: "" });
+                if (isAssistant) options.unshift({ value: "", label: "自动选择", searchLabel: "自动选择", channel: "" });
                 const unavailable = isAssistant ? Boolean(config.assistantModel && !selected) : Boolean(selected && !options.some((option) => option.value === selected));
                 const value = unavailable ? undefined : isAssistant && !config.assistantModel ? "" : options.some((option) => option.value === selected) ? selected : undefined;
                 const Icon = row.icon;

@@ -27,26 +27,27 @@ function assistantSelection(config: AiConfig) {
 }
 
 describe("模型配置页的助手模型一行", () => {
-    test("排在默认生图模型和默认文本模型之后", () => {
+    test("排在默认生图模型之后，且不再提供默认文本模型", () => {
         const markup = renderToStaticMarkup(<ModelDefaultGrid config={configWithTextChannel()} onChange={() => {}} />);
         const imageIndex = markup.indexOf("默认生图模型");
-        const textIndex = markup.indexOf("默认文本模型");
         const assistantIndex = markup.indexOf("助手模型");
         expect(imageIndex).toBeGreaterThan(-1);
-        expect(textIndex).toBeGreaterThan(imageIndex);
-        expect(assistantIndex).toBeGreaterThan(textIndex);
+        expect(assistantIndex).toBeGreaterThan(imageIndex);
+        expect(markup).not.toContain("默认文本模型");
         expect(markup).not.toContain("默认音频模型");
     });
 
-    test("默认显示跟随默认文本模型，并提供可访问的助手模型选择框", () => {
+    test("默认显示自动选择，并提供可访问的助手模型选择框", () => {
         const markup = renderToStaticMarkup(<ModelDefaultGrid config={configWithTextChannel()} onChange={() => {}} />);
-        expect(markup).toContain("跟随默认文本模型");
+        expect(markup).toContain("自动选择");
         expect(markup).toContain('aria-label="助手模型"');
-        expect(markup).toContain("chat-1");
+        // 只有文本模型时，助手选择框可用，生图选择框保持禁用。
+        expect(markup).not.toMatch(/aria-label="助手模型"[^>]*disabled=""/);
+        expect(markup).toMatch(/aria-label="默认生图模型"[^>]*disabled=""/);
     });
 
     test("选中态跟着 assistantModel 走：为空选中跟随项，有值选中对应模型", () => {
-        expect(assistantSelection(configWithTextChannel())).toBe("跟随默认文本模型");
+        expect(assistantSelection(configWithTextChannel())).toBe("自动选择");
         expect(assistantSelection(configWithTextChannel({ assistantModel: "a::chat-2" }))).toBe("chat-2");
         // 失效的显式选择不能悄悄改用默认模型。
         expect(assistantSelection(configWithTextChannel({ assistantModel: "gone::chat-1" }))).toBeUndefined();
