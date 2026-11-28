@@ -14,6 +14,7 @@ import { explainGenerationError, shouldBlockAutomaticRetry } from "@/lib/generat
 import { mergedImageCapabilityConfig } from "@/lib/model-selection";
 import { creationAttachmentsFromReferences, persistableMediaReferences } from "@/lib/standalone-generation-reference";
 import { assertUserScope, captureUserScope, userScopeMatches } from "@/lib/user-scope-guard";
+import { saveBlobToDownloadDirectory } from "@/services/download-directory";
 import { uploadImage } from "@/services/image-storage";
 import { resolveResourceUrl } from "@/services/api/resources";
 import { ASSET_CATEGORY_LABELS } from "@/lib/asset-category";
@@ -110,18 +111,22 @@ export default function GenerateImagePage() {
     const jobs = snapshot.jobs;
     const [activeId, setActiveId] = useState("");
     const [previewAsset, setPreviewAsset] = useState<ImageAsset | null>(null);
+    const [previewZoom, setPreviewZoom] = useState(1);
     const [hydrated, setHydrated] = useState(false);
     const [libraryOpen, setLibraryOpen] = useState(false);
     const fileRef = useRef<HTMLInputElement>(null);
 
     const activeJob = jobs.find((job) => job.id === activeId) || jobs[0];
-    // 有新任务在跑时自动切到它，避免页面停留在上一次的记录上。
+    // 新任务出现时自动跟随一次；手动切到旧记录后不再抢回。
+    const followedJobRef = useRef<string>("");
     useEffect(() => {
         const newestLiveId = snapshot.liveIds.find((id) => jobs.some((job) => job.id === id));
-        if (newestLiveId && newestLiveId !== activeId) setActiveId(newestLiveId);
-    }, [snapshot.liveIds, jobs, activeId]);
-    const live = Boolean(activeJob && snapshot.liveIds.includes(activeJob.id));
+        if (!newestLiveId || newestLiveId === followedJobRef.current) return;
+        followedJobRef.current = newestLiveId;
+        setActiveId(newestLiveId);
+    }, [snapshot.liveIds, jobs]);
     const deliveryTaskId = activeJob?.taskIds[0];
+    const live = Boolean(activeJob && snapshot.liveIds.includes(activeJob.id));
     const deliveryProgress = useGenerationDeliveryProgress((state) => (deliveryTaskId ? state.byTask[deliveryTaskId] : undefined));
     const delivery = deliveryProgress ? generationDeliveryProgressView(deliveryProgress) : null;
     const maxReferences = imageProfile.references.maxImages ?? 14;

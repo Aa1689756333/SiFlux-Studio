@@ -375,6 +375,8 @@
     gap: 12px;
 }
 .siflux-image-preview-panel img {
+    transition: transform .06s linear;
+    cursor: zoom-in;
     max-height: 78vh;
     width: auto;
     max-width: 100%;
