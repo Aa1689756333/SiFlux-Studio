@@ -5,7 +5,6 @@ import { Switch } from "@/components/ui/base/switch";
 import { Minus, Plus, Save, Wand2 } from "lucide-react";
 import { useEffect, useState } from "react";
 
-import { fallbackSkillCategories } from "@/pages/skills/skill-catalog";
 import { generateSkillDraft } from "@/lib/canvas/skill-drafting";
 import { navigateToSettings } from "@/lib/settings-navigation";
 import { useConfigStore, useEffectiveConfig } from "@/stores/use-config-store";
@@ -29,7 +28,6 @@ export function SkillEditorDrawer({ open, skill, onClose, onSaved }: { open: boo
             skillName: skill?.skillName || "",
             description: skill?.description || "",
             instruction: skill?.instruction || "",
-            tag: skill?.tag || "creative",
             is_public: skill ? !skill.isPrivate : true,
             markdownUrl: skill?.markdownUrl || skill?.sourceUrl || "",
             showcaseMedia: skill?.showcaseMedia || [],
@@ -53,7 +51,6 @@ export function SkillEditorDrawer({ open, skill, onClose, onSaved }: { open: boo
                 skillName: values.skillName,
                 description: values.description,
                 instruction: values.instruction || "",
-                tag: values.tag,
                 isPrivate: !values.is_public,
                 markdownUrl: values.markdownUrl || "",
                 showcaseMedia: (values.showcaseMedia || []).map((item) => ({ ...item, showcaseUri: item.showcaseUri || "" })),
@@ -88,7 +85,6 @@ export function SkillEditorDrawer({ open, skill, onClose, onSaved }: { open: boo
                 skillName: draft.skillName || "",
                 description: draft.description || "",
                 instruction: draft.instruction || "",
-                ...(draft.tag ? { tag: draft.tag } : {}),
             });
             setDirty(true);
             message.success("草稿已生成，请检查并调整后保存");
@@ -125,9 +121,6 @@ export function SkillEditorDrawer({ open, skill, onClose, onSaved }: { open: boo
                 <div className="grid gap-x-4 sm:grid-cols-2">
                     <Form.Item name="skillName" label="技能名称" rules={[{ required: true, message: "请填写技能名称" }, { max: 80, message: "最多 80 个字符" }]}>
                         <Input maxLength={80} showCount placeholder="例如：短剧导演分镜" autoComplete="off" />
-                    </Form.Item>
-                    <Form.Item name="tag" label="技能分类" rules={[{ required: true, message: "请选择技能分类" }]}>
-                        <Select options={fallbackSkillCategories.map(({ value, label }) => ({ value, label }))} />
                     </Form.Item>
                 </div>
 

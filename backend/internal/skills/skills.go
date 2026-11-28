@@ -22,14 +22,6 @@ const (
 	skillSourceUser    = 1
 )
 
-var skillCategoryLabels = map[string]string{
-	"drama":     "短剧影视",
-	"ecommerce": "电商营销",
-	"creative":  "创意设计",
-	"social":    "社媒内容",
-	"others":    "其他",
-}
-
 type SkillShowcaseMedia struct {
 	Type        string `json:"type"`
 	ShowcaseURI string `json:"showcaseUri"`
@@ -67,7 +59,6 @@ type SkillItem struct {
 	CreatedAt       time.Time            `json:"createdAt"`
 	UpdatedAt       time.Time            `json:"updatedAt"`
 	Source          int                  `json:"source"`
-	Tag             string               `json:"tag"`
 	SortWeight      int                  `json:"sortWeight"`
 	IsPrivate       bool                 `json:"isPrivate"`
 	LikeCount       int64                `json:"likeCount"`
@@ -83,35 +74,27 @@ type SkillItem struct {
 	IsOwner         bool                 `json:"isOwner"`
 }
 
-type SkillCategory struct {
-	Value string `json:"value"`
-	Label string `json:"label"`
-}
-
 type SkillListRequest struct {
 	Page     int
 	PageSize int
 	Scope    string
 	Search   string
-	Tag      string
 	Sort     string
 }
 
 type SkillList struct {
-	Skills     []SkillItem     `json:"skills"`
-	TotalCount int64           `json:"totalCount"`
-	HasMore    bool            `json:"hasMore"`
-	NextOffset int             `json:"nextOffset"`
-	Page       int             `json:"page"`
-	PageSize   int             `json:"pageSize"`
-	Categories []SkillCategory `json:"categories"`
+	Skills     []SkillItem `json:"skills"`
+	TotalCount int64       `json:"totalCount"`
+	HasMore    bool        `json:"hasMore"`
+	NextOffset int         `json:"nextOffset"`
+	Page       int         `json:"page"`
+	PageSize   int         `json:"pageSize"`
 }
 
 type SkillMutationRequest struct {
 	SkillName     string               `json:"skillName"`
 	Description   string               `json:"description"`
 	Instruction   string               `json:"instruction"`
-	Tag           string               `json:"tag"`
 	IsPrivate     bool                 `json:"isPrivate"`
 	MarkdownURL   string               `json:"markdownUrl"`
 	ShowcaseMedia []SkillShowcaseMedia `json:"showcaseMedia"`
@@ -124,7 +107,6 @@ func (s *Service) Skills(userID string, req SkillListRequest) (*SkillList, error
 		UserID: userID,
 		Scope:  req.Scope,
 		Search: req.Search,
-		Tag:    req.Tag,
 		Sort:   req.Sort,
 		Limit:  req.PageSize,
 		Offset: (req.Page - 1) * req.PageSize,
@@ -147,7 +129,6 @@ func (s *Service) Skills(userID string, req SkillListRequest) (*SkillList, error
 		NextOffset: nextOffset,
 		Page:       req.Page,
 		PageSize:   req.PageSize,
-		Categories: skillCategories(),
 	}, nil
 }
 
@@ -204,7 +185,6 @@ func (s *Service) UpdateSkill(userID string, id string, req SkillMutationRequest
 	}
 	skill.Name = normalized.SkillName
 	skill.Description = normalized.Description
-	skill.Tag = normalized.Tag
 	skill.IsPrivate = normalized.IsPrivate
 	skill.MarkdownURL = normalized.MarkdownURL
 	skill.ShowcaseMediaJSON = mediaJSON
@@ -308,7 +288,6 @@ func (s *Service) skillItems(userID string, skills []model.Skill, includeInstruc
 			SourceType: skill.SourceType, SourceURL: skill.SourceURL, SourceRef: skill.SourceRef, SourceSubdir: skill.SourceSubdir, SourceCommit: skill.SourceCommit,
 			SyncStatus: skill.SyncStatus, SyncError: skill.SyncError, AutoUpdate: skill.AutoUpdate, LastCheckedAt: skill.LastCheckedAt, LastSyncedAt: skill.LastSyncedAt,
 			Status: skill.Status, MarkdownURL: skill.MarkdownURL, CreatedAt: skill.CreatedAt, UpdatedAt: skill.UpdatedAt,
-			Source: skill.Source, Tag: skill.Tag, SortWeight: skill.SortWeight, IsPrivate: skill.IsPrivate,
 			LikeCount: metric.LikeCount, IsLike: state.Liked, OwnerUID: skill.OwnerID,
 			EffectiveUser: SkillEffectiveUser{Name: ownerName, AvatarURL: ownerAvatarURL, UID: skill.OwnerID}, ShowcaseMedia: showcaseMedia,
 			AddedCount: metric.AddedCount, ExtraInfo: skill.ExtraInfo, IsAdded: state.Added || skill.OwnerID == userID, IsOwner: skill.OwnerID == userID,
@@ -379,12 +358,6 @@ func normalizeSkillListRequest(req SkillListRequest) SkillListRequest {
 		req.Sort = "popular"
 	}
 	req.Search = strings.TrimSpace(req.Search)
-	req.Tag = strings.TrimSpace(req.Tag)
-	if req.Tag != "" {
-		if _, ok := skillCategoryLabels[req.Tag]; !ok {
-			req.Tag = ""
-		}
-	}
 	return req
 }
 
@@ -392,7 +365,6 @@ func normalizeSkillMutationRequest(req SkillMutationRequest, requireInstruction 
 	req.SkillName = strings.TrimSpace(req.SkillName)
 	req.Description = strings.TrimSpace(req.Description)
 	req.Instruction = strings.TrimSpace(req.Instruction)
-	req.Tag = strings.TrimSpace(req.Tag)
 	req.MarkdownURL = strings.TrimSpace(req.MarkdownURL)
 	req.ExtraInfo = strings.TrimSpace(req.ExtraInfo)
 	if req.SkillName == "" || utf8.RuneCountInString(req.SkillName) > 80 {
@@ -403,9 +375,6 @@ func normalizeSkillMutationRequest(req SkillMutationRequest, requireInstruction 
 	}
 	if (requireInstruction && req.Instruction == "") || utf8.RuneCountInString(req.Instruction) > 100000 {
 		return req, "", kernel.BadAuthRequest("技能指令必须为 1-100000 个字符")
-	}
-	if _, ok := skillCategoryLabels[req.Tag]; !ok {
-		return req, "", kernel.BadAuthRequest("请选择有效的技能分类")
 	}
 	if req.MarkdownURL != "" && !validSkillURL(req.MarkdownURL) {
 		return req, "", kernel.BadAuthRequest("Markdown 地址必须是有效的 HTTP(S) 链接")
@@ -441,16 +410,6 @@ func normalizeSkillMutationRequest(req SkillMutationRequest, requireInstruction 
 func validSkillURL(value string) bool {
 	target, err := url.ParseRequestURI(value)
 	return err == nil && (target.Scheme == "http" || target.Scheme == "https") && target.Host != ""
-}
-
-func skillCategories() []SkillCategory {
-	return []SkillCategory{
-		{Value: "drama", Label: skillCategoryLabels["drama"]},
-		{Value: "ecommerce", Label: skillCategoryLabels["ecommerce"]},
-		{Value: "creative", Label: skillCategoryLabels["creative"]},
-		{Value: "social", Label: skillCategoryLabels["social"]},
-		{Value: "others", Label: skillCategoryLabels["others"]},
-	}
 }
 
 // parseShowcaseMedia 读取库内展示媒体 JSON。历史记录可能仍是 snake_case，只在持久化层转换；对外 API 只输出 camelCase。

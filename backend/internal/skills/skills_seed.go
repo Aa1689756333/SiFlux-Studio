@@ -85,7 +85,7 @@ func (s *Service) EnsureBuiltinSkills() error {
 		}
 		normalized, mediaJSON, err := normalizeSkillMutationRequest(SkillMutationRequest{
 			SkillName: definition.SkillName, Description: definition.Description, Instruction: definition.Instruction,
-			Tag: definition.Tag, IsPrivate: definition.IsPrivate, MarkdownURL: definition.MarkdownURL,
+			IsPrivate: definition.IsPrivate, MarkdownURL: definition.MarkdownURL,
 			ShowcaseMedia: media, ExtraInfo: definition.ExtraInfo,
 		}, true)
 		if err != nil {
@@ -94,7 +94,7 @@ func (s *Service) EnsureBuiltinSkills() error {
 		skills = append(skills, model.Skill{
 			ID: id, OwnerID: ownerID, AuthorName: authorName, AuthorAvatarURL: authorAvatarURL,
 			Name: normalized.SkillName, Description: normalized.Description, Instruction: normalized.Instruction,
-			Status: skillStatusEnabled, Source: definition.Source, Tag: normalized.Tag, SortWeight: definition.SortWeight,
+			Status: skillStatusEnabled, Source: definition.Source, SortWeight: definition.SortWeight,
 			IsPrivate: false, MarkdownURL: normalized.MarkdownURL, ShowcaseMediaJSON: mediaJSON, ExtraInfo: normalized.ExtraInfo,
 			InitialLikeCount: definition.LikeCount, InitialAddedCount: definition.AddedCount,
 			CreatedAt: time.UnixMilli(definition.CreateTime), UpdatedAt: time.UnixMilli(definition.UpdateTime),

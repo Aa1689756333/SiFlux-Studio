@@ -40,7 +40,6 @@ export type Skill = {
     createdAt: string;
     updatedAt: string;
     source: number;
-    tag: string;
     sortWeight: number;
     isPrivate: boolean;
     likeCount: number;
@@ -74,14 +73,12 @@ export type ListSkillsInput = {
     scope?: SkillScope;
     sort?: SkillSort;
     search?: string;
-    tag?: string;
 };
 
 export type SkillMutationInput = {
     skillName: string;
     description: string;
     instruction?: string;
-    tag: string;
     isPrivate: boolean;
     markdownUrl: string;
     showcaseMedia: SkillShowcaseMedia[];
@@ -119,7 +116,6 @@ export type InstallSkillUploadInput = {
     sourceType?: "markdown" | "zip";
     name?: string;
     description?: string;
-    tag?: string;
     isPrivate?: boolean;
 };
 
@@ -127,7 +123,6 @@ export type InstallGitHubSkillInput = {
     url: string;
     ref?: string;
     subdir?: string;
-    tag?: string;
     isPrivate?: boolean;
     autoUpdate?: boolean;
 };
@@ -186,7 +181,6 @@ export function installSkillUpload(input: InstallSkillUploadInput) {
     if (input.sourceType) form.append("sourceType", input.sourceType);
     if (input.name) form.append("name", input.name);
     if (input.description) form.append("description", input.description);
-    if (input.tag) form.append("tag", input.tag);
     form.append("isPrivate", String(Boolean(input.isPrivate)));
     return http.post<{ skill: Skill }>("/skills/install", form).finally(invalidateAddedSkillsCache);
 }

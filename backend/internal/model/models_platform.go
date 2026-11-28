@@ -97,7 +97,6 @@ type Skill struct {
 	LastSyncedAt      *time.Time `json:"lastSyncedAt"`
 	Status            int        `json:"status" gorm:"index"`
 	Source            int        `json:"source" gorm:"index"`
-	Tag               string     `json:"tag" gorm:"size:32;index"`
 	SortWeight        int        `json:"sortWeight" gorm:"index"`
 	IsPrivate         bool       `json:"isPrivate" gorm:"index"`
 	MarkdownURL       string     `json:"markdownUrl" gorm:"size:500"`

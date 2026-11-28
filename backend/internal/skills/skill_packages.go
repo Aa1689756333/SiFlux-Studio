@@ -275,7 +275,7 @@ func (s *Service) createSingleMarkdownSkill(userID string, req SkillMutationRequ
 	if err != nil {
 		return nil, err
 	}
-	return s.createSkillFromArchive(userID, archive, SkillInstallRequest{Name: req.SkillName, Description: req.Description, Tag: req.Tag, IsPrivate: req.IsPrivate}, "markdown", req.MarkdownURL, "", "", "", false)
+	return s.createSkillFromArchive(userID, archive, SkillInstallRequest{Name: req.SkillName, Description: req.Description, IsPrivate: req.IsPrivate}, "markdown", req.MarkdownURL, "", "", "", false)
 }
 
 func (s *Service) updateSingleMarkdownSkill(skill *model.Skill, req SkillMutationRequest) error {
@@ -305,10 +305,6 @@ func (s *Service) createSkillFromArchive(userID string, archive skillPackageArch
 	if utf8.RuneCountInString(description) == 0 || utf8.RuneCountInString(description) > 500 {
 		return nil, kernel.BadAuthRequest("技能简介必须为 1-500 个字符")
 	}
-	tag := strings.TrimSpace(req.Tag)
-	if _, ok := skillCategoryLabels[tag]; !ok {
-		tag = "others"
-	}
 	skillID := kernel.NewID()
 	versionID := kernel.NewID()
 	packageKey, version, files, err := s.persistSkillArchive(skillID, versionID, archive, sourceCommit)
@@ -329,7 +325,7 @@ func (s *Service) createSkillFromArchive(userID string, archive skillPackageArch
 		CurrentVersionID: versionID, VersionLabel: versionLabel, ContentHash: archive.ContentHash, FileCount: len(archive.Files), TotalBytes: archive.TotalBytes,
 		SourceType: sourceType, SourceURL: sourceURL, SourceRef: sourceRef, SourceSubdir: sourceSubdir, SourceCommit: sourceCommit,
 		SyncStatus: "synced", AutoUpdate: autoUpdate, LastCheckedAt: &now, LastSyncedAt: &now,
-		Status: skillStatusEnabled, Source: skillSourceUser, Tag: tag, IsPrivate: req.IsPrivate, MarkdownURL: sourceURL, ShowcaseMediaJSON: "[]",
+		Status: skillStatusEnabled, Source: skillSourceUser, IsPrivate: req.IsPrivate, MarkdownURL: sourceURL, ShowcaseMediaJSON: "[]",
 	}
 	state := &model.UserSkillState{ID: kernel.NewID(), UserID: userID, SkillID: skillID, Added: true, InstalledVersionID: versionID, AutoUpdate: autoUpdate}
 	if err := s.repo.CreateSkillWithPackage(skill, version, files, state); err != nil {

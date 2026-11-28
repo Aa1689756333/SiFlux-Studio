@@ -289,6 +289,7 @@ export function AgentWorkspace() {
                     selectedCount={0}
                     selectionAttached={false}
                     onDetachSelection={() => undefined}
+                    hideModelPicker
                     modelBusy={assistant.modelBusy}
                     canSupplement={assistant.canSupplement}
                     supplementBusy={assistant.supplementBusy}

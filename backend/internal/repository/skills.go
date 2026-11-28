@@ -14,7 +14,6 @@ type SkillListFilter struct {
 	UserID string
 	Scope  string
 	Search string
-	Tag    string
 	Sort   string
 	Limit  int
 	Offset int
@@ -43,9 +42,6 @@ func (r *Repository) Skills(filter SkillListFilter) ([]model.Skill, int64, error
 	if filter.Search != "" {
 		pattern := "%" + strings.ToLower(filter.Search) + "%"
 		query = query.Where("lower(skills.name) LIKE ? OR lower(skills.description) LIKE ? OR lower(skills.author_name) LIKE ?", pattern, pattern, pattern)
-	}
-	if filter.Tag != "" {
-		query = query.Where("skills.tag = ?", filter.Tag)
 	}
 	// 用户状态按用户和技能唯一，列表 JOIN 不会重复；不要设置 DISTINCT，避免 GORM 将其带入 PostgreSQL 的热门排序查询。
 	var total int64

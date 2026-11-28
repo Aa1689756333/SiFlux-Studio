@@ -9,13 +9,13 @@ import { useEffect, useMemo, useState, type MouseEvent, type ReactNode } from "r
 import ReactMarkdown from "react-markdown";
 import remarkGfm from "remark-gfm";
 
-import { formatSkillCount, formatSkillDate, skillCategoryLabel } from "@/pages/skills/skill-catalog";
+import { formatSkillCount, formatSkillDate } from "@/pages/skills/skill-catalog";
 import { isLocalRuntimeMode } from "@/lib/runtime-mode";
-import { getSkillFile, listSkillFiles, skillFileRawURL, type Skill, type SkillCategory, type SkillPackageFile, type SkillPackageFileContent } from "@/services/api/skills";
+import { getSkillFile, listSkillFiles, skillFileRawURL, type Skill, type SkillPackageFile, type SkillPackageFileContent } from "@/services/api/skills";
 
 type PreviewMode = "preview" | "source";
 
-export function SkillDetailModal({ skill, loading, mutating, categories, onClose, onAdd, onLike, onEdit, onSync }: { skill: Skill | null; loading: boolean; mutating: boolean; categories: SkillCategory[]; onClose: () => void; onAdd: (skill: Skill) => void; onLike: (skill: Skill) => void; onEdit: (skill: Skill) => void; onSync: (skill: Skill) => void }) {
+export function SkillDetailModal({ skill, loading, mutating, onClose, onAdd, onLike, onEdit, onSync }: { skill: Skill | null; loading: boolean; mutating: boolean; onClose: () => void; onAdd: (skill: Skill) => void; onLike: (skill: Skill) => void; onEdit: (skill: Skill) => void; onSync: (skill: Skill) => void }) {
     const [files, setFiles] = useState<SkillPackageFile[]>([]);
     const [filesLoading, setFilesLoading] = useState(false);
     const [filesError, setFilesError] = useState("");
@@ -102,7 +102,7 @@ export function SkillDetailModal({ skill, loading, mutating, categories, onClose
                     <header className="skill-package-header">
                         <div className="min-w-0 flex-1">
                             <div className="flex flex-wrap items-center gap-2 text-[var(--fs-label)] text-foreground/45">
-                                <span>{skillCategoryLabel(skill.tag, categories)}</span><span aria-hidden="true">/</span><span>{sourceLabel(skill.sourceType)}</span><span aria-hidden="true">/</span><span>v{skill.version || "1"}</span><span aria-hidden="true">/</span><span>更新于 {formatSkillDate(skill.updatedAt)}</span>
+                                <span>{sourceLabel(skill.sourceType)}</span><span aria-hidden="true">/</span><span>v{skill.version || "1"}</span><span aria-hidden="true">/</span><span>更新于 {formatSkillDate(skill.updatedAt)}</span>
                             </div>
                             <h1 className="mt-1 truncate text-[var(--fs-heading-lg)] font-semibold text-foreground">{skill.skillName}</h1>
                             <p className="mt-1 line-clamp-2 max-w-4xl text-sm leading-5 text-foreground/58">{skill.description}</p>

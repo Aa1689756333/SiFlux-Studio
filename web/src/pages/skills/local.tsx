@@ -4,7 +4,7 @@ import { useCallback, useEffect, useMemo, useState } from "react";
 
 import { PageHeader, WorkspacePage } from "@/components/layout/workspace-page";
 import { WorkspaceErrorState, WorkspaceState } from "@/components/layout/workspace-state";
-import { fallbackSkillCategories, skillCategoryLabel } from "@/pages/skills/skill-catalog";
+import { formatSkillCount, formatSkillDate, groupSkills } from "@/pages/skills/skill-catalog";
 import { SkillDetailModal } from "@/pages/skills/skill-detail-drawer";
 import { SkillEditorDrawer } from "@/pages/skills/skill-editor-drawer";
 import { SkillInstallModal } from "@/pages/skills/skill-install-modal";
@@ -23,7 +23,6 @@ export default function LocalSkillsPage() {
     const [editorOpen, setEditorOpen] = useState(false);
     const [installOpen, setInstallOpen] = useState(false);
     const [editingSkill, setEditingSkill] = useState<Skill | null>(null);
-    const categories = fallbackSkillCategories;
 
     const reload = useCallback(() => setReloadKey((value) => value + 1), []);
 
@@ -52,7 +51,7 @@ export default function LocalSkillsPage() {
     const visible = useMemo(() => {
         const needle = search.trim().toLowerCase();
         if (!needle) return skills;
-        return skills.filter((skill) => `${skill.skillName} ${skill.description} ${skill.tag}`.toLowerCase().includes(needle));
+        return skills.filter((skill) => `${skill.skillName} ${skill.description}`.toLowerCase().includes(needle));
     }, [search, skills]);
 
     const openSkill = async (skill: Skill) => {
@@ -189,7 +188,6 @@ export default function LocalSkillsPage() {
                                     <p>{skill.description || "暂无技能简介"}</p>
                                 </button>
                                 <div className="skill-card-footer">
-                                    <span className="skill-card-tag">{skillCategoryLabel(skill.tag, categories)}</span>
                                     {skill.version ? <span className="skill-card-flag">v{skill.version}</span> : null}
                                     {skill.isOwner ? <span className="skill-card-owner-flag">我创建的</span> : null}
                                 </div>
@@ -215,7 +213,6 @@ export default function LocalSkillsPage() {
                 skill={activeSkill}
                 loading={detailLoading}
                 mutating={Boolean(activeSkill && mutatingID === activeSkill.skillId)}
-                categories={categories}
                 onClose={() => setActiveSkill(null)}
                 onAdd={(skill) => void uninstall(skill)}
                 onLike={() => undefined}

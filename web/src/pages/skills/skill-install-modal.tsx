@@ -13,7 +13,6 @@ type InstallMode = "markdown" | "zip" | "github";
 type InstallFormValues = {
     name?: string;
     description?: string;
-    tag?: string;
     is_public: boolean;
     url?: string;
     ref?: string;
@@ -57,8 +56,7 @@ export function SkillInstallModal({ open, onClose, onInstalled, onManualCreate }
                     url: values.url || "",
                     ref: values.ref || undefined,
                     subdir: values.subdir || undefined,
-                    tag: "creative",
-                    isPrivate: localRuntime || !values.is_public,
+                            isPrivate: localRuntime || !values.is_public,
                     autoUpdate: values.autoUpdate,
                 })
                 : await installSkillUpload({
@@ -66,8 +64,7 @@ export function SkillInstallModal({ open, onClose, onInstalled, onManualCreate }
                     sourceType: mode,
                     name: values.name || undefined,
                     description: values.description || undefined,
-                    tag: "creative",
-                    isPrivate: localRuntime || !values.is_public,
+                            isPrivate: localRuntime || !values.is_public,
                 });
             message.success("技能已安装");
             onInstalled(result.skill);

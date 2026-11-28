@@ -50,7 +50,7 @@ func registerSkillRoutes(r *gin.RouterGroup, svc *app.Service, includeRemote boo
 			}
 		}
 		skill, err := svc.InstallSkillUpload(user.ID, sourceType, file, app.SkillInstallRequest{
-			Name: c.PostForm("name"), Description: c.PostForm("description"), Tag: c.PostForm("tag"), IsPrivate: isPrivate,
+			Name: c.PostForm("name"), Description: c.PostForm("description"), IsPrivate: isPrivate,
 		})
 		if err != nil {
 			failService(c, err)
@@ -94,7 +94,7 @@ func registerSkillRoutes(r *gin.RouterGroup, svc *app.Service, includeRemote boo
 		}
 		result, err := svc.Skills(user.ID, app.SkillListRequest{
 			Page: page, PageSize: pageSize, Scope: c.DefaultQuery("scope", "public"),
-			Search: c.Query("search"), Tag: c.Query("tag"), Sort: c.DefaultQuery("sort", "popular"),
+			Search: c.Query("search"), Sort: c.DefaultQuery("sort", "popular"),
 		})
 		if err != nil {
 			failService(c, err)

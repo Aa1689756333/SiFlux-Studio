@@ -13,7 +13,6 @@ type (
 	SkillShowcaseMedia        = skills.SkillShowcaseMedia
 	SkillEffectiveUser        = skills.SkillEffectiveUser
 	SkillItem                 = skills.SkillItem
-	SkillCategory             = skills.SkillCategory
 	SkillListRequest          = skills.SkillListRequest
 	SkillList                 = skills.SkillList
 	SkillMutationRequest      = skills.SkillMutationRequest
