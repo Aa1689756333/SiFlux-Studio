@@ -172,6 +172,8 @@ func Open(_ context.Context, raw Config) (result *Runtime, openErr error) {
 	agentops.EnsureAgentCredentials(svc.DataDir())
 	assistantHost := assistantruntime.New(assistantruntime.OptionsFromService(svc))
 	api := router.Group("/api")
+	// 日志中间件必须先注册，才能记录后续所有接口的访问。
+	canvasHandler.RegisterLogRoutes(api, svc.DataDir())
 	status := newSystemStatus(db, svc, true)
 	registerSystemStatusRoutes(api, status)
 	canvasHandler.RegisterDesktopCanvasAPIWithDependencies(api, svc, canvasHandler.RuntimeDependencies{

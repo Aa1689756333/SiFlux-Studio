@@ -1,4 +1,4 @@
-import { Bot, ChevronRight, House, Image as ImageIcon, Settings2, Sun, Moon, UserRound } from "lucide-react";
+import { Bot, ChevronRight, House, Image as ImageIcon, ScrollText, Settings2, Sun, Moon, UserRound } from "lucide-react";
 import { useQuery } from "@tanstack/react-query";
 import { LayoutGroup, motion, useReducedMotion } from "motion/react";
 import { useEffect, useMemo, useRef, useState, type ComponentType, type CSSProperties } from "react";
@@ -61,6 +61,7 @@ function buildNav(): { groups: WorkspaceNavGroup[]; footer: WorkspaceNavItem[] }
                 toolItem("skills", "/skills"),
                     ] },
             { items: [
+                { id: "logs", title: "日志", icon: ScrollText, to: "/logs" },
                 { id: "settings", title: "设置", icon: Settings2, to: "/settings" },
             ] },
         ],

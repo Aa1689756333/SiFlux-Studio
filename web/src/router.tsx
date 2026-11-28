@@ -1,4 +1,4 @@
-﻿import { lazy, Suspense, type ReactNode } from "react";
+import { lazy, Suspense, type ReactNode } from "react";
 import { Navigate, Outlet, useLocation, useParams } from "react-router";
 
 import { createWorkspaceRouter } from "@/lib/app-routing";
@@ -16,6 +16,7 @@ const CanvasProjectPage = lazy(loadCanvasProjectPage);
 const GenerateImagePage = lazy(loadGenerateImagePage);
 const NotFound = lazy(() => import("@/pages/not-found"));
 const SettingsPage = lazy(() => import("@/pages/settings"));
+const LogsPage = lazy(() => import("@/pages/logs"));
 const HomePage = lazy(() => import("@/pages/home"));
 const UserLayout = lazy(() => import("@/layouts/user-layout"));
 
@@ -43,7 +44,8 @@ export const router = createWorkspaceRouter([
             { path: "/generate/image", element: deferred(<GenerateImagePage />) },
             { path: "/agent", element: deferred(<AgentPage />) },
             { path: "/assets", element: deferred(<AssetsPage />) },
-            { path: "/settings", element: deferred(<SettingsPage />) },
+            { path: "/logs", element: deferred(<LogsPage />) },
+        { path: "/settings", element: deferred(<SettingsPage />) },
             { path: "/skills", element: deferred(<LocalSkillsPage />) },
     
             { path: "/projects", element: <Navigate to="/canvas" replace /> },

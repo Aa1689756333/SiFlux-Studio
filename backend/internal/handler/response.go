@@ -23,6 +23,8 @@ func fail(c *gin.Context, status int, err error) {
 	if err != nil && strings.TrimSpace(err.Error()) != "" {
 		message = err.Error()
 	}
+	// 失败原因随请求一起进入日志页，用户可以直接把日志交给开发者。
+	c.Set("appErrorMessage", message)
 	writeFailure(c, status, status, app.ReasonForStatus(status), message)
 }
 
@@ -73,6 +75,8 @@ func failInternal(c *gin.Context, status int, err error) {
 }
 
 func writeFailure(c *gin.Context, status int, code int, reason app.ErrorReason, message string) {
+	// 统一在这里记下对外错误文案，日志页据此给出可交接的原因。
+	c.Set("appErrorMessage", message)
 	body := gin.H{"code": code, "data": nil, "msg": message}
 	if reason != "" {
 		body["reason"] = reason
