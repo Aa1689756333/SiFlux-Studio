@@ -73,6 +73,7 @@ export type RelayModelPrice = {
     fixedPrice?: number;
     groupRatio?: number;
     inputPrice?: number;
+    unitPrices?: Record<string, number>;
     outputPrice?: number;
 };
 

@@ -255,6 +255,7 @@ func RegisterRelayRoutes(r gin.IRouter, svc *app.Service) {
 					"billingExpr":     item.BillingExpr,
 					"fixedPrice":      item.FixedPrice,
 					"groupRatio":      item.GroupRatio,
+					"unitPrices":      item.UnitPrices,
 					"inputPrice":      item.InputPrice,
 					"outputPrice":     item.OutputPrice,
 				}

@@ -12,6 +12,7 @@ import (
 	"log"
 	"net/http"
 	"net/url"
+	"regexp"
 	"sort"
 	"strconv"
 	"strings"
@@ -302,6 +303,27 @@ func maxFloat(value float64, floor float64) float64 {
 	return value
 }
 
+// unitPricesFromExpr 解析计费表达式里的单价，例如 p * 4.2 + cr * 1.05。
+// 变量含义：p 输入、c 输出、cr 缓存读取、cc 缓存写入、img 图像输入、
+// img_cr 图片缓存输入、img_o 图像输出、audio 音频输入。
+var unitPricePattern = regexp.MustCompile(`([A-Za-z_][A-Za-z0-9_]*)\s*\*\s*([0-9]*\.?[0-9]+)`)
+
+func unitPricesFromExpr(expr string) map[string]float64 {
+	prices := map[string]float64{}
+	for _, match := range unitPricePattern.FindAllStringSubmatch(expr, -1) {
+		name := match[1]
+		value, err := strconv.ParseFloat(match[2], 64)
+		if err != nil || value <= 0 {
+			continue
+		}
+		prices[name] = value
+	}
+	if len(prices) == 0 {
+		return nil
+	}
+	return prices
+}
+
 // fixedPriceFromExpr 从 tier("base", fixed(0.075)) 里取出固定单次价格。
 func fixedPriceFromExpr(expr string) float64 {
 	start := strings.Index(expr, "fixed(")
@@ -539,22 +561,23 @@ func (c *Client) Self(ctx context.Context, session Session) (Self, error) {
 // Models 用访问令牌读取可用模型。
 // PricingModel 是中转站价格表里的一条模型，带上可用的分组。
 type PricingModel struct {
-	Model           string   `json:"model"`
-	EnableGroups    []string `json:"enableGroups"`
-	QuotaType       int      `json:"quotaType"`
-	ModelRatio      float64  `json:"modelRatio"`
-	CompletionRatio float64  `json:"completionRatio"`
-	ModelPrice      float64  `json:"modelPrice"`
-	VendorID        int      `json:"vendorId"`
-	Vendor          string   `json:"vendor"`
-	Description     string   `json:"description"`
-	Tags            string   `json:"tags"`
-	BillingMode     string   `json:"billingMode"`
-	BillingExpr     string   `json:"billingExpr"`
-	FixedPrice      float64  `json:"fixedPrice"`
-	GroupRatio      float64  `json:"groupRatio"`
-	InputPrice      float64  `json:"inputPrice"`
-	OutputPrice     float64  `json:"outputPrice"`
+	Model           string             `json:"model"`
+	EnableGroups    []string           `json:"enableGroups"`
+	QuotaType       int                `json:"quotaType"`
+	ModelRatio      float64            `json:"modelRatio"`
+	CompletionRatio float64            `json:"completionRatio"`
+	ModelPrice      float64            `json:"modelPrice"`
+	VendorID        int                `json:"vendorId"`
+	Vendor          string             `json:"vendor"`
+	Description     string             `json:"description"`
+	Tags            string             `json:"tags"`
+	BillingMode     string             `json:"billingMode"`
+	BillingExpr     string             `json:"billingExpr"`
+	FixedPrice      float64            `json:"fixedPrice"`
+	GroupRatio      float64            `json:"groupRatio"`
+	UnitPrices      map[string]float64 `json:"unitPrices"`
+	InputPrice      float64            `json:"inputPrice"`
+	OutputPrice     float64            `json:"outputPrice"`
 }
 
 // Pricing 读取全部模型（含所有分组）。/v1/models 只返回当前分组的模型，
@@ -633,6 +656,7 @@ func (c *Client) Pricing(ctx context.Context, session Session) ([]PricingModel, 
 			BillingMode: item.BillingMode, BillingExpr: item.BillingExpr,
 			FixedPrice:  fixedPriceFromExpr(item.BillingExpr),
 			GroupRatio:  groupRatio,
+			UnitPrices:  unitPricesFromExpr(item.BillingExpr),
 			InputPrice:  inputPricePerMillion(item.ModelRatio, groupRatio),
 			OutputPrice: inputPricePerMillion(item.ModelRatio, groupRatio) * maxFloat(item.CompletionRatio, 1),
 		})

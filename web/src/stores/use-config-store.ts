@@ -315,6 +315,7 @@ export type ModelChannel = {
             fixedPrice?: number;
             groupRatio?: number;
             inputPrice?: number;
+            unitPrices?: Record<string, number>;
             outputPrice?: number;
         }>;
         metas?: Record<string, { tags?: string[]; description?: string }>;

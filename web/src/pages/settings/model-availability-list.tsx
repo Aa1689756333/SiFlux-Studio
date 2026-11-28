@@ -13,14 +13,37 @@ type Row = {
 
 type Catalog = AiConfig["channels"][number]["relayCatalog"];
 
+// 价格变量到中文标签，顺序即展示顺序。
+const UNIT_LABELS: [string, string][] = [
+    ["p", "输入"],
+    ["c", "输出"],
+    ["cr", "缓存读"],
+    ["cc", "缓存写"],
+    ["img", "图片输入"],
+    ["img_cr", "图片缓存输入"],
+    ["img_o", "图片输出"],
+    ["audio", "音频输入"],
+    ["audio_o", "音频输出"],
+];
+
+function formatUnit(value: number) {
+    if (value < 0.01) return `$${Number(value.toFixed(4))}`;
+    return `$${Number(value.toFixed(2))}`;
+}
+
 function priceText(catalog: Catalog, key: string) {
     const entry = catalog?.prices?.[key];
     if (!entry) return "";
+    // 固定单次价格（图片模型常见）。
     if (entry.fixedPrice && entry.fixedPrice > 0) return `$${entry.fixedPrice} / 次`;
     if (entry.quotaType === 1 && entry.price > 0) return `$${entry.price} / 次`;
+    // 计费表达式里的单价就是站点实际计费价格。
+    const units = entry.unitPrices || {};
+    const parts = UNIT_LABELS.filter(([name]) => (units[name] ?? 0) > 0).map(([name, label]) => `${label} ${formatUnit(units[name])}`);
+    if (parts.length) return parts.join(" · ");
     const input = entry.inputPrice ?? 0;
     const output = entry.outputPrice ?? 0;
-    if (input > 0 || output > 0) return `入 $${input.toFixed(2)} · 出 $${output.toFixed(2)}`;
+    if (input > 0 || output > 0) return `输入 ${formatUnit(input)} · 输出 ${formatUnit(output)}`;
     return "";
 }
 
@@ -33,8 +56,7 @@ function buildRows(models: string[], config: AiConfig, usageLabel: (model: strin
             const key = modelOptionName(model);
             const entry = catalog?.prices?.[key];
             const meta = catalog?.metas?.[key];
-            const groups = catalog?.groups?.[key] || [];
-            const tags = [entry?.tags?.trim() || "", ...(meta?.tags || []), ...groups].filter(Boolean);
+            const tags = [entry?.tags?.trim() || "", ...(meta?.tags || [])].filter(Boolean);
             const description = meta?.description?.trim() || entry?.description?.trim() || entry?.vendor?.trim() || "";
             const usage = usageLabel(model);
             return {
@@ -87,7 +109,7 @@ export function ModelAvailabilityList({ config }: { config: AiConfig }) {
                     </div>
                     {group.rows.length ? (
                         <div className="overflow-hidden rounded-xl border border-border/60">
-                            <div className="grid grid-cols-[minmax(0,1fr)_minmax(0,150px)_minmax(0,120px)_auto] items-center gap-3 border-b border-border/60 bg-foreground/[.03] px-3 py-1.5 text-xs text-foreground/50">
+                            <div className="grid grid-cols-[minmax(0,1fr)_minmax(0,130px)_minmax(0,260px)_auto] items-center gap-3 border-b border-border/60 bg-foreground/[.03] px-3 py-1.5 text-xs text-foreground/50">
                                 <span>模型</span>
                                 <span>标签</span>
                                 <span>价格</span>
@@ -95,7 +117,7 @@ export function ModelAvailabilityList({ config }: { config: AiConfig }) {
                             </div>
                             <ul className="m-0 divide-y divide-border/50 p-0">
                                 {group.rows.map((row) => (
-                                    <li key={row.model} className="grid grid-cols-[minmax(0,1fr)_minmax(0,150px)_minmax(0,120px)_auto] items-center gap-3 px-3 py-1.5">
+                                    <li key={row.model} className="grid grid-cols-[minmax(0,1fr)_minmax(0,130px)_minmax(0,260px)_auto] items-center gap-3 px-3 py-1.5">
                                         <div className="min-w-0">
                                             <div className="truncate text-sm leading-5 text-foreground">{row.name}</div>
                                             {row.description ? <div className="truncate text-[11px] leading-4 text-foreground/45">{row.description}</div> : null}
@@ -105,7 +127,7 @@ export function ModelAvailabilityList({ config }: { config: AiConfig }) {
                                                 <span key={tag} className="max-w-full truncate rounded-full bg-foreground/[.06] px-2 py-0.5 text-foreground/60">{tag}</span>
                                             ))}
                                         </div>
-                                        <span className="truncate text-[11px] tabular-nums text-foreground/70">{row.price || "—"}</span>
+                                        <span className="text-[11px] leading-4 tabular-nums text-foreground/70">{row.price || "—"}</span>
                                         <span className="flex justify-end gap-1 text-[11px]">
                                             {row.usage.map((label) => (
                                                 <span key={label} className="rounded-full bg-primary/12 px-2 py-0.5 text-primary">{label}</span>
