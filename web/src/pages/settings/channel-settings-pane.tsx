@@ -9,6 +9,7 @@ import { WorkspaceState } from "@/components/layout/workspace-state";
 import { PageHeader } from "@/components/layout/workspace-page";
 import { applyFetchedChannelModelCatalog, channelConnectionError, channelConnectionSignature, channelModelFetchErrorMessage, requiresSecretKey, withChannels } from "@/lib/channel-config";
 import { ensureModelProfilesWithUiDefaults } from "@/lib/model-protocols";
+import { fetchRelayModels } from "@/services/api/relay-auth";
 import { fetchChannelModels, type ChannelModelFetchResult } from "@/services/api/image";
 import { channelHasGenerationCredential, channelHasManagedBeefAPICredential, createModelChannel, defaultBaseUrlForApiFormat, isBuiltinBeefAPIChannel, isBuiltinRelayChannel, normalizeConfigSnapshot, useConfigStore, type AiConfig, type ModelChannel } from "@/stores/use-config-store";
 import { ChannelModelSettings } from "./channel-model-settings";
@@ -153,9 +154,12 @@ export function ChannelSettingsPane({ onOpenDiagnostics, onOpenModels, onOpenRun
         setChannelLoading(channel.id, true);
         const request = requests.current.start(channel.id);
         try {
-            const result = await fetchChannelModels(channel, true, request.signal);
+            // 内置服务由后端凭已保存的密钥直连服务端，避免浏览器跨域影响。
+            const relayModels = isBuiltinRelayChannel(channel) ? (await fetchRelayModels(request.signal)).models.filter(Boolean) : null;
+            const result = relayModels ? null : await fetchChannelModels(channel, true, request.signal);
+            const fetchedModels = relayModels ?? result?.models ?? [];
             if (!requests.current.current(channel.id, request)) return;
-            if (!result.models.length) {
+            if (!fetchedModels.length) {
                 message.warning(`${channel.name || "当前渠道"}未返回模型，已保留现有手工模型`);
                 return;
             }
@@ -167,7 +171,11 @@ export function ChannelSettingsPane({ onOpenDiagnostics, onOpenModels, onOpenRun
                 return;
             }
             updateChannels(
-                latestConfig.channels.map((item) => (item.id === channel.id ? { ...applyFetchedChannelModelCatalog(item, result), modelsSynced: true } : item)),
+                latestConfig.channels.map((item) => (item.id === channel.id
+                    ? relayModels
+                        ? { ...item, models: relayModels, modelsSynced: true }
+                        : { ...applyFetchedChannelModelCatalog(item, result!), modelsSynced: true }
+                    : item)),
                 latestConfig,
             );
             message.success(`${latestChannel.name || "当前渠道"}模型列表已更新`);

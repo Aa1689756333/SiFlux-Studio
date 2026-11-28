@@ -214,6 +214,29 @@ func RegisterRelayRoutes(r gin.IRouter, svc *app.Service) {
 		})
 	})
 	// relayLogout 退出账号：清掉本地保存的凭据与额度，渠道回到未连接状态。
+// relayModels 返回服务端当前的模型清单，供设置页同步渠道模型。
+	r.GET("/relay/models", func(c *gin.Context) {
+		state, err := storedRelayState(c, svc)
+		if err != nil {
+			failService(c, err)
+			return
+		}
+		if strings.TrimSpace(state.APIKey) == "" {
+			failRelay(c, &relayclient.Error{Status: http.StatusBadRequest, Path: "/v1/models", Message: "尚未连接 SiFlux 服务"})
+			return
+		}
+		client, err := relayClient()
+		if err != nil {
+			failService(c, err)
+			return
+		}
+		models, err := client.Models(c.Request.Context(), state.APIKey)
+		if err != nil {
+			failRelay(c, err)
+			return
+		}
+		ok(c, gin.H{"models": models})
+	})
 	r.POST("/relay/logout", func(c *gin.Context) {
 		revision, err := clearRelayConnection(c, svc)
 		if err != nil {
