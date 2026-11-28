@@ -277,7 +277,7 @@ func presetChannelMap(preset providerpreset.ChannelPreset, local map[string]any)
 	// 内置渠道的连接状态由本地保存，读取时按白名单回填。
 	for _, key := range []string{
 		"apiKey", "secretKey", "headers", "enabled",
-		"relayAccessToken", "relayTokenType", "relayCookie", "modelsSynced", "relayUsername",
+		"relayAccessToken", "relayTokenType", "relayCookie", "modelsSynced", "relayUsername", "relayGroupKeys", "relayModelGroups",
 		"relayQuota", "relayUsedQuota", "relayQuotaPerUnit", "relayQuotaAt",
 	} {
 		if value, ok := local[key]; ok {

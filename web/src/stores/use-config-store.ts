@@ -295,6 +295,9 @@ export type ModelChannel = {
     models: string[];
     /** 模型列表由服务端拉取过，内置服务的预设列表不再覆盖它。 */
     modelsSynced?: boolean;
+    /** 每个分组一把密钥，按模型所属分组路由。 */
+    relayGroupKeys?: Record<string, string>;
+    relayModelGroups?: Record<string, string>;
     // 仅平台目录使用：将已保存的旧 SKU 选择重定向到当前模型家族。
     modelAliases?: Record<string, string>;
     scope?: "system" | "user";
@@ -425,6 +428,19 @@ type ChannelLookup = { byId: Map<string, ModelChannel>; byModel: Map<string, Mod
 // lookups are indexed once per (immutable) channels array / channel object.
 const channelLookups = new WeakMap<ModelChannel[], ChannelLookup>();
 const profileLookups = new WeakMap<ModelChannel, Map<string, ChannelModelProfile>>();
+
+// parseRelayMap 兼容后端以 JSON 字符串保存的分组映射。
+function parseRelayMap(raw: unknown): Record<string, string> | undefined {
+    if (!raw) return undefined;
+    if (typeof raw === "object") return raw as Record<string, string>;
+    if (typeof raw !== "string") return undefined;
+    try {
+        const parsed = JSON.parse(raw);
+        return parsed && typeof parsed === "object" ? (parsed as Record<string, string>) : undefined;
+    } catch {
+        return undefined;
+    }
+}
 
 function channelLookup(channels: ModelChannel[]): ChannelLookup {
     // 配置未同步完成时字段可能缺失，按空集合处理。
@@ -742,6 +758,8 @@ export function createModelChannel(channel?: Partial<ModelChannel>): ModelChanne
         credentialRef: channel?.credentialRef,
         hasApiKey: channel?.hasApiKey,
         modelsSynced: channel?.modelsSynced === true,
+        relayGroupKeys: parseRelayMap(channel?.relayGroupKeys),
+        relayModelGroups: parseRelayMap(channel?.relayModelGroups),
         hasSecretKey: channel?.hasSecretKey,
         modelProfiles: channel?.modelProfiles?.filter((item) => isSupportedProtocolCapability(item.capability) && !isUnsupportedGenerationModel(item.model) && !isUnsupportedModelProtocol(item.protocol)).map(({ model, displayName, description, icon, capability, protocol, capabilityConfig, logicalModelId, logicalCapabilitySpec, logicalCapabilityProfiles, defaultOptions }) => ({ model, displayName, description, icon, capability, protocol: normalizeModelProtocol(protocol), capabilityConfig: capabilityConfig ? { version: capabilityConfig.version, text: capabilityConfig.text, image: capabilityConfig.image } : undefined, logicalModelId, logicalCapabilitySpec, logicalCapabilityProfiles, defaultOptions })),
     };
@@ -834,6 +852,13 @@ export function logicalModelIDForConfig(config: AiConfig) {
 
 export function channelConnectionSignature(channel: ModelChannel) {
     return [channel.baseUrl.trim(), channel.referenceAssetOrigin?.trim() || "", channel.apiKey.trim(), channel.secretKey?.trim() || "", channel.apiFormat, channel.interfaceType || "auto", JSON.stringify(channel.headers || [])].join("\n");
+}
+
+// groupKeyForModel 返回该模型所属分组对应的密钥。
+function groupKeyForModel(channel: ModelChannel, model: string): string {
+    const group = channel.relayModelGroups?.[model];
+    if (!group) return "";
+    return channel.relayGroupKeys?.[group] || "";
 }
 
 export function resolveModelRequestConfig(config: AiConfig, value: string) {

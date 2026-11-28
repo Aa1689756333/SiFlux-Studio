@@ -232,9 +232,10 @@ func (c *Client) Login(ctx context.Context, username, password string) (Session,
 
 // CreateToken 以登录会话创建一枚访问令牌。
 // 服务端建令牌只返回 {success,message}，因此建完再查列表取回 Id 与明文。
-func (c *Client) CreateToken(ctx context.Context, session Session, name string) (Token, error) {
+func (c *Client) CreateToken(ctx context.Context, session Session, name string, group string) (Token, error) {
 	body := map[string]any{
 		"name":                 name,
+		"group":                strings.TrimSpace(group),
 		"expired_time":         -1,
 		"remain_quota":         0,
 		"unlimited_quota":      true,

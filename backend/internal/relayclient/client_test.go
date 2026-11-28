@@ -147,7 +147,7 @@ func TestSignupFlowCreatesTokenAndReadsQuota(t *testing.T) {
 		t.Fatalf("access token = %q", session.AccessToken)
 	}
 
-	token, err := client.CreateToken(ctx, session, relayTokenFixtureName)
+	token, err := client.CreateToken(ctx, session, relayTokenFixtureName, "")
 	if err != nil {
 		t.Fatal(err)
 	}

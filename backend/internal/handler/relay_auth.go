@@ -301,10 +301,41 @@ func RegisterRelayRoutes(r gin.IRouter, svc *app.Service) {
 func completeRelaySignIn(c *gin.Context, svc *app.Service, client *relayclient.Client, session relayclient.Session, options relayclient.Options) {
 	ctx := c.Request.Context()
 
-	token, err := client.CreateToken(ctx, session, relayTokenName)
+	token, err := client.CreateToken(ctx, session, relayTokenName, "")
 	if err != nil {
 		failRelay(c, err)
 		return
+	}
+
+	// 按分组各建一把密钥，让不同分组的模型都能用。
+	groupKeys := make(map[string]string)
+	modelGroups := make(map[string]string)
+	if priced, priceErr := client.Pricing(ctx, session); priceErr == nil {
+		for _, item := range priced {
+			group := ""
+			if len(item.EnableGroups) > 0 {
+				group = item.EnableGroups[0]
+			}
+			if group != "" {
+				modelGroups[item.Model] = group
+			}
+		}
+		groups := make([]string, 0, len(modelGroups))
+		seen := map[string]struct{}{}
+		for _, name := range modelGroups {
+			if _, ok := seen[name]; ok {
+				continue
+			}
+			seen[name] = struct{}{}
+			groups = append(groups, name)
+		}
+		for _, group := range groups {
+			groupToken, createErr := client.CreateToken(ctx, session, relayTokenName+" "+group, group)
+			if createErr != nil || strings.TrimSpace(groupToken.Key) == "" {
+				continue
+			}
+			groupKeys[group] = groupToken.Key
+		}
 	}
 
 	self, err := client.Self(ctx, session)
@@ -464,6 +495,8 @@ type relayChannelState struct {
 	UsedQuota    int64
 	QuotaPerUnit float64
 	Username     string
+	GroupKeys    map[string]string
+	ModelGroups  map[string]string
 }
 
 // clearRelayConnection 清除内置渠道里保存的连接凭据。
@@ -504,6 +537,24 @@ func clearRelayConnection(c *gin.Context, svc *app.Service) (int64, error) {
 }
 
 // applyRelayChannelState 把连接状态写入渠道对象。
+// marshalRelayMap 把分组映射存成 JSON 字符串，便于随渠道配置一起持久化。
+func marshalRelayMap(value map[string]string) string {
+	raw, err := json.Marshal(value)
+	if err != nil {
+		return ""
+	}
+	return string(raw)
+}
+
+func unmarshalRelayMap(raw string) map[string]string {
+	out := map[string]string{}
+	if strings.TrimSpace(raw) == "" {
+		return out
+	}
+	_ = json.Unmarshal([]byte(raw), &out)
+	return out
+}
+
 func applyRelayChannelState(channel map[string]any, state relayChannelState) {
 	channel["apiKey"] = state.APIKey
 	channel["enabled"] = true
@@ -520,6 +571,12 @@ func applyRelayChannelState(channel map[string]any, state relayChannelState) {
 	channel["relayUsedQuota"] = state.UsedQuota
 	channel["relayQuotaPerUnit"] = state.QuotaPerUnit
 	channel["relayQuotaAt"] = time.Now().Unix()
+	if len(state.GroupKeys) > 0 {
+		channel["relayGroupKeys"] = marshalRelayMap(state.GroupKeys)
+	}
+	if len(state.ModelGroups) > 0 {
+		channel["relayModelGroups"] = marshalRelayMap(state.ModelGroups)
+	}
 }
 func saveRelayAPIKey(c *gin.Context, svc *app.Service, state relayChannelState) (int64, error) {
 	providerConfig := requestProviderConfig(c, svc)
