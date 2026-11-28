@@ -90,8 +90,8 @@ describe("canvas workspace project grouping", () => {
         const lifecycle = readFileSync(new URL("../src/pages/canvas/use-canvas-project-lifecycle.ts", import.meta.url), "utf8");
 
         expect(editor).toContain("const workspaceProject = workspaceCanvases[0] || null");
-        expect(editor).toContain('title={workspaceProject?.title === "未命名项目" || !workspaceProject?.title ? "未命名工作区" : workspaceProject.title}');
-        expect(editor).toContain('setTitleDraft(workspaceProject?.title || "未命名工作区")');
+        expect(editor).toContain('? "未命名画布" : workspaceProject.title');
+        expect(editor).toContain('setTitleDraft(workspaceProject?.title || "未命名画布")');
         expect(lifecycle).toContain("renameProject(canvasWorkspaceProjectId(currentProject), title)");
     });
 

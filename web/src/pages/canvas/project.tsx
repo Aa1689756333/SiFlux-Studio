@@ -1200,7 +1200,7 @@ function InfiniteCanvasPage() {
     });
 
     const startTitleEditing = useCallback(() => {
-        setTitleDraft(workspaceProject?.title || "未命名工作区");
+        setTitleDraft(workspaceProject?.title || "未命名画布");
         setTitleEditing(true);
     }, [workspaceProject?.title]);
 
@@ -1587,9 +1587,9 @@ function InfiniteCanvasPage() {
                                 onToggleVersions={toggleVersions}
                                 assistantOpen={rightPanel === "assistant"}
                                 onToggleAssistant={toggleAssistant}
-                                // LibTV 的画布工作区使用“未命名工作区”作为首屏默认标题；
-                                // 项目库仍保留“未命名项目”，因此只在画布顶栏做显示层映射。
-                                title={workspaceProject?.title === "未命名项目" || !workspaceProject?.title ? "未命名工作区" : workspaceProject.title}
+                                // 画布首屏对空标题统一显示“未命名画布”；
+                                // 项目库的默认名可能是旧文案，因此只在画布顶栏做显示层映射。
+                                title={!workspaceProject?.title || workspaceProject.title === "未命名项目" || workspaceProject.title === "未命名画布" ? "未命名画布" : workspaceProject.title}
                                 titleDraft={titleDraft}
                                 isTitleEditing={titleEditing}
                                 onTitleDraftChange={setTitleDraft}
@@ -2110,7 +2110,7 @@ function InfiniteCanvasPage() {
                         proposalFeedback={assistantProposalFeedback}
                         runningProposalIds={runningProposalIds}
                         assistant={assistant}
-                        canvasTitle={workspaceProject?.title === "未命名项目" || !workspaceProject?.title ? "未命名工作区" : workspaceProject.title}
+                        canvasTitle={!workspaceProject?.title || workspaceProject.title === "未命名项目" || workspaceProject.title === "未命名画布" ? "未命名画布" : workspaceProject.title}
                         dockable={assistantDockable}
                         readOnly={readOnly}
                         selectedNodeIds={assistantSelectedNodeIds}

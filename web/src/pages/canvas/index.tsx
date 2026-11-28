@@ -1,4 +1,4 @@
-﻿import { lazy, Suspense, useCallback, useEffect, useMemo, useRef, useState, useSyncExternalStore, type ChangeEvent } from "react";
+import { lazy, Suspense, useCallback, useEffect, useMemo, useRef, useState, useSyncExternalStore, type ChangeEvent } from "react";
 import { getCanvasHydrationHealth,subscribeCanvasHydrationHealth } from "@/services/canvas-hydration-health";
 import { useNavigate, useSearchParams } from "react-router";
 import { useInfiniteQuery, useQuery } from "@tanstack/react-query";
@@ -121,7 +121,7 @@ export default function CanvasPage() {
     );
     const createAndEnter = () => {
         setCreationError(false);
-        const { id, saved } = beginLocalCanvasProject("未命名项目");
+        const { id, saved } = beginLocalCanvasProject("未命名画布");
         void saved.then(() => {
             // Only enter after the desktop repository has accepted the new canvas.
             if (searchParams.get("stay") !== "1") enterProject(id);
@@ -135,7 +135,7 @@ export default function CanvasPage() {
             const sourceCanvases = listCanvasWorkspaceProjectCanvases(localProjects, project.id);
             let copiedWorkspaceProjectId: string | undefined;
             for (const [index, source] of sourceCanvases.entries()) {
-                const copy = await createWorkspaceCanvasProject(index === 0 ? `${project.title || "未命名项目"} 副本` : source.title, source.projectId, {
+                const copy = await createWorkspaceCanvasProject(index === 0 ? `${project.title || "未命名画布"} 副本` : source.title, source.projectId, {
                     nodes: source.nodes,
                     connections: source.connections,
                     chatSessions: source.chatSessions,
@@ -150,7 +150,7 @@ export default function CanvasPage() {
         }
         const source = await loadCanvasProjectForEditing(project.id);
         if (!source) throw new Error("画布不存在");
-        const copy = await createWorkspaceCanvasProject(`${source.title || project.title || "未命名项目"} 副本`, undefined, {
+        const copy = await createWorkspaceCanvasProject(`${source.title || project.title || "未命名画布"} 副本`, undefined, {
             nodes: source.nodes,
             connections: source.connections,
             chatSessions: source.chatSessions,
@@ -270,7 +270,7 @@ export default function CanvasPage() {
             enterProject(projects[0].id);
             return;
         }
-        const { id, saved } = beginLocalCanvasProject("未命名项目");
+        const { id, saved } = beginLocalCanvasProject("未命名画布");
         void saved.then(() => enterProject(id)).catch((error) => {
             setCreationError(true);
             message.error(error instanceof Error ? error.message : "创建项目失败，请重试");

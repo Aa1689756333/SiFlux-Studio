@@ -92,12 +92,12 @@ export function RecycleBinDialog({ open, onClose }: { open: boolean; onClose: ()
                                                 type="checkbox"
                                                 checked={checked}
                                                 onChange={(event) => setSelectedDeleted((current) => (event.target.checked ? [...current, item.id] : current.filter((id) => id !== item.id)))}
-                                                aria-label={`选择 ${item.title || "未命名项目"}`}
+                                                aria-label={`选择 ${item.title || "未命名画布"}`}
                                             />
                                         </label>
                                         <div className="recycle-bin-preview">{item.project ? <ProjectPreview project={item.project} emptyVariant="libtv" /> : <div className="canvas-project-empty is-libtv size-full" />}</div>
                                         <div className="recycle-bin-card-body">
-                                            <h3>{item.title || "未命名项目"}</h3>
+                                            <h3>{item.title || "未命名画布"}</h3>
                                             <time>{formatTimelineDate(item.deletedAt || item.updatedAt)}</time>
                                         </div>
                                     </article>
