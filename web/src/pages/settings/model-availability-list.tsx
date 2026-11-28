@@ -1,6 +1,6 @@
 import { useMemo } from "react";
 
-import { filterModelsByCapability, modelDisplayName, resolveModelChannel, type AiConfig } from "@/stores/use-config-store";
+import { filterModelsByCapability, modelDisplayName, modelOptionName, resolveModelChannel, type AiConfig } from "@/stores/use-config-store";
 
 type Row = {
     model: string;
@@ -32,10 +32,12 @@ function buildRows(models: string[], config: AiConfig, extraLabel: (model: strin
             const extra = extraLabel(model);
             const channel = resolveModelChannel(config, model);
             const catalog = channel?.relayCatalog;
-            const price = priceText(catalog, model);
-            const group = groupText(catalog, model);
-            const meta = catalog?.metas?.[model];
-            const priceEntry = catalog?.prices?.[model];
+            // 目录里的键是服务端原始模型名，先去掉渠道前缀再查。
+            const catalogKey = modelOptionName(model);
+            const price = priceText(catalog, catalogKey);
+            const group = groupText(catalog, catalogKey);
+            const meta = catalog?.metas?.[catalogKey];
+            const priceEntry = catalog?.prices?.[catalogKey];
             const vendor = priceEntry?.vendor?.trim() || "";
             const ownTags = priceEntry?.tags?.trim() || "";
             // 站点公开接口没有模型描述时用厂商名占位，避免显示服务名。
