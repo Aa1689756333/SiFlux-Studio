@@ -370,7 +370,7 @@ func RegisterRelayRoutes(r gin.IRouter, svc *app.Service) {
 func completeRelaySignIn(c *gin.Context, svc *app.Service, client *relayclient.Client, session relayclient.Session, options relayclient.Options) {
 	ctx := c.Request.Context()
 
-	token, err := client.CreateToken(ctx, session, relayTokenName, "")
+	token, err := client.EnsureToken(ctx, session, relayTokenName, "")
 	if err != nil {
 		failRelay(c, err)
 		return
@@ -403,7 +403,7 @@ func completeRelaySignIn(c *gin.Context, svc *app.Service, client *relayclient.C
 			groups = append(groups, name)
 		}
 		for _, group := range groups {
-			groupToken, createErr := client.CreateToken(ctx, session, relayTokenName+" "+group, group)
+			groupToken, createErr := client.EnsureToken(ctx, session, relayTokenName+" "+group, group)
 			if createErr != nil || strings.TrimSpace(groupToken.Key) == "" {
 				continue
 			}

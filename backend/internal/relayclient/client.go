@@ -265,6 +265,31 @@ type tokenSummary struct {
 }
 
 // newestToken 在令牌列表里找到刚创建的那一枚。
+// tokenByName 找到同名令牌，返回它的 ID。
+func (c *Client) tokenByName(ctx context.Context, session Session, name string) (int, bool) {
+	var page struct {
+		Items []tokenSummary `json:"items"`
+	}
+	if err := c.call(ctx, http.MethodGet, "/api/token/?p=0&size=100", nil, session, &page); err != nil {
+		return 0, false
+	}
+	for _, item := range page.Items {
+		if strings.TrimSpace(item.Name) == name {
+			return item.ID, true
+		}
+	}
+	return 0, false
+}
+
+// EnsureToken 复用同名令牌；不存在时才新建，避免每次登录都多出一把密钥。
+func (c *Client) EnsureToken(ctx context.Context, session Session, name string, group string) (Token, error) {
+	if id, found := c.tokenByName(ctx, session, name); found {
+		if key, err := c.tokenKey(ctx, session, id); err == nil && strings.TrimSpace(key) != "" {
+			return Token{ID: id, Key: key}, nil
+		}
+	}
+	return c.CreateToken(ctx, session, name, group)
+}
 func (c *Client) newestToken(ctx context.Context, session Session, name string) (Token, error) {
 	var page struct {
 		Items []tokenSummary `json:"items"`
