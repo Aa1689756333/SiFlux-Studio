@@ -127,7 +127,7 @@ export default function CanvasPage() {
             if (searchParams.get("stay") !== "1") enterProject(id);
         }).catch((error) => {
             setCreationError(true);
-            message.error(error instanceof Error ? error.message : "创建项目失败，请重试");
+            message.error(error instanceof Error ? error.message : "创建画布失败，请重试");
         });
     };
     const duplicateCanvasProject = useCallback(async (project: CanvasLibrarySummary) => {
@@ -273,7 +273,7 @@ export default function CanvasPage() {
         const { id, saved } = beginLocalCanvasProject("未命名画布");
         void saved.then(() => enterProject(id)).catch((error) => {
             setCreationError(true);
-            message.error(error instanceof Error ? error.message : "创建项目失败，请重试");
+            message.error(error instanceof Error ? error.message : "创建画布失败，请重试");
         });
     }, [hydrated, message, mode, projects, remoteMode, sessionHydrated, libraryQuery.isSuccess,canvasHealth]);
 
@@ -347,7 +347,7 @@ export default function CanvasPage() {
                                 <div className="libtv-create-project-icon"><Plus /></div>
                                 <strong>开始创作</strong>
                             </article>
-                            <p className="libtv-create-project-subtitle">创建新的项目</p>
+                            <p className="libtv-create-project-subtitle">创建新的画布</p>
                         </div>
                         {visibleFolders.map((folder) => <CanvasLibraryFolderTile key={folder.id} folder={folder} onOpen={() => setFolderFilter(folder.id)} onRename={() => { setFolderName(folder.name); setEditingFolderId(folder.id); setFolderDialogOpen(true); }} onDelete={() => setDeletingFolder({ id: folder.id, name: folder.name, scope: captureUserScope() })} onCoverChange={(dataUrl) => {
                             void persistCanvasFolderCover(folder.id, dataUrl).then(() => {
@@ -396,7 +396,7 @@ export default function CanvasPage() {
                         ))}
                     </CollectionGrid>
                 ) : (
-                    <WorkspaceState icon="canvas" title={canvasHealth.error ? "项目暂时无法加载" : keyword || projectFilter !== "all" || folderFilter !== "all" ? "没有匹配的项目" : "让第一个想法落在画布上"} description={canvasHealth.error || (keyword || projectFilter !== "all" || folderFilter !== "all" ? "换一个名称或重置筛选条件。" : "图片、素材和灵感，都可以在这里自由组织。")} action={canvasHealth.error ? <Button loading={canvasHealth.loading} onClick={()=>void hydrateLocalCanvasProjectsFromBackend()}>重试加载</Button> : !keyword && projectFilter === "all" && folderFilter === "all" ? <Button type="primary" icon={<Plus />} disabled={!hydrated} onClick={createAndEnter}>新建项目</Button> : undefined} />
+                    <WorkspaceState icon="canvas" title={canvasHealth.error ? "画布暂时无法加载" : keyword || projectFilter !== "all" || folderFilter !== "all" ? "没有匹配的画布" : "让第一个想法落在画布上"} description={canvasHealth.error || (keyword || projectFilter !== "all" || folderFilter !== "all" ? "换一个名称或重置筛选条件。" : "图片、素材和灵感，都可以在这里自由组织。")} action={canvasHealth.error ? <Button loading={canvasHealth.loading} onClick={()=>void hydrateLocalCanvasProjectsFromBackend()}>重试加载</Button> : !keyword && projectFilter === "all" && folderFilter === "all" ? <Button type="primary" icon={<Plus />} disabled={!hydrated} onClick={createAndEnter}>新建画布</Button> : undefined} />
                 )}
                 {hydrated && visibleProjects.length && (hasMore || libraryQuery.isFetchNextPageError) ? (
                     <div ref={loadMoreRef} className="library-load-more" aria-live="polite">
