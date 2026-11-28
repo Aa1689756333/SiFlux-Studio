@@ -72,6 +72,9 @@ export default function SettingsPage() {
         channels: (
             <SettingsPane>
                 <ChannelSettingsPane onOpenDiagnostics={() => selectSection("diagnostics")} />
+                <div className="settings-section">
+                    <DownloadLocationSettings />
+                </div>
                 <div className="settings-section model-default-section">
                     <div className="settings-pane-header">
                         <div className="min-w-0">
@@ -86,9 +89,6 @@ export default function SettingsPage() {
                         </div>
                         <ModelAvailabilityList config={effectiveConfig} />
                     </div>
-                </div>
-                <div className="settings-section mt-5">
-                    <DownloadLocationSettings />
                 </div>
             </SettingsPane>
         ),

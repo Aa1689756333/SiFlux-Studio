@@ -196,14 +196,6 @@ export function ChannelSettingsPane({ onOpenDiagnostics, onOpenModels, onOpenRun
     return (
         <Form layout="vertical" requiredMark={false}>
             {Object.entries(deleteFailures).map(([id, detail]) => <Alert key={id} type="error" showIcon title={detail} action={<Button onClick={() => void deleteChannel(id)}>重试删除</Button>} />)}
-            <PageHeader
-                title={localMode ? "本地模型渠道" : "个人渠道"}
-                actions={(
-                    <div className="settings-pane-header-actions flex w-full gap-2 sm:w-auto sm:shrink-0">
-                    {onOpenDiagnostics ? <Button className="h-10 flex-1 sm:h-8 sm:flex-none" icon={<Bug className="size-4" />} onClick={onOpenDiagnostics}>问题诊断</Button> : null}
-                    </div>
-                )}
-            />
             {onOpenRunningHub ? (
                 <section className="settings-section mb-3">
                     <div className="mb-3">
