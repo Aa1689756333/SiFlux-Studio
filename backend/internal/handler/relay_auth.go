@@ -248,6 +248,7 @@ func RegisterRelayRoutes(r gin.IRouter, svc *app.Service) {
 					"ratio":           item.ModelRatio,
 					"completionRatio": item.CompletionRatio,
 					"price":           item.ModelPrice,
+					"vendor":          item.Vendor,
 				}
 			}
 			metas := client.ModelMetas(c.Request.Context(), session)

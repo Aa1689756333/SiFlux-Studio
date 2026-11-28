@@ -32,7 +32,9 @@ function buildRows(models: string[], config: AiConfig, extraLabel: (model: strin
             const catalog = channel?.relayCatalog;
             const price = priceText(catalog, model);
             const meta = catalog?.metas?.[model];
-            const description = meta?.description?.trim() || [price, groupText(catalog, model)].filter(Boolean).join(" · ");
+            const vendor = catalog?.prices?.[model]?.vendor?.trim() || "";
+            // 站点公开接口没有模型描述时用厂商名占位，避免显示服务名。
+            const description = meta?.description?.trim() || vendor || [price, groupText(catalog, model)].filter(Boolean).join(" · ");
             return {
                 model,
                 name: modelDisplayName(config, model),

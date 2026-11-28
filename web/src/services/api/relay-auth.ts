@@ -70,7 +70,7 @@ export type RelayModelPrice = {
 export type RelayModelCatalog = {
     models: string[];
     groups?: Record<string, string[]>;
-    prices?: Record<string, RelayModelPrice>;
+    prices?: Record<string, RelayModelPrice & { vendor?: string }>;
     metas?: Record<string, { tags?: string[]; description?: string }>;
     source?: string;
 };

@@ -474,6 +474,8 @@ type PricingModel struct {
 	ModelRatio      float64  `json:"modelRatio"`
 	CompletionRatio float64  `json:"completionRatio"`
 	ModelPrice      float64  `json:"modelPrice"`
+	VendorID        int      `json:"vendorId"`
+	Vendor          string   `json:"vendor"`
 }
 
 // Pricing 读取全部模型（含所有分组）。/v1/models 只返回当前分组的模型，
@@ -504,10 +506,19 @@ func (c *Client) Pricing(ctx context.Context, session Session) ([]PricingModel, 
 			ModelRatio      float64  `json:"model_ratio"`
 			CompletionRatio float64  `json:"completion_ratio"`
 			ModelPrice      float64  `json:"model_price"`
+			VendorID        int      `json:"vendor_id"`
 		} `json:"data"`
+		Vendors []struct {
+			ID   int    `json:"id"`
+			Name string `json:"name"`
+		} `json:"vendors"`
 	}
 	if err := json.Unmarshal(raw, &payload); err != nil {
 		return nil, fmt.Errorf("服务返回内容无法解析")
+	}
+	vendorNames := make(map[int]string, len(payload.Vendors))
+	for _, vendor := range payload.Vendors {
+		vendorNames[vendor.ID] = strings.TrimSpace(vendor.Name)
 	}
 	seen := map[string]struct{}{}
 	models := make([]PricingModel, 0, len(payload.Data))
@@ -527,6 +538,7 @@ func (c *Client) Pricing(ctx context.Context, session Session) ([]PricingModel, 
 			Model: name, EnableGroups: item.EnableGroups,
 			QuotaType: item.QuotaType, ModelRatio: item.ModelRatio,
 			CompletionRatio: item.CompletionRatio, ModelPrice: item.ModelPrice,
+			VendorID: item.VendorID, Vendor: vendorNames[item.VendorID],
 		})
 	}
 	sort.Slice(models, func(i, j int) bool { return models[i].Model < models[j].Model })
