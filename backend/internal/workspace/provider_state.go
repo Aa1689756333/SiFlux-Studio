@@ -233,6 +233,18 @@ func presetChannelMap(preset providerpreset.ChannelPreset, local map[string]any)
 			"protocol": profile.Protocol, "capabilityConfig": capabilityConfig,
 		})
 	}
+	if synced, _ := local["modelsSynced"].(bool); synced {
+		if localModels, ok := local["models"].([]any); ok && len(localModels) > 0 {
+			models = models[:0]
+			for _, value := range localModels {
+				model, ok := value.(string)
+				if !ok || model == "" || containsString(models, model) {
+					continue
+				}
+				models = append(models, model)
+			}
+		}
+	}
 	if localModels, ok := local["models"].([]any); ok {
 		for _, value := range localModels {
 			model, ok := value.(string)
@@ -265,7 +277,7 @@ func presetChannelMap(preset providerpreset.ChannelPreset, local map[string]any)
 	// 内置渠道的连接状态由本地保存，读取时按白名单回填。
 	for _, key := range []string{
 		"apiKey", "secretKey", "headers", "enabled",
-		"relayAccessToken", "relayTokenType", "relayCookie",
+		"relayAccessToken", "relayTokenType", "relayCookie", "modelsSynced",
 		"relayQuota", "relayUsedQuota", "relayQuotaPerUnit", "relayQuotaAt",
 	} {
 		if value, ok := local[key]; ok {

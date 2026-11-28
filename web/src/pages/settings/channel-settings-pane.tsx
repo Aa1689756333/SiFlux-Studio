@@ -167,7 +167,7 @@ export function ChannelSettingsPane({ onOpenDiagnostics, onOpenModels, onOpenRun
                 return;
             }
             updateChannels(
-                latestConfig.channels.map((item) => (item.id === channel.id ? applyFetchedChannelModelCatalog(item, result) : item)),
+                latestConfig.channels.map((item) => (item.id === channel.id ? { ...applyFetchedChannelModelCatalog(item, result), modelsSynced: true } : item)),
                 latestConfig,
             );
             message.success(`${latestChannel.name || "当前渠道"}模型列表已更新`);
@@ -319,7 +319,9 @@ export function ChannelSettingsPane({ onOpenDiagnostics, onOpenModels, onOpenRun
                                         )}
                                     </div>
                                     <div className="flex w-full flex-wrap justify-end gap-2 sm:w-auto sm:shrink-0">
-                                        {isBuiltinRelayChannel(channel) ? null : (
+                                        {isBuiltinRelayChannel(channel) ? (
+                                            <Button className="h-10 sm:h-8" size="small" icon={<RefreshCw className="size-3.5" />} loading={loadingChannelIds.includes(channel.id)} disabled={loadingChannelIds.includes("all") || !relayReady} onClick={() => void refreshChannelModels(channel)}>拉取模型</Button>
+                                        ) : (
                                             <>
                                         <Button
                                             className="h-10 sm:h-8"

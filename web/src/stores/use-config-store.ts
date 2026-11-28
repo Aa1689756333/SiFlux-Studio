@@ -293,6 +293,8 @@ export type ModelChannel = {
     apiFormat: ApiCallFormat;
     interfaceType?: ChannelInterfaceType;
     models: string[];
+    /** 模型列表由服务端拉取过，内置服务的预设列表不再覆盖它。 */
+    modelsSynced?: boolean;
     // 仅平台目录使用：将已保存的旧 SKU 选择重定向到当前模型家族。
     modelAliases?: Record<string, string>;
     scope?: "system" | "user";
@@ -739,6 +741,7 @@ export function createModelChannel(channel?: Partial<ModelChannel>): ModelChanne
         presetVersion: channel?.presetVersion,
         credentialRef: channel?.credentialRef,
         hasApiKey: channel?.hasApiKey,
+        modelsSynced: channel?.modelsSynced === true,
         hasSecretKey: channel?.hasSecretKey,
         modelProfiles: channel?.modelProfiles?.filter((item) => isSupportedProtocolCapability(item.capability) && !isUnsupportedGenerationModel(item.model) && !isUnsupportedModelProtocol(item.protocol)).map(({ model, displayName, description, icon, capability, protocol, capabilityConfig, logicalModelId, logicalCapabilitySpec, logicalCapabilityProfiles, defaultOptions }) => ({ model, displayName, description, icon, capability, protocol: normalizeModelProtocol(protocol), capabilityConfig: capabilityConfig ? { version: capabilityConfig.version, text: capabilityConfig.text, image: capabilityConfig.image } : undefined, logicalModelId, logicalCapabilitySpec, logicalCapabilityProfiles, defaultOptions })),
     };
