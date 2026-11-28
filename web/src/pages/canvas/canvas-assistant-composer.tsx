@@ -24,8 +24,8 @@ type Props = {
     selectionAttached: boolean;
     onDetachSelection: () => void;
     modelBusy?: boolean;
-    /** 隐藏内置模型选择：模型统一在设置里指定时使用。 */
-    hideModelPicker?: boolean;
+    /** 输入框内模型选择的目标：Agent 生图页选生图模型。 */
+    modelCapability?: "text" | "image";
     canSupplement?: boolean;
     supplementBusy?: boolean;
     hasAttachments?: boolean;
@@ -52,7 +52,7 @@ export function CanvasAssistantComposer({
     selectionAttached,
     onDetachSelection,
     modelBusy,
-    hideModelPicker = false,
+    modelCapability = "text",
     canSupplement,
     supplementBusy,
     hasAttachments,
@@ -108,7 +108,7 @@ export function CanvasAssistantComposer({
                 {onFiles ? <Tooltip title="添加参考素材"><Button type="text" size="small" aria-label="添加参考素材" disabled={disabled || inputBusy} icon={<Paperclip size={15} />} onClick={() => fileInput.current?.click()} /></Tooltip> : null}
                 {onOpenSkills ? <Tooltip title="选择技能"><Button type="text" size="small" aria-label="选择技能" disabled={disabled} icon={<Sparkles size={15} />} onClick={onOpenSkills} /></Tooltip> : null}
                 {onOpenReferences ? <Button type="text" size="small" disabled={disabled} onClick={onOpenReferences}>画布素材</Button> : null}
-                {hideModelPicker ? null : <CanvasAssistantModelPicker busy={disabled || streaming || Boolean(modelBusy)} />}
+                <CanvasAssistantModelPicker busy={disabled || streaming || Boolean(modelBusy)} capability={modelCapability} />
                 {onPermissionChange ? <Tooltip title={permissionLocked ? "本轮权限已固定，结束后可更改" : "选择助手可访问和修改的范围"}>
                     <Select className="canvas-assistant-permission" size="small" variant="borderless" aria-label="助手权限" value={permissionMode} disabled={disabled || permissionLocked}
                         placement="topRight" popupMatchSelectWidth={false} onChange={onPermissionChange} options={[

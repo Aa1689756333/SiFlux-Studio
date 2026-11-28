@@ -18,7 +18,6 @@ import { SkillInstallModal } from "@/pages/skills/skill-install-modal";
 import { WORKSPACE_AGENT_CONVERSATION_ID, type AssistantAttachment, type AssistantSkillSelection, type AssistantTurn } from "@/services/api/agent-assistant";
 import { readAssistantInputDraft, saveAssistantInputDraft, uploadAssistantAttachment } from "@/services/assistant-attachments";
 import { listAddedSkills, type Skill } from "@/services/api/skills";
-import { filterModelsByCapability, modelDisplayName, useConfigStore, useEffectiveConfig } from "@/stores/use-config-store";
 
 import "./agent.css";
 import "@/pages/canvas/canvas-assistant-sidebar.css";
@@ -60,12 +59,6 @@ function AgentTurnView({ turn }: { turn: AssistantTurn }) {
 
 export function AgentWorkspace() {
     const config = AGENT_PAGE;
-    const aiConfig = useEffectiveConfig();
-    const updateConfig = useConfigStore((state) => state.updateConfig);
-    // 配置可能还没同步完成，字段缺失时按空列表处理，避免整页崩溃。
-    const aiChannels = Array.isArray(aiConfig?.channels) ? aiConfig.channels : [];
-    const aiModelNames = Array.isArray(aiConfig?.models) ? aiConfig.models : [];
-    const imageModels = filterModelsByCapability(aiModelNames, "image", aiChannels);
     const navigate = useNavigate();
     const assistant = useCanvasAssistant({ canvasId: config.conversationId });
     const setOpen = assistant.setOpen;
@@ -196,20 +189,6 @@ export function AgentWorkspace() {
                         <p>{config.subtitle}</p>
                     </div>
                     <div className="siflux-agent-header-actions">
-                        <span className="siflux-agent-model">
-                            <span className="siflux-agent-model-label">生图模型</span>
-                            <Select
-                                size="small"
-                                className="siflux-agent-model-select"
-                                aria-label="生图模型"
-                                value={imageModels.includes(aiConfig.imageModel) ? aiConfig.imageModel : undefined}
-                                placeholder={imageModels.length ? "选择生图模型" : "暂无可用模型"}
-                                disabled={!imageModels.length}
-                                options={imageModels.map((model) => ({ value: model, label: modelDisplayName(aiConfig, model) }))}
-                                onChange={(value) => updateConfig("imageModel", value)}
-                                popupMatchSelectWidth={false}
-                            />
-                        </span>
                         <Button type="text" size="small" aria-label="新对话" disabled={assistant.streaming || assistant.sessionBusy} icon={<MessageSquarePlus className="size-4" />} onClick={() => void assistant.startNewSession()}>新对话</Button>
                         <Dropdown trigger={["click"]} placement="bottomRight" menu={{ items: sessionItems, selectedKeys: assistant.sessionId ? [assistant.sessionId] : [] }}>
                             <Button type="text" size="small" aria-label="历史对话" disabled={assistant.streaming || assistant.sessionBusy} icon={<History className="size-4" />}>历史</Button>
@@ -289,7 +268,7 @@ export function AgentWorkspace() {
                     selectedCount={0}
                     selectionAttached={false}
                     onDetachSelection={() => undefined}
-                    hideModelPicker
+                    modelCapability="image"
                     modelBusy={assistant.modelBusy}
                     canSupplement={assistant.canSupplement}
                     supplementBusy={assistant.supplementBusy}

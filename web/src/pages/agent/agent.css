@@ -50,20 +50,3 @@
 .siflux-agent-shell .canvas-assistant-permission {
     display: none;
 }
-
-.siflux-agent-model {
-    display: inline-flex;
-    align-items: center;
-    gap: 6px;
-    min-width: 0;
-}
-.siflux-agent-model-label {
-    font-size: var(--fs-micro);
-    color: var(--foreground);
-    opacity: .55;
-    white-space: nowrap;
-}
-.siflux-agent-model-select {
-    min-width: 168px;
-    max-width: 240px;
-}
