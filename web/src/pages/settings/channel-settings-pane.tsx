@@ -160,8 +160,8 @@ export function ChannelSettingsPane({ onOpenDiagnostics, onOpenModels, onOpenRun
         if (catalogSyncedRef.current) return;
         const relay = useConfigStore.getState().config.channels.find((item) => isBuiltinRelayChannel(item));
         if (!relay || !relay.modelsSynced) return;
-        // 目录版本低于当前版本（缺少输入输出价格等字段）时自动重拉一次。
-        if (relay.relayCatalog?.version === 3) return;
+        // 目录版本低于当前版本（缺少单价等字段）时自动重拉一次。
+        if (relay.relayCatalog?.version === 4) return;
         if (!channelHasGenerationCredential(relay) && !relay.apiKey?.trim()) return;
         catalogSyncedRef.current = true;
         void refreshChannelModels(relay);
@@ -196,7 +196,7 @@ export function ChannelSettingsPane({ onOpenDiagnostics, onOpenModels, onOpenRun
             updateChannels(
                 latestConfig.channels.map((item) => (item.id === channel.id
                     ? relayModels
-                        ? { ...item, models: relayModels, modelsSynced: true, relayCatalog: relayCatalog ? { version: 3, groups: relayCatalog.groups, prices: relayCatalog.prices, metas: relayCatalog.metas } : item.relayCatalog }
+                        ? { ...item, models: relayModels, modelsSynced: true, relayCatalog: relayCatalog ? { version: 4, groups: relayCatalog.groups, prices: relayCatalog.prices, metas: relayCatalog.metas } : item.relayCatalog }
                         : { ...applyFetchedChannelModelCatalog(item, result!), modelsSynced: true }
                     : item)),
                 latestConfig,

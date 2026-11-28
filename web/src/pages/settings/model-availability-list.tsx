@@ -42,11 +42,11 @@ function priceText(catalog: Catalog, key: string) {
     if (entry.quotaType === 1 && entry.price > 0) return `$${entry.price} / 次`;
     // 计费表达式里的单价就是站点实际计费价格。
     const units = entry.unitPrices || {};
-    const parts = UNIT_LABELS.filter(([name]) => (units[name] ?? 0) > 0).map(([name, label]) => `${label} ${formatUnit(units[name])}`);
+    const parts = UNIT_LABELS.filter(([name]) => (units[name] ?? 0) > 0).map(([name, label]) => `${label} $${formatUnit(units[name])}`);
     if (parts.length) return parts.join(" · ");
     const input = entry.inputPrice ?? 0;
     const output = entry.outputPrice ?? 0;
-    if (input > 0 || output > 0) return `输入 ${formatUnit(input)} · 输出 ${formatUnit(output)}`;
+    if (input > 0 || output > 0) return `输入 $${formatUnit(input)} · 输出 $${formatUnit(output)}`;
     return "";
 }
 
@@ -115,7 +115,7 @@ export function ModelAvailabilityList({ config }: { config: AiConfig }) {
                             <div className={ROW_GRID + " border-b border-border/60 bg-foreground/[.03] py-1.5 text-xs text-foreground/50"}>
                                 <span>模型</span>
                                 <span>标签</span>
-                                <span>价格</span>
+                                <span title="按每百万 token 计价；标「/ 次」的为单次计价">价格（$/1M token）</span>
                                 <span className="text-right">用途</span>
                             </div>
                             <ul className="m-0 divide-y divide-border/50 p-0">
