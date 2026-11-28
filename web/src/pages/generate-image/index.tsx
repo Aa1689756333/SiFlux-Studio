@@ -60,36 +60,34 @@ function attachmentToReferenceImage(attachment: GenerationAttachment): Reference
     };
 }
 
-async function downloadImageAsset(asset: ImageAsset, onError?: (text: string) => void) {
-    const url = asset.data.dataUrl || resolveResourceUrl(asset.data.storageKey, asset.coverUrl || "");
+async function downloadImageAsset(asset: ImageAsset, onError?: (text: string) => void, onDone?: () => void) {
+    const url = resolveResourceUrl(asset.data.storageKey, asset.data.dataUrl || asset.coverUrl || "");
     if (!url) {
         onError?.("这张图片没有可下载的地址");
         return;
     }
     const name = `${asset.title || "image"}.png`;
+    const trigger = (href: string) => {
+        const link = document.createElement("a");
+        link.href = href;
+        link.download = name;
+        link.rel = "noopener";
+        document.body.append(link);
+        link.click();
+        link.remove();
+    };
     try {
         const response = await fetch(url);
         if (!response.ok) throw new Error(`http_${response.status}`);
         const blob = await response.blob();
         const objectUrl = URL.createObjectURL(blob);
-        const link = document.createElement("a");
-        link.href = objectUrl;
-        link.download = name;
-        link.rel = "noopener";
-        document.body.append(link);
-        link.click();
-        link.remove();
+        trigger(objectUrl);
         window.setTimeout(() => URL.revokeObjectURL(objectUrl), 10000);
+        onDone?.();
     } catch {
-        // 跨域资源无法转存时退回直接打开，浏览器仍可另存。
-        const link = document.createElement("a");
-        link.href = url;
-        link.download = name;
-        link.target = "_blank";
-        link.rel = "noopener";
-        document.body.append(link);
-        link.click();
-        link.remove();
+        // 跨域资源无法转存时直接打开图片，浏览器仍可另存。
+        window.open(url, "_blank", "noopener");
+        onDone?.();
     }
 }
 
@@ -274,7 +272,7 @@ export default function GenerateImagePage() {
                                         <button type="button" className="siflux-image-gen-open" aria-label={`预览 ${asset.title || "生成图片"}`} onClick={() => setPreviewAsset(asset)}>
                                             <CachedResourceImage storageKey={asset.data.storageKey} src={resolveResourceUrl(asset.data.storageKey, asset.data.dataUrl || asset.coverUrl)} alt={asset.title || "生成图片"} />
                                         </button>
-                                        <button type="button" className="siflux-image-gen-download" onClick={() => void downloadImageAsset(asset, (text) => toast.error(text))}><Download size={14} />下载</button>
+                                        <button type="button" className="siflux-image-gen-download" onClick={() => void downloadImageAsset(asset, (text) => toast.error(text), () => toast.success("已开始下载"))}><Download size={14} />下载</button>
                                     </figure>
                                 ))}
                                 {activeJob.status === "succeeded" && activeJob.assetIds.some((id) => !assets.some((asset) => asset.id === id)) ? (
@@ -393,6 +391,17 @@ export default function GenerateImagePage() {
                     </Suspense>
                 ) : null}
             </div>
+            {previewAsset ? (
+                <div className="siflux-image-preview" role="dialog" aria-modal="true" aria-label="图片预览" onClick={() => setPreviewAsset(null)}>
+                    <div className="siflux-image-preview-panel" onClick={(event) => event.stopPropagation()}>
+                        <img src={resolveResourceUrl(previewAsset.data.storageKey, previewAsset.data.dataUrl || previewAsset.coverUrl)} alt={previewAsset.title || "生成图片"} />
+                        <div className="siflux-image-preview-actions">
+                            <button type="button" onClick={() => void downloadImageAsset(previewAsset, (text) => toast.error(text), () => toast.success("已开始下载"))}>下载</button>
+                            <button type="button" onClick={() => setPreviewAsset(null)}>关闭</button>
+                        </div>
+                    </div>
+                </div>
+            ) : null}
         </WorkspacePage>
     );
 }
