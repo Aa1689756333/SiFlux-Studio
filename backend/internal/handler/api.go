@@ -1,4 +1,4 @@
-﻿package handler
+package handler
 
 import (
 	"net/http"
@@ -76,6 +76,7 @@ func registerDesktopCanvasAPI(api *gin.RouterGroup, svc *app.Service, dependenci
 	RegisterPluginRoutes(api, svc, false)
 	RegisterProjectRoutes(api, svc)
 	RegisterRelayRoutes(api, svc)
+	RegisterDownloadRoutes(api, svc.DataDir())
 }
 
 func RegisterOpenAPIRoutes(api *gin.RouterGroup) {

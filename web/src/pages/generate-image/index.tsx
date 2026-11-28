@@ -14,7 +14,7 @@ import { explainGenerationError, shouldBlockAutomaticRetry } from "@/lib/generat
 import { mergedImageCapabilityConfig } from "@/lib/model-selection";
 import { creationAttachmentsFromReferences, persistableMediaReferences } from "@/lib/standalone-generation-reference";
 import { assertUserScope, captureUserScope, userScopeMatches } from "@/lib/user-scope-guard";
-import { saveBlobToDownloadDirectory } from "@/services/download-directory";
+import { saveImageToDownloadDirectory } from "@/services/api/download-directory";
 import { uploadImage } from "@/services/image-storage";
 import { resolveResourceUrl } from "@/services/api/resources";
 import { ASSET_CATEGORY_LABELS } from "@/lib/asset-category";

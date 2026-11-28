@@ -3,7 +3,7 @@ import { App, Button, Input } from "antd";
 import { FolderOpen } from "lucide-react";
 import { getDesktopAppBinding, type DesktopStorageUsage } from "@/services/desktop-runtime";
 import { flushModelConfig, getModelConfigPersistenceState } from "@/services/model-config-repository";
-import { clearDownloadDirectory, downloadDirectoryName, pickDownloadDirectory } from "@/services/download-directory";
+import { fetchDownloadDirectory, saveDownloadDirectory } from "@/services/api/download-directory";
 import { saveRemoteUserDataNow } from "@/services/local-workspace-sync";
 
 const size = (bytes: number) => `${(bytes / 1024 ** 3).toFixed(1)} GB`;
@@ -14,17 +14,33 @@ export function StorageSettingsPane() {
     const [usage, setUsage] = useState<DesktopStorageUsage>();
     const [target, setTarget] = useState("");
     const [busy, setBusy] = useState(false);
-    const [downloadDir, setDownloadDir] = useState(() => downloadDirectoryName());
-    const [pickingDir, setPickingDir] = useState(false);
-    const chooseDownloadDir = async () => {
-        setPickingDir(true);
+    const [downloadDir, setDownloadDir] = useState("");
+    const [defaultDownloadDir, setDefaultDownloadDir] = useState("");
+    const [downloadDraft, setDownloadDraft] = useState("");
+    const [savingDownloadDir, setSavingDownloadDir] = useState(false);
+    useEffect(() => {
+        let active = true;
+        void fetchDownloadDirectory()
+            .then((state) => {
+                if (!active) return;
+                setDownloadDir(state.directory);
+                setDefaultDownloadDir(state.default);
+                setDownloadDraft(state.directory);
+            })
+            .catch(() => undefined);
+        return () => { active = false; };
+    }, []);
+    const saveDownloadDir = async (directory: string) => {
+        setSavingDownloadDir(true);
         try {
-            setDownloadDir(await pickDownloadDirectory());
+            const saved = await saveDownloadDirectory(directory);
+            setDownloadDir(saved.directory);
+            setDownloadDraft(saved.directory);
             message.success("下载位置已更新");
         } catch (error) {
-            message.error(error instanceof Error ? error.message : "选择文件夹失败");
+            message.error(error instanceof Error ? error.message : "保存下载位置失败");
         } finally {
-            setPickingDir(false);
+            setSavingDownloadDir(false);
         }
     };
     const [error, setError] = useState("");
@@ -149,13 +165,16 @@ export function StorageSettingsPane() {
             ) : null}
             <div className="space-y-2 border-t border-border pt-4" aria-label="下载保存位置">
                 <p className="m-0 text-sm">图片下载位置</p>
-                <p className="m-0 break-all text-sm text-foreground/60">{downloadDir ? `已选择：${downloadDir}` : "未选择：下载会存到浏览器默认位置"}</p>
-                <div className="flex flex-wrap gap-2">
-                    <Button icon={<FolderOpen className="size-4" />} loading={pickingDir} onClick={() => void chooseDownloadDir()}>选择文件夹</Button>
-                    {downloadDir ? (
-                        <Button onClick={() => { clearDownloadDirectory(); setDownloadDir(""); message.success("已恢复默认下载位置"); }}>恢复默认</Button>
+                <p className="m-0 break-all text-sm text-foreground/60">保存到：{downloadDir || "正在读取…"}</p>
+                <div className="flex min-w-0 flex-wrap items-center gap-2">
+                    <Input className="min-w-0 flex-1" aria-label="下载保存目录" value={downloadDraft} onChange={(event) => setDownloadDraft(event.target.value)} placeholder={defaultDownloadDir || "例如 D:\\SiFlux\\downloads"} disabled={savingDownloadDir} />
+                    <Button type="primary" loading={savingDownloadDir} disabled={!downloadDraft.trim() || downloadDraft.trim() === downloadDir} onClick={() => void saveDownloadDir(downloadDraft.trim())}>保存位置</Button>
+                    {defaultDownloadDir && downloadDir !== defaultDownloadDir ? (
+                        <Button onClick={() => void saveDownloadDir(defaultDownloadDir)} disabled={savingDownloadDir}>恢复默认</Button>
                     ) : null}
                 </div>
+                <p className="m-0 text-xs text-foreground/45">默认保存到软件安装目录下的 downloads 文件夹，留空保存即恢复默认。</p>
+                <Button icon={<FolderOpen className="size-4" />} onClick={() => void saveDownloadDir("")} disabled={savingDownloadDir}>使用默认目录</Button>
             </div>
         </section>
     );
