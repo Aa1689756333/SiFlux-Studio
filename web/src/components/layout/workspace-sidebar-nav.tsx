@@ -327,12 +327,12 @@ export function WorkspaceSidebarNav({ onNavigate, onOpenSearch }: { onNavigate: 
                         ))}
                     </div>
                 ) : null}
-                <div className={cn("app-workspace-sidebar-contact-row", collapsed && "is-collapsed")}>
+                <div className={cn("app-workspace-sidebar-contact-row mb-1.5", collapsed && "is-collapsed")}>
                     <RelayAccountEntry connected={relayConnected} collapsed={collapsed} onOpen={openRelay} />
                 </div>
-                <div className={cn("app-workspace-sidebar-utility-row flex items-center justify-between gap-2", collapsed && "is-collapsed")}>
+                <div className={cn("app-workspace-sidebar-utility-row flex items-center justify-between gap-2", collapsed && "justify-center", "is-collapsed")}>
                     <AppUpdateEntry collapsed={collapsed} />
-                    <AnimatedThemeToggler theme={theme} onThemeChange={setTheme} aria-label={theme === "dark" ? "切换到浅色模式" : "切换到深色模式"} title={theme === "dark" ? "切换到浅色模式" : "切换到深色模式"} className="app-workspace-theme-action">
+                    <AnimatedThemeToggler theme={theme} onThemeChange={setTheme} aria-label={theme === "dark" ? "切换到浅色模式" : "切换到深色模式"} title={theme === "dark" ? "切换到浅色模式" : "切换到深色模式"} className="grid size-8 shrink-0 place-items-center rounded-[var(--r-md)] text-foreground/55 transition-colors hover:bg-surface-hover hover:text-foreground">
                         {theme === "dark" ? <Sun className="size-4" /> : <Moon className="size-4" />}
                     </AnimatedThemeToggler>
                 </div>

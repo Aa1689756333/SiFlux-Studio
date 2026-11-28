@@ -33,9 +33,9 @@ describe("desktop update UI contract", () => {
         expect(entry).toContain("downloadAndInstall");
         expect(entry).toContain("isNewerDesktopVersion");
         expect(entry).toContain("已是最新版本");
-        // 历史版本直接陈列在同一个弹窗里，不再嵌套二级弹窗。
+        // 更新日志直接陈列在同一个弹窗里，不再嵌套二级弹窗。
         expect(entry).toContain("appChangelogZh");
-        expect(entry).toContain("历史版本");
+        expect(entry).toContain("更新日志");
         expect(entry).not.toContain("AppChangelogButton");
         expect(entry).not.toContain("Modal.confirm");
         expect(entry).not.toContain("github.com");
@@ -71,9 +71,9 @@ describe("desktop update UI contract", () => {
         expect(entry).toContain("currentVersion");
         expect(entry).toContain("installed");
         expect(entry).toContain("已是最新版本");
-        // 历史版本直接陈列在同一个弹窗里，不再嵌套二级弹窗。
+        // 更新日志直接陈列在同一个弹窗里，不再嵌套二级弹窗。
         expect(entry).toContain("appChangelogZh");
-        expect(entry).toContain("历史版本");
+        expect(entry).toContain("更新日志");
         expect(entry).not.toContain("AppChangelogButton");
         expect(entry).not.toContain("shouldShowDesktopUpdaterControls");
     });

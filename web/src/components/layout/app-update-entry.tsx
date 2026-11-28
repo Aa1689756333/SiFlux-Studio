@@ -38,7 +38,7 @@ export function AppUpdateEntry({ collapsed }: { collapsed: boolean }) {
         <>
             <button
                 type="button"
-                className={cn("flex h-8 items-center gap-1.5 rounded-[var(--r-md)] px-2 text-[var(--fs-micro)] text-foreground/45 transition-colors hover:bg-surface-hover hover:text-foreground", collapsed && "justify-center px-0")}
+                className={cn("inline-flex h-8 items-center gap-1.5 rounded-[var(--r-md)] px-1.5 text-[var(--fs-micro)] tabular-nums text-foreground/45 transition-colors hover:bg-surface-hover hover:text-foreground", collapsed && "justify-center px-0")}
                 onClick={() => setOpen(true)}
                 title={available ? `有新版本 ${latest}` : "查看版本与更新"}
                 aria-label={available ? `有新版本 ${latest}，查看更新` : `当前版本 ${installed}`}
@@ -117,7 +117,7 @@ export function AppUpdateEntry({ collapsed }: { collapsed: boolean }) {
                     )}
 
                     <div>
-                        <div className="mb-1.5 text-xs text-foreground/50">历史版本</div>
+                        <div className="mb-1.5 text-xs text-foreground/50">更新日志</div>
                         <div className="max-h-52 space-y-3 overflow-y-auto rounded-xl border border-border/60 px-4 py-3">
                             {appChangelogZh.slice(0, 8).map((entry) => (
                                 <div key={entry.version}>
