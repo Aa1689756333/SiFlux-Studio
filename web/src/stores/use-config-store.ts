@@ -300,6 +300,7 @@ export type ModelChannel = {
     relayModelGroups?: Record<string, string>;
     /** 服务端返回的价格与分组目录，用于列表展示。 */
     relayCatalog?: {
+        version?: number;
         groups?: Record<string, string[]>;
         prices?: Record<string, {
             quotaType: number;
