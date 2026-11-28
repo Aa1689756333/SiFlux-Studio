@@ -46,6 +46,7 @@ export function ChannelSettingsPane({ onOpenDiagnostics, onOpenModels, onOpenRun
     const persistence = useSyncExternalStore(subscribeModelConfigPersistence, getModelConfigPersistenceState, getModelConfigPersistenceState);
     const [syncNote, setSyncNote] = useState<Record<string, { tone: "ok" | "error"; text: string }>>({});
     const [keysOpen, setKeysOpen] = useState(false);
+    const catalogSyncedRef = useRef(false);
     const [loadingChannelIds, setLoadingChannelIds] = useState<string[]>([]);
     const [editingChannelId, setEditingChannelId] = useState<string | null>(null);
     const [serviceEditor, setServiceEditor] = useState<ModelChannel | undefined>(undefined);
@@ -148,6 +149,15 @@ export function ChannelSettingsPane({ onOpenDiagnostics, onOpenModels, onOpenRun
         setLoadingChannelIds((items) => (loading ? Array.from(new Set([...items, id])) : items.filter((item) => item !== id)));
     };
 
+    // 已拉取过模型但缺少价格/分组目录时，自动补一次，保证列表能显示倍率与厂商。
+    useEffect(() => {
+        if (catalogSyncedRef.current) return;
+        const relay = useConfigStore.getState().config.channels.find((item) => isBuiltinRelayChannel(item));
+        if (!relay || !relay.modelsSynced || relay.relayCatalog) return;
+        if (!channelHasGenerationCredential(relay) && !relay.apiKey?.trim()) return;
+        catalogSyncedRef.current = true;
+        void refreshChannelModels(relay);
+    }, []);
     const refreshChannelModels = async (channel: ModelChannel) => {
         const connectionError = channelConnectionError(channel, null);
         if (connectionError) {

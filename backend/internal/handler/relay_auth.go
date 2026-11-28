@@ -437,6 +437,9 @@ func completeRelaySignIn(c *gin.Context, svc *app.Service, client *relayclient.C
 		Quota:        self.Quota,
 		UsedQuota:    self.UsedQuota,
 		QuotaPerUnit: options.QuotaPerUnit,
+		Username:     firstNonEmpty(self.DisplayName, self.Username),
+		GroupKeys:    groupKeys,
+		ModelGroups:  modelGroups,
 	})
 	if err != nil {
 		failService(c, err)
