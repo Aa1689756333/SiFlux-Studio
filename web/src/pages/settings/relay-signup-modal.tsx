@@ -4,6 +4,7 @@ import { Alert, Button, Form, Input, Modal, Space, Tabs, message } from "antd";
 import { CheckCircle2, Loader2, Mail, UserRound } from "lucide-react";
 import {
     connectRelayAccount,
+    disconnectRelayAccount,
     fetchRelayQuota,
     fetchRelaySignupOptions,
     relayQuotaAmount,
@@ -21,6 +22,8 @@ type RelaySignupModalProps = {
     onConnected: (result: RelaySignInResult) => void;
     /** 已连接时先展示账户概览，而不是直接让用户重新登录。 */
     connected?: boolean;
+    /** 退出账号后通知外层刷新配置。 */
+    onDisconnected?: () => void;
 };
 
 const CODE_COOLDOWN_SECONDS = 60;
@@ -29,7 +32,7 @@ const CODE_COOLDOWN_SECONDS = 60;
  * 内置服务的接入向导：注册时走邮箱验证码，登录直接复用既有账号。
  * 密码只在本次请求里使用，后端不会保存，也不会返回值里带出。
  */
-export function RelaySignupModal({ open, onClose, onConnected, connected = false }: RelaySignupModalProps) {
+export function RelaySignupModal({ open, onClose, onConnected, connected = false, onDisconnected }: RelaySignupModalProps) {
     const [mode, setMode] = useState<RelayMode>("login");
     const [form] = Form.useForm<{ username: string; password: string; email: string; code: string }>();
     const [options, setOptions] = useState<RelaySignupOptions | null>(null);
@@ -41,10 +44,12 @@ export function RelaySignupModal({ open, onClose, onConnected, connected = false
     const [result, setResult] = useState<RelaySignInResult | null>(null);
     const [cooldown, setCooldown] = useState(0);
     const [accountView, setAccountView] = useState(false);
+    const [disconnecting, setDisconnecting] = useState(false);
+    const showAccount = !result && (accountView || connected);
     const accountQuota = useQuery({
         queryKey: ["relay-quota", "account", open],
         queryFn: () => fetchRelayQuota(),
-        enabled: open && accountView,
+        enabled: open && showAccount,
         retry: false,
         staleTime: 30_000,
     });
@@ -151,6 +156,20 @@ export function RelaySignupModal({ open, onClose, onConnected, connected = false
         }
     };
 
+    const handleDisconnect = async () => {
+        setDisconnecting(true);
+        setError("");
+        try {
+            await disconnectRelayAccount();
+            message.success("已退出账号");
+            onDisconnected?.();
+            onClose();
+        } catch (reason) {
+            setError(reason instanceof Error ? reason.message : "退出失败，请稍后重试");
+        } finally {
+            setDisconnecting(false);
+        }
+    };
     const handleClose = () => {
         if (submitting) return;
         setError("");
@@ -172,7 +191,7 @@ export function RelaySignupModal({ open, onClose, onConnected, connected = false
             maskClosable={!submitting}
         >
             <div className="pt-2">
-                {!result ? (
+                {!showAccount ? (
                     <Tabs
                         className="relay-auth-tabs mb-3"
                         activeKey={mode}
@@ -210,7 +229,7 @@ export function RelaySignupModal({ open, onClose, onConnected, connected = false
 
                 {error ? <Alert className="mb-3" type="error" showIcon message={error} /> : null}
 
-                {accountView && !result ? (
+                {showAccount ? (
                     <div className="space-y-4">
                         <div className="rounded-xl border border-border/60 px-4 py-3">
                             <div className="text-xs text-foreground/55">账户余额</div>
@@ -221,7 +240,7 @@ export function RelaySignupModal({ open, onClose, onConnected, connected = false
                             </div>
                         </div>
                         <div className="flex gap-2">
-                            <Button block onClick={() => setAccountView(false)}>切换账号</Button>
+                            <Button danger block loading={disconnecting} onClick={() => void handleDisconnect()}>退出账号</Button>
                             <Button type="primary" block onClick={handleClose}>完成</Button>
                         </div>
                     </div>
@@ -256,7 +275,7 @@ export function RelaySignupModal({ open, onClose, onConnected, connected = false
                             完成
                         </Button>
                     </div>
-                ) : accountView ? null : (
+                ) : showAccount ? null : (
                     <Form form={form} layout="vertical" requiredMark={false} disabled={submitting} size="middle">
                         <Form.Item
                             name="username"

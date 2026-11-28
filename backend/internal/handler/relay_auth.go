@@ -213,6 +213,15 @@ func RegisterRelayRoutes(r gin.IRouter, svc *app.Service) {
 			"usageKnown": true,
 		})
 	})
+	// relayLogout 退出账号：清掉本地保存的凭据与额度，渠道回到未连接状态。
+	r.POST("/relay/logout", func(c *gin.Context) {
+		revision, err := clearRelayConnection(c, svc)
+		if err != nil {
+			failService(c, err)
+			return
+		}
+		ok(c, gin.H{"channelId": builtinRelayChannelID, "revision": revision})
+	})
 	r.POST("/relay/connect", func(c *gin.Context) {
 		var request struct {
 			Username string `json:"username"`
@@ -404,6 +413,43 @@ type relayChannelState struct {
 	Quota        int64
 	UsedQuota    int64
 	QuotaPerUnit float64
+}
+
+// clearRelayConnection 清除内置渠道里保存的连接凭据。
+func clearRelayConnection(c *gin.Context, svc *app.Service) (int64, error) {
+	providerConfig := requestProviderConfig(c, svc)
+	versioned, supportsVersioning := providerConfig.(VersionedProviderConfig)
+	if !supportsVersioning {
+		return 0, errors.New("当前工作区不支持保存模型配置")
+	}
+	effective, _, err := versioned.LoadEffectiveModelConfig()
+	if err != nil {
+		return 0, err
+	}
+	config := effective.Config
+	if config == nil {
+		config = map[string]any{}
+	}
+	channels, _ := config["channels"].([]any)
+	for _, item := range channels {
+		channel, isMap := item.(map[string]any)
+		if !isMap {
+			continue
+		}
+		if id, _ := channel["id"].(string); id != builtinRelayChannelID {
+			continue
+		}
+		channel["apiKey"] = ""
+		channel["enabled"] = false
+		for _, key := range []string{"relayAccessToken", "relayTokenType", "relayCookie", "relayQuota", "relayUsedQuota", "relayQuotaPerUnit", "relayQuotaAt"} {
+			delete(channel, key)
+		}
+	}
+	body, err := json.Marshal(config)
+	if err != nil {
+		return 0, err
+	}
+	return versioned.SaveLocalModelConfigRevision(body, effective.Revision)
 }
 
 // applyRelayChannelState 把连接状态写入渠道对象。

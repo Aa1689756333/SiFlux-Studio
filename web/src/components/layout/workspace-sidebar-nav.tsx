@@ -15,6 +15,7 @@ import { useThemeStore } from "@/stores/use-theme-store";
 import { RelaySignupModal } from "@/pages/settings/relay-signup-modal";
 import { Button } from "antd";
 import { completeRelayConnection, relayChannelConnected } from "@/services/relay-connection";
+import { refreshModelConfigFromServer } from "@/components/workspace/workspace-bootstrap-hydrator";
 import { fetchRelayQuota } from "@/services/api/relay-auth";
 import { useConfigStore } from "@/stores/use-config-store";
 import { message } from "antd";

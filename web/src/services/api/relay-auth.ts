@@ -49,6 +49,11 @@ export function sendRelayVerificationCode(email: string, signal?: AbortSignal) {
 }
 
 /** 在服务创建账号，并自动写入应用令牌。 */
+/** 退出当前接入的账号，清除本地保存的凭据。 */
+export function disconnectRelayAccount(signal?: AbortSignal) {
+    return http.post<{ channelId: string; revision: number }>("/relay/logout", undefined, { signal });
+}
+
 export function signUpRelayAccount(payload: RelaySignupPayload, signal?: AbortSignal) {
     return http.post<RelaySignInResult>("/relay/signup", payload, { signal });
 }
