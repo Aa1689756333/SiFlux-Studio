@@ -1,10 +1,35 @@
 import { useCallback, useEffect, useMemo, useState } from "react";
-import { App, Button, Switch } from "antd";
+import { App, Button, Input, Modal, Switch } from "antd";
 import { Copy, Download, RefreshCw } from "lucide-react";
 
 import { WorkspacePage } from "@/components/layout/workspace-page";
 import { fetchAppLogMeta, fetchAppLogs, type AppLogEntry, type AppLogMeta } from "@/services/api/app-logs";
 
+/** 复制文本：优先剪贴板 API，失败时退回 execCommand。 */
+async function copyText(text: string): Promise<boolean> {
+    try {
+        await navigator.clipboard.writeText(text);
+        return true;
+    } catch {
+        /* 内嵌浏览器可能禁用剪贴板 API */
+    }
+    try {
+        const area = document.createElement("textarea");
+        area.value = text;
+        area.setAttribute("readonly", "");
+        area.style.position = "fixed";
+        area.style.top = "-1000px";
+        area.style.opacity = "0";
+        document.body.append(area);
+        area.select();
+        area.setSelectionRange(0, text.length);
+        const copied = document.execCommand("copy");
+        area.remove();
+        return copied;
+    } catch {
+        return false;
+    }
+}
 const LEVEL_LABEL: Record<AppLogEntry["level"], string> = { info: "信息", warn: "警告", error: "错误" };
 
 function formatForReport(entries: AppLogEntry[], meta: AppLogMeta | null) {
@@ -50,13 +75,15 @@ export default function LogsPage() {
     const visible = useMemo(() => (onlyProblems ? entries.filter((entry) => entry.level !== "info") : entries), [entries, onlyProblems]);
     const problemCount = useMemo(() => entries.filter((entry) => entry.level !== "info").length, [entries]);
 
+    const [manualText, setManualText] = useState("");
     const copyAll = async () => {
-        try {
-            await navigator.clipboard.writeText(formatForReport(visible.length ? visible : entries, meta));
-            message.success("日志已复制，可直接粘贴给开发者");
-        } catch {
-            message.error("复制失败，请手动选中文本复制");
+        const text = formatForReport(visible.length ? visible : entries, meta);
+        if (await copyText(text)) {
+            message.success("日志已复制");
+            return;
         }
+        // 浏览器或内嵌环境禁用剪贴板时，给一段可手动复制的文本。
+        setManualText(text);
     };
 
     const exportFile = () => {
@@ -77,9 +104,6 @@ export default function LogsPage() {
                 <header className="flex flex-wrap items-center justify-between gap-3">
                     <div>
                         <h1 className="m-0 text-lg font-semibold">运行日志</h1>
-                        <p className="mt-1 mb-0 text-sm text-foreground/55">
-                            遇到问题时点「复制日志」，把内容发给开发者即可，不需要自己判断错误原因。
-                        </p>
                     </div>
                     <div className="flex flex-wrap items-center gap-2">
                         <span className="flex items-center gap-1.5 text-sm text-foreground/60">
@@ -130,7 +154,16 @@ export default function LogsPage() {
                         </p>
                     )}
                 </div>
-            </div>
+                <Modal
+                    open={Boolean(manualText)}
+                    title="复制日志"
+                    onCancel={() => setManualText("")}
+                    footer={[<Button key="close" type="primary" onClick={() => setManualText("")}>关闭</Button>]}
+                    width={720}
+                >
+                    <p className="mt-0 text-sm text-foreground/60">当前环境无法自动复制，请全选下面内容后手动复制（Ctrl+C）。</p>
+                    <Input.TextArea value={manualText} readOnly autoSize={{ minRows: 10, maxRows: 20 }} onFocus={(event) => event.currentTarget.select()} />
+                </Modal>            </div>
         </WorkspacePage>
     );
 }
