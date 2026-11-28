@@ -3,7 +3,7 @@ import { Button } from "antd";
 import { ArrowUpCircle } from "lucide-react";
 
 import { AppModal } from "@/components/ui/product/app-modal";
-import { APP_VERSION } from "@/components/layout/app-changelog-modal";
+import { APP_VERSION, AppChangelogButton } from "@/components/layout/app-changelog-modal";
 import { useDesktopUpdate } from "@/hooks/use-desktop-update";
 import {
     desktopUpdateDetailLabel,
@@ -114,6 +114,15 @@ export function AppUpdateEntry({ collapsed }: { collapsed: boolean }) {
                     ) : (
                         <p className="m-0 text-foreground/65">已是最新版本，无需更新。</p>
                     )}
+
+                    <div className="flex items-center justify-between border-t border-border/60 pt-3">
+                        <AppChangelogButton
+                            showLabel
+                            showIcon={false}
+                            label="查看历史版本"
+                            className="text-xs text-foreground/55 underline-offset-4 transition-colors hover:text-primary hover:underline"
+                        />
+                    </div>
                 </div>
             </AppModal>
         </>
