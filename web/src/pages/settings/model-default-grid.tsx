@@ -36,11 +36,12 @@ export function ModelDefaultGrid({ config, onChange, onOpenChannels }: { config:
     const localMode = workspaceCapabilities().local;
     const rootRef = useRef<HTMLDivElement>(null);
     useEffect(() => (rootRef.current ? watchModelPickerBlockers(rootRef.current) : undefined), []);
-    // Agent 模型未指定时自动落一个默认值，保证下游拿到的具体模型和界面一致。
+    // Agent 模型始终落到一个可用的对话模型：未指定或旧值失效时自动改选第一个。
     useEffect(() => {
-        if (config.assistantModel) return;
         const available = filterModelsByCapability(config.models, "text", config.channels);
-        if (available.length) onChange("assistantModel", available[0]);
+        if (!available.length) return;
+        if (config.assistantModel && available.includes(config.assistantModel)) return;
+        onChange("assistantModel", available[0]);
     }, [config.assistantModel, config.models, config.channels, onChange]);
     const buildStartedAt = performance.now();
     return (
@@ -57,9 +58,12 @@ export function ModelDefaultGrid({ config, onChange, onOpenChannels }: { config:
                     const channel = isBuiltinBeefAPIChannel(modelChannel) ? "BeefTV" : modelChannel.name || "未命名渠道";
                     return { value: model, label, searchLabel: `${label} ${channel}`, channel };
                 }).sort((a, b) => compareModelNames(a.label, b.label));
-                const unavailable = Boolean(configured && !options.some((option) => option.value === configured));
-                // 未单独指定时自动选中列表里的第一个模型。
-                const value = configured ? (unavailable ? undefined : configured) : options[0]?.value;
+                // Agent 行始终自动落一个可用模型；其他行保留失效提示。
+                const autoPick = row.id === "assistant";
+                const unavailable = autoPick ? false : Boolean(configured && !options.some((option) => option.value === configured));
+                const value = autoPick
+                    ? (options.some((option) => option.value === configured) ? configured : options[0]?.value)
+                    : configured ? (unavailable ? undefined : configured) : options[0]?.value;
                 const Icon = row.icon;
                 const snapshot: ModelPickerSnapshot = { pickerId: row.id, title: row.title, optionCount: options.length, hasValue: value !== undefined && value !== "", unavailable, disabled: !options.length, buildMs: performance.now() - buildStartedAt };
                 return (

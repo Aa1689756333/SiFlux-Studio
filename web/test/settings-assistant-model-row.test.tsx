@@ -49,11 +49,11 @@ describe("模型配置页的 Agent 模型一行", () => {
         expect(agentSection).not.toContain("img-1");
     });
 
-    test("选中态跟着 assistantModel 走，失效选择不会被悄悄替换", () => {
+    test("选中态跟着 assistantModel 走，失效的旧值自动改选可用模型", () => {
         expect(assistantSelection(configWithChannels({ assistantModel: "a::chat-2" }))).toContain("chat-2");
-        const unavailable = renderToStaticMarkup(
-            <ModelDefaultGrid config={configWithChannels({ assistantModel: "gone::chat-1" })} onChange={() => {}} />,
-        );
-        expect(unavailable).toContain("已选模型不可用，请重新选择");
+        const stale = configWithChannels({ assistantModel: "gone::chat-1" });
+        expect(assistantSelection(stale)).toContain("chat-1");
+        const markup = renderToStaticMarkup(<ModelDefaultGrid config={stale} onChange={() => {}} />);
+        expect(markup).not.toContain("已选模型不可用");
     });
 });
