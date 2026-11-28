@@ -4,7 +4,7 @@ import { LayoutGroup, motion, useReducedMotion } from "motion/react";
 import { useEffect, useMemo, useRef, useState, type ComponentType, type CSSProperties } from "react";
 import { Link, useLocation } from "react-router";
 
-import { WorkspaceSidebarUpdate } from "@/components/layout/workspace-sidebar-update";
+import { AppUpdateEntry } from "@/components/layout/app-update-entry";
 
 import { Kbd } from "@/components/ui/base/kbd";
 import { navigationTools, type NavigationToolSlug } from "@/constant/navigation-tools";
@@ -51,9 +51,9 @@ function buildNav(): { groups: WorkspaceNavGroup[]; footer: WorkspaceNavItem[] }
             { heading: "创作", items: [
                 { id: "image", title: "生图", icon: ImageIcon, to: "/generate/image" },
                 { id: "agent", title: "Agent 生图", icon: Bot, to: "/agent" },
+                toolItem("canvas", "/canvas"),
             ] },
             { heading: "工作区", items: [
-                toolItem("canvas", "/canvas"),
                 toolItem("assets", "/assets"),
             ] },
             { heading: "Agent 配置", items: [
@@ -331,7 +331,7 @@ export function WorkspaceSidebarNav({ onNavigate, onOpenSearch }: { onNavigate: 
                     <RelayAccountEntry connected={relayConnected} collapsed={collapsed} onOpen={openRelay} />
                 </div>
                 <div className={cn("app-workspace-sidebar-utility-row", collapsed && "is-collapsed")}>
-                    <WorkspaceSidebarUpdate collapsed={collapsed} />
+                    <AppUpdateEntry collapsed={collapsed} />
                     <AnimatedThemeToggler theme={theme} onThemeChange={setTheme} aria-label={theme === "dark" ? "切换到浅色模式" : "切换到深色模式"} title={theme === "dark" ? "切换到浅色模式" : "切换到深色模式"} className="app-workspace-theme-action">
                         {theme === "dark" ? <Sun className="size-4" /> : <Moon className="size-4" />}
                     </AnimatedThemeToggler>

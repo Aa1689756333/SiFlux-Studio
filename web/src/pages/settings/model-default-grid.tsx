@@ -2,7 +2,6 @@ import { Bot, Image } from "lucide-react";
 import { Button, Select } from "antd";
 import { useEffect, useRef } from "react";
 
-import { assistantModelOptions, normalizeAssistantModel } from "@/lib/assistant-model";
 import {
     compareModelNames,
     filterModelsByCapability,
@@ -27,17 +26,10 @@ type CapabilityRow = {
     icon: typeof Image;
 };
 
-type AssistantRow = {
-    kind: "assistant";
-    id: string;
-    modelKey: DefaultModelKey;
-    title: string;
-    icon: typeof Image;
-};
 
-const rows: Array<CapabilityRow | AssistantRow> = [
+const rows: CapabilityRow[] = [
     { kind: "capability", id: "image", capability: "image", modelKey: "imageModel", title: "默认生图模型", icon: Image },
-    { kind: "assistant", id: "assistant", modelKey: "assistantModel", title: "助手模型", icon: Bot },
+    { kind: "capability", id: "assistant", capability: "image", modelKey: "assistantModel", title: "Agent 模型", icon: Bot },
 ];
 
 export function ModelDefaultGrid({ config, onChange, onOpenChannels }: { config: AiConfig; onChange: (key: DefaultModelKey, model: string) => void; onOpenChannels?: () => void }) {
@@ -45,14 +37,12 @@ export function ModelDefaultGrid({ config, onChange, onOpenChannels }: { config:
     const rootRef = useRef<HTMLDivElement>(null);
     useEffect(() => (rootRef.current ? watchModelPickerBlockers(rootRef.current) : undefined), []);
     const buildStartedAt = performance.now();
-    const assistantModel = normalizeAssistantModel(config, config.assistantModel);
-    const assistantOptions = assistantModelOptions(config);
     return (
         <div ref={rootRef} className="model-default-settings">
             {rows.map((row) => {
-                const isAssistant = row.kind === "assistant";
-                const models = isAssistant ? assistantOptions : filterModelsByCapability(config.models, row.capability, config.channels);
-                const selected = isAssistant ? assistantModel : config[row.modelKey];
+                // Agent 未单独指定时跟随默认生图模型，界面始终显示一个具体模型。
+                const models = filterModelsByCapability(config.models, row.capability, config.channels);
+                const selected = config[row.modelKey] || (row.modelKey === "assistantModel" ? config.imageModel || models[0] || "" : "");
                 const groups = models.map((model) => ({ key: model, models: [model] }));
                 const options = groups.map((group) => {
                     const model = group.models.includes(selected) ? selected : group.models[0];
@@ -61,9 +51,8 @@ export function ModelDefaultGrid({ config, onChange, onOpenChannels }: { config:
                     const channel = isBuiltinBeefAPIChannel(modelChannel) ? "BeefTV" : modelChannel.name || "未命名渠道";
                     return { value: model, label, searchLabel: `${label} ${channel}`, channel };
                 }).sort((a, b) => compareModelNames(a.label, b.label));
-                if (isAssistant) options.unshift({ value: "", label: "自动选择", searchLabel: "自动选择", channel: "" });
-                const unavailable = isAssistant ? Boolean(config.assistantModel && !selected) : Boolean(selected && !options.some((option) => option.value === selected));
-                const value = unavailable ? undefined : isAssistant && !config.assistantModel ? "" : options.some((option) => option.value === selected) ? selected : undefined;
+                const unavailable = Boolean(selected && !options.some((option) => option.value === selected));
+                const value = unavailable ? undefined : options.some((option) => option.value === selected) ? selected : undefined;
                 const Icon = row.icon;
                 const snapshot: ModelPickerSnapshot = { pickerId: row.id, title: row.title, optionCount: options.length, hasValue: value !== undefined && value !== "", unavailable, disabled: !options.length, buildMs: performance.now() - buildStartedAt };
                 return (
