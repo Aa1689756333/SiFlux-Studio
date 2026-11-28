@@ -260,8 +260,9 @@ func (c *Client) CreateToken(ctx context.Context, session Session, name string, 
 
 // tokenSummary 是令牌列表里的一项。
 type tokenSummary struct {
-	ID   int    `json:"id"`
-	Name string `json:"name"`
+	ID    int    `json:"id"`
+	Name  string `json:"name"`
+	Group string `json:"group"`
 }
 
 // newestToken 在令牌列表里找到刚创建的那一枚。
@@ -303,6 +304,36 @@ func (c *Client) ModelMetas(ctx context.Context, session Session) map[string]Mod
 		out[model] = meta
 	}
 	return out
+}
+// SyncGroupKeys 从站点已有的令牌里恢复分组密钥，前缀由 prefix 指定。
+func (c *Client) SyncGroupKeys(ctx context.Context, session Session, prefix string) (map[string]string, map[string]string) {
+	keys := map[string]string{}
+	groups := map[string]string{}
+	var page struct {
+		Items []tokenSummary `json:"items"`
+	}
+	if err := c.call(ctx, http.MethodGet, "/api/token/?p=0&size=100", nil, session, &page); err != nil {
+		return keys, groups
+	}
+	for _, item := range page.Items {
+		name := strings.TrimSpace(item.Name)
+		if !strings.HasPrefix(name, prefix) {
+			continue
+		}
+		group := strings.TrimSpace(item.Group)
+		if group == "" {
+			group = strings.TrimSpace(strings.TrimPrefix(name, prefix))
+		}
+		key, err := c.tokenKey(ctx, session, item.ID)
+		if err != nil || strings.TrimSpace(key) == "" {
+			continue
+		}
+		if group == "" {
+			continue
+		}
+		keys[group] = key
+	}
+	return keys, groups
 }
 // EnsureToken 复用同名令牌；不存在时才新建，避免每次登录都多出一把密钥。
 func (c *Client) EnsureToken(ctx context.Context, session Session, name string, group string) (Token, error) {

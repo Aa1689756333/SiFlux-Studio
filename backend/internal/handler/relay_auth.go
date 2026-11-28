@@ -376,48 +376,55 @@ func RegisterRelayRoutes(r gin.IRouter, svc *app.Service) {
 }
 
 // completeRelaySignIn 在登录成功后创建应用令牌并把凭据写入内置渠道。
+// ensurePrimaryToken 复用本地保存的主密钥，没有时才新建。
+func ensurePrimaryToken(ctx context.Context, client *relayclient.Client, session relayclient.Session, previous relayChannelState) (relayclient.Token, error) {
+	if key := strings.TrimSpace(previous.APIKey); key != "" {
+		return relayclient.Token{Key: key}, nil
+	}
+	return client.CreateToken(ctx, session, relayTokenName, "")
+}
 func completeRelaySignIn(c *gin.Context, svc *app.Service, client *relayclient.Client, session relayclient.Session, options relayclient.Options) {
 	ctx := c.Request.Context()
+	previous, _ := storedRelayState(c, svc)
 
-	token, err := client.EnsureToken(ctx, session, relayTokenName, "")
+	token, err := ensurePrimaryToken(ctx, client, session, previous)
 	if err != nil {
 		failRelay(c, err)
 		return
 	}
 
-	// 按分组各建一把密钥，让不同分组的模型都能用。
-	groupKeys := make(map[string]string)
-	modelGroups := make(map[string]string)
+	// 本地已保存的分组密钥直接沿用，只补缺失的分组，避免反复创建。
+	groupKeys := map[string]string{}
+	for group, key := range previous.GroupKeys {
+		if strings.TrimSpace(key) != "" {
+			groupKeys[group] = key
+		}
+	}
+	modelGroups := map[string]string{}
 	priced, priceErr := client.Pricing(ctx, session)
 	if priceErr != nil {
 		log.Printf("relay 价格表读取失败，跳过分组密钥: %v", priceErr)
 	}
-	if priceErr == nil {
-		for _, item := range priced {
-			group := ""
-			if len(item.EnableGroups) > 0 {
-				group = item.EnableGroups[0]
-			}
-			if group != "" {
-				modelGroups[item.Model] = group
-			}
+	for _, item := range priced {
+		if len(item.EnableGroups) == 0 {
+			continue
 		}
-		groups := make([]string, 0, len(modelGroups))
-		seen := map[string]struct{}{}
-		for _, name := range modelGroups {
-			if _, ok := seen[name]; ok {
-				continue
-			}
-			seen[name] = struct{}{}
-			groups = append(groups, name)
+		modelGroups[item.Model] = item.EnableGroups[0]
+	}
+	for _, item := range priced {
+		if len(item.EnableGroups) == 0 {
+			continue
 		}
-		for _, group := range groups {
-			groupToken, createErr := client.EnsureToken(ctx, session, relayTokenName+" "+group, group)
-			if createErr != nil || strings.TrimSpace(groupToken.Key) == "" {
-				continue
-			}
-			groupKeys[group] = groupToken.Key
+		group := item.EnableGroups[0]
+		if _, saved := groupKeys[group]; saved {
+			continue
 		}
+		groupToken, createErr := client.CreateToken(ctx, session, relayTokenName+" "+group, group)
+		if createErr != nil || strings.TrimSpace(groupToken.Key) == "" {
+			log.Printf("relay 分组密钥创建失败 group=%s err=%v", group, createErr)
+			continue
+		}
+		groupKeys[group] = groupToken.Key
 	}
 
 	self, err := client.Self(ctx, session)
@@ -427,6 +434,14 @@ func completeRelaySignIn(c *gin.Context, svc *app.Service, client *relayclient.C
 	}
 
 	models, modelsErr := client.Models(ctx, token.Key)
+	if modelsErr != nil {
+		if priced, priceErr := client.Pricing(ctx, session); priceErr == nil {
+			models = make([]string, 0, len(priced))
+			for _, item := range priced {
+				models = append(models, item.Model)
+			}
+		}
+	}
 
 	revision, err := saveRelayAPIKey(c, svc, relayChannelState{
 		APIKey:       token.Key,
@@ -447,20 +462,12 @@ func completeRelaySignIn(c *gin.Context, svc *app.Service, client *relayclient.C
 	}
 
 	data := gin.H{
-		"channelId":    builtinRelayChannelID,
-		"username":     self.Username,
-		"displayName":  self.DisplayName,
-		"group":        self.Group,
-		"quota":        self.Quota,
-		"usedQuota":    self.UsedQuota,
-		"quotaPerUnit": options.QuotaPerUnit,
-		"models":       models,
-		"tokenName":    relayTokenName,
-		"revision":     revision,
-	}
-	if modelsErr != nil {
-		// 模型列表拉取失败不影响凭据写入，前端可稍后手动刷新。
-		data["modelsError"] = modelsErr.Error()
+		"channelId":   builtinRelayChannelID,
+		"groupKeys":   groupKeys,
+		"modelGroups": modelGroups,
+		"username":    self.Username,
+		"displayName": self.DisplayName,
+		"revision":    revision,
 	}
 	ok(c, data)
 }

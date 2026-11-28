@@ -153,7 +153,9 @@ export function ChannelSettingsPane({ onOpenDiagnostics, onOpenModels, onOpenRun
     useEffect(() => {
         if (catalogSyncedRef.current) return;
         const relay = useConfigStore.getState().config.channels.find((item) => isBuiltinRelayChannel(item));
-        if (!relay || !relay.modelsSynced || relay.relayCatalog) return;
+        if (!relay || !relay.modelsSynced) return;
+        // 目录存在但没有价格/厂商数据时也补一次（旧版本拉取过的数据不含这些）。
+        if (relay.relayCatalog?.prices && Object.keys(relay.relayCatalog.prices).length) return;
         if (!channelHasGenerationCredential(relay) && !relay.apiKey?.trim()) return;
         catalogSyncedRef.current = true;
         void refreshChannelModels(relay);
