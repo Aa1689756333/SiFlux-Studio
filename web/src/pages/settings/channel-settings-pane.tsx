@@ -188,66 +188,6 @@ export function ChannelSettingsPane({ onOpenDiagnostics, onOpenModels, onOpenRun
     };
 
 
-    const refreshAllModels = async () => {
-        const runnable = userChannels.filter((channel) => !channelConnectionError(channel, null));
-        const skipped = userChannels.filter((channel) => channelConnectionError(channel, null));
-        if (!runnable.length) {
-            const detail = skipped.map((channel) => `${channel.name || "未命名渠道"}：${channelConnectionError(channel, null)}`).join("；");
-            message.error(detail || "没有可拉取的个人模型渠道，请先填写有效 Base URL 和 API Key");
-            return;
-        }
-        setChannelLoading("all", true);
-        const batch = new Map<string, AbortController>();
-        try {
-            const results = await Promise.all(
-                runnable.map(async (channel) => {
-                    const request = requests.current.start(channel.id);
-                    batch.set(channel.id, request);
-                    try {
-                        const result = await fetchChannelModels(channel, true, request.signal);
-                        if (!requests.current.current(channel.id, request)) return { channel, result: { models: [], catalog: [] }, error: "", cancelled: true };
-                        return { channel, result, error: "" };
-                    } catch (error) {
-                        if (!requests.current.current(channel.id, request)) return { channel, result: { models: [], catalog: [] }, error: "", cancelled: true };
-                        return { channel, result: { models: [], catalog: [] }, error: channelModelFetchErrorMessage(error) };
-                    }
-                }),
-            );
-            const latestConfig = useConfigStore.getState().config;
-            const successful = results.filter((item) => {
-                const latestChannel = latestConfig.channels.find((channel) => channel.id === item.channel.id);
-                return Boolean(item.result.models.length && latestChannel && requests.current.current(item.channel.id, batch.get(item.channel.id)!) && channelConnectionSignature(latestChannel) === channelConnectionSignature(item.channel));
-            });
-            const stale = results.filter((item) => {
-                const latestChannel = latestConfig.channels.find((channel) => channel.id === item.channel.id);
-                return Boolean(item.result.models.length && (!latestChannel || channelConnectionSignature(latestChannel) !== channelConnectionSignature(item.channel)));
-            });
-            const failed = results.filter((item) => !item.cancelled && !item.result.models.length);
-            if (successful.length) {
-                const resultMap = new Map(successful.map((item) => [item.channel.id, item.result] as const));
-                updateChannels(
-                    latestConfig.channels.map((channel) => {
-                        const fetched = resultMap.get(channel.id);
-                        return fetched ? applyFetchedChannelModelCatalog(channel, fetched) : channel;
-                    }),
-                    latestConfig,
-                );
-                message.success(`已更新 ${successful.length} 个渠道的模型`);
-            }
-            const warnings = [
-                ...failed.map((item) => `${item.channel.name || "未命名渠道"}：${item.error || "未返回模型"}`),
-                ...stale.map((item) => `${item.channel.name || "未命名渠道"}：连接配置已改变，已忽略旧结果`),
-                ...skipped.map((channel) => `${channel.name || "未命名渠道"}：${channelConnectionError(channel, null)}`),
-            ];
-            if (warnings.length) message.warning(`${warnings.join("；")}。未更新的渠道已保留原有模型列表`);
-        } catch (error) {
-            message.error(error instanceof Error ? error.message : "批量读取模型失败，原有模型列表未改动");
-        } finally {
-            for (const [id, request] of batch) requests.current.finish(id, request);
-            setChannelLoading("all", false);
-        }
-    };
-
     return (
         <Form layout="vertical" requiredMark={false}>
             {Object.entries(deleteFailures).map(([id, detail]) => <Alert key={id} type="error" showIcon title={detail} action={<Button onClick={() => void deleteChannel(id)}>重试删除</Button>} />)}
@@ -256,9 +196,6 @@ export function ChannelSettingsPane({ onOpenDiagnostics, onOpenModels, onOpenRun
                 actions={(
                     <div className="settings-pane-header-actions flex w-full gap-2 sm:w-auto sm:shrink-0">
                     {onOpenDiagnostics ? <Button className="h-10 flex-1 sm:h-8 sm:flex-none" icon={<Bug className="size-4" />} onClick={onOpenDiagnostics}>问题诊断</Button> : null}
-                    <Button className="h-10 flex-1 sm:h-8 sm:flex-none" icon={<RefreshCw className="size-4" />} loading={loadingChannelIds.includes("all")} disabled={loadingChannelIds.some((id) => id !== "all")} onClick={() => void refreshAllModels()}>
-                        拉取全部渠道模型
-                    </Button>
                     </div>
                 )}
             />
