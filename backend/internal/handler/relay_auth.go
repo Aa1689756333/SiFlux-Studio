@@ -539,6 +539,9 @@ func relayChannelStateFromMap(channel map[string]any) relayChannelState {
 	state.Quota = anyToInt64(channel["relayQuota"])
 	state.UsedQuota = anyToInt64(channel["relayUsedQuota"])
 	state.QuotaPerUnit = anyToFloat64(channel["relayQuotaPerUnit"])
+	state.Username, _ = channel["relayUsername"].(string)
+	state.GroupKeys = relayMapFromAny(channel["relayGroupKeys"])
+	state.ModelGroups = relayMapFromAny(channel["relayModelGroups"])
 	return state
 }
 
@@ -636,6 +639,25 @@ func marshalRelayMap(value map[string]string) string {
 		return ""
 	}
 	return string(raw)
+}
+
+// relayMapFromAny 兼容两种存储形态：JSON 字符串或已解析的对象。
+func relayMapFromAny(value any) map[string]string {
+	switch typed := value.(type) {
+	case string:
+		return unmarshalRelayMap(typed)
+	case map[string]any:
+		out := make(map[string]string, len(typed))
+		for key, item := range typed {
+			if text, ok := item.(string); ok {
+				out[key] = text
+			}
+		}
+		return out
+	case map[string]string:
+		return typed
+	}
+	return map[string]string{}
 }
 
 func unmarshalRelayMap(raw string) map[string]string {
