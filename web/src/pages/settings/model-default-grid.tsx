@@ -36,13 +36,19 @@ export function ModelDefaultGrid({ config, onChange, onOpenChannels }: { config:
     const localMode = workspaceCapabilities().local;
     const rootRef = useRef<HTMLDivElement>(null);
     useEffect(() => (rootRef.current ? watchModelPickerBlockers(rootRef.current) : undefined), []);
+    // Agent 模型未指定时自动落一个默认值，保证下游拿到的具体模型和界面一致。
+    useEffect(() => {
+        if (config.assistantModel) return;
+        const available = filterModelsByCapability(config.models, "image", config.channels);
+        if (available.length) onChange("assistantModel", available[0]);
+    }, [config.assistantModel, config.models, config.channels, onChange]);
     const buildStartedAt = performance.now();
     return (
         <div ref={rootRef} className="model-default-settings">
             {rows.map((row) => {
-                // Agent 未单独指定时跟随默认生图模型，界面始终显示一个具体模型。
                 const models = filterModelsByCapability(config.models, row.capability, config.channels);
-                const selected = config[row.modelKey] || (row.modelKey === "assistantModel" ? config.imageModel || models[0] || "" : "");
+                const configured = config[row.modelKey] || "";
+                const selected = configured;
                 const groups = models.map((model) => ({ key: model, models: [model] }));
                 const options = groups.map((group) => {
                     const model = group.models.includes(selected) ? selected : group.models[0];
@@ -51,8 +57,9 @@ export function ModelDefaultGrid({ config, onChange, onOpenChannels }: { config:
                     const channel = isBuiltinBeefAPIChannel(modelChannel) ? "BeefTV" : modelChannel.name || "未命名渠道";
                     return { value: model, label, searchLabel: `${label} ${channel}`, channel };
                 }).sort((a, b) => compareModelNames(a.label, b.label));
-                const unavailable = Boolean(selected && !options.some((option) => option.value === selected));
-                const value = unavailable ? undefined : options.some((option) => option.value === selected) ? selected : undefined;
+                const unavailable = Boolean(configured && !options.some((option) => option.value === configured));
+                // 未单独指定时自动选中列表里的第一个模型。
+                const value = configured ? (unavailable ? undefined : configured) : options[0]?.value;
                 const Icon = row.icon;
                 const snapshot: ModelPickerSnapshot = { pickerId: row.id, title: row.title, optionCount: options.length, hasValue: value !== undefined && value !== "", unavailable, disabled: !options.length, buildMs: performance.now() - buildStartedAt };
                 return (

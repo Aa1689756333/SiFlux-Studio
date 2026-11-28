@@ -38,10 +38,12 @@ describe("模型配置页的 Agent 模型一行", () => {
         expect(markup).not.toContain("自动选择");
     });
 
-    test("未单独指定时直接选中默认生图模型", () => {
+    test("未单独指定时自动选中列表里的第一个模型", () => {
         const markup = renderToStaticMarkup(<ModelDefaultGrid config={configWithImageChannel()} onChange={() => {}} />);
         expect(markup).toContain('aria-label="Agent 模型"');
         expect(assistantSelection(configWithImageChannel())).toContain("img-1");
+        // 不跟随默认生图模型：两者可以各自选择。
+        expect(assistantSelection(configWithImageChannel({ imageModel: "a::img-2" }))).toContain("img-1");
     });
 
     test("选中态跟着 assistantModel 走，失效选择不会被悄悄替换", () => {
