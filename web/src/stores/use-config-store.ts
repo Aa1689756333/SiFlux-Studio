@@ -299,7 +299,11 @@ export type ModelChannel = {
     relayGroupKeys?: Record<string, string>;
     relayModelGroups?: Record<string, string>;
     /** 服务端返回的价格与分组目录，用于列表展示。 */
-    relayCatalog?: { groups?: Record<string, string[]>; prices?: Record<string, { quotaType: number; ratio: number; completionRatio: number; price: number }> };
+    relayCatalog?: {
+        groups?: Record<string, string[]>;
+        prices?: Record<string, { quotaType: number; ratio: number; completionRatio: number; price: number }>;
+        metas?: Record<string, { tags?: string[]; description?: string }>;
+    };
     // 仅平台目录使用：将已保存的旧 SKU 选择重定向到当前模型家族。
     modelAliases?: Record<string, string>;
     scope?: "system" | "user";

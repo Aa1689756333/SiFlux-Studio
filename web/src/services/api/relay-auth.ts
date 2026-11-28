@@ -71,6 +71,7 @@ export type RelayModelCatalog = {
     models: string[];
     groups?: Record<string, string[]>;
     prices?: Record<string, RelayModelPrice>;
+    metas?: Record<string, { tags?: string[]; description?: string }>;
     source?: string;
 };
 

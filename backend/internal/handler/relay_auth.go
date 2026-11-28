@@ -239,11 +239,19 @@ func RegisterRelayRoutes(r gin.IRouter, svc *app.Service) {
 		if priceErr == nil && len(priced) > 0 {
 			names := make([]string, 0, len(priced))
 			groups := make(map[string][]string, len(priced))
+			prices := make(map[string]gin.H, len(priced))
 			for _, item := range priced {
 				names = append(names, item.Model)
 				groups[item.Model] = item.EnableGroups
+				prices[item.Model] = gin.H{
+					"quotaType":       item.QuotaType,
+					"ratio":           item.ModelRatio,
+					"completionRatio": item.CompletionRatio,
+					"price":           item.ModelPrice,
+				}
 			}
-			ok(c, gin.H{"models": names, "groups": groups, "source": "pricing"})
+			metas := client.ModelMetas(c.Request.Context(), session)
+			ok(c, gin.H{"models": names, "groups": groups, "prices": prices, "metas": metas, "source": "pricing"})
 			return
 		}
 		models, err := client.Models(c.Request.Context(), state.APIKey)

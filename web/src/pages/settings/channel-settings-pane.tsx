@@ -178,7 +178,7 @@ export function ChannelSettingsPane({ onOpenDiagnostics, onOpenModels, onOpenRun
             updateChannels(
                 latestConfig.channels.map((item) => (item.id === channel.id
                     ? relayModels
-                        ? { ...item, models: relayModels, modelsSynced: true, relayCatalog: relayCatalog ? { groups: relayCatalog.groups, prices: relayCatalog.prices } : item.relayCatalog }
+                        ? { ...item, models: relayModels, modelsSynced: true, relayCatalog: relayCatalog ? { groups: relayCatalog.groups, prices: relayCatalog.prices, metas: relayCatalog.metas } : item.relayCatalog }
                         : { ...applyFetchedChannelModelCatalog(item, result!), modelsSynced: true }
                     : item)),
                 latestConfig,

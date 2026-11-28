@@ -281,6 +281,29 @@ func (c *Client) tokenByName(ctx context.Context, session Session, name string) 
 	return 0, false
 }
 
+// ModelMeta 是模型元数据（标签与描述），部分站点只对管理员开放。
+type ModelMeta struct {
+	Tags        []string `json:"tags"`
+	Description string   `json:"description"`
+}
+
+// ModelMetas 读取模型元数据；接口不可用时返回空表而不是错误。
+func (c *Client) ModelMetas(ctx context.Context, session Session) map[string]ModelMeta {
+	out := map[string]ModelMeta{}
+	var payload struct {
+		Data map[string]ModelMeta `json:"data"`
+	}
+	if err := c.call(ctx, http.MethodGet, "/api/models/meta", nil, session, &payload); err != nil {
+		return out
+	}
+	for model, meta := range payload.Data {
+		if strings.TrimSpace(model) == "" {
+			continue
+		}
+		out[model] = meta
+	}
+	return out
+}
 // EnsureToken 复用同名令牌；不存在时才新建，避免每次登录都多出一把密钥。
 func (c *Client) EnsureToken(ctx context.Context, session Session, name string, group string) (Token, error) {
 	if id, found := c.tokenByName(ctx, session, name); found {

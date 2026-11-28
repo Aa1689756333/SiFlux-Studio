@@ -15,7 +15,7 @@ function priceText(catalog: AiConfig["channels"][number]["relayCatalog"], model:
     if (entry.quotaType === 1 && entry.price > 0) return `按次 $${entry.price.toFixed(4)}`;
     if (!entry.ratio) return "";
     // NewAPI 的倍率以 1 为基准，展示为相对倍率。
-    return `${entry.ratio}x`;
+    return `${Number(entry.ratio.toFixed(2))}x`;
 }
 
 function groupText(catalog: AiConfig["channels"][number]["relayCatalog"], model: string) {
@@ -31,12 +31,13 @@ function buildRows(models: string[], config: AiConfig, extraLabel: (model: strin
             const channel = resolveModelChannel(config, model);
             const catalog = channel?.relayCatalog;
             const price = priceText(catalog, model);
-            const group = groupText(catalog, model);
+            const meta = catalog?.metas?.[model];
+            const description = meta?.description?.trim() || [price, groupText(catalog, model)].filter(Boolean).join(" · ");
             return {
                 model,
                 name: modelDisplayName(config, model),
-                meta: [price, group].filter(Boolean).join(" · "),
-                labels: extra ? [extra] : [],
+                meta: description,
+                labels: [...(extra ? [extra] : []), ...(meta?.tags || [])],
             };
         })
         .sort((a, b) => a.name.localeCompare(b.name, "zh-Hans-CN"));
