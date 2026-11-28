@@ -38,6 +38,12 @@ type ChannelSettingsPaneProps = {
     onOpenRunningHub?: () => void;
 };
 
+function isAbortError(error: unknown) {
+    if (!error || typeof error !== "object") return false;
+    const candidate = error as { name?: string; code?: string; canceled?: boolean };
+    return candidate.name === "AbortError" || candidate.name === "CanceledError" || candidate.code === "ERR_CANCELED" || candidate.canceled === true;
+}
+
 export function ChannelSettingsPane({ onOpenDiagnostics, onOpenModels, onOpenRunningHub }: ChannelSettingsPaneProps) {
     const { message } = App.useApp();
     const config = useConfigStore((state) => state.config);
