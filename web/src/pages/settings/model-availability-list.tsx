@@ -20,8 +20,8 @@ const ROW_GRID = "grid grid-cols-[minmax(0,1fr)_112px_232px_72px] items-center g
 const UNIT_LABELS: [string, string][] = [
     ["p", "输入"],
     ["c", "输出"],
-    ["cr", "缓存读"],
-    ["cc", "缓存写"],
+    ["cr", "缓存读取"],
+    ["cc", "缓存写入"],
     ["img", "图片输入"],
     ["img_cr", "图片缓存输入"],
     ["img_o", "图片输出"],
