@@ -29,7 +29,7 @@ type CapabilityRow = {
 
 const rows: CapabilityRow[] = [
     { kind: "capability", id: "image", capability: "image", modelKey: "imageModel", title: "默认生图模型", icon: Image },
-    { kind: "capability", id: "assistant", capability: "image", modelKey: "assistantModel", title: "Agent 模型", icon: Bot },
+    { kind: "capability", id: "assistant", capability: "text", modelKey: "assistantModel", title: "Agent 模型", icon: Bot },
 ];
 
 export function ModelDefaultGrid({ config, onChange, onOpenChannels }: { config: AiConfig; onChange: (key: DefaultModelKey, model: string) => void; onOpenChannels?: () => void }) {
@@ -39,7 +39,7 @@ export function ModelDefaultGrid({ config, onChange, onOpenChannels }: { config:
     // Agent 模型未指定时自动落一个默认值，保证下游拿到的具体模型和界面一致。
     useEffect(() => {
         if (config.assistantModel) return;
-        const available = filterModelsByCapability(config.models, "image", config.channels);
+        const available = filterModelsByCapability(config.models, "text", config.channels);
         if (available.length) onChange("assistantModel", available[0]);
     }, [config.assistantModel, config.models, config.channels, onChange]);
     const buildStartedAt = performance.now();
