@@ -425,11 +425,14 @@ const channelLookups = new WeakMap<ModelChannel[], ChannelLookup>();
 const profileLookups = new WeakMap<ModelChannel, Map<string, ChannelModelProfile>>();
 
 function channelLookup(channels: ModelChannel[]): ChannelLookup {
+    // 配置未同步完成时字段可能缺失，按空集合处理。
+    if (!Array.isArray(channels)) return { byId: new Map(), byModel: new Map() };
     let lookup = channelLookups.get(channels);
     if (lookup) return lookup;
     lookup = { byId: new Map(), byModel: new Map() };
     for (const channel of channels) {
         if (!lookup.byId.has(channel.id)) lookup.byId.set(channel.id, channel);
+        if (!Array.isArray(channel.models)) continue;
         for (const model of channel.models) if (!lookup.byModel.has(model)) lookup.byModel.set(model, channel);
     }
     channelLookups.set(channels, lookup);
@@ -448,6 +451,7 @@ export function channelModelProfile(channel: ModelChannel | undefined, model: st
 }
 
 export function filterModelsByCapability(models: string[], capability?: ModelCapability, channels?: ModelChannel[]) {
+    if (!Array.isArray(models)) return [];
     if (!capability) return models.filter((model) => !isUnsupportedGenerationModel(model));
     const lookup = channels ? channelLookup(channels) : undefined;
     return models.filter((model) => {
@@ -706,7 +710,7 @@ export function useEffectiveConfig() {
 
 export function effectiveConfigForCustomChannels(config: AiConfig, customChannelsEnabled: boolean): AiConfig {
     if (customChannelsEnabled) return config;
-    const channels = config.channels.filter((channel) => channel.scope === "system");
+    const channels = (Array.isArray(config.channels) ? config.channels : []).filter((channel) => channel.scope === "system");
     return normalizeConfigSnapshot({ config: { ...config, channels } }).config;
 }
 

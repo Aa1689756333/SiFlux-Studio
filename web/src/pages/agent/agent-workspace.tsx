@@ -62,7 +62,10 @@ export function AgentWorkspace() {
     const config = AGENT_PAGE;
     const aiConfig = useEffectiveConfig();
     const updateConfig = useConfigStore((state) => state.updateConfig);
-    const imageModels = filterModelsByCapability(aiConfig.models, "image", aiConfig.channels);
+    // 配置可能还没同步完成，字段缺失时按空列表处理，避免整页崩溃。
+    const aiChannels = Array.isArray(aiConfig?.channels) ? aiConfig.channels : [];
+    const aiModelNames = Array.isArray(aiConfig?.models) ? aiConfig.models : [];
+    const imageModels = filterModelsByCapability(aiModelNames, "image", aiChannels);
     const navigate = useNavigate();
     const assistant = useCanvasAssistant({ canvasId: config.conversationId });
     const setOpen = assistant.setOpen;
