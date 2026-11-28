@@ -12,6 +12,7 @@ import (
 	"log"
 	"net/http"
 	"net/url"
+	"sort"
 	"strings"
 	"time"
 )
@@ -416,6 +417,60 @@ func (c *Client) Self(ctx context.Context, session Session) (Self, error) {
 }
 
 // Models 用访问令牌读取可用模型。
+// PricingModel 是中转站价格表里的一条模型，带上可用的分组。
+type PricingModel struct {
+	Model        string   `json:"model"`
+	EnableGroups []string `json:"enableGroups"`
+}
+
+// Pricing 读取全部模型（含所有分组）。/v1/models 只返回当前分组的模型，
+// 因此按分组控价的站点必须用价格表才能拿到完整清单。
+func (c *Client) Pricing(ctx context.Context, session Session) ([]PricingModel, error) {
+	request, err := c.newRequest(ctx, http.MethodGet, "/api/pricing", nil, session)
+	if err != nil {
+		return nil, err
+	}
+	response, err := c.http.Do(request)
+	if err != nil {
+		return nil, fmt.Errorf("连接 SiFlux 服务失败: %w", err)
+	}
+	defer response.Body.Close()
+	raw, err := io.ReadAll(io.LimitReader(response.Body, maxResponseBytes))
+	if err != nil {
+		return nil, fmt.Errorf("读取 SiFlux 服务响应失败: %w", err)
+	}
+	if response.StatusCode != http.StatusOK {
+		return nil, &Error{Status: response.StatusCode, Path: "/api/pricing", Message: failureMessage(raw, response.StatusCode)}
+	}
+	var payload struct {
+		Data []struct {
+			ModelName    string   `json:"model_name"`
+			Model        string   `json:"model"`
+			EnableGroups []string `json:"enable_groups"`
+		} `json:"data"`
+	}
+	if err := json.Unmarshal(raw, &payload); err != nil {
+		return nil, fmt.Errorf("服务返回内容无法解析")
+	}
+	seen := map[string]struct{}{}
+	models := make([]PricingModel, 0, len(payload.Data))
+	for _, item := range payload.Data {
+		name := strings.TrimSpace(item.ModelName)
+		if name == "" {
+			name = strings.TrimSpace(item.Model)
+		}
+		if name == "" {
+			continue
+		}
+		if _, exists := seen[name]; exists {
+			continue
+		}
+		seen[name] = struct{}{}
+		models = append(models, PricingModel{Model: name, EnableGroups: item.EnableGroups})
+	}
+	sort.Slice(models, func(i, j int) bool { return models[i].Model < models[j].Model })
+	return models, nil
+}
 func (c *Client) Models(ctx context.Context, apiKey string) ([]string, error) {
 	request, err := c.newRequest(ctx, http.MethodGet, "/v1/models", nil, Session{})
 	if err != nil {

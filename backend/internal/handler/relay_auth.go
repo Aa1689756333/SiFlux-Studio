@@ -216,7 +216,7 @@ func RegisterRelayRoutes(r gin.IRouter, svc *app.Service) {
 		})
 	})
 	// relayLogout 退出账号：清掉本地保存的凭据与额度，渠道回到未连接状态。
-// relayModels 返回服务端当前的模型清单，供设置页同步渠道模型。
+	// relayModels 返回服务端当前的模型清单，供设置页同步渠道模型。
 	r.GET("/relay/models", func(c *gin.Context) {
 		state, err := storedRelayState(c, svc)
 		if err != nil {
@@ -232,12 +232,25 @@ func RegisterRelayRoutes(r gin.IRouter, svc *app.Service) {
 			failService(c, err)
 			return
 		}
+		// 先取价格表（含全部分组），拿不到再退回当前分组的模型清单。
+		session := relayclient.Session{AccessToken: state.AccessToken, TokenType: state.TokenType, Cookie: state.Cookie}
+		priced, priceErr := client.Pricing(c.Request.Context(), session)
+		if priceErr == nil && len(priced) > 0 {
+			names := make([]string, 0, len(priced))
+			groups := make(map[string][]string, len(priced))
+			for _, item := range priced {
+				names = append(names, item.Model)
+				groups[item.Model] = item.EnableGroups
+			}
+			ok(c, gin.H{"models": names, "groups": groups, "source": "pricing"})
+			return
+		}
 		models, err := client.Models(c.Request.Context(), state.APIKey)
 		if err != nil {
 			failRelay(c, err)
 			return
 		}
-		ok(c, gin.H{"models": models})
+		ok(c, gin.H{"models": models, "source": "models"})
 	})
 	r.POST("/relay/logout", func(c *gin.Context) {
 		revision, err := clearRelayConnection(c, svc)
