@@ -6,6 +6,7 @@ import { useNavigate, useSearchParams } from "react-router";
 import { useConfigStore, useEffectiveConfig } from "@/stores/use-config-store";
 import { useUserStore } from "@/stores/use-user-store";
 import { ChannelSettingsPane, channelValidationError, focusInvalidChannelField, isChannelReady } from "./channel-settings-pane";
+import { ModelAvailabilityList } from "./model-availability-list";
 import { ModelDefaultGrid } from "./model-default-grid";
 import DiagnosticsPanel from "./diagnostics-panel";
 import { StorageSettingsPane } from "./storage-settings-pane";
@@ -99,6 +100,13 @@ export default function SettingsPage() {
                 </div>
                 <div className="settings-section">
                             <ModelDefaultGrid config={effectiveConfig} onChange={(key, model) => updateConfig(key, model)} onOpenChannels={customChannelsEnabled ? () => selectSection("channels") : undefined} />
+                </div>
+                <div className="settings-section">
+                    <div className="mb-3">
+                        <h3 className="m-0 text-sm font-medium text-foreground">可用模型</h3>
+                        <p className="mt-1 mb-0 text-xs text-foreground/50">当前服务提供的全部模型，以及它们在应用里的用途。</p>
+                    </div>
+                    <ModelAvailabilityList config={effectiveConfig} />
                 </div>
             </SettingsPane>
         ),
