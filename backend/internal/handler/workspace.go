@@ -211,7 +211,7 @@ func preserveBuiltinRelayConnection(incoming, existing map[string]any) {
 		original, exists := stored[id]
 		// 这些字段只由应用自己维护：界面保存配置时不能被前端快照覆盖或抹掉。
 		for _, key := range []string{
-			"baseUrl", "apiFormat", "name", "referenceAssetOrigin", "secretKey",
+			"baseUrl", "apiFormat", "name", "referenceAssetOrigin", "secretKey", "apiKey",
 			"relayAccessToken", "relayTokenType", "relayCookie",
 			"relayQuota", "relayUsedQuota", "relayQuotaPerUnit", "relayQuotaAt",
 		} {
