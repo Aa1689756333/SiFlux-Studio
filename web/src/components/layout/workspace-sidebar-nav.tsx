@@ -249,8 +249,9 @@ function RelayAccountEntry({ connected, collapsed, onOpen }: { connected: boolea
             </Button>
         );
     }
-    const known = Boolean(quota.data && !quota.data.stale && quota.data.granted > 0);
+    const known = Boolean(quota.data && quota.data.granted > 0);
     const amount = known && quota.data ? `$${quota.data.remaining.toFixed(2)}` : quota.isLoading ? "…" : "余额未知";
+    const stale = Boolean(quota.data?.stale);
     return (
         <button
             type="button"
@@ -265,6 +266,7 @@ function RelayAccountEntry({ connected, collapsed, onOpen }: { connected: boolea
                     <span className="flex min-w-0 flex-col">
                         <span className="flex items-center gap-1.5 text-[var(--fs-micro)] text-foreground/50"><span className="size-1.5 rounded-full bg-emerald-500" aria-hidden />已连接 · 余额</span>
                         <span className="truncate text-sm font-semibold">{amount}</span>
+                        {stale ? <span className="text-[var(--fs-micro)] text-foreground/40">未同步</span> : null}
                     </span>
                     <ChevronRight className="size-3.5 shrink-0 text-foreground/40" />
                 </>

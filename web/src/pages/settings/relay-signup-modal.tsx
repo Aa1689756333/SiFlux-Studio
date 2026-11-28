@@ -215,7 +215,7 @@ export function RelaySignupModal({ open, onClose, onConnected, connected = false
                         <div className="rounded-xl border border-border/60 px-4 py-3">
                             <div className="text-xs text-foreground/55">账户余额</div>
                             <div className="mt-1 text-2xl font-semibold leading-tight">
-                                {accountQuota.data && !accountQuota.data.stale && accountQuota.data.granted > 0
+                                {accountQuota.data && accountQuota.data.granted > 0
                                     ? `$${accountQuota.data.remaining.toFixed(2)}`
                                     : accountQuota.isLoading ? "…" : "余额未知"}
                             </div>
