@@ -50,8 +50,32 @@ export function sendRelayVerificationCode(email: string, signal?: AbortSignal) {
 
 /** 在服务创建账号，并自动写入应用令牌。 */
 /** 读取服务端当前模型清单。 */
+export type RelayKeyEntry = { group: string; key: string; modelCount: number };
+
+export function fetchRelayKeys(signal?: AbortSignal) {
+    return http.get<{ keys: RelayKeyEntry[]; mainKey: string }>("/relay/keys", { signal });
+}
+
+export function updateRelayKey(group: string, key: string, signal?: AbortSignal) {
+    return http.put<{ group: string; key: string }>("/relay/keys", { group, key }, { signal });
+}
+
+export type RelayModelPrice = {
+    quotaType: number;
+    ratio: number;
+    completionRatio: number;
+    price: number;
+};
+
+export type RelayModelCatalog = {
+    models: string[];
+    groups?: Record<string, string[]>;
+    prices?: Record<string, RelayModelPrice>;
+    source?: string;
+};
+
 export function fetchRelayModels(signal?: AbortSignal) {
-    return http.get<{ models: string[] }>("/relay/models", { signal });
+    return http.get<RelayModelCatalog>("/relay/models", { signal });
 }
 
 /** 退出当前接入的账号，清除本地保存的凭据。 */

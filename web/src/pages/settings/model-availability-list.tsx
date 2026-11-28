@@ -5,18 +5,37 @@ import { filterModelsByCapability, modelDisplayName, resolveModelChannel, type A
 type Row = {
     model: string;
     name: string;
-    channel: string;
+    meta: string;
     labels: string[];
 };
+
+function priceText(catalog: AiConfig["channels"][number]["relayCatalog"], model: string) {
+    const entry = catalog?.prices?.[model];
+    if (!entry) return "";
+    if (entry.quotaType === 1 && entry.price > 0) return `按次 $${entry.price.toFixed(4)}`;
+    if (!entry.ratio) return "";
+    // NewAPI 的倍率以 1 为基准，展示为相对倍率。
+    return `${entry.ratio}x`;
+}
+
+function groupText(catalog: AiConfig["channels"][number]["relayCatalog"], model: string) {
+    const groups = catalog?.groups?.[model];
+    if (!groups?.length) return "";
+    return groups.length === 1 ? groups[0] : `${groups[0]} +${groups.length - 1}`;
+}
 
 function buildRows(models: string[], config: AiConfig, extraLabel: (model: string) => string | null): Row[] {
     return models
         .map((model) => {
             const extra = extraLabel(model);
+            const channel = resolveModelChannel(config, model);
+            const catalog = channel?.relayCatalog;
+            const price = priceText(catalog, model);
+            const group = groupText(catalog, model);
             return {
                 model,
                 name: modelDisplayName(config, model),
-                channel: resolveModelChannel(config, model)?.name || "未命名渠道",
+                meta: [price, group].filter(Boolean).join(" · "),
                 labels: extra ? [extra] : [],
             };
         })
@@ -72,7 +91,7 @@ export function ModelAvailabilityList({ config }: { config: AiConfig }) {
                                     <li key={row.model} className="grid grid-cols-[minmax(0,1fr)_auto] items-center gap-3 px-4 py-2.5">
                                         <div className="min-w-0">
                                             <div className="truncate text-sm text-foreground">{row.name}</div>
-                                            <div className="truncate text-xs text-foreground/45">{row.channel}</div>
+                                            <div className="truncate text-xs text-foreground/45">{row.meta}</div>
                                         </div>
                                         <span className="flex justify-end gap-1 text-xs">
                                             {row.labels.map((label) => (

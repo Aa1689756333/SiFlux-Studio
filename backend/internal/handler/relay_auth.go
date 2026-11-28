@@ -7,6 +7,7 @@ import (
 	"log"
 	"net/http"
 	"os"
+	"sort"
 	"strings"
 	"sync"
 	"time"
@@ -252,6 +253,74 @@ func RegisterRelayRoutes(r gin.IRouter, svc *app.Service) {
 		}
 		ok(c, gin.H{"models": models, "source": "models"})
 	})
+	// relayKeys 列出每个分组保存的密钥，供详情面板查看与修改。
+	r.GET("/relay/keys", func(c *gin.Context) {
+		state, err := storedRelayState(c, svc)
+		if err != nil {
+			failService(c, err)
+			return
+		}
+		groups := make([]string, 0, len(state.ModelGroups))
+		seen := map[string]struct{}{}
+		for _, group := range state.ModelGroups {
+			if _, ok := seen[group]; ok {
+				continue
+			}
+			seen[group] = struct{}{}
+			groups = append(groups, group)
+		}
+		for group := range state.GroupKeys {
+			if _, ok := seen[group]; ok {
+				continue
+			}
+			seen[group] = struct{}{}
+			groups = append(groups, group)
+		}
+		sort.Strings(groups)
+		items := make([]gin.H, 0, len(groups))
+		for _, group := range groups {
+			count := 0
+			for _, name := range state.ModelGroups {
+				if name == group {
+					count++
+				}
+			}
+			items = append(items, gin.H{"group": group, "key": state.GroupKeys[group], "modelCount": count})
+		}
+		ok(c, gin.H{"keys": items, "mainKey": state.APIKey})
+	})
+
+	// relayKeyUpdate 修改某个分组的密钥。
+	r.PUT("/relay/keys", func(c *gin.Context) {
+		var body struct {
+			Group string `json:"group"`
+			Key   string `json:"key"`
+		}
+		if err := c.ShouldBindJSON(&body); err != nil {
+			fail(c, http.StatusBadRequest, errors.New("请求格式错误"))
+			return
+		}
+		group := strings.TrimSpace(body.Group)
+		key := strings.TrimSpace(body.Key)
+		if group == "" || key == "" {
+			fail(c, http.StatusBadRequest, errors.New("分组和密钥都不能为空"))
+			return
+		}
+		state, err := storedRelayState(c, svc)
+		if err != nil {
+			failService(c, err)
+			return
+		}
+		if state.GroupKeys == nil {
+			state.GroupKeys = map[string]string{}
+		}
+		state.GroupKeys[group] = key
+		if _, err := saveRelayAPIKey(c, svc, state); err != nil {
+			failService(c, err)
+			return
+		}
+		ok(c, gin.H{"group": group, "key": key})
+	})
 	r.POST("/relay/logout", func(c *gin.Context) {
 		revision, err := clearRelayConnection(c, svc)
 		if err != nil {
@@ -310,7 +379,11 @@ func completeRelaySignIn(c *gin.Context, svc *app.Service, client *relayclient.C
 	// 按分组各建一把密钥，让不同分组的模型都能用。
 	groupKeys := make(map[string]string)
 	modelGroups := make(map[string]string)
-	if priced, priceErr := client.Pricing(ctx, session); priceErr == nil {
+	priced, priceErr := client.Pricing(ctx, session)
+	if priceErr != nil {
+		log.Printf("relay 价格表读取失败，跳过分组密钥: %v", priceErr)
+	}
+	if priceErr == nil {
 		for _, item := range priced {
 			group := ""
 			if len(item.EnableGroups) > 0 {

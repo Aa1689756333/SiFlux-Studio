@@ -298,6 +298,8 @@ export type ModelChannel = {
     /** 每个分组一把密钥，按模型所属分组路由。 */
     relayGroupKeys?: Record<string, string>;
     relayModelGroups?: Record<string, string>;
+    /** 服务端返回的价格与分组目录，用于列表展示。 */
+    relayCatalog?: { groups?: Record<string, string[]>; prices?: Record<string, { quotaType: number; ratio: number; completionRatio: number; price: number }> };
     // 仅平台目录使用：将已保存的旧 SKU 选择重定向到当前模型家族。
     modelAliases?: Record<string, string>;
     scope?: "system" | "user";
@@ -437,6 +439,16 @@ function parseRelayMap(raw: unknown): Record<string, string> | undefined {
     try {
         const parsed = JSON.parse(raw);
         return parsed && typeof parsed === "object" ? (parsed as Record<string, string>) : undefined;
+    } catch {
+        return undefined;
+    }
+}
+
+function parseRelayCatalog(raw: unknown) {
+    if (!raw) return undefined;
+    try {
+        const value = typeof raw === "string" ? JSON.parse(raw) : raw;
+        return value && typeof value === "object" ? value : undefined;
     } catch {
         return undefined;
     }
@@ -760,6 +772,7 @@ export function createModelChannel(channel?: Partial<ModelChannel>): ModelChanne
         modelsSynced: channel?.modelsSynced === true,
         relayGroupKeys: parseRelayMap(channel?.relayGroupKeys),
         relayModelGroups: parseRelayMap(channel?.relayModelGroups),
+        relayCatalog: parseRelayCatalog(channel?.relayCatalog),
         hasSecretKey: channel?.hasSecretKey,
         modelProfiles: channel?.modelProfiles?.filter((item) => isSupportedProtocolCapability(item.capability) && !isUnsupportedGenerationModel(item.model) && !isUnsupportedModelProtocol(item.protocol)).map(({ model, displayName, description, icon, capability, protocol, capabilityConfig, logicalModelId, logicalCapabilitySpec, logicalCapabilityProfiles, defaultOptions }) => ({ model, displayName, description, icon, capability, protocol: normalizeModelProtocol(protocol), capabilityConfig: capabilityConfig ? { version: capabilityConfig.version, text: capabilityConfig.text, image: capabilityConfig.image } : undefined, logicalModelId, logicalCapabilitySpec, logicalCapabilityProfiles, defaultOptions })),
     };

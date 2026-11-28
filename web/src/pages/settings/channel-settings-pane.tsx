@@ -13,6 +13,7 @@ import { fetchRelayModels } from "@/services/api/relay-auth";
 import { fetchChannelModels, type ChannelModelFetchResult } from "@/services/api/image";
 import { channelHasGenerationCredential, channelHasManagedBeefAPICredential, createModelChannel, defaultBaseUrlForApiFormat, isBuiltinBeefAPIChannel, isBuiltinRelayChannel, normalizeConfigSnapshot, useConfigStore, type AiConfig, type ModelChannel } from "@/stores/use-config-store";
 import { ChannelModelSettings } from "./channel-model-settings";
+import { RelayKeysModal } from "./relay-keys-modal";
 import { refreshModelConfigFromServer } from "@/components/workspace/workspace-bootstrap-hydrator";
 import { ModelServiceEditor } from "./model-service-editor";
 import { currentModelConnectionReceipt, useModelConnectionTests } from "@/stores/use-model-connection-tests";
@@ -44,6 +45,7 @@ export function ChannelSettingsPane({ onOpenDiagnostics, onOpenModels, onOpenRun
     const localMode = workspaceCapabilities().local;
     const persistence = useSyncExternalStore(subscribeModelConfigPersistence, getModelConfigPersistenceState, getModelConfigPersistenceState);
     const [syncNote, setSyncNote] = useState<Record<string, { tone: "ok" | "error"; text: string }>>({});
+    const [keysOpen, setKeysOpen] = useState(false);
     const [loadingChannelIds, setLoadingChannelIds] = useState<string[]>([]);
     const [editingChannelId, setEditingChannelId] = useState<string | null>(null);
     const [serviceEditor, setServiceEditor] = useState<ModelChannel | undefined>(undefined);
@@ -157,7 +159,8 @@ export function ChannelSettingsPane({ onOpenDiagnostics, onOpenModels, onOpenRun
         const request = requests.current.start(channel.id);
         try {
             // 内置服务由后端凭已保存的密钥直连服务端，避免浏览器跨域影响。
-            const relayModels = isBuiltinRelayChannel(channel) ? (await fetchRelayModels(request.signal)).models.filter(Boolean) : null;
+            const relayCatalog = isBuiltinRelayChannel(channel) ? await fetchRelayModels(request.signal) : null;
+            const relayModels = relayCatalog ? relayCatalog.models.filter(Boolean) : null;
             const result = relayModels ? null : await fetchChannelModels(channel, true, request.signal);
             const fetchedModels = relayModels ?? result?.models ?? [];
             if (!requests.current.current(channel.id, request)) return;
@@ -175,7 +178,7 @@ export function ChannelSettingsPane({ onOpenDiagnostics, onOpenModels, onOpenRun
             updateChannels(
                 latestConfig.channels.map((item) => (item.id === channel.id
                     ? relayModels
-                        ? { ...item, models: relayModels, modelsSynced: true }
+                        ? { ...item, models: relayModels, modelsSynced: true, relayCatalog: relayCatalog ? { groups: relayCatalog.groups, prices: relayCatalog.prices } : item.relayCatalog }
                         : { ...applyFetchedChannelModelCatalog(item, result!), modelsSynced: true }
                     : item)),
                 latestConfig,
@@ -265,7 +268,10 @@ export function ChannelSettingsPane({ onOpenDiagnostics, onOpenModels, onOpenRun
                                     </div>
                                     <div className="flex w-full flex-wrap justify-end gap-2 sm:w-auto sm:shrink-0">
                                         {isBuiltinRelayChannel(channel) ? (
+                                            <>
                                             <Button className="h-10 sm:h-8" size="small" icon={<RefreshCw className="size-3.5" />} loading={loadingChannelIds.includes(channel.id)} disabled={loadingChannelIds.includes("all") || !relayReady} onClick={() => void refreshChannelModels(channel)}>{loadingChannelIds.includes(channel.id) ? "正在拉取…" : "拉取模型"}</Button>
+                                            <Button className="h-10 sm:h-8" size="small" onClick={() => setKeysOpen(true)}>详情</Button>
+                                            </>
                                         ) : (
                                             <>
                                         <Button
@@ -438,6 +444,7 @@ export function ChannelSettingsPane({ onOpenDiagnostics, onOpenModels, onOpenRun
                 />
             )}
             {serviceEditor !== undefined && <ModelServiceEditor initial={serviceEditor} onClose={() => setServiceEditor(undefined)} onSave={saveService} />}
+            <RelayKeysModal open={keysOpen} onClose={() => setKeysOpen(false)} />
         </Form>
     );
 }

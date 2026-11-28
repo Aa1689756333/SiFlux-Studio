@@ -420,8 +420,12 @@ func (c *Client) Self(ctx context.Context, session Session) (Self, error) {
 // Models 用访问令牌读取可用模型。
 // PricingModel 是中转站价格表里的一条模型，带上可用的分组。
 type PricingModel struct {
-	Model        string   `json:"model"`
-	EnableGroups []string `json:"enableGroups"`
+	Model           string   `json:"model"`
+	EnableGroups    []string `json:"enableGroups"`
+	QuotaType       int      `json:"quotaType"`
+	ModelRatio      float64  `json:"modelRatio"`
+	CompletionRatio float64  `json:"completionRatio"`
+	ModelPrice      float64  `json:"modelPrice"`
 }
 
 // Pricing 读取全部模型（含所有分组）。/v1/models 只返回当前分组的模型，
@@ -445,9 +449,13 @@ func (c *Client) Pricing(ctx context.Context, session Session) ([]PricingModel, 
 	}
 	var payload struct {
 		Data []struct {
-			ModelName    string   `json:"model_name"`
-			Model        string   `json:"model"`
-			EnableGroups []string `json:"enable_groups"`
+			ModelName       string   `json:"model_name"`
+			Model           string   `json:"model"`
+			EnableGroups    []string `json:"enable_groups"`
+			QuotaType       int      `json:"quota_type"`
+			ModelRatio      float64  `json:"model_ratio"`
+			CompletionRatio float64  `json:"completion_ratio"`
+			ModelPrice      float64  `json:"model_price"`
 		} `json:"data"`
 	}
 	if err := json.Unmarshal(raw, &payload); err != nil {
@@ -467,7 +475,11 @@ func (c *Client) Pricing(ctx context.Context, session Session) ([]PricingModel, 
 			continue
 		}
 		seen[name] = struct{}{}
-		models = append(models, PricingModel{Model: name, EnableGroups: item.EnableGroups})
+		models = append(models, PricingModel{
+			Model: name, EnableGroups: item.EnableGroups,
+			QuotaType: item.QuotaType, ModelRatio: item.ModelRatio,
+			CompletionRatio: item.CompletionRatio, ModelPrice: item.ModelPrice,
+		})
 	}
 	sort.Slice(models, func(i, j int) bool { return models[i].Model < models[j].Model })
 	return models, nil
