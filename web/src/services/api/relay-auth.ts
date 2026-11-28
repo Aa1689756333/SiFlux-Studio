@@ -71,6 +71,9 @@ export type RelayModelPrice = {
     billingMode?: string;
     billingExpr?: string;
     fixedPrice?: number;
+    groupRatio?: number;
+    inputPrice?: number;
+    outputPrice?: number;
 };
 
 export type RelayModelCatalog = {

@@ -312,6 +312,9 @@ export type ModelChannel = {
             billingMode?: string;
             billingExpr?: string;
             fixedPrice?: number;
+            groupRatio?: number;
+            inputPrice?: number;
+            outputPrice?: number;
         }>;
         metas?: Record<string, { tags?: string[]; description?: string }>;
     };

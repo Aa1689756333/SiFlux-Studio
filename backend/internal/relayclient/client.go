@@ -283,6 +283,25 @@ func (c *Client) tokenByName(ctx context.Context, session Session, name string) 
 	return 0, false
 }
 
+// inputPricePerMillion 按 NewAPI 约定折算输入价格（美元 / 百万 token）。
+// ratio 1 对应每千 token 0.002 美元，即每百万 2 美元。
+func inputPricePerMillion(ratio float64, groupRatio float64) float64 {
+	if ratio <= 0 {
+		return 0
+	}
+	if groupRatio <= 0 {
+		groupRatio = 1
+	}
+	return ratio * groupRatio * 2
+}
+
+func maxFloat(value float64, floor float64) float64 {
+	if value < floor {
+		return floor
+	}
+	return value
+}
+
 // fixedPriceFromExpr 从 tier("base", fixed(0.075)) 里取出固定单次价格。
 func fixedPriceFromExpr(expr string) float64 {
 	start := strings.Index(expr, "fixed(")
@@ -533,6 +552,9 @@ type PricingModel struct {
 	BillingMode     string   `json:"billingMode"`
 	BillingExpr     string   `json:"billingExpr"`
 	FixedPrice      float64  `json:"fixedPrice"`
+	GroupRatio      float64  `json:"groupRatio"`
+	InputPrice      float64  `json:"inputPrice"`
+	OutputPrice     float64  `json:"outputPrice"`
 }
 
 // Pricing 读取全部模型（含所有分组）。/v1/models 只返回当前分组的模型，
@@ -573,6 +595,7 @@ func (c *Client) Pricing(ctx context.Context, session Session) ([]PricingModel, 
 			ID   int    `json:"id"`
 			Name string `json:"name"`
 		} `json:"vendors"`
+		GroupRatio map[string]float64 `json:"group_ratio"`
 	}
 	if err := json.Unmarshal(raw, &payload); err != nil {
 		return nil, fmt.Errorf("服务返回内容无法解析")
@@ -595,6 +618,12 @@ func (c *Client) Pricing(ctx context.Context, session Session) ([]PricingModel, 
 			continue
 		}
 		seen[name] = struct{}{}
+		groupRatio := 1.0
+		if len(item.EnableGroups) > 0 {
+			if ratio, ok := payload.GroupRatio[item.EnableGroups[0]]; ok && ratio > 0 {
+				groupRatio = ratio
+			}
+		}
 		models = append(models, PricingModel{
 			Model: name, EnableGroups: item.EnableGroups,
 			QuotaType: item.QuotaType, ModelRatio: item.ModelRatio,
@@ -602,7 +631,10 @@ func (c *Client) Pricing(ctx context.Context, session Session) ([]PricingModel, 
 			VendorID: item.VendorID, Vendor: vendorNames[item.VendorID],
 			Description: strings.TrimSpace(item.Description), Tags: strings.TrimSpace(item.Tags),
 			BillingMode: item.BillingMode, BillingExpr: item.BillingExpr,
-			FixedPrice: fixedPriceFromExpr(item.BillingExpr),
+			FixedPrice:  fixedPriceFromExpr(item.BillingExpr),
+			GroupRatio:  groupRatio,
+			InputPrice:  inputPricePerMillion(item.ModelRatio, groupRatio),
+			OutputPrice: inputPricePerMillion(item.ModelRatio, groupRatio) * maxFloat(item.CompletionRatio, 1),
 		})
 	}
 	sort.Slice(models, func(i, j int) bool { return models[i].Model < models[j].Model })
