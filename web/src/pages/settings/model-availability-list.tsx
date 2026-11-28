@@ -2,52 +2,92 @@ import { useMemo } from "react";
 
 import { filterModelsByCapability, modelDisplayName, resolveModelChannel, type AiConfig } from "@/stores/use-config-store";
 
-/** 设置页的可用模型清单：列出当前渠道下所有模型及其能力和默认归属。 */
-export function ModelAvailabilityList({ config }: { config: AiConfig }) {
-    const rows = useMemo(() => {
-        const imageModels = new Set(filterModelsByCapability(config.models, "image", config.channels));
-        const textModels = new Set(filterModelsByCapability(config.models, "text", config.channels));
-        return (Array.isArray(config.models) ? config.models : []).map((model) => {
-            const isImage = imageModels.has(model);
-            const isText = textModels.has(model);
-            const channel = resolveModelChannel(config, model);
+type Row = {
+    model: string;
+    name: string;
+    channel: string;
+    labels: string[];
+};
+
+function buildRows(models: string[], config: AiConfig, extraLabel: (model: string) => string | null): Row[] {
+    return models
+        .map((model) => {
+            const extra = extraLabel(model);
             return {
                 model,
                 name: modelDisplayName(config, model),
-                channel: channel?.name || "未命名渠道",
-                capability: isImage && isText ? "生图 · 对话" : isImage ? "生图" : isText ? "对话" : "未标注",
-                isImage,
-                isText,
+                channel: resolveModelChannel(config, model)?.name || "未命名渠道",
+                labels: extra ? [extra] : [],
             };
-        });
+        })
+        .sort((a, b) => a.name.localeCompare(b.name, "zh-Hans-CN"));
+}
+
+/** 设置页的可用模型清单：按生图 / 文本分组，组内按名称排序。 */
+export function ModelAvailabilityList({ config }: { config: AiConfig }) {
+    const groups = useMemo(() => {
+        const all = Array.isArray(config.models) ? config.models : [];
+        const imageModels = filterModelsByCapability(all, "image", config.channels);
+        const textModels = filterModelsByCapability(all, "text", config.channels);
+        const imageSet = new Set(imageModels);
+        const textSet = new Set(textModels);
+        const labelOf = (model: string) => {
+            if (config.imageModel === model) return "默认生图";
+            if (config.assistantModel === model) return "Agent";
+            return null;
+        };
+        return [
+            { key: "image", title: "生图模型", rows: buildRows(imageModels, config, labelOf) },
+            {
+                key: "text",
+                title: "文本模型",
+                // 同时具备两种能力的模型只列在生图组，避免重复。
+                rows: buildRows(textModels.filter((model) => !imageSet.has(model)), config, labelOf),
+            },
+        ].filter((group) => group.rows.length > 0 || group.key === "image");
+        void textSet;
     }, [config]);
 
-    if (!rows.length) {
-        return <p className="m-0 text-sm text-foreground/55">还没有可用模型，请先在「服务」里拉取模型列表。</p>;
+    const total = groups.reduce((sum, group) => sum + group.rows.length, 0);
+    if (!total) {
+        return <p className="m-0 text-sm text-foreground/55">还没有可用模型，请先在上面的服务里点「拉取模型」。</p>;
     }
 
     return (
-        <div className="overflow-hidden rounded-xl border border-border/60">
-            <div className="grid grid-cols-[minmax(0,1fr)_auto_auto] items-center gap-3 border-b border-border/60 bg-foreground/[.03] px-4 py-2 text-xs text-foreground/50">
-                <span>模型</span>
-                <span>能力</span>
-                <span className="text-right">用途</span>
-            </div>
-            <ul className="m-0 divide-y divide-border/50 p-0">
-                {rows.map((row) => (
-                    <li key={row.model} className="grid grid-cols-[minmax(0,1fr)_auto_auto] items-center gap-3 px-4 py-2.5">
-                        <div className="min-w-0">
-                            <div className="truncate text-sm text-foreground">{row.name}</div>
-                            <div className="truncate text-xs text-foreground/45">{row.channel}</div>
+        <div className="space-y-4">
+            {groups.map((group) => (
+                <div key={group.key}>
+                    <div className="mb-2 flex items-baseline gap-2">
+                        <h4 className="m-0 text-xs font-medium text-foreground/70">{group.title}</h4>
+                        <span className="text-xs text-foreground/40">{group.rows.length}</span>
+                    </div>
+                    {group.rows.length ? (
+                        <div className="overflow-hidden rounded-xl border border-border/60">
+                            <div className="grid grid-cols-[minmax(0,1fr)_auto] items-center gap-3 border-b border-border/60 bg-foreground/[.03] px-4 py-2 text-xs text-foreground/50">
+                                <span>模型</span>
+                                <span className="text-right">用途</span>
+                            </div>
+                            <ul className="m-0 divide-y divide-border/50 p-0">
+                                {group.rows.map((row) => (
+                                    <li key={row.model} className="grid grid-cols-[minmax(0,1fr)_auto] items-center gap-3 px-4 py-2.5">
+                                        <div className="min-w-0">
+                                            <div className="truncate text-sm text-foreground">{row.name}</div>
+                                            <div className="truncate text-xs text-foreground/45">{row.channel}</div>
+                                        </div>
+                                        <span className="flex justify-end gap-1 text-xs">
+                                            {row.labels.map((label) => (
+                                                <span key={label} className="rounded-full bg-primary/12 px-2 py-0.5 text-primary">{label}</span>
+                                            ))}
+                                        </span>
+                                    </li>
+                                ))}
+                            </ul>
                         </div>
-                        <span className="rounded-full border border-border/60 px-2 py-0.5 text-xs text-foreground/60">{row.capability}</span>
-                        <span className="flex justify-end gap-1 text-xs">
-                            {config.imageModel === row.model ? <span className="rounded-full bg-primary/12 px-2 py-0.5 text-primary">默认生图</span> : null}
-                            {config.assistantModel === row.model ? <span className="rounded-full bg-primary/12 px-2 py-0.5 text-primary">Agent</span> : null}
-                        </span>
-                    </li>
-                ))}
-            </ul>
+                    ) : (
+                        <p className="m-0 text-xs text-foreground/45">当前服务没有这类模型。</p>
+                    )}
+                </div>
+            ))}
         </div>
     );
 }

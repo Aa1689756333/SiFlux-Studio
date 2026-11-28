@@ -197,6 +197,7 @@ func RegisterRelayRoutes(r gin.IRouter, svc *app.Service) {
 				"granted":    float64(state.Quota+state.UsedQuota) / state.QuotaPerUnit,
 				"stale":      true,
 				"usageKnown": false,
+				"username":   state.Username,
 			})
 			return
 		}
@@ -211,6 +212,7 @@ func RegisterRelayRoutes(r gin.IRouter, svc *app.Service) {
 			"granted":    float64(quota+state.UsedQuota) / perUnit,
 			"stale":      false,
 			"usageKnown": true,
+			"username":   state.Username,
 		})
 	})
 	// relayLogout 退出账号：清掉本地保存的凭据与额度，渠道回到未连接状态。
@@ -349,6 +351,7 @@ func readRelayAccountQuota(ctx context.Context, client *relayclient.Client, stat
 	if session.AccessToken != "" || session.Cookie != "" {
 		if self, err := client.Self(ctx, session); err == nil {
 			state.UsedQuota = self.UsedQuota
+			state.Username = firstNonEmpty(self.DisplayName, self.Username)
 			return self.Quota, perUnit, true
 		}
 		if next, err := client.Refresh(ctx, session); err == nil {
@@ -357,6 +360,7 @@ func readRelayAccountQuota(ctx context.Context, client *relayclient.Client, stat
 				state.TokenType = next.TokenType
 				state.Cookie = next.Cookie
 				state.UsedQuota = self.UsedQuota
+				state.Username = firstNonEmpty(self.DisplayName, self.Username)
 				return self.Quota, perUnit, true
 			}
 		}
@@ -427,6 +431,16 @@ func anyToFloat64(value any) float64 {
 }
 
 // relayChannelState 是写入内置渠道的连接状态。
+// firstNonEmpty 返回第一个非空字符串。
+func firstNonEmpty(values ...string) string {
+	for _, value := range values {
+		if strings.TrimSpace(value) != "" {
+			return strings.TrimSpace(value)
+		}
+	}
+	return ""
+}
+
 type relayChannelState struct {
 	APIKey       string
 	Models       []string
@@ -436,6 +450,7 @@ type relayChannelState struct {
 	Quota        int64
 	UsedQuota    int64
 	QuotaPerUnit float64
+	Username     string
 }
 
 // clearRelayConnection 清除内置渠道里保存的连接凭据。
@@ -487,6 +502,7 @@ func applyRelayChannelState(channel map[string]any, state relayChannelState) {
 		channel["relayTokenType"] = state.TokenType
 		channel["relayCookie"] = state.Cookie
 	}
+	channel["relayUsername"] = state.Username
 	channel["relayQuota"] = state.Quota
 	channel["relayUsedQuota"] = state.UsedQuota
 	channel["relayQuotaPerUnit"] = state.QuotaPerUnit

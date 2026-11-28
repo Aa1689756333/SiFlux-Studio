@@ -53,6 +53,15 @@ export function RelaySignupModal({ open, onClose, onConnected, connected = false
         retry: false,
         staleTime: 30_000,
     });
+    const accountName = accountQuota.data?.username || "";
+    const copyAccountName = async () => {
+        try {
+            await navigator.clipboard.writeText(accountName);
+            message.success("账号已复制");
+        } catch {
+            message.error("复制失败，请手动选中复制");
+        }
+    };
     const timerRef = useRef<ReturnType<typeof setInterval> | null>(null);
 
     const stopCooldown = useCallback(() => {
@@ -232,7 +241,16 @@ export function RelaySignupModal({ open, onClose, onConnected, connected = false
                 {showAccount ? (
                     <div className="space-y-4">
                         <div className="rounded-xl border border-border/60 px-4 py-3">
-                            <div className="text-xs text-foreground/55">账户余额</div>
+                            <div className="flex items-start justify-between gap-3">
+                                <div className="min-w-0">
+                                    <div className="text-xs text-foreground/55">账号</div>
+                                    <div className="mt-0.5 truncate text-sm font-medium">{accountName || "已连接"}</div>
+                                </div>
+                                {accountName ? (
+                                    <Button size="small" onClick={() => void copyAccountName()}>复制</Button>
+                                ) : null}
+                            </div>
+                            <div className="mt-3 text-xs text-foreground/55">账户余额</div>
                             <div className="mt-1 text-2xl font-semibold leading-tight">
                                 {accountQuota.data && accountQuota.data.granted > 0
                                     ? `$${accountQuota.data.remaining.toFixed(2)}`

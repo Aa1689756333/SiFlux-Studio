@@ -75,6 +75,8 @@ export type RelayQuota = {
     remaining: number;
     usageKnown: boolean;
     stale?: boolean;
+    /** 当前登录的账号名，用于在余额弹窗里显示与复制。 */
+    username?: string;
 };
 
 /** 查询已接入账户的当前余额。 */
